@@ -1,7 +1,7 @@
 # Security Audit Report — Vulnerable Flask App
 
 **Author:** Jason Morgan
-**Date:** April 2026
+**Date:** May 2026
 **Branch tested:** `vulnerable` compared against `main`
 **Environment:** Localhost only — http://127.0.0.1:5000
 
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This report documents a security audit of a deliberately vulnerable Flask web application built for AppSec learning. The audit identified three vulnerabilities across the application — SQL Injection, Cross-Site Scripting (XSS), and Security Misconfiguration — all of which were successfully exploited in a controlled localhost environment. Each vulnerability was traced from the point of user input through to its impact, and confirmed fixes were verified on the patched `main` branch. The goal of this audit is to demonstrate practical understanding of OWASP Top 10 risks, how they appear in real code, and what it takes to fix them before they reach production.
+This report documents a security audit of a deliberately vulnerable Flask web application built for AppSec learning. The audit identified seven vulnerabilities across the application — SQL Injection, Cross-Site Scripting (XSS), Security Misconfiguration, Cryptographic Failures, and Broken Access Control — all of which were traced from the point of user input through to their impact and verified on the patched `main` branch. A login system with bcrypt password hashing, signed session cookies, and route-level access control was designed and implemented as part of the remediation phase. The goal of this audit is to demonstrate practical understanding of OWASP Top 10 risks, how they appear in real code, and what it takes to fix them before they reach production.
 
 I like to think of this application as a building — SQL Injection is a backdoor that lets someone rewrite the guest list, XSS is a stranger slipping a note through the mail slot that tricks other tenants into handing over their keys, and leaving debug mode on is like taping the building's blueprints to the front door. This audit is about finding those doors before someone else does.
 
@@ -20,8 +20,8 @@ I like to think of this application as a building — SQL Injection is a backdoo
 - **Application:** Vulnerable Flask App (localhost only)
 - **Branch tested:** `vulnerable` (exploitable patterns) compared against `main` (patched baseline)
 - **Testing environment:** Local machine, http://127.0.0.1:5000 — no external network exposure
-- **What was tested:** All three routes (`/`, `/search`, `/greeting`), templates, and application configuration
-- **What was not tested:** Authentication systems, session management, file uploads, or any external infrastructure — none of which exist in this application
+- **What was tested:** All routes (`/`, `/login`, `/logout`, `/search`, `/greeting`), templates, session management, and application configuration
+- **What was not tested:** File uploads, external infrastructure, password reset flows, or multi-user privilege escalation — none of which exist in this application
 - **Testing method:** Manual code review and hands-on exploitation using browser-based payloads
 
 ---
@@ -32,8 +32,11 @@ I like to think of this application as a building — SQL Injection is a backdoo
 |---|-------|---------------|----------|----------|--------|
 | 1 | SQL Injection via string concatenation | A03 — Injection | `/search` route, `app.py` line 68 | High | Fixed on `main` |
 | 2 | Reflected XSS via Jinja2 `\|safe` filter | A03 — Injection | `/greeting` route, `greeting.html` line 16 | High | Fixed on `main` |
-| 3 | Debug mode hardcoded on | A05 — Security Misconfiguration | `app.py` line 12 | Medium | Fixed on `main` |
+| 3 | Debug mode hardcoded on | A05 — Security Misconfiguration | `app.py` line 12 | Critical | Fixed on `main` |
 | 4 | Plaintext passwords exposed in UI | A02 — Cryptographic Failures | `search.html`, `init_db()` | Medium | Not fixed — intentional lab design |
+| 5 | SELECT * exposes password column to template | A02 — Cryptographic Failures | `/search` route, `app.py` line 68 | Medium | Not fixed — intentional lab design |
+| 6 | No authentication on protected routes | A01 — Broken Access Control | `/search`, `/greeting` routes | High | Fixed on `main` |
+| 7 | No password hashing on stored credentials | A02 — Cryptographic Failures | `init_db()`, `app.py` | High | Fixed on `main` |
 
 ---
 
@@ -82,7 +85,7 @@ Removed the `|safe` filter from the greeting template. Jinja2's default auto-esc
 ### Finding 3 — Debug Mode Hardcoded On
 
 **OWASP:** A05 — Security Misconfiguration
-**Severity:** Medium
+**Severity:** Critical
 **Location:** `app.py` line 12
 
 **Description:**
@@ -119,6 +122,63 @@ Passwords should be hashed using a strong one-way algorithm such as bcrypt befor
 
 ---
 
+### Finding 5 — SELECT * Exposes Password Column to Template
+
+**OWASP:** A02 — Cryptographic Failures
+**Severity:** Medium
+**Location:** `/search` route, `app.py` line 68
+
+**Description:**
+The search query uses `SELECT *` which returns all columns from the users table — including the password field — and passes them to the template. Even though the current template may not display the password column, the data is in memory and available to the template engine. This violates the principle of least privilege: only request what you actually need.
+
+**Impact:**
+If the template is ever modified to display additional columns, or if a developer adds debug output, passwords could be rendered directly in the browser with no additional vulnerability required. The risk is one template change away from full credential exposure.
+
+**Remediation:**
+Replace `SELECT *` with `SELECT id, username` — never pull columns that don't need to be used. Sensitive fields should be excluded at the query level, not relied on being hidden at the template level.
+
+---
+
+### Finding 6 — No Authentication on Protected Routes
+
+**OWASP:** A01 — Broken Access Control
+**Severity:** High
+**Location:** `/search`, `/greeting` routes, `app.py`
+
+**Description:**
+The `/search` and `/greeting` routes were accessible to any user without requiring authentication. There was no session check or access control mechanism in place — anyone who knew the URL could reach the routes directly, bypassing any intended login requirement. Think of it like a building where the lobby has a security desk but every internal door is left wide open.
+
+**Impact:**
+Unauthenticated users could access the search functionality and retrieve all usernames from the database. In a real application this could expose sensitive user data to anyone with a browser.
+
+**Proof of Concept:**
+Navigating directly to `/search` without an active session returned a 200 response with full search results — no login required.
+
+**Remediation:**
+A `login_required` decorator was implemented and applied to all protected routes. It checks for an active session on every request and redirects unauthenticated users to `/login` with a 302 response. Regression tests verify this behavior cannot be silently broken.
+
+---
+
+### Finding 7 — No Password Hashing on Stored Credentials
+
+**OWASP:** A02 — Cryptographic Failures
+**Severity:** High
+**Location:** `init_db()`, `app.py`
+
+**Description:**
+Seed user passwords were stored as plaintext strings in the database. Any database dump, backup leak, or SQL injection attack would expose all credentials immediately with no additional effort required. There was no hashing, salting, or any cryptographic protection applied at the storage layer.
+
+**Impact:**
+Full credential compromise on database exposure. Plaintext passwords are immediately usable — no cracking required. If users reuse those passwords elsewhere, the damage extends to other services.
+
+**Proof of Concept:**
+Direct database query returned `admin123`, `alice456`, and `bob789` in plaintext.
+
+**Remediation:**
+Passwords are now hashed using bcrypt with per-password salts before storage. At login, bcrypt compares the hash of the submitted password against the stored hash — the plaintext password never exists in the database. A regression test verifies that stored passwords do not match their plaintext equivalents.
+
+---
+
 ## Recommendations
 
 **1. Never ship with default or development settings in production.**
@@ -132,3 +192,9 @@ No password should ever be stored in plaintext under any circumstances. Bcrypt o
 
 **4. Apply least privilege consistently.**
 Users and systems should only have access to the data and functionality they absolutely need. If a piece of information doesn't need to be displayed, queried, or stored — it shouldn't be.
+
+**5. Enforce authentication at the route level, not just the UI level.**
+Hiding a link in the UI is not access control. Every protected route must independently verify that the requester has an active, valid session. A decorator or middleware applied at the route level ensures this check cannot be bypassed by navigating directly to a URL.
+
+**6. Use signed, server-side sessions — never trust client-supplied identity.**
+Session cookies must be cryptographically signed with a strong secret key stored in an environment variable. If a session cookie can be forged or tampered with, an attacker can impersonate any user in the system without knowing their password.

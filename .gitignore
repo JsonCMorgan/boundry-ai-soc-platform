@@ -2,6 +2,7 @@
 .env
 *.db
 instance/
+docs/LAB_CREDENTIALS.md
 
 # Python
 __pycache__/

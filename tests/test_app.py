@@ -11,21 +11,53 @@ def test_index_ok(client):
     assert b"Vulnerable App" in resp.data
 
 
-def test_search_parameterized_no_error(client):
+def test_search_parameterized_no_error(logged_in_client):
     """Search with a normal substring should return 200 (parameterized query)."""
-    resp = client.get("/search?q=alice")
+    resp = logged_in_client.get("/search?q=alice")
     assert resp.status_code == 200
     assert b"alice" in resp.data.lower()
 
 
-def test_greeting_escapes_script_tag(client):
+def test_greeting_escapes_script_tag(logged_in_client):
     """
     Reflected name must not render raw HTML — script should be escaped in the body.
 
     If we removed default escaping or added |safe in the template, this test would fail.
     """
     payload = "<script>alert(1)</script>"
-    resp = client.get("/greeting?name=" + quote(payload))
+    resp = logged_in_client.get("/greeting?name=" + quote(payload))
     assert resp.status_code == 200
     assert b"<script>" not in resp.data
     assert b"&lt;script&gt;" in resp.data
+
+
+# --- Auth tests (A01: Broken Access Control, A07: Auth Failures) ---
+
+def test_search_redirects_unauthenticated(client):
+    """
+    Unauthenticated GET /search must return 302 and redirect to /login.
+    Verifies the @login_required decorator is enforcing access control (A01).
+    """
+    resp = client.get("/search")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_login_wrong_credentials(client):
+    """
+    POST /login with bad credentials must return 200 (re-render form) with a
+    generic error — never reveal which field was wrong (A07).
+    """
+    resp = client.post("/login", data={"username": "admin", "password": "wrongpassword"})
+    assert resp.status_code == 200
+    assert b"Invalid username or password" in resp.data
+
+
+def test_login_valid_credentials_redirects(client):
+    """
+    POST /login with correct credentials must return 302 and redirect to home.
+    Verifies session is created on successful authentication (A07).
+    """
+    resp = client.post("/login", data={"username": "admin", "password": "admin123"})
+    assert resp.status_code == 302
+    assert "/" in resp.headers["Location"]

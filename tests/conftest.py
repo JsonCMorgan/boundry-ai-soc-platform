@@ -18,3 +18,15 @@ def client(tmp_path, monkeypatch):
     app_module.init_db()
     app_module.app.config["TESTING"] = True
     return app_module.app.test_client()
+
+
+@pytest.fixture
+def logged_in_client(client):
+    """
+    Same test client but with an active session (logged in as admin).
+
+    Block job: POST valid credentials to /login so the session cookie is set,
+    then return the client — use this for any route protected by @login_required.
+    """
+    client.post("/login", data={"username": "admin", "password": "admin123"})
+    return client

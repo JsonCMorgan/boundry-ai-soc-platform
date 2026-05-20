@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register — Vulnerable Flask App</title>
+</head>
+<body>
+    <h1>Create Account</h1>
+
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" action="/register">
+        <label for="username">Username:</label><br>
+        <input type="text" id="username" name="username" minlength="3" required><br><br>
+
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password" minlength="8" required><br><br>
+
+        <label for="confirm">Confirm Password:</label><br>
+        <input type="password" id="confirm" name="confirm" minlength="8" required><br><br>
+
+        <button type="submit">Register</button>
+    </form>
+
+    <p>Already have an account? <a href="/login">Log in</a></p>
+</body>
+</html>

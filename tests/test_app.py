@@ -61,3 +61,89 @@ def test_login_valid_credentials_redirects(client):
     resp = client.post("/login", data={"username": "admin", "password": "admin123"})
     assert resp.status_code == 302
     assert "/" in resp.headers["Location"]
+
+
+# --- Registration tests (A03: Injection, A07: Auth Failures) ---
+
+def test_register_valid_redirects_to_login(client):
+    """
+    Happy path: valid registration must return 302 and redirect to /login.
+    Verifies new users are created and sent to authenticate — never auto-logged in.
+    """
+    resp = client.post("/register", data={
+        "username": "newuser",
+        "password": "securepass123",
+        "confirm":  "securepass123",
+    })
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_register_duplicate_username_rejected(client):
+    """
+    Duplicate username must return 200 with an error — no two users share a username.
+    """
+    client.post("/register", data={
+        "username": "newuser",
+        "password": "securepass123",
+        "confirm":  "securepass123",
+    })
+    resp = client.post("/register", data={
+        "username": "newuser",
+        "password": "anotherpass456",
+        "confirm":  "anotherpass456",
+    })
+    assert resp.status_code == 200
+    assert b"Registration failed" in resp.data
+
+
+def test_register_short_password_rejected(client):
+    """
+    Password under 8 characters must be rejected — enforces minimum password policy (A07).
+    """
+    resp = client.post("/register", data={
+        "username": "newuser",
+        "password": "short",
+        "confirm":  "short",
+    })
+    assert resp.status_code == 200
+    assert b"at least 8 characters" in resp.data
+
+
+def test_register_short_username_rejected(client):
+    """
+    Username under 3 characters must be rejected.
+    """
+    resp = client.post("/register", data={
+        "username": "ab",
+        "password": "securepass123",
+        "confirm":  "securepass123",
+    })
+    assert resp.status_code == 200
+    assert b"between 3 and 50 characters" in resp.data
+
+
+def test_register_mismatched_passwords_rejected(client):
+    """
+    Mismatched password and confirm fields must be rejected — catches registration typos.
+    """
+    resp = client.post("/register", data={
+        "username": "newuser",
+        "password": "securepass123",
+        "confirm":  "differentpass456",
+    })
+    assert resp.status_code == 200
+    assert b"do not match" in resp.data
+
+
+def test_register_empty_fields_rejected(client):
+    """
+    Empty username or password must be rejected — basic input validation.
+    """
+    resp = client.post("/register", data={
+        "username": "",
+        "password": "",
+        "confirm":  "",
+    })
+    assert resp.status_code == 200
+    assert b"required" in resp.data

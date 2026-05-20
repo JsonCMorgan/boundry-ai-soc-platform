@@ -125,6 +125,58 @@ def logout():
     return redirect(url_for("login"))
 
 
+# --- ROUTE 0b: Register (A03: Injection, A07: Auth Failures) ---
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """
+    Block job: create a new user account with validated, hashed credentials.
+
+    Trust boundary: all input from request.form is untrusted.
+    Validation happens before anything touches the database.
+    On success, redirect to login — never auto-login after registration.
+    """
+    error = None
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm  = request.form.get("confirm", "")
+
+        # --- Validation block ---
+        if not username or not password:
+            error = "Username and password are required."
+        elif len(username) < 3 or len(username) > 50:
+            error = "Username must be between 3 and 50 characters."
+        elif len(password) < 8:
+            error = "Password must be at least 8 characters."
+        elif password != confirm:
+            error = "Passwords do not match."
+        else:
+            # --- Duplicate check ---
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            existing = conn.execute(
+                "SELECT id FROM users WHERE username = ?", (username,)
+            ).fetchone()
+
+            if existing:
+                error = "Registration failed. Please try again."  # generic — no enumeration
+                conn.close()
+            else:
+                # --- Hash and store ---
+                hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+                conn.execute(
+                    "INSERT INTO users (username, password) VALUES (?, ?)",
+                    (username, hashed.decode()),
+                )
+                conn.commit()
+                conn.close()
+                security_log.info(f"REGISTER_SUCCESS username={username} ip={request.remote_addr}")
+                return redirect(url_for("login"))
+
+    return render_template("register.html", error=error)
+
+
 # --- ROUTE 1: Home ---
 @app.route("/")
 def index():

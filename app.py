@@ -44,11 +44,12 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-# --- Security logging (feeds into Splunk) ---
-# Writes structured log lines to flask_security.log for SIEM ingestion.
-LOG_PATH = Path(__file__).parent / "flask_security.log"
+# --- Security logging (feeds into Splunk / Railway logs) ---
+# In production (no LOG_FILE env var), logs go to stdout so Railway captures them.
+# In local dev, set LOG_FILE=flask_security.log to write to disk for Splunk ingestion.
+_log_file = os.environ.get("LOG_FILE")
 logging.basicConfig(
-    filename=str(LOG_PATH),
+    filename=_log_file if _log_file else None,
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%S",
@@ -293,6 +294,9 @@ def report_detail(filename):
 
 
 # --- Startup ---
+# init_db() must run at module level so gunicorn (production) initialises
+# the database on import, not just when running via `python app.py`.
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=_debug)

@@ -4,6 +4,10 @@
 instance/
 docs/LAB_CREDENTIALS.md
 
+# Logs - never commit
+*.log
+docs/reports/incident_report_*.md
+
 # Python
 __pycache__/
 .venv/

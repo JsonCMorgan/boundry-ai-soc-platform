@@ -7,15 +7,24 @@ import sqlite3
 import logging
 from pathlib import Path
 
+import markdown
 import bcrypt
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session
+from markupsafe import Markup
+from flask import Flask, render_template, request, redirect, url_for, session, abort
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
 
 # --- Session secret key (required for signing cookies) ---
-# In production this must be a long random value from an env var — never hardcoded.
-app.secret_key = os.environ.get("SECRET_KEY", "dev-only-secret-change-in-prod")
+# In production this MUST be set as a SECRET_KEY environment variable.
+# The fallback is dev-only — if it's still active in production, sessions are forgeable.
+_secret = os.environ.get("SECRET_KEY", "dev-only-secret-change-in-prod")
+if _secret == "dev-only-secret-change-in-prod":
+    import warnings
+    warnings.warn("WARNING: SECRET_KEY is not set. Using insecure default — never run this in production.", stacklevel=2)
+app.secret_key = _secret
 
 # --- Security configuration (A05: Security Misconfiguration) ---
 # On `main`, debug is OFF unless you explicitly opt in (local dev only).
@@ -24,6 +33,16 @@ _debug = os.environ.get("FLASK_DEBUG", "").strip().lower() in ("1", "true", "yes
 app.config["DEBUG"] = _debug
 
 DB_PATH = Path(__file__).parent / "app.db"
+REPORTS_DIR = Path(__file__).parent / "docs" / "reports"
+
+# --- Rate limiting (A07: brute force protection) ---
+# 10 login attempts per minute per IP. Exceeding this returns HTTP 429.
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 # --- Security logging (feeds into Splunk) ---
 # Writes structured log lines to flask_security.log for SIEM ingestion.
@@ -54,9 +73,11 @@ def init_db():
         )
     """)
 
-    # Only seed if the table is empty — avoids re-hashing on every restart
+    # Only seed if the table is empty AND SEED_DB=true is explicitly set.
+    # In production (Railway), SEED_DB is not set — first user is created via /register.
+    # In local dev, set SEED_DB=true to get the lab test accounts.
     cursor = conn.execute("SELECT COUNT(*) FROM users")
-    if cursor.fetchone()[0] == 0:
+    if cursor.fetchone()[0] == 0 and os.environ.get("SEED_DB", "").lower() == "true":
         seed_users = [
             (1, "admin", "admin123"),
             (2, "alice", "alice456"),
@@ -86,6 +107,7 @@ def login_required(f):
 
 # --- ROUTE 0: Login / Logout (A01: Broken Access Control, A07: Auth Failures) ---
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
 def login():
     """
     Block job: authenticate the user against hashed credentials in the DB.
@@ -223,6 +245,51 @@ def greeting():
     """
     name = request.args.get("name", "visitor")
     return render_template("greeting.html", name=name)
+
+
+# --- ROUTE 4: Reports Dashboard (Boundry.AI) ---
+@app.route("/reports")
+@login_required
+def reports():
+    """
+    List all generated incident reports, newest first.
+    Only shows incident_report_*.md files — never the SAMPLE or pricing docs.
+    Protected by login_required: clients log in to view their reports.
+    """
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    report_files = sorted(REPORTS_DIR.glob("incident_report_*.md"), reverse=True)
+    report_list = [
+        {
+            "filename": f.name,
+            "display": f.stem.replace("incident_report_", "").replace("_", " "),
+        }
+        for f in report_files
+    ]
+    return render_template("reports.html", reports=report_list)
+
+
+@app.route("/reports/<filename>")
+@login_required
+def report_detail(filename):
+    """
+    Render a single incident report as HTML.
+
+    Security: resolves the full path and confirms it stays inside REPORTS_DIR
+    before reading — prevents path traversal attacks (e.g. ../../etc/passwd).
+    """
+    safe_path = (REPORTS_DIR / filename).resolve()
+
+    # Path traversal protection: reject anything that escapes the reports folder
+    if not str(safe_path).startswith(str(REPORTS_DIR.resolve())):
+        abort(404)
+
+    # Only serve .md files that actually exist
+    if not safe_path.exists() or safe_path.suffix != ".md":
+        abort(404)
+
+    raw = safe_path.read_text()
+    html_content = Markup(markdown.markdown(raw))
+    return render_template("report_detail.html", content=html_content, filename=filename)
 
 
 # --- Startup ---

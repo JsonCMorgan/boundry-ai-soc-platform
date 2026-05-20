@@ -61,6 +61,12 @@ Add a new line every session.
 **Security dashboard:**
 "I built a Splunk dashboard with two live detection panels — one for brute force login attempts and one for SQL injection — both running against logs from a Flask application I instrumented myself."
 
+**Registration route security:**
+"I built and audited a registration route end to end — I identified user enumeration as a medium severity finding, fixed it with a generic error message, enforced server-side validation that can't be bypassed by skipping the browser, and wrote 6 regression tests to lock in the behavior."
+
+**Client-side vs server-side validation:**
+"I know client-side validation is for user experience and server-side validation is for security — an attacker can bypass the browser entirely and POST directly to the route, so the server must always be the enforcer."
+
 ---
 
 *Last updated: May 2026*

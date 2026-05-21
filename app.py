@@ -35,6 +35,78 @@ app.config["DEBUG"] = _debug
 DB_PATH = Path(__file__).parent / "app.db"
 REPORTS_DIR = Path(__file__).parent / "docs" / "reports"
 
+# --- Database configuration ---
+# Railway sets DATABASE_URL automatically when you add a PostgreSQL service.
+# Locally, this is unset and the app falls back to SQLite.
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+# Railway sometimes gives postgres:// — psycopg2 requires postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# SQL placeholder: PostgreSQL uses %s, SQLite uses ?
+PH = "%s" if DATABASE_URL else "?"
+
+
+def get_conn():
+    """
+    Return a database connection.
+    PostgreSQL in production (DATABASE_URL set), SQLite in local dev.
+    """
+    if DATABASE_URL:
+        import psycopg2
+        import psycopg2.extras
+        return psycopg2.connect(DATABASE_URL), "pg"
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn, "sqlite"
+
+
+def db_fetchone(sql, params=()):
+    """Execute a SELECT and return one row as a dict, or None."""
+    conn, kind = get_conn()
+    try:
+        if kind == "pg":
+            import psycopg2.extras
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql, params)
+            row = cur.fetchone()
+            return dict(row) if row else None
+        else:
+            row = conn.execute(sql, params).fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def db_fetchall(sql, params=()):
+    """Execute a SELECT and return all rows as a list of dicts."""
+    conn, kind = get_conn()
+    try:
+        if kind == "pg":
+            import psycopg2.extras
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql, params)
+            return [dict(r) for r in cur.fetchall()]
+        else:
+            rows = conn.execute(sql, params).fetchall()
+            return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def db_run(sql, params=()):
+    """Execute an INSERT / UPDATE / CREATE and commit."""
+    conn, kind = get_conn()
+    try:
+        if kind == "pg":
+            cur = conn.cursor()
+            cur.execute(sql, params)
+        else:
+            conn.execute(sql, params)
+        conn.commit()
+    finally:
+        conn.close()
+
 # --- Rate limiting (A07: brute force protection) ---
 # 10 login attempts per minute per IP. Exceeding this returns HTTP 429.
 limiter = Limiter(
@@ -59,16 +131,19 @@ security_log = logging.getLogger("security")
 
 def init_db():
     """
-    Create SQLite schema and seed fake users for the lab.
-
-    Block job: give the search route predictable rows so SQLi / safe search demos
-    behave the same every time. Never use real credentials here.
+    Create schema and optionally seed lab users.
+    Works with both PostgreSQL (production) and SQLite (local dev).
     Passwords are hashed with bcrypt — never stored in plaintext (A02 fix).
     """
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
+    # PostgreSQL uses SERIAL for auto-increment; SQLite uses INTEGER PRIMARY KEY
+    if DATABASE_URL:
+        id_col = "id SERIAL PRIMARY KEY"
+    else:
+        id_col = "id INTEGER PRIMARY KEY"
+
+    db_run(f"""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
+            {id_col},
             username TEXT NOT NULL,
             password TEXT NOT NULL
         )
@@ -77,22 +152,19 @@ def init_db():
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.
-    cursor = conn.execute("SELECT COUNT(*) FROM users")
-    if cursor.fetchone()[0] == 0 and os.environ.get("SEED_DB", "").lower() == "true":
+    row = db_fetchone(f"SELECT COUNT(*) AS cnt FROM users")
+    if row["cnt"] == 0 and os.environ.get("SEED_DB", "").lower() == "true":
         seed_users = [
-            (1, "admin", "admin123"),
-            (2, "alice", "alice456"),
-            (3, "bob",   "bob789"),
+            ("admin", "admin123"),
+            ("alice", "alice456"),
+            ("bob",   "bob789"),
         ]
-        for uid, username, plaintext in seed_users:
+        for username, plaintext in seed_users:
             hashed = bcrypt.hashpw(plaintext.encode(), bcrypt.gensalt())
-            conn.execute(
-                "INSERT INTO users (id, username, password) VALUES (?, ?, ?)",
-                (uid, username, hashed.decode()),
+            db_run(
+                f"INSERT INTO users (username, password) VALUES ({PH}, {PH})",
+                (username, hashed.decode()),
             )
-
-    conn.commit()
-    conn.close()
 
 
 # --- Auth decorator (bouncer) ---
@@ -122,12 +194,7 @@ def login():
         password = request.form.get("password", "")
 
         # Look up user by username
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
-        conn.close()
+        row = db_fetchone(f"SELECT * FROM users WHERE username = {PH}", (username,))
 
         # Verify password against stored hash
         if row and bcrypt.checkpw(password.encode(), row["password"].encode()):
@@ -176,24 +243,19 @@ def register():
             error = "Passwords do not match."
         else:
             # --- Duplicate check ---
-            conn = sqlite3.connect(DB_PATH)
-            conn.row_factory = sqlite3.Row
-            existing = conn.execute(
-                "SELECT id FROM users WHERE username = ?", (username,)
-            ).fetchone()
+            existing = db_fetchone(
+                f"SELECT id FROM users WHERE username = {PH}", (username,)
+            )
 
             if existing:
                 error = "Registration failed. Please try again."  # generic — no enumeration
-                conn.close()
             else:
                 # --- Hash and store ---
                 hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-                conn.execute(
-                    "INSERT INTO users (username, password) VALUES (?, ?)",
+                db_run(
+                    f"INSERT INTO users (username, password) VALUES ({PH}, {PH})",
                     (username, hashed.decode()),
                 )
-                conn.commit()
-                conn.close()
                 security_log.info(f"REGISTER_SUCCESS username={username} ip={request.remote_addr}")
                 return redirect(url_for("login"))
 
@@ -220,16 +282,11 @@ def search():
     query = request.args.get("q", "")
     security_log.info(f"SEARCH username={session.get('username')} query={query!r} ip={request.remote_addr}")
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-
-    # SAFE: Parameterized query — ? is a placeholder; value passed separately as a tuple.
+    # SAFE: Parameterized query — placeholder passed separately as a tuple.
     # The database treats the value as DATA only, never as SQL syntax.
-    sql = "SELECT * FROM users WHERE username LIKE ?"
-    cursor = conn.execute(sql, (f"%{query}%",))
-    results = [dict(row) for row in cursor.fetchall()]
-
-    conn.close()
+    results = db_fetchall(
+        f"SELECT * FROM users WHERE username LIKE {PH}", (f"%{query}%",)
+    )
 
     return render_template("search.html", query=query, results=results)
 

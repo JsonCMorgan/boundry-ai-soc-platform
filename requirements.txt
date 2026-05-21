@@ -10,6 +10,9 @@ blinker==1.9.0
 # Auth
 bcrypt==5.0.0
 
+# Database
+psycopg2-binary==2.9.10
+
 # Rate limiting
 Flask-Limiter==4.1.1
 limits==5.8.0

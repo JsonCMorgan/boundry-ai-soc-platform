@@ -42,6 +42,58 @@
             margin-left: 8px;
             vertical-align: middle;
         }
+        /* Empty / onboarding state */
+        .empty-state {
+            text-align: center;
+            margin-top: 60px;
+            padding: 40px 30px;
+            border: 2px dashed #e0b0ad;
+            border-radius: 8px;
+            background: #fdf5f5;
+        }
+        .shield-icon {
+            font-size: 3em;
+            margin-bottom: 12px;
+        }
+        .empty-state-title {
+            color: #c0392b;
+            font-size: 1.4em;
+            margin: 0 0 12px;
+        }
+        .empty-state-body {
+            color: #555;
+            line-height: 1.6;
+            max-width: 520px;
+            margin: 0 auto 28px;
+        }
+        .empty-state-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: left;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            color: #444;
+            font-size: 0.95em;
+        }
+        .step-num {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            background: #c0392b;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
     </style>
 </head>
 <body>
@@ -59,16 +111,38 @@
         <div class="report-card">
             <div>
                 <div class="report-date">
-                    {{ r.display }}
+                    Report #{{ r.id }} &mdash; {{ r.created_at }}
                     {% if loop.first %}<span class="badge">Latest</span>{% endif %}
                 </div>
-                <div class="report-label">Automated threat detection report</div>
+                <div class="report-label">Automated threat detection report &mdash; {{ r.threat_count }} threat(s) detected</div>
             </div>
-            <a class="view-btn" href="/reports/{{ r.filename }}">View Report</a>
+            <a class="view-btn" href="/reports/{{ r.id }}">View Report</a>
         </div>
         {% endfor %}
     {% else %}
-        <p class="empty">No incident reports found. The agent will generate one when a threat is detected.</p>
+        <div class="empty-state">
+            <div class="shield-icon">&#x1F6E1;</div>
+            <h2 class="empty-state-title">Your dashboard is ready.</h2>
+            <p class="empty-state-body">
+                The Boundry.AI agent monitors your application logs around the clock.
+                It will automatically generate a plain-English incident report here
+                the moment a threat is detected — no setup required.
+            </p>
+            <div class="empty-state-steps">
+                <div class="step">
+                    <span class="step-num">1</span>
+                    <span>Agent scans your security log for brute force and injection attempts</span>
+                </div>
+                <div class="step">
+                    <span class="step-num">2</span>
+                    <span>Threats are analysed and a plain-English report is generated</span>
+                </div>
+                <div class="step">
+                    <span class="step-num">3</span>
+                    <span>Report appears here — readable by you, not just your IT team</span>
+                </div>
+            </div>
+        </div>
     {% endif %}
 
     <hr style="margin-top: 40px; border-color: #eee;">

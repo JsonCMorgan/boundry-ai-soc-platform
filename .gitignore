@@ -17,3 +17,9 @@ __pycache__/
 # IDE
 .idea/
 .vscode/
+
+# macOS
+.DS_Store
+
+# Claude session files
+.claude/

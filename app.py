@@ -3,6 +3,7 @@ Vulnerable Flask App — AppSec Learning Project
 Deliberately insecure for security audit practice.
 """
 import os
+import re
 import sqlite3
 import logging
 from pathlib import Path
@@ -149,6 +150,23 @@ def init_db():
         )
     """)
 
+    # Reports table — stores AI-generated incident reports persistently.
+    # On Railway the filesystem is ephemeral (wiped on redeploy), so we keep
+    # reports in PostgreSQL so they survive deployments.
+    if DATABASE_URL:
+        ts_col = "created_at TIMESTAMP NOT NULL DEFAULT NOW()"
+    else:
+        ts_col = "created_at TEXT NOT NULL DEFAULT (datetime('now'))"
+
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS reports (
+            {id_col},
+            {ts_col},
+            threat_count INTEGER NOT NULL DEFAULT 0,
+            content TEXT NOT NULL
+        )
+    """)
+
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.
@@ -237,8 +255,14 @@ def register():
             error = "Username and password are required."
         elif len(username) < 3 or len(username) > 50:
             error = "Username must be between 3 and 50 characters."
-        elif len(password) < 8:
-            error = "Password must be at least 8 characters."
+        elif len(password) < 12:
+            error = "Password must be at least 12 characters."
+        elif not re.search(r"[A-Z]", password):
+            error = "Password must contain at least one uppercase letter."
+        elif not re.search(r"[0-9]", password):
+            error = "Password must contain at least one number."
+        elif not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?`~]", password):
+            error = "Password must contain at least one special character (!@#$%^&* etc)."
         elif password != confirm:
             error = "Passwords do not match."
         else:
@@ -310,44 +334,245 @@ def greeting():
 @login_required
 def reports():
     """
-    List all generated incident reports, newest first.
-    Only shows incident_report_*.md files — never the SAMPLE or pricing docs.
+    List all generated incident reports from the database, newest first.
+    Reports are stored in PostgreSQL so they survive Railway redeployments
+    (the ephemeral filesystem would lose .md files on every push).
     Protected by login_required: clients log in to view their reports.
     """
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    report_files = sorted(REPORTS_DIR.glob("incident_report_*.md"), reverse=True)
-    report_list = [
-        {
-            "filename": f.name,
-            "display": f.stem.replace("incident_report_", "").replace("_", " "),
-        }
-        for f in report_files
-    ]
+    report_list = db_fetchall(
+        "SELECT id, created_at, threat_count FROM reports ORDER BY id DESC"
+    )
     return render_template("reports.html", reports=report_list)
 
 
-@app.route("/reports/<filename>")
+@app.route("/reports/<int:report_id>")
 @login_required
-def report_detail(filename):
+def report_detail(report_id):
     """
-    Render a single incident report as HTML.
-
-    Security: resolves the full path and confirms it stays inside REPORTS_DIR
-    before reading — prevents path traversal attacks (e.g. ../../etc/passwd).
+    Render a single incident report from the database as HTML.
+    Uses an integer primary key — no path traversal risk (no filesystem access).
     """
-    safe_path = (REPORTS_DIR / filename).resolve()
+    row = db_fetchone(
+        f"SELECT id, created_at, threat_count, content FROM reports WHERE id = {PH}",
+        (report_id,),
+    )
 
-    # Path traversal protection: reject anything that escapes the reports folder
-    if not str(safe_path).startswith(str(REPORTS_DIR.resolve())):
+    if not row:
         abort(404)
 
-    # Only serve .md files that actually exist
-    if not safe_path.exists() or safe_path.suffix != ".md":
-        abort(404)
+    html_content = Markup(markdown.markdown(row["content"]))
+    return render_template(
+        "report_detail.html",
+        content=html_content,
+        report_id=row["id"],
+        created_at=row["created_at"],
+        threat_count=row["threat_count"],
+    )
 
-    raw = safe_path.read_text()
-    html_content = Markup(markdown.markdown(raw))
-    return render_template("report_detail.html", content=html_content, filename=filename)
+
+# --- ROUTE 5: Attack Simulation (Boundry.AI demo / cron helper) ---
+@app.route("/simulate-attack", methods=["POST"])
+@login_required
+def simulate_attack():
+    """
+    Write realistic fake attack events to the security log so the /run-agent
+    endpoint has data to analyse.  Used by the Railway hourly cron job to keep
+    the demo dashboard populated with fresh reports.
+
+    Simulates:
+      - 5 failed login attempts for "admin" from a known-bad IP
+      - 1 successful login (attacker cracked the account)
+      - 2 SQL injection attempts via the search route
+    """
+    attacker_ip = "203.0.113.42"   # TEST-NET-3 — documentation-only range, never real
+
+    # Brute force sequence
+    for _ in range(5):
+        security_log.warning(
+            f"LOGIN_FAILED username=admin ip={attacker_ip}"
+        )
+
+    # Simulated success (account compromise)
+    security_log.info(
+        f"LOGIN_SUCCESS username=admin ip={attacker_ip}"
+    )
+
+    # SQL injection attempts via search
+    for payload in ["' OR '1'='1", "' UNION SELECT username, password FROM users--"]:
+        security_log.info(
+            f"SEARCH username=admin query={payload!r} ip={attacker_ip}"
+        )
+
+    return {"status": "ok", "events_generated": 8}
+
+
+# --- ROUTE 6: Agent Trigger (Boundry.AI demo / cron helper) ---
+@app.route("/run-agent", methods=["POST"])
+@login_required
+def run_agent():
+    """
+    Read recent log events, run threat detection, and (if ANTHROPIC_API_KEY is
+    set) call the Claude API to generate a plain-English incident report, then
+    save it to the reports DB table.
+
+    Returns JSON so Railway cron jobs can confirm success via exit code / response.
+    """
+    import json as _json
+
+    log_path = Path(os.environ.get("LOG_FILE", "")) if os.environ.get("LOG_FILE") else None
+
+    # Inline the parse/detect logic (mirrors security_agent.py) so this route
+    # works without the agent script being importable in all deployment configs.
+    from collections import defaultdict
+
+    events = {
+        "login_failed": [],
+        "login_success": [],
+        "search": [],
+        "register": [],
+    }
+
+    if log_path and log_path.exists():
+        import re as _re
+        pattern = _re.compile(
+            r"(?P<timestamp>\S+)\s+(?P<level>\w+)\s+(?P<event>\w+)\s+(?P<fields>.*)"
+        )
+        with open(log_path) as fh:
+            for line in fh:
+                line = line.strip()
+                if not any(kw in line for kw in ["LOGIN", "SEARCH", "REGISTER"]):
+                    continue
+                m = pattern.match(line)
+                if not m:
+                    continue
+                event_type = m.group("event").lower()
+                fields = m.group("fields")
+                record = {"timestamp": m.group("timestamp"), "raw": line}
+                for match in _re.finditer(r'(\w+)=("[^"]*"|\'[^\']*\'|\S+)', fields):
+                    key, val = match.group(1), match.group(2).strip("'\"")
+                    record[key] = val
+                if event_type == "login_failed":
+                    events["login_failed"].append(record)
+                elif event_type == "login_success":
+                    events["login_success"].append(record)
+                elif event_type == "search":
+                    events["search"].append(record)
+                elif event_type == "register_success":
+                    events["register"].append(record)
+
+    # --- Threat detection ---
+    BRUTE_THRESHOLD = 3
+    injection_re = re.compile(r"(?i)(' OR|' AND|--|'=|1=1|UNION|SELECT|DROP)")
+    threats = []
+
+    failed_by_user = defaultdict(list)
+    for e in events["login_failed"]:
+        failed_by_user[e.get("username", "unknown")].append(e)
+
+    for username, attempts in failed_by_user.items():
+        if len(attempts) > BRUTE_THRESHOLD:
+            success = any(e.get("username") == username for e in events["login_success"])
+            threats.append({
+                "type": "BRUTE_FORCE",
+                "severity": "HIGH",
+                "username": username,
+                "failed_attempts": len(attempts),
+                "ip": attempts[0].get("ip", "unknown"),
+                "succeeded": success,
+                "first_seen": attempts[0]["timestamp"],
+                "last_seen": attempts[-1]["timestamp"],
+            })
+
+    for e in events["search"]:
+        query = e.get("query", "")
+        if injection_re.search(query):
+            threats.append({
+                "type": "SQL_INJECTION_ATTEMPT",
+                "severity": "HIGH",
+                "username": e.get("username", "unknown"),
+                "query": query,
+                "ip": e.get("ip", "unknown"),
+                "timestamp": e["timestamp"],
+            })
+
+    threat_count = len(threats)
+
+    # --- Generate and save report ---
+    report_id = None
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+
+    if threat_count == 0 and not log_path:
+        # No log file configured — nothing useful to analyse
+        return {"status": "ok", "threats_found": 0, "report_id": None}
+
+    if api_key and threat_count > 0:
+        try:
+            import anthropic as _anthropic
+            client = _anthropic.Anthropic(api_key=api_key)
+            summary = {
+                "total_events": sum(len(v) for v in events.values()),
+                "failed_logins": len(events["login_failed"]),
+                "successful_logins": len(events["login_success"]),
+                "searches": len(events["search"]),
+                "threats_detected": threat_count,
+                "threats": threats,
+            }
+            prompt = (
+                "You are a cybersecurity analyst writing an incident report for a client.\n\n"
+                "Analyze the following threat findings from a web application security log and write a "
+                "professional incident report. Be concise but thorough. Use plain language a business "
+                "owner can understand — not just technical jargon.\n\n"
+                f"Log Summary:\n{_json.dumps(summary, indent=2)}\n\n"
+                "Write the report with these sections:\n"
+                "1. Executive Summary (2-3 sentences, plain English)\n"
+                "2. Findings (one paragraph per threat — what happened, what it means, severity)\n"
+                "3. Recommended Actions (bullet points, specific and actionable)\n"
+                "4. Risk Level (Overall: Critical/High/Medium/Low with one sentence justification)\n\n"
+                "Format as clean markdown."
+            )
+            message = client.messages.create(
+                model="claude-opus-4-5",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            content = message.content[0].text
+        except Exception as exc:
+            content = f"# Report Generation Error\n\nAI report could not be generated: {exc}"
+    else:
+        # Placeholder report when no API key is set
+        if threat_count > 0:
+            lines = ["# Incident Report — Placeholder\n",
+                     "**ANTHROPIC_API_KEY is not configured.** AI report generation is disabled.\n",
+                     f"## Threats Detected: {threat_count}\n"]
+            for t in threats:
+                lines.append(f"- **{t['type']}** | severity: {t['severity']} | "
+                              f"user: {t.get('username','?')} | ip: {t.get('ip','?')}\n")
+            lines.append("\nAdd ANTHROPIC_API_KEY as a Railway environment variable to enable full reports.")
+            content = "\n".join(lines)
+        else:
+            content = ("# No Threats Detected\n\nThe agent ran but found no threat patterns "
+                       "in the current log data.")
+
+    # Store in DB
+    if DATABASE_URL:
+        ts_expr = "NOW()"
+    else:
+        ts_expr = "datetime('now')"
+
+    db_run(
+        f"INSERT INTO reports (created_at, threat_count, content) VALUES ({ts_expr}, {PH}, {PH})",
+        (threat_count, content),
+    )
+    # Retrieve the new row id
+    row = db_fetchone("SELECT id FROM reports ORDER BY id DESC LIMIT 1")
+    report_id = row["id"] if row else None
+
+    security_log.info(
+        f"AGENT_RUN threats_found={threat_count} report_id={report_id} "
+        f"user={session.get('username')} ip={request.remote_addr}"
+    )
+
+    return {"status": "ok", "threats_found": threat_count, "report_id": report_id}
 
 
 # --- Startup ---

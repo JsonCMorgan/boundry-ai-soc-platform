@@ -54,7 +54,9 @@
     </nav>
 
     <a class="back-link" href="/reports">← Back to Reports</a>
-    <div class="filename-label">{{ filename }}</div>
+    <div class="filename-label">
+        Report #{{ report_id }} &mdash; Generated: {{ created_at }} &mdash; {{ threat_count }} threat(s) detected
+    </div>
 
     <div class="report-body">
         {{ content }}

@@ -69,4 +69,20 @@ Add a new line every session.
 
 ---
 
+---
+
+## Cloud Deployment & DevOps
+
+- "I deployed a Flask security application to Railway with PostgreSQL, configuring environment variables for secret key management and setting up automatic deployments from GitHub — the same CI/CD pattern used in production engineering teams."
+- "I understand why SQLite is unsuitable for cloud deployment — the ephemeral filesystem means data is lost on every redeploy — and I migrated the app to PostgreSQL to solve this."
+
+---
+
+## Security Automation & SOAR
+
+- "I understand SOAR — Security Orchestration, Automation and Response — and built an automated pipeline that detects brute force and SQL injection attacks, generates plain-English incident reports using AI, and stores them in a persistent database."
+- "I automated the threat detection cycle with a scheduled job, reducing Mean Time To Detect from 'whenever someone checks' to under one hour — that's the core value proposition of any SOC monitoring service."
+
+---
+
 *Last updated: May 2026*

@@ -448,7 +448,7 @@ def report_detail(report_id):
     if not row:
         abort(404)
 
-    html_content = Markup(markdown.markdown(row["content"]))
+    html_content = Markup(markdown.markdown(row["content"], extensions=["tables"]))
     return render_template(
         "report_detail.html",
         content=html_content,

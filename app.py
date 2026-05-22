@@ -163,9 +163,18 @@ def init_db():
             {id_col},
             {ts_col},
             threat_count INTEGER NOT NULL DEFAULT 0,
+            event_count  INTEGER NOT NULL DEFAULT 0,
             content TEXT NOT NULL
         )
     """)
+    # Migration: add event_count to existing reports tables that pre-date this column.
+    # PostgreSQL supports "ADD COLUMN IF NOT EXISTS"; SQLite needs a PRAGMA check.
+    if DATABASE_URL:
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS event_count INTEGER NOT NULL DEFAULT 0")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
+        if "event_count" not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN event_count INTEGER NOT NULL DEFAULT 0")
 
     # Security events table — stores simulated / real attack events for the agent to read.
     # On Railway there is no LOG_FILE, so /simulate-attack writes here instead.
@@ -419,7 +428,7 @@ def reports():
     Protected by login_required: clients log in to view their reports.
     """
     report_list = db_fetchall(
-        "SELECT id, created_at, threat_count FROM reports ORDER BY id DESC"
+        "SELECT id, created_at, threat_count, event_count FROM reports ORDER BY id DESC"
     )
     return render_template("reports.html", reports=report_list)
 
@@ -432,7 +441,7 @@ def report_detail(report_id):
     Uses an integer primary key — no path traversal risk (no filesystem access).
     """
     row = db_fetchone(
-        f"SELECT id, created_at, threat_count, content FROM reports WHERE id = {PH}",
+        f"SELECT id, created_at, threat_count, event_count, content FROM reports WHERE id = {PH}",
         (report_id,),
     )
 
@@ -446,6 +455,7 @@ def report_detail(report_id):
         report_id=row["id"],
         created_at=row["created_at"],
         threat_count=row["threat_count"],
+        event_count=row["event_count"],
     )
 
 
@@ -610,6 +620,7 @@ def run_agent():
             })
 
     threat_count = len(threats)
+    event_count  = sum(len(v) for v in events.values())  # total raw events analysed
 
     # --- Generate and save report ---
     report_id = None
@@ -657,19 +668,60 @@ def run_agent():
         except Exception as exc:
             content = f"# Report Generation Error\n\nAI report could not be generated: {exc}"
     else:
-        # Placeholder report when no API key is set
+        # Placeholder report when no API key is set.
+        # Still shows the full event breakdown so clients can account for every event.
+        failed_ct  = len(events["login_failed"])
+        success_ct = len(events["login_success"])
+        search_ct  = len(events["search"])
+
+        lines = [
+            "# Incident Report\n",
+            "---\n",
+            "## Events Analysed\n",
+            f"| Event type | Count |",
+            f"|---|---|",
+            f"| Failed login attempts | {failed_ct} |",
+            f"| Successful logins | {success_ct} |",
+            f"| Search / query events | {search_ct} |",
+            f"| **Total** | **{event_count}** |",
+            "",
+        ]
+
         if threat_count > 0:
-            lines = ["# Incident Report — Placeholder\n",
-                     "**ANTHROPIC_API_KEY is not configured.** AI report generation is disabled.\n",
-                     f"## Threats Detected: {threat_count}\n"]
+            lines += [
+                f"## Threats Detected: {threat_count}\n",
+            ]
             for t in threats:
-                lines.append(f"- **{t['type']}** | severity: {t['severity']} | "
-                              f"user: {t.get('username','?')} | ip: {t.get('ip','?')}\n")
-            lines.append("\nAdd ANTHROPIC_API_KEY as a Railway environment variable to enable full reports.")
-            content = "\n".join(lines)
+                if t["type"] == "BRUTE_FORCE":
+                    outcome = "✅ Account compromised" if t.get("succeeded") else "🛡 Access denied"
+                    lines.append(
+                        f"### 🔴 Brute Force Attack — {t['severity']}\n"
+                        f"- **Target account:** {t['username']}\n"
+                        f"- **Attacker IP:** {t['ip']}\n"
+                        f"- **Failed attempts:** {t['failed_attempts']}\n"
+                        f"- **Outcome:** {outcome}\n"
+                        f"- **First seen:** {t['first_seen']} | **Last seen:** {t['last_seen']}\n"
+                    )
+                elif t["type"] == "SQL_INJECTION_ATTEMPT":
+                    lines.append(
+                        f"### 🔴 SQL Injection Attempt — {t['severity']}\n"
+                        f"- **User:** {t.get('username','unknown')}\n"
+                        f"- **Attacker IP:** {t['ip']}\n"
+                        f"- **Payload:** `{t.get('query','')}`\n"
+                        f"- **Timestamp:** {t.get('timestamp','')}\n"
+                    )
+            lines += [
+                "---\n",
+                "> **Note:** Add `ANTHROPIC_API_KEY` as a Railway environment variable "
+                "to replace this report with a full AI-generated narrative."
+            ]
         else:
-            content = ("# No Threats Detected\n\nThe agent ran but found no threat patterns "
-                       "in the current log data.")
+            lines += [
+                "## No Threats Detected\n",
+                "The agent found no brute-force or injection patterns in the current events.\n",
+            ]
+
+        content = "\n".join(lines)
 
     # Store in DB
     if DATABASE_URL:
@@ -678,8 +730,8 @@ def run_agent():
         ts_expr = "datetime('now')"
 
     db_run(
-        f"INSERT INTO reports (created_at, threat_count, content) VALUES ({ts_expr}, {PH}, {PH})",
-        (threat_count, content),
+        f"INSERT INTO reports (created_at, threat_count, event_count, content) VALUES ({ts_expr}, {PH}, {PH}, {PH})",
+        (threat_count, event_count, content),
     )
     # Retrieve the new row id
     row = db_fetchone("SELECT id FROM reports ORDER BY id DESC LIMIT 1")
@@ -694,7 +746,7 @@ def run_agent():
     # API / cron job → return JSON.
     if "text/html" in request.accept_mimetypes:
         if report_id:
-            flash(f"🤖 Agent complete — {threat_count} threat(s) detected. Report #{report_id} saved.", "success")
+            flash(f"🤖 Agent complete — {event_count} events analysed, {threat_count} threat(s) detected. Report #{report_id} saved.", "success")
         else:
             flash("🤖 Agent ran but found no threats in the current events.", "info")
         return redirect(url_for("reports"))

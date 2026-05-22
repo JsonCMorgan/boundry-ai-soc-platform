@@ -197,7 +197,9 @@
                     <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
                     {% if loop.first %}<span class="badge">Latest</span>{% endif %}
                 </div>
-                <div class="report-label">Automated threat detection report &mdash; {{ r.threat_count }} threat(s) detected</div>
+                <div class="report-label">
+                    {{ r.event_count }} event(s) analysed &mdash; {{ r.threat_count }} threat(s) detected
+                </div>
             </div>
             <a class="view-btn" href="/reports/{{ r.id }}">View Report</a>
         </div>

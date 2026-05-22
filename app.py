@@ -175,14 +175,19 @@ def init_db():
             content TEXT NOT NULL
         )
     """)
-    # Migration: add event_count to existing reports tables that pre-date this column.
-    # PostgreSQL supports "ADD COLUMN IF NOT EXISTS"; SQLite needs a PRAGMA check.
+    # Migration: add event_count, status, and analyst_notes to reports.
     if DATABASE_URL:
-        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS event_count INTEGER NOT NULL DEFAULT 0")
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS event_count    INTEGER NOT NULL DEFAULT 0")
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS status         TEXT    NOT NULL DEFAULT 'new'")
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS analyst_notes  TEXT    NOT NULL DEFAULT ''")
     else:
         existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
-        if "event_count" not in existing_cols:
-            db_run("ALTER TABLE reports ADD COLUMN event_count INTEGER NOT NULL DEFAULT 0")
+        if "event_count"   not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN event_count   INTEGER NOT NULL DEFAULT 0")
+        if "status"        not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN status        TEXT    NOT NULL DEFAULT 'new'")
+        if "analyst_notes" not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN analyst_notes TEXT    NOT NULL DEFAULT ''")
 
     # Security events table — stores simulated / real attack events for the agent to read.
     # On Railway there is no LOG_FILE, so /simulate-attack writes here instead.
@@ -538,7 +543,8 @@ def report_detail(report_id):
     Uses an integer primary key — no path traversal risk (no filesystem access).
     """
     row = db_fetchone(
-        f"SELECT id, created_at, threat_count, event_count, content FROM reports WHERE id = {PH}",
+        f"SELECT id, created_at, threat_count, event_count, content, status, analyst_notes "
+        f"FROM reports WHERE id = {PH}",
         (report_id,),
     )
 
@@ -553,6 +559,8 @@ def report_detail(report_id):
         created_at=row["created_at"],
         threat_count=row["threat_count"],
         event_count=row["event_count"],
+        status=row["status"] or "new",
+        analyst_notes=row["analyst_notes"] or "",
     )
 
 
@@ -567,7 +575,7 @@ def control_room():
     """
     clients     = db_fetchall("SELECT id, username, role FROM users ORDER BY username ASC")
     all_reports = db_fetchall(
-        "SELECT id, created_at, threat_count, event_count FROM reports ORDER BY id DESC"
+        "SELECT id, created_at, threat_count, event_count, status FROM reports ORDER BY id DESC"
     )
     pending_row   = db_fetchone(f"SELECT COUNT(*) AS cnt FROM security_events WHERE processed = {PH}", (0,))
     pending_count = pending_row["cnt"] if pending_row else 0
@@ -872,6 +880,34 @@ def _run_agent_core(triggered_by="unknown"):
     )
     return {"status": "ok", "threats_found": threat_count,
             "event_count": event_count, "report_id": report_id}
+
+
+# --- ROUTE 4c: Report Triage (analyst only) ---
+@app.route("/reports/<int:report_id>/triage", methods=["POST"])
+@analyst_required
+def triage_report(report_id):
+    """Update the triage status of a report. Analyst-only."""
+    status = request.form.get("status", "new")
+    if status not in ("new", "reviewing", "escalated", "closed"):
+        abort(400)
+    db_run(f"UPDATE reports SET status = {PH} WHERE id = {PH}", (status, report_id))
+    flash(f"Report #{report_id} marked as {status.upper()}.", "success")
+    # Return to wherever the analyst came from
+    referrer = request.referrer or ""
+    if "control-room" in referrer:
+        return redirect(url_for("control_room"))
+    return redirect(url_for("report_detail", report_id=report_id))
+
+
+# --- ROUTE 4d: Investigation Notes (analyst only) ---
+@app.route("/reports/<int:report_id>/notes", methods=["POST"])
+@analyst_required
+def save_notes(report_id):
+    """Save analyst investigation notes on a report. Analyst-only."""
+    notes = request.form.get("notes", "").strip()
+    db_run(f"UPDATE reports SET analyst_notes = {PH} WHERE id = {PH}", (notes, report_id))
+    flash("Investigation notes saved.", "success")
+    return redirect(url_for("report_detail", report_id=report_id))
 
 
 # --- ROUTE 5: Attack Simulation (browser) ---

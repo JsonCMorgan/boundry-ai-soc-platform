@@ -3,12 +3,15 @@ Smoke + regression tests for the patched `main` branch behavior.
 """
 from urllib.parse import quote
 
+# A password that satisfies the policy: 12+ chars, uppercase, digit, special char.
+VALID_PASSWORD = "TestPass123!"
+
 
 def test_index_ok(client):
-    """Home route should return 200 and mention the lab."""
+    """Home route should return 200 and mention the brand name."""
     resp = client.get("/")
     assert resp.status_code == 200
-    assert b"Vulnerable App" in resp.data
+    assert b"Boundry.AI" in resp.data
 
 
 def test_search_parameterized_no_error(logged_in_client):
@@ -43,6 +46,26 @@ def test_search_redirects_unauthenticated(client):
     assert "/login" in resp.headers["Location"]
 
 
+def test_reports_redirects_unauthenticated(client):
+    """
+    Unauthenticated GET /reports must return 302 and redirect to /login.
+    The reports dashboard is protected by @login_required (A01).
+    """
+    resp = client.get("/reports")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_reports_ok_when_logged_in(logged_in_client):
+    """
+    GET /reports for an authenticated user must return 200.
+    An empty reports table shows the onboarding empty state — not an error.
+    """
+    resp = logged_in_client.get("/reports")
+    assert resp.status_code == 200
+    assert b"Boundry.AI" in resp.data
+
+
 def test_login_wrong_credentials(client):
     """
     POST /login with bad credentials must return 200 (re-render form) with a
@@ -55,12 +78,12 @@ def test_login_wrong_credentials(client):
 
 def test_login_valid_credentials_redirects(client):
     """
-    POST /login with correct credentials must return 302 and redirect to home.
-    Verifies session is created on successful authentication (A07).
+    POST /login with correct credentials must return 302 and redirect to the
+    reports dashboard. Verifies session is created on successful authentication (A07).
     """
     resp = client.post("/login", data={"username": "admin", "password": "admin123"})
     assert resp.status_code == 302
-    assert "/" in resp.headers["Location"]
+    assert "/reports" in resp.headers["Location"]
 
 
 # --- Registration tests (A03: Injection, A07: Auth Failures) ---
@@ -72,8 +95,8 @@ def test_register_valid_redirects_to_login(client):
     """
     resp = client.post("/register", data={
         "username": "newuser",
-        "password": "securepass123",
-        "confirm":  "securepass123",
+        "password": VALID_PASSWORD,
+        "confirm":  VALID_PASSWORD,
     })
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
@@ -85,13 +108,13 @@ def test_register_duplicate_username_rejected(client):
     """
     client.post("/register", data={
         "username": "newuser",
-        "password": "securepass123",
-        "confirm":  "securepass123",
+        "password": VALID_PASSWORD,
+        "confirm":  VALID_PASSWORD,
     })
     resp = client.post("/register", data={
         "username": "newuser",
-        "password": "anotherpass456",
-        "confirm":  "anotherpass456",
+        "password": VALID_PASSWORD,
+        "confirm":  VALID_PASSWORD,
     })
     assert resp.status_code == 200
     assert b"Registration failed" in resp.data
@@ -99,15 +122,41 @@ def test_register_duplicate_username_rejected(client):
 
 def test_register_short_password_rejected(client):
     """
-    Password under 8 characters must be rejected — enforces minimum password policy (A07).
+    Password under 12 characters must be rejected — enforces minimum password policy (A07).
     """
     resp = client.post("/register", data={
         "username": "newuser",
-        "password": "short",
-        "confirm":  "short",
+        "password": "Short1!",
+        "confirm":  "Short1!",
     })
     assert resp.status_code == 200
-    assert b"at least 8 characters" in resp.data
+    assert b"at least 12 characters" in resp.data
+
+
+def test_register_no_uppercase_rejected(client):
+    """
+    Password without an uppercase letter must be rejected (A07).
+    """
+    resp = client.post("/register", data={
+        "username": "newuser",
+        "password": "alllowercase123!",
+        "confirm":  "alllowercase123!",
+    })
+    assert resp.status_code == 200
+    assert b"uppercase" in resp.data
+
+
+def test_register_no_special_char_rejected(client):
+    """
+    Password without a special character must be rejected (A07).
+    """
+    resp = client.post("/register", data={
+        "username": "newuser",
+        "password": "NoSpecialChar123",
+        "confirm":  "NoSpecialChar123",
+    })
+    assert resp.status_code == 200
+    assert b"special character" in resp.data
 
 
 def test_register_short_username_rejected(client):
@@ -116,8 +165,8 @@ def test_register_short_username_rejected(client):
     """
     resp = client.post("/register", data={
         "username": "ab",
-        "password": "securepass123",
-        "confirm":  "securepass123",
+        "password": VALID_PASSWORD,
+        "confirm":  VALID_PASSWORD,
     })
     assert resp.status_code == 200
     assert b"between 3 and 50 characters" in resp.data
@@ -126,11 +175,12 @@ def test_register_short_username_rejected(client):
 def test_register_mismatched_passwords_rejected(client):
     """
     Mismatched password and confirm fields must be rejected — catches registration typos.
+    Both passwords individually meet the policy; only the mismatch should trigger an error.
     """
     resp = client.post("/register", data={
         "username": "newuser",
-        "password": "securepass123",
-        "confirm":  "differentpass456",
+        "password": VALID_PASSWORD,
+        "confirm":  "DifferentP1!xyz",
     })
     assert resp.status_code == 200
     assert b"do not match" in resp.data

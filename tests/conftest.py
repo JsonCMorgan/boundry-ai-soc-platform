@@ -11,10 +11,14 @@ def client(tmp_path, monkeypatch):
 
     Block job: import `app` after patching DB_PATH, seed rows, then hand back
     a client — same routes as production, zero side effects on disk in the project root.
+
+    SEED_DB=true is set so init_db() populates the test DB with the lab accounts
+    (admin/admin123, alice/alice456, bob/bob789) used by auth tests.
     """
     import app as app_module
 
     monkeypatch.setattr(app_module, "DB_PATH", tmp_path / "test.db")
+    monkeypatch.setenv("SEED_DB", "true")   # populate lab users in the test DB
     app_module.init_db()
     app_module.app.config["TESTING"] = True
     return app_module.app.test_client()

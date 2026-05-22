@@ -32,6 +32,51 @@
         .empty { color: #888; font-style: italic; margin-top: 40px; }
         nav { margin-bottom: 30px; }
         nav a { color: #c0392b; text-decoration: none; margin-right: 16px; }
+        /* Agent control panel */
+        .agent-panel {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+            padding: 16px 20px;
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .agent-panel-label {
+            font-size: 0.85em;
+            color: #666;
+            flex: 1 1 100%;
+            margin-bottom: 4px;
+        }
+        .btn-simulate {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-simulate:hover { background: #1a252f; }
+        .btn-run {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-run:hover { background: #a93226; }
+        .btn-hint {
+            font-size: 0.8em;
+            color: #999;
+            margin-left: 4px;
+        }
         .badge {
             display: inline-block;
             background: #c0392b;
@@ -106,6 +151,21 @@
 
     <h1>Boundry.AI — Incident Reports</h1>
     <p class="subtitle">Logged in as: <strong>{{ session['username'] }}</strong></p>
+
+    <!-- Agent control panel -->
+    <div class="agent-panel">
+        <div class="agent-panel-label">
+            <strong>Boundry.AI Agent</strong> — Step 1: simulate an attack to generate log events.
+            Step 2: run the agent to analyse them and produce a report.
+        </div>
+        <form method="POST" action="/simulate-attack" style="display:inline">
+            <button type="submit" class="btn-simulate">&#x26A1; Simulate Attack</button>
+        </form>
+        <form method="POST" action="/run-agent" style="display:inline">
+            <button type="submit" class="btn-run">&#x1F916; Run Agent</button>
+        </form>
+        <span class="btn-hint">After running the agent, refresh this page to see the new report.</span>
+    </div>
 
     {% if reports %}
         {% for r in reports %}

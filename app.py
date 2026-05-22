@@ -167,6 +167,20 @@ def init_db():
         )
     """)
 
+    # Security events table — stores simulated / real attack events for the agent to read.
+    # On Railway there is no LOG_FILE, so /simulate-attack writes here instead.
+    # /run-agent reads from this table (plus the log file if available) and clears it after processing.
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS security_events (
+            {id_col},
+            {ts_col},
+            event_type TEXT NOT NULL,
+            username   TEXT NOT NULL DEFAULT '',
+            ip         TEXT NOT NULL DEFAULT '',
+            extra      TEXT NOT NULL DEFAULT ''
+        )
+    """)
+
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.
@@ -453,19 +467,25 @@ def simulate_attack():
 
     # Brute force sequence
     for _ in range(5):
-        security_log.warning(
-            f"LOGIN_FAILED username=admin ip={attacker_ip}"
+        security_log.warning(f"LOGIN_FAILED username=admin ip={attacker_ip}")
+        db_run(
+            f"INSERT INTO security_events (event_type, username, ip, extra) VALUES ({PH},{PH},{PH},{PH})",
+            ("LOGIN_FAILED", "admin", attacker_ip, ""),
         )
 
     # Simulated success (account compromise)
-    security_log.info(
-        f"LOGIN_SUCCESS username=admin ip={attacker_ip}"
+    security_log.info(f"LOGIN_SUCCESS username=admin ip={attacker_ip}")
+    db_run(
+        f"INSERT INTO security_events (event_type, username, ip, extra) VALUES ({PH},{PH},{PH},{PH})",
+        ("LOGIN_SUCCESS", "admin", attacker_ip, ""),
     )
 
     # SQL injection attempts via search
     for payload in ["' OR '1'='1", "' UNION SELECT username, password FROM users--"]:
-        security_log.info(
-            f"SEARCH username=admin query={payload!r} ip={attacker_ip}"
+        security_log.info(f"SEARCH username=admin query={payload!r} ip={attacker_ip}")
+        db_run(
+            f"INSERT INTO security_events (event_type, username, ip, extra) VALUES ({PH},{PH},{PH},{PH})",
+            ("SEARCH", "admin", attacker_ip, payload),
         )
 
     return {"status": "ok", "events_generated": 8}
@@ -497,6 +517,7 @@ def run_agent():
         "register": [],
     }
 
+    # --- Source 1: log file (local dev with LOG_FILE set) ---
     if log_path and log_path.exists():
         import re as _re
         pattern = _re.compile(
@@ -524,6 +545,29 @@ def run_agent():
                     events["search"].append(record)
                 elif event_type == "register_success":
                     events["register"].append(record)
+
+    # --- Source 2: DB security_events table (Railway / production path) ---
+    # /simulate-attack writes here so the agent always has data even without LOG_FILE.
+    # Clear the table after reading so the next run starts fresh.
+    db_rows = db_fetchall("SELECT * FROM security_events ORDER BY id ASC")
+    for row in db_rows:
+        record = {
+            "timestamp": str(row["created_at"]),
+            "username":  row["username"],
+            "ip":        row["ip"],
+        }
+        etype = row["event_type"].upper()
+        if etype == "LOGIN_FAILED":
+            events["login_failed"].append(record)
+        elif etype == "LOGIN_SUCCESS":
+            events["login_success"].append(record)
+        elif etype == "SEARCH":
+            record["query"] = row["extra"]
+            events["search"].append(record)
+        elif etype == "REGISTER_SUCCESS":
+            events["register"].append(record)
+    if db_rows:
+        db_run("DELETE FROM security_events")
 
     # --- Threat detection ---
     BRUTE_THRESHOLD = 3
@@ -566,9 +610,11 @@ def run_agent():
     report_id = None
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
-    if threat_count == 0 and not log_path:
-        # No log file configured — nothing useful to analyse
-        return {"status": "ok", "threats_found": 0, "report_id": None}
+    if threat_count == 0 and not db_rows and not log_path:
+        # No events from any source — nothing to analyse yet.
+        # Tell the user to run Simulate Attack first.
+        return {"status": "ok", "threats_found": 0, "report_id": None,
+                "message": "No events found. Click 'Simulate Attack' first, then run the agent."}
 
     if api_key and threat_count > 0:
         try:

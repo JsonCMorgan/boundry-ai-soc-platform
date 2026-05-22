@@ -241,6 +241,10 @@
         .evt-login-failed  { background: #3a1a1a; color: #e05555; border: 1px solid #6a2a2a; }
         .evt-login-success { background: #1a3a1a; color: #5aaa5a; border: 1px solid #2a6a2a; }
         .evt-search        { background: #1a1a3a; color: #5a8ae0; border: 1px solid #2a3a7a; }
+        .evt-xss           { background: #2a1a3a; color: #c07ae0; border: 1px solid #5a2a7a; }
+        .evt-traversal     { background: #2a2a1a; color: #d0b040; border: 1px solid #6a5a10; }
+        .evt-priv-esc      { background: #3a2a1a; color: #e07030; border: 1px solid #7a4a10; }
+        .evt-account-enum  { background: #1a2a3a; color: #40a0c0; border: 1px solid #10507a; }
         .evt-other         { background: #2a2a2a; color: #888;    border: 1px solid #444; }
         .status-pending   { color: #f0b429; font-size: 0.75em; font-weight: bold; }
         .status-processed { color: #444;    font-size: 0.75em; }
@@ -504,7 +508,12 @@
             {% if pending_count > 0 %}
                 <span class="pending-badge">&#x26A0; {{ pending_count }} unprocessed event(s) in queue</span>
             {% endif %}
-            <form method="POST" action="/simulate-attack" style="display:inline">
+            <form method="POST" action="/simulate-attack" style="display:inline; display:flex; align-items:center; gap:8px;">
+                <select name="difficulty" style="background:#20243a; color:#aaa; border:1px solid #3a3d5a; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer;">
+                    <option value="easy">Easy — obvious single attack</option>
+                    <option value="medium" selected>Medium — realistic scenario</option>
+                    <option value="hard">Hard — subtle, multi-vector + false positives</option>
+                </select>
                 <button type="submit" class="btn-simulate">&#x26A1; Simulate Attack</button>
             </form>
             <form method="POST" action="/run-agent" style="display:inline">
@@ -630,6 +639,14 @@
                                         <span class="evt-badge evt-login-success">LOGIN_SUCCESS</span>
                                     {% elif e.event_type == 'SEARCH' %}
                                         <span class="evt-badge evt-search">SEARCH</span>
+                                    {% elif e.event_type == 'XSS_ATTEMPT' %}
+                                        <span class="evt-badge evt-xss">XSS_ATTEMPT</span>
+                                    {% elif e.event_type == 'DIRECTORY_TRAVERSAL' %}
+                                        <span class="evt-badge evt-traversal">DIR_TRAVERSAL</span>
+                                    {% elif e.event_type == 'PRIV_ESC_ATTEMPT' %}
+                                        <span class="evt-badge evt-priv-esc">PRIV_ESC</span>
+                                    {% elif e.event_type == 'ACCOUNT_ENUM' %}
+                                        <span class="evt-badge evt-account-enum">ACCT_ENUM</span>
                                     {% else %}
                                         <span class="evt-badge evt-other">{{ e.event_type }}</span>
                                     {% endif %}
@@ -646,10 +663,18 @@
                                 <td>
                                     {% if e.event_type == 'LOGIN_FAILED' %}
                                         <span class="mitre-tag">T1110</span>
-                                    {% elif e.event_type == 'SEARCH' and e.extra %}
+                                    {% elif e.event_type == 'SEARCH' %}
                                         <span class="mitre-tag">T1190</span>
                                     {% elif e.event_type == 'LOGIN_SUCCESS' %}
                                         <span class="mitre-tag">T1078</span>
+                                    {% elif e.event_type == 'XSS_ATTEMPT' %}
+                                        <span class="mitre-tag">T1059.007</span>
+                                    {% elif e.event_type == 'DIRECTORY_TRAVERSAL' %}
+                                        <span class="mitre-tag">T1083</span>
+                                    {% elif e.event_type == 'PRIV_ESC_ATTEMPT' %}
+                                        <span class="mitre-tag">T1548</span>
+                                    {% elif e.event_type == 'ACCOUNT_ENUM' %}
+                                        <span class="mitre-tag">T1589.001</span>
                                     {% else %}
                                         <span style="color:#444">—</span>
                                     {% endif %}

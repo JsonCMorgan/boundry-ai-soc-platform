@@ -324,6 +324,114 @@
         }
         .triage-btn:hover { background: #2a2d4a; color: white; }
 
+        /* ── MITRE reference panel ── */
+        .mitre-panel {
+            grid-column: 1 / -1;
+            background: #1a1d27;
+            border: 1px solid #2a2d3a;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .mitre-toggle {
+            background: #20243a;
+            padding: 12px 16px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #aaa;
+            border-bottom: 1px solid #2a2d3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .mitre-toggle:hover { color: #ccc; }
+        .mitre-body { padding: 20px; display: none; }
+        .mitre-body.open { display: block; }
+        .mitre-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }
+        .mitre-card {
+            background: #0f1117;
+            border: 1px solid #2a2d3a;
+            border-radius: 5px;
+            padding: 14px 16px;
+            border-left: 3px solid var(--tactic-color, #555);
+        }
+        .mitre-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .mitre-id {
+            font-family: monospace;
+            font-size: 0.78em;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 3px;
+            background: #1e2130;
+            color: var(--tactic-color, #aaa);
+            border: 1px solid #2a2d3a;
+            white-space: nowrap;
+        }
+        .mitre-name {
+            font-size: 0.88em;
+            font-weight: bold;
+            color: #ddd;
+            line-height: 1.3;
+        }
+        .mitre-tactic {
+            display: inline-block;
+            font-size: 0.68em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: #1e2130;
+            color: var(--tactic-color, #888);
+            border: 1px solid #2a2d3a;
+        }
+        .mitre-section {
+            font-size: 0.75em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 8px 0 3px;
+        }
+        .mitre-detail {
+            font-size: 0.82em;
+            color: #aaa;
+            line-height: 1.5;
+        }
+        .mitre-detail code {
+            background: #1e2130;
+            color: #e07050;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .mitre-distinguish {
+            font-size: 0.82em;
+            color: #7a9ecf;
+            line-height: 1.5;
+            border-top: 1px solid #1e2130;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+        /* tactic colour variables */
+        .tac-credential  { --tactic-color: #e05555; }
+        .tac-initial     { --tactic-color: #e07030; }
+        .tac-execution   { --tactic-color: #b07ae0; }
+        .tac-discovery   { --tactic-color: #d0b040; }
+        .tac-privesc     { --tactic-color: #e09030; }
+        .tac-recon       { --tactic-color: #40a0c0; }
+        .tac-defense     { --tactic-color: #5aaa5a; }
+
         /* ── Shift checklist ── */
         .checklist-panel {
             grid-column: 1 / -1;
@@ -442,6 +550,176 @@
                 <div class="flash-{{ category }}">{{ message }}</div>
             {% endfor %}
         {% endwith %}
+
+        <!-- MITRE ATT&CK Reference -->
+        <div class="mitre-panel">
+            <div class="mitre-toggle" onclick="toggleMitre()">
+                <span>&#x1F6E1; MITRE ATT&amp;CK Reference — Techniques Monitored by This System</span>
+                <span id="mitre-arrow">▼</span>
+            </div>
+            <div class="mitre-body" id="mitre-body">
+                <div class="mitre-grid">
+
+                    <!-- T1110 Brute Force -->
+                    <div class="mitre-card tac-credential">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1110</span>
+                            <span class="mitre-name">Brute Force</span>
+                        </div>
+                        <span class="mitre-tactic">Credential Access</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            Many <code>LOGIN_FAILED</code> events from the <strong>same IP</strong> against the <strong>same username</strong>.
+                            Threshold: 5+ failures. May end with a <code>LOGIN_SUCCESS</code> (attack succeeded).
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1110.003 Spray</strong>: brute force = one account, many passwords.<br>
+                            ↔ vs <strong>T1110.004 Stuffing</strong>: brute force tries guesses, stuffing uses a known leaked list.
+                        </div>
+                    </div>
+
+                    <!-- T1110.003 Password Spraying -->
+                    <div class="mitre-card tac-credential">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1110.003</span>
+                            <span class="mitre-name">Password Spraying</span>
+                        </div>
+                        <span class="mitre-tactic">Credential Access</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            <code>LOGIN_FAILED</code> events from <strong>one IP against many accounts</strong>, each with a low failure count (1–2 per account). Extra field contains <code>sprayed_password=X</code>.
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1110 Brute Force</strong>: spray = many accounts, one password — designed to stay below lockout thresholds.<br>
+                            ↔ vs <strong>T1110.004 Stuffing</strong>: spray uses a common password; stuffing uses unique credentials per account.
+                        </div>
+                    </div>
+
+                    <!-- T1110.004 Credential Stuffing -->
+                    <div class="mitre-card tac-credential">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1110.004</span>
+                            <span class="mitre-name">Credential Stuffing</span>
+                        </div>
+                        <span class="mitre-tactic">Credential Access</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            <code>LOGIN_FAILED</code> from <strong>same IP, 4+ different accounts</strong> — no <code>sprayed_password</code> marker. Suggests a leaked credential list. A subsequent <code>LOGIN_SUCCESS</code> from the same IP = CRITICAL.
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1110.003 Spray</strong>: stuffing uses unique logins per account from a breach dump, not one shared password.<br>
+                            ↔ vs <strong>T1110 Brute Force</strong>: stuffing hits many accounts once each; brute force hits one account many times.
+                        </div>
+                    </div>
+
+                    <!-- T1190 SQLi -->
+                    <div class="mitre-card tac-initial">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1190</span>
+                            <span class="mitre-name">Exploit Public-Facing Application</span>
+                        </div>
+                        <span class="mitre-tactic">Initial Access</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            <code>SEARCH</code> events with SQL syntax in the query field: <code>' OR</code>, <code>--</code>, <code>UNION SELECT</code>, <code>DROP TABLE</code>, <code>1=1</code>. Attacker is injecting SQL into the search box.
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1059.007 XSS</strong>: SQLi targets the <em>database</em>; XSS targets the <em>browser</em> of another user.<br>
+                            Key indicator: SQL keywords (<code>SELECT</code>, <code>UNION</code>) vs HTML/JS tags (<code>&lt;script&gt;</code>).
+                        </div>
+                    </div>
+
+                    <!-- T1059.007 XSS -->
+                    <div class="mitre-card tac-execution">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1059.007</span>
+                            <span class="mitre-name">JavaScript (XSS)</span>
+                        </div>
+                        <span class="mitre-tactic">Execution</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            <code>XSS_ATTEMPT</code> events with HTML or JavaScript in the payload: <code>&lt;script&gt;</code>, <code>onerror=</code>, <code>javascript:</code>, <code>&lt;svg onload=</code>. Goal: execute code in another user's browser.
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1190 SQLi</strong>: XSS targets <em>users' browsers</em> to steal cookies or redirect; SQLi targets the <em>database</em>.<br>
+                            Key indicator: HTML/JS syntax vs SQL keywords.
+                        </div>
+                    </div>
+
+                    <!-- T1083 Directory Traversal -->
+                    <div class="mitre-card tac-discovery">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1083</span>
+                            <span class="mitre-name">File &amp; Directory Discovery</span>
+                        </div>
+                        <span class="mitre-tactic">Discovery</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            <code>DIRECTORY_TRAVERSAL</code> events with <code>../</code> path sequences: <code>../../etc/passwd</code>, <code>%2e%2e%2f</code> (URL-encoded). Attacker is trying to read files outside the web root.
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1548 Priv Esc</strong>: traversal probes the <em>filesystem</em> via paths; priv esc probes <em>restricted routes</em> inside the application.<br>
+                            Both are discovery-type behaviours but at different layers.
+                        </div>
+                    </div>
+
+                    <!-- T1548 Priv Esc -->
+                    <div class="mitre-card tac-privesc">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1548</span>
+                            <span class="mitre-name">Abuse Elevation Control Mechanism</span>
+                        </div>
+                        <span class="mitre-tactic">Privilege Escalation</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            <code>PRIV_ESC_ATTEMPT</code> events after a <code>LOGIN_SUCCESS</code>: authenticated user hitting <code>/admin</code>, <code>/control-room</code>, <code>/.env</code>, <code>/api/admin</code>. They're logged in but probing for higher access.
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1083 Traversal</strong>: priv esc is about <em>application routes</em> (HTTP 403 doors); traversal is about <em>filesystem paths</em>.<br>
+                            Key pattern: always follows a successful login from the same IP.
+                        </div>
+                    </div>
+
+                    <!-- T1589.001 Account Enumeration -->
+                    <div class="mitre-card tac-recon">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1589.001</span>
+                            <span class="mitre-name">Gather Victim Identity Info</span>
+                        </div>
+                        <span class="mitre-tactic">Reconnaissance</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            <code>ACCOUNT_ENUM</code> events: same IP probing 6+ different usernames rapidly. Attacker is mapping which accounts exist before launching a targeted attack.
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1110 Brute Force</strong>: enumeration just checks <em>existence</em> (no password attempts); brute force comes after — it <em>uses</em> the confirmed usernames.<br>
+                            Think of this as the "shopping list" phase before the attack.
+                        </div>
+                    </div>
+
+                    <!-- T1078 Suspicious Login -->
+                    <div class="mitre-card tac-defense">
+                        <div class="mitre-card-header">
+                            <span class="mitre-id">T1078</span>
+                            <span class="mitre-name">Valid Accounts</span>
+                        </div>
+                        <span class="mitre-tactic">Defense Evasion</span>
+                        <div class="mitre-section">What you see in the feed</div>
+                        <div class="mitre-detail">
+                            <code>LOGIN_SUCCESS</code> with <code>new_ip=true</code> or <code>unusual_hour=true</code> in the extra field. Real credentials, no failure storm — but something about the context is off. Could be account takeover via phishing or credential theft.
+                        </div>
+                        <div class="mitre-distinguish">
+                            ↔ vs <strong>T1110 Brute Force</strong>: T1078 succeeds immediately with <em>no</em> prior failures — credentials were already stolen, not guessed.<br>
+                            Hardest to detect because it looks like a legitimate login.
+                        </div>
+                    </div>
+
+                </div>
+                <p style="font-size:0.75em; color:#444; margin: 16px 0 0; text-align:right;">
+                    Reference: <a href="https://attack.mitre.org" target="_blank" style="color:#555;">attack.mitre.org</a>
+                </p>
+            </div>
+        </div>
 
         <!-- Shift checklist -->
         <div class="checklist-panel">
@@ -791,6 +1069,19 @@
         }
 
         loadChecklist();
+
+        // ── MITRE panel toggle ──
+        function toggleMitre() {
+            var body  = document.getElementById('mitre-body');
+            var arrow = document.getElementById('mitre-arrow');
+            if (body.classList.contains('open')) {
+                body.classList.remove('open');
+                arrow.textContent = '▼';
+            } else {
+                body.classList.add('open');
+                arrow.textContent = '▲';
+            }
+        }
     </script>
 
 </body>

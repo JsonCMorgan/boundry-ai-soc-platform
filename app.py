@@ -271,8 +271,10 @@ def login():
     On success, store username in the signed session cookie.
     On failure, return a generic error — never reveal which field was wrong.
     """
-    # Already logged in — send straight to the dashboard
+    # Already logged in — send straight to the right dashboard
     if "username" in session:
+        if session.get("role") == "analyst":
+            return redirect(url_for("control_room"))
         return redirect(url_for("reports"))
 
     error = None
@@ -287,11 +289,14 @@ def login():
         # Verify password against stored hash
         if row and bcrypt.checkpw(password.encode(), row["password"].encode()):
             # Auto-upgrade analyst account based on ANALYST_USERNAME env var.
-            # Set this in Railway so your account gets the analyst role automatically.
+            # Wrapped in try/except so a DB migration lag never blocks login.
             analyst_name = os.environ.get("ANALYST_USERNAME", "").strip().lower()
             if analyst_name and username.lower() == analyst_name and row.get("role") != "analyst":
-                db_run(f"UPDATE users SET role = 'analyst' WHERE username = {PH}", (username,))
-                row["role"] = "analyst"
+                try:
+                    db_run(f"UPDATE users SET role = 'analyst' WHERE username = {PH}", (username,))
+                    row["role"] = "analyst"
+                except Exception as exc:
+                    security_log.warning(f"ANALYST_UPGRADE_FAILED username={username} error={exc}")
 
             session["username"] = username
             session["role"]     = row.get("role", "client")
@@ -403,6 +408,45 @@ def register():
                 return redirect(url_for("login"))
 
     return render_template("register.html", error=error)
+
+
+# --- ROUTE 0d: Emergency password reset (token-gated, no session required) ---
+@app.route("/reset-pw/<token>", methods=["GET", "POST"])
+def emergency_reset(token):
+    """
+    Token-gated password reset for account recovery.
+    Set RESET_TOKEN in Railway env vars; the URL is /reset-pw/<that token>.
+    Remove the env var after use to disable the route.
+    Trust boundary: token must match RESET_TOKEN exactly (no brute force —
+    the route returns 404 if RESET_TOKEN is not configured at all).
+    """
+    expected = os.environ.get("RESET_TOKEN", "")
+    if not expected or token != expected:
+        abort(404)   # looks like any other missing page — no hint the route exists
+
+    error = None
+    success = None
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        new_pw   = request.form.get("new_password", "")
+        confirm  = request.form.get("confirm_password", "")
+
+        row = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", (username,))
+        if not row:
+            error = "Username not found."
+        elif (pw_error := validate_password(new_pw)):
+            error = pw_error
+        elif new_pw != confirm:
+            error = "Passwords do not match."
+        else:
+            hashed = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt())
+            db_run(f"UPDATE users SET password = {PH} WHERE username = {PH}",
+                   (hashed.decode(), username))
+            security_log.info(f"EMERGENCY_RESET username={username} ip={request.remote_addr}")
+            success = f"Password for '{username}' updated. You can now log in."
+
+    return render_template("emergency_reset.html", error=error, success=success, token=token)
 
 
 # --- ROUTE 1: Home ---

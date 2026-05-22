@@ -12,7 +12,7 @@ import markdown
 import bcrypt
 from functools import wraps
 from markupsafe import Markup
-from flask import Flask, render_template, request, redirect, url_for, session, abort
+from flask import Flask, render_template, request, redirect, url_for, session, abort, flash, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -488,7 +488,12 @@ def simulate_attack():
             ("SEARCH", "admin", attacker_ip, payload),
         )
 
-    return {"status": "ok", "events_generated": 8}
+    # Browser form POST → redirect back to dashboard with a status message.
+    # API / cron job → returns JSON (detected by missing text/html Accept header).
+    if "text/html" in request.accept_mimetypes:
+        flash("⚡ Attack simulation complete — 8 events written. Now click Run Agent.", "info")
+        return redirect(url_for("reports"))
+    return jsonify(status="ok", events_generated=8)
 
 
 # --- ROUTE 6: Agent Trigger (Boundry.AI demo / cron helper) ---
@@ -612,9 +617,11 @@ def run_agent():
 
     if threat_count == 0 and not db_rows and not log_path:
         # No events from any source — nothing to analyse yet.
-        # Tell the user to run Simulate Attack first.
-        return {"status": "ok", "threats_found": 0, "report_id": None,
-                "message": "No events found. Click 'Simulate Attack' first, then run the agent."}
+        if "text/html" in request.accept_mimetypes:
+            flash("⚠️ No events found. Click 'Simulate Attack' first, then run the agent.", "warning")
+            return redirect(url_for("reports"))
+        return jsonify(status="ok", threats_found=0, report_id=None,
+                       message="No events found. Run Simulate Attack first.")
 
     if api_key and threat_count > 0:
         try:
@@ -683,7 +690,15 @@ def run_agent():
         f"user={session.get('username')} ip={request.remote_addr}"
     )
 
-    return {"status": "ok", "threats_found": threat_count, "report_id": report_id}
+    # Browser form POST → redirect to dashboard with a flash message.
+    # API / cron job → return JSON.
+    if "text/html" in request.accept_mimetypes:
+        if report_id:
+            flash(f"🤖 Agent complete — {threat_count} threat(s) detected. Report #{report_id} saved.", "success")
+        else:
+            flash("🤖 Agent ran but found no threats in the current events.", "info")
+        return redirect(url_for("reports"))
+    return jsonify(status="ok", threats_found=threat_count, report_id=report_id)
 
 
 # --- Startup ---

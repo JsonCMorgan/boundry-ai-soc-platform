@@ -77,6 +77,21 @@
             color: #999;
             margin-left: 4px;
         }
+        .flash-success {
+            background: #f0faf0; border: 1px solid #b0d8b0; border-left: 4px solid #27ae60;
+            color: #1e8449; padding: 10px 16px; border-radius: 4px; margin-bottom: 18px;
+            font-size: 0.9em;
+        }
+        .flash-warning {
+            background: #fffbf0; border: 1px solid #f5d88b; border-left: 4px solid #f39c12;
+            color: #7d6608; padding: 10px 16px; border-radius: 4px; margin-bottom: 18px;
+            font-size: 0.9em;
+        }
+        .flash-info {
+            background: #f0f6ff; border: 1px solid #aac8f5; border-left: 4px solid #2980b9;
+            color: #1a5276; padding: 10px 16px; border-radius: 4px; margin-bottom: 18px;
+            font-size: 0.9em;
+        }
         .badge {
             display: inline-block;
             background: #c0392b;
@@ -151,6 +166,12 @@
 
     <h1>Boundry.AI — Incident Reports</h1>
     <p class="subtitle">Logged in as: <strong>{{ session['username'] }}</strong></p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
 
     <!-- Agent control panel -->
     <div class="agent-panel">

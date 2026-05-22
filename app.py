@@ -185,6 +185,29 @@ def init_db():
             )
 
 
+# --- Password validation helper ---
+def validate_password(password):
+    """
+    Enforce password policy. Returns an error string or None if valid.
+    Single source of truth — used by /register and /change-password.
+
+    Rules (A07: Authentication Failures):
+    - 12+ characters
+    - At least one uppercase letter
+    - At least one number
+    - At least one special character
+    """
+    if len(password) < 12:
+        return "Password must be at least 12 characters."
+    if not re.search(r"[A-Z]", password):
+        return "Password must contain at least one uppercase letter."
+    if not re.search(r"[0-9]", password):
+        return "Password must contain at least one number."
+    if not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?`~]", password):
+        return "Password must contain at least one special character (!@#$%^&* etc)."
+    return None
+
+
 # --- Auth decorator (bouncer) ---
 def login_required(f):
     """Redirect to login if the user has no active session."""
@@ -233,6 +256,50 @@ def logout():
     return redirect(url_for("login"))
 
 
+# --- ROUTE 0c: Change Password (A07: Auth Failures) ---
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+@limiter.limit("5 per minute")
+def change_password():
+    """
+    Allow a logged-in user to change their own password.
+
+    Trust boundary: verifies current password before accepting a new one.
+    Rate-limited to 5 attempts/min to prevent brute-forcing the current password.
+    New password must pass the same policy as registration.
+    """
+    error = None
+    success = None
+
+    if request.method == "POST":
+        current  = request.form.get("current_password", "")
+        new_pw   = request.form.get("new_password", "")
+        confirm  = request.form.get("confirm_password", "")
+        username = session["username"]
+
+        # Verify current password
+        row = db_fetchone(f"SELECT * FROM users WHERE username = {PH}", (username,))
+        if not row or not bcrypt.checkpw(current.encode(), row["password"].encode()):
+            error = "Current password is incorrect."
+            security_log.warning(f"CHANGE_PASSWORD_FAILED username={username} ip={request.remote_addr}")
+        elif new_pw == current:
+            error = "New password must be different from your current password."
+        elif (pw_error := validate_password(new_pw)):
+            error = pw_error
+        elif new_pw != confirm:
+            error = "New passwords do not match."
+        else:
+            hashed = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt())
+            db_run(
+                f"UPDATE users SET password = {PH} WHERE username = {PH}",
+                (hashed.decode(), username),
+            )
+            security_log.info(f"CHANGE_PASSWORD_SUCCESS username={username} ip={request.remote_addr}")
+            success = "Password updated successfully."
+
+    return render_template("change_password.html", error=error, success=success)
+
+
 # --- ROUTE 0b: Register (A03: Injection, A07: Auth Failures) ---
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -255,14 +322,8 @@ def register():
             error = "Username and password are required."
         elif len(username) < 3 or len(username) > 50:
             error = "Username must be between 3 and 50 characters."
-        elif len(password) < 12:
-            error = "Password must be at least 12 characters."
-        elif not re.search(r"[A-Z]", password):
-            error = "Password must contain at least one uppercase letter."
-        elif not re.search(r"[0-9]", password):
-            error = "Password must contain at least one number."
-        elif not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?`~]", password):
-            error = "Password must contain at least one special character (!@#$%^&* etc)."
+        elif (error := validate_password(password)):
+            pass  # error already set by validate_password
         elif password != confirm:
             error = "Passwords do not match."
         else:

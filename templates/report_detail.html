@@ -170,17 +170,28 @@
             {% endif %}
         </div>
 
-        <div class="report-body">{{ content }}</div>
-
-        <!-- Investigation notes -->
+        <!-- Investigation notes — appears BEFORE the AI report intentionally.
+             Write your own analysis first, then reveal the report below. -->
         <div class="notes-section">
-            <h3>&#x1F50D; Investigation Notes</h3>
+            <h3>&#x1F50D; Step 1 — Your Investigation Notes</h3>
+            <p style="font-size:0.82em; color:#666; margin: -4px 0 10px;">Write your analysis before reading the AI report below. What happened? Which MITRE technique? Did the attack succeed? What are the IOCs?</p>
             <form method="POST" action="/reports/{{ report_id }}/notes">
-                <textarea name="notes" placeholder="Write your own analysis before reading the AI report. What do you think happened? Which MITRE technique applies? Did the attack succeed?">{{ analyst_notes }}</textarea>
+                <textarea name="notes" placeholder="1. What happened&#10;2. MITRE technique&#10;3. Did the attack succeed?&#10;4. IOCs (IP, username, payload)&#10;5. Your recommendation">{{ analyst_notes }}</textarea>
                 <br>
                 <button type="submit" class="btn-save-notes">Save Notes</button>
             </form>
         </div>
+
+        <!-- Divider before AI report -->
+        <div style="border-top: 2px dashed #2a2d3a; margin: 32px 0; position:relative;">
+            <span style="position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+                         background:#0f1117; padding:0 12px; font-size:0.75em; color:#555;
+                         text-transform:uppercase; letter-spacing:0.08em;">
+                AI Report Below
+            </span>
+        </div>
+
+        <div class="report-body">{{ content }}</div>
 
         <footer>Boundry.AI — Security that speaks your language.</footer>
     </div>

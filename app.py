@@ -146,9 +146,17 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             {id_col},
             username TEXT NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            role     TEXT NOT NULL DEFAULT 'client'
         )
     """)
+    # Migration: add role column to existing users tables.
+    if DATABASE_URL:
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'client'")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(users)")]
+        if "role" not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'client'")
 
     # Reports table — stores AI-generated incident reports persistently.
     # On Railway the filesystem is ephemeral (wiped on redeploy), so we keep
@@ -231,13 +239,25 @@ def validate_password(password):
     return None
 
 
-# --- Auth decorator (bouncer) ---
+# --- Auth decorators ---
 def login_required(f):
     """Redirect to login if the user has no active session."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if "username" not in session:
             return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def analyst_required(f):
+    """Block non-analyst accounts from analyst-only routes (A01: Broken Access Control)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "username" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") != "analyst":
+            abort(403)
         return f(*args, **kwargs)
     return decorated
 
@@ -266,9 +286,20 @@ def login():
 
         # Verify password against stored hash
         if row and bcrypt.checkpw(password.encode(), row["password"].encode()):
-            session["username"] = username   # session is signed — safe to trust
+            # Auto-upgrade analyst account based on ANALYST_USERNAME env var.
+            # Set this in Railway so your account gets the analyst role automatically.
+            analyst_name = os.environ.get("ANALYST_USERNAME", "").strip().lower()
+            if analyst_name and username.lower() == analyst_name and row.get("role") != "analyst":
+                db_run(f"UPDATE users SET role = 'analyst' WHERE username = {PH}", (username,))
+                row["role"] = "analyst"
+
+            session["username"] = username
+            session["role"]     = row.get("role", "client")
             security_log.info(f"LOGIN_SUCCESS username={username} ip={request.remote_addr}")
-            return redirect(url_for("reports"))  # go straight to dashboard
+            # Analysts go to the Control Room; clients go to the reports dashboard.
+            if session["role"] == "analyst":
+                return redirect(url_for("control_room"))
+            return redirect(url_for("reports"))
         else:
             security_log.warning(f"LOGIN_FAILED username={username} ip={request.remote_addr}")
             error = "Invalid username or password."  # generic — don't hint which field failed
@@ -456,6 +487,40 @@ def report_detail(report_id):
         created_at=row["created_at"],
         threat_count=row["threat_count"],
         event_count=row["event_count"],
+    )
+
+
+# --- ROUTE 4b: Analyst Control Room ---
+@app.route("/control-room")
+@analyst_required
+def control_room():
+    """
+    Internal analyst dashboard — only accessible to accounts with role='analyst'.
+    Shows all clients, all reports, system stats, and quick action controls.
+    Trust boundary: analyst_required enforces role check (A01).
+    """
+    clients     = db_fetchall("SELECT id, username, role FROM users ORDER BY username ASC")
+    all_reports = db_fetchall(
+        "SELECT id, created_at, threat_count, event_count FROM reports ORDER BY id DESC"
+    )
+    pending_events = db_fetchone("SELECT COUNT(*) AS cnt FROM security_events")
+    pending_count  = pending_events["cnt"] if pending_events else 0
+
+    # Summary stats for the header bar
+    total_clients = len([c for c in clients if c["role"] == "client"])
+    total_reports = len(all_reports)
+    total_threats = sum(r["threat_count"] for r in all_reports)
+    total_events  = sum(r["event_count"]  for r in all_reports)
+
+    return render_template(
+        "control_room.html",
+        clients=clients,
+        reports=all_reports,
+        pending_count=pending_count,
+        total_clients=total_clients,
+        total_reports=total_reports,
+        total_threats=total_threats,
+        total_events=total_events,
     )
 
 

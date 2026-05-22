@@ -150,13 +150,23 @@ def init_db():
             role     TEXT NOT NULL DEFAULT 'client'
         )
     """)
-    # Migration: add role column to existing users tables.
+    # Migration: add role and api_key columns to users.
     if DATABASE_URL:
-        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'client'")
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS role    TEXT NOT NULL DEFAULT 'client'")
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key TEXT")
     else:
         existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(users)")]
-        if "role" not in existing_cols:
-            db_run("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'client'")
+        if "role"    not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN role    TEXT NOT NULL DEFAULT 'client'")
+        if "api_key" not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN api_key TEXT")
+
+    # Generate API keys for any existing users that don't have one yet.
+    import secrets as _secrets
+    users_without_key = db_fetchall(f"SELECT id FROM users WHERE api_key IS NULL OR api_key = ''")
+    for u in users_without_key:
+        db_run(f"UPDATE users SET api_key = {PH} WHERE id = {PH}",
+               (_secrets.token_urlsafe(32), u["id"]))
 
     # Reports table — stores AI-generated incident reports persistently.
     # On Railway the filesystem is ephemeral (wiped on redeploy), so we keep
@@ -433,10 +443,12 @@ def register():
                 error = "Registration failed. Please try again."  # generic — no enumeration
             else:
                 # --- Hash and store ---
-                hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+                import secrets as _secrets
+                hashed  = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+                api_key = _secrets.token_urlsafe(32)
                 db_run(
-                    f"INSERT INTO users (username, password) VALUES ({PH}, {PH})",
-                    (username, hashed.decode()),
+                    f"INSERT INTO users (username, password, api_key) VALUES ({PH}, {PH}, {PH})",
+                    (username, hashed.decode(), api_key),
                 )
                 security_log.info(f"REGISTER_SUCCESS username={username} ip={request.remote_addr}")
                 return redirect(url_for("login"))
@@ -949,6 +961,83 @@ def save_notes(report_id):
     db_run(f"UPDATE reports SET analyst_notes = {PH} WHERE id = {PH}", (notes, report_id))
     flash("Investigation notes saved.", "success")
     return redirect(url_for("report_detail", report_id=report_id))
+
+
+# --- ROUTE 4e: Client Integration Page ---
+@app.route("/integration")
+@login_required
+def integration():
+    """
+    Shows the client their API key and copy-paste integration snippets.
+    Clients use this to connect their real application to Boundry.AI.
+    """
+    user = db_fetchone(
+        f"SELECT id, username, api_key FROM users WHERE id = {PH}",
+        (session["user_id"],),
+    )
+    if not user:
+        abort(404)
+
+    # Generate a key if somehow missing (shouldn't happen post-migration)
+    if not user["api_key"]:
+        import secrets as _secrets
+        new_key = _secrets.token_urlsafe(32)
+        db_run(f"UPDATE users SET api_key = {PH} WHERE id = {PH}", (new_key, user["id"]))
+        user = dict(user)
+        user["api_key"] = new_key
+
+    return render_template("integration.html", api_key=user["api_key"])
+
+
+# --- ROUTE 4f: Event Ingest API ---
+@app.route("/api/ingest", methods=["POST"])
+@limiter.limit("200 per minute")
+def api_ingest():
+    """
+    Authenticated ingest endpoint for real client applications.
+    Clients POST security events here using their API key.
+
+    Trust boundary: X-API-Key header maps event to a specific owner_id.
+    No session required — designed for server-to-server calls.
+
+    POST /api/ingest
+    X-API-Key: <client_api_key>
+    Content-Type: application/json
+    { "event_type": "LOGIN_FAILED", "username": "admin", "ip": "1.2.3.4", "extra": "" }
+    """
+    VALID_EVENT_TYPES = {"LOGIN_FAILED", "LOGIN_SUCCESS", "SEARCH", "REGISTER_SUCCESS"}
+
+    api_key = request.headers.get("X-API-Key", "").strip()
+    if not api_key:
+        return jsonify(error="Missing X-API-Key header"), 401
+
+    user = db_fetchone(f"SELECT id FROM users WHERE api_key = {PH}", (api_key,))
+    if not user:
+        return jsonify(error="Invalid API key"), 401
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify(error="Request body must be JSON"), 400
+
+    event_type = str(data.get("event_type", "")).upper()
+    if event_type not in VALID_EVENT_TYPES:
+        return jsonify(error=f"Invalid event_type. Valid values: {sorted(VALID_EVENT_TYPES)}"), 400
+
+    username = str(data.get("username", ""))[:100]
+    ip       = str(data.get("ip", ""))[:45]
+    extra    = str(data.get("extra", ""))[:500]
+
+    db_run(
+        f"INSERT INTO security_events (event_type, username, ip, extra, owner_id)"
+        f" VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (event_type, username, ip, extra, user["id"]),
+    )
+
+    security_log.info(
+        f"INGEST event_type={event_type} username={username} "
+        f"ip={ip} owner_id={user['id']}"
+    )
+    return jsonify(status="ok", event_type=event_type), 201
 
 
 # --- ROUTE 5: Attack Simulation (browser) ---

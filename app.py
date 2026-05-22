@@ -568,80 +568,56 @@ def control_room():
     )
 
 
-# --- ROUTE 5: Attack Simulation (Boundry.AI demo / cron helper) ---
-@app.route("/simulate-attack", methods=["POST"])
-@login_required
-def simulate_attack():
-    """
-    Write realistic fake attack events to the security log so the /run-agent
-    endpoint has data to analyse.  Used by the Railway hourly cron job to keep
-    the demo dashboard populated with fresh reports.
+# ── Shared business logic (used by browser routes AND cron) ──────────────────
 
-    Simulates:
-      - 5 failed login attempts for "admin" from a known-bad IP
-      - 1 successful login (attacker cracked the account)
-      - 2 SQL injection attempts via the search route
+def _simulate_attack_core():
+    """
+    Write 8 fake attack events to the log and DB security_events table.
+    Called by /simulate-attack (browser) and /cron/run (automated).
+    Returns the number of events generated.
     """
     attacker_ip = "203.0.113.42"   # TEST-NET-3 — documentation-only range, never real
 
-    # Brute force sequence
     for _ in range(5):
         security_log.warning(f"LOGIN_FAILED username=admin ip={attacker_ip}")
         db_run(
-            f"INSERT INTO security_events (event_type, username, ip, extra) VALUES ({PH},{PH},{PH},{PH})",
+            f"INSERT INTO security_events (event_type, username, ip, extra)"
+            f" VALUES ({PH},{PH},{PH},{PH})",
             ("LOGIN_FAILED", "admin", attacker_ip, ""),
         )
 
-    # Simulated success (account compromise)
     security_log.info(f"LOGIN_SUCCESS username=admin ip={attacker_ip}")
     db_run(
-        f"INSERT INTO security_events (event_type, username, ip, extra) VALUES ({PH},{PH},{PH},{PH})",
+        f"INSERT INTO security_events (event_type, username, ip, extra)"
+        f" VALUES ({PH},{PH},{PH},{PH})",
         ("LOGIN_SUCCESS", "admin", attacker_ip, ""),
     )
 
-    # SQL injection attempts via search
     for payload in ["' OR '1'='1", "' UNION SELECT username, password FROM users--"]:
         security_log.info(f"SEARCH username=admin query={payload!r} ip={attacker_ip}")
         db_run(
-            f"INSERT INTO security_events (event_type, username, ip, extra) VALUES ({PH},{PH},{PH},{PH})",
+            f"INSERT INTO security_events (event_type, username, ip, extra)"
+            f" VALUES ({PH},{PH},{PH},{PH})",
             ("SEARCH", "admin", attacker_ip, payload),
         )
 
-    # Browser form POST → redirect back to dashboard with a status message.
-    # API / cron job → returns JSON (detected by missing text/html Accept header).
-    if "text/html" in request.accept_mimetypes:
-        flash("⚡ Attack simulation complete — 8 events written. Now click Run Agent.", "info")
-        return redirect(url_for("reports"))
-    return jsonify(status="ok", events_generated=8)
+    return 8
 
 
-# --- ROUTE 6: Agent Trigger (Boundry.AI demo / cron helper) ---
-@app.route("/run-agent", methods=["POST"])
-@login_required
-def run_agent():
+def _run_agent_core(triggered_by="unknown"):
     """
-    Read recent log events, run threat detection, and (if ANTHROPIC_API_KEY is
-    set) call the Claude API to generate a plain-English incident report, then
-    save it to the reports DB table.
-
-    Returns JSON so Railway cron jobs can confirm success via exit code / response.
+    Read events, detect threats, generate and save a report.
+    Called by /run-agent (browser) and /cron/run (automated).
+    Returns a dict: {status, threats_found, event_count, report_id, message}.
     """
     import json as _json
+    from collections import defaultdict
 
     log_path = Path(os.environ.get("LOG_FILE", "")) if os.environ.get("LOG_FILE") else None
 
-    # Inline the parse/detect logic (mirrors security_agent.py) so this route
-    # works without the agent script being importable in all deployment configs.
-    from collections import defaultdict
+    events = {"login_failed": [], "login_success": [], "search": [], "register": []}
 
-    events = {
-        "login_failed": [],
-        "login_success": [],
-        "search": [],
-        "register": [],
-    }
-
-    # --- Source 1: log file (local dev with LOG_FILE set) ---
+    # Source 1: log file (local dev with LOG_FILE set)
     if log_path and log_path.exists():
         import re as _re
         pattern = _re.compile(
@@ -656,99 +632,76 @@ def run_agent():
                 if not m:
                     continue
                 event_type = m.group("event").lower()
-                fields = m.group("fields")
-                record = {"timestamp": m.group("timestamp"), "raw": line}
+                fields     = m.group("fields")
+                record     = {"timestamp": m.group("timestamp"), "raw": line}
                 for match in _re.finditer(r'(\w+)=("[^"]*"|\'[^\']*\'|\S+)', fields):
                     key, val = match.group(1), match.group(2).strip("'\"")
                     record[key] = val
-                if event_type == "login_failed":
-                    events["login_failed"].append(record)
-                elif event_type == "login_success":
-                    events["login_success"].append(record)
-                elif event_type == "search":
-                    events["search"].append(record)
-                elif event_type == "register_success":
-                    events["register"].append(record)
+                if   event_type == "login_failed":    events["login_failed"].append(record)
+                elif event_type == "login_success":   events["login_success"].append(record)
+                elif event_type == "search":          events["search"].append(record)
+                elif event_type == "register_success":events["register"].append(record)
 
-    # --- Source 2: DB security_events table (Railway / production path) ---
-    # /simulate-attack writes here so the agent always has data even without LOG_FILE.
-    # Clear the table after reading so the next run starts fresh.
+    # Source 2: DB security_events table (production / Railway path)
     db_rows = db_fetchall("SELECT * FROM security_events ORDER BY id ASC")
     for row in db_rows:
-        record = {
-            "timestamp": str(row["created_at"]),
-            "username":  row["username"],
-            "ip":        row["ip"],
-        }
-        etype = row["event_type"].upper()
-        if etype == "LOGIN_FAILED":
-            events["login_failed"].append(record)
-        elif etype == "LOGIN_SUCCESS":
-            events["login_success"].append(record)
+        record = {"timestamp": str(row["created_at"]),
+                  "username":  row["username"], "ip": row["ip"]}
+        etype  = row["event_type"].upper()
+        if   etype == "LOGIN_FAILED":    events["login_failed"].append(record)
+        elif etype == "LOGIN_SUCCESS":   events["login_success"].append(record)
         elif etype == "SEARCH":
             record["query"] = row["extra"]
             events["search"].append(record)
-        elif etype == "REGISTER_SUCCESS":
-            events["register"].append(record)
+        elif etype == "REGISTER_SUCCESS":events["register"].append(record)
     if db_rows:
         db_run("DELETE FROM security_events")
 
-    # --- Threat detection ---
+    # No events at all — nothing to analyse
+    if not db_rows and not log_path:
+        return {"status": "ok", "threats_found": 0, "event_count": 0,
+                "report_id": None, "message": "No events found. Run Simulate Attack first."}
+
+    # Threat detection
     BRUTE_THRESHOLD = 3
-    injection_re = re.compile(r"(?i)(' OR|' AND|--|'=|1=1|UNION|SELECT|DROP)")
-    threats = []
+    injection_re    = re.compile(r"(?i)(' OR|' AND|--|'=|1=1|UNION|SELECT|DROP)")
+    threats         = []
 
     failed_by_user = defaultdict(list)
     for e in events["login_failed"]:
         failed_by_user[e.get("username", "unknown")].append(e)
 
-    for username, attempts in failed_by_user.items():
+    for uname, attempts in failed_by_user.items():
         if len(attempts) > BRUTE_THRESHOLD:
-            success = any(e.get("username") == username for e in events["login_success"])
+            success = any(e.get("username") == uname for e in events["login_success"])
             threats.append({
-                "type": "BRUTE_FORCE",
-                "severity": "HIGH",
-                "username": username,
-                "failed_attempts": len(attempts),
-                "ip": attempts[0].get("ip", "unknown"),
-                "succeeded": success,
+                "type": "BRUTE_FORCE", "severity": "HIGH",
+                "username": uname, "failed_attempts": len(attempts),
+                "ip": attempts[0].get("ip", "unknown"), "succeeded": success,
                 "first_seen": attempts[0]["timestamp"],
-                "last_seen": attempts[-1]["timestamp"],
+                "last_seen":  attempts[-1]["timestamp"],
             })
 
     for e in events["search"]:
         query = e.get("query", "")
         if injection_re.search(query):
             threats.append({
-                "type": "SQL_INJECTION_ATTEMPT",
-                "severity": "HIGH",
+                "type": "SQL_INJECTION_ATTEMPT", "severity": "HIGH",
                 "username": e.get("username", "unknown"),
-                "query": query,
-                "ip": e.get("ip", "unknown"),
+                "query": query, "ip": e.get("ip", "unknown"),
                 "timestamp": e["timestamp"],
             })
 
     threat_count = len(threats)
-    event_count  = sum(len(v) for v in events.values())  # total raw events analysed
+    event_count  = sum(len(v) for v in events.values())
 
-    # --- Generate and save report ---
-    report_id = None
+    # Generate report content
     api_key = os.environ.get("ANTHROPIC_API_KEY")
-
-    if threat_count == 0 and not db_rows and not log_path:
-        # No events from any source — nothing to analyse yet.
-        if "text/html" in request.accept_mimetypes:
-            flash("⚠️ No events found. Click 'Simulate Attack' first, then run the agent.", "warning")
-            return redirect(url_for("reports"))
-        return jsonify(status="ok", threats_found=0, report_id=None,
-                       message="No events found. Run Simulate Attack first.")
-
     if api_key and threat_count > 0:
         try:
             import anthropic as _anthropic
-            client = _anthropic.Anthropic(api_key=api_key)
             summary = {
-                "total_events": sum(len(v) for v in events.values()),
+                "total_events": event_count,
                 "failed_logins": len(events["login_failed"]),
                 "successful_logins": len(events["login_success"]),
                 "searches": len(events["search"]),
@@ -768,38 +721,28 @@ def run_agent():
                 "4. Risk Level (Overall: Critical/High/Medium/Low with one sentence justification)\n\n"
                 "Format as clean markdown."
             )
-            message = client.messages.create(
-                model="claude-opus-4-5",
-                max_tokens=1024,
+            ai_client = _anthropic.Anthropic(api_key=api_key)
+            message   = ai_client.messages.create(
+                model="claude-opus-4-5", max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}],
             )
             content = message.content[0].text
         except Exception as exc:
             content = f"# Report Generation Error\n\nAI report could not be generated: {exc}"
     else:
-        # Placeholder report when no API key is set.
-        # Still shows the full event breakdown so clients can account for every event.
         failed_ct  = len(events["login_failed"])
         success_ct = len(events["login_success"])
         search_ct  = len(events["search"])
-
         lines = [
-            "# Incident Report\n",
-            "---\n",
-            "## Events Analysed\n",
-            f"| Event type | Count |",
-            f"|---|---|",
+            "# Incident Report\n", "---\n", "## Events Analysed\n",
+            f"| Event type | Count |", f"|---|---|",
             f"| Failed login attempts | {failed_ct} |",
             f"| Successful logins | {success_ct} |",
             f"| Search / query events | {search_ct} |",
-            f"| **Total** | **{event_count}** |",
-            "",
+            f"| **Total** | **{event_count}** |", "",
         ]
-
         if threat_count > 0:
-            lines += [
-                f"## Threats Detected: {threat_count}\n",
-            ]
+            lines.append(f"## Threats Detected: {threat_count}\n")
             for t in threats:
                 if t["type"] == "BRUTE_FORCE":
                     outcome = "✅ Account compromised" if t.get("succeeded") else "🛡 Access denied"
@@ -819,47 +762,99 @@ def run_agent():
                         f"- **Payload:** `{t.get('query','')}`\n"
                         f"- **Timestamp:** {t.get('timestamp','')}\n"
                     )
-            lines += [
-                "---\n",
-                "> **Note:** Add `ANTHROPIC_API_KEY` as a Railway environment variable "
-                "to replace this report with a full AI-generated narrative."
-            ]
+            lines += ["---\n",
+                      "> **Note:** Add `ANTHROPIC_API_KEY` as a Railway environment variable "
+                      "to replace this report with a full AI-generated narrative."]
         else:
-            lines += [
-                "## No Threats Detected\n",
-                "The agent found no brute-force or injection patterns in the current events.\n",
-            ]
-
+            lines += ["## No Threats Detected\n",
+                      "The agent found no brute-force or injection patterns in the current events.\n"]
         content = "\n".join(lines)
 
-    # Store in DB
-    if DATABASE_URL:
-        ts_expr = "NOW()"
-    else:
-        ts_expr = "datetime('now')"
-
+    # Save report
+    ts_expr = "NOW()" if DATABASE_URL else "datetime('now')"
     db_run(
-        f"INSERT INTO reports (created_at, threat_count, event_count, content) VALUES ({ts_expr}, {PH}, {PH}, {PH})",
+        f"INSERT INTO reports (created_at, threat_count, event_count, content)"
+        f" VALUES ({ts_expr}, {PH}, {PH}, {PH})",
         (threat_count, event_count, content),
     )
-    # Retrieve the new row id
-    row = db_fetchone("SELECT id FROM reports ORDER BY id DESC LIMIT 1")
+    row       = db_fetchone("SELECT id FROM reports ORDER BY id DESC LIMIT 1")
     report_id = row["id"] if row else None
 
     security_log.info(
         f"AGENT_RUN threats_found={threat_count} report_id={report_id} "
-        f"user={session.get('username')} ip={request.remote_addr}"
+        f"triggered_by={triggered_by}"
     )
+    return {"status": "ok", "threats_found": threat_count,
+            "event_count": event_count, "report_id": report_id}
 
-    # Browser form POST → redirect to dashboard with a flash message.
-    # API / cron job → return JSON.
+
+# --- ROUTE 5: Attack Simulation (browser) ---
+@app.route("/simulate-attack", methods=["POST"])
+@login_required
+def simulate_attack():
+    """Browser-facing wrapper around _simulate_attack_core()."""
+    _simulate_attack_core()
     if "text/html" in request.accept_mimetypes:
-        if report_id:
-            flash(f"🤖 Agent complete — {event_count} events analysed, {threat_count} threat(s) detected. Report #{report_id} saved.", "success")
+        flash("⚡ Attack simulation complete — 8 events written. Now click Run Agent.", "info")
+        return redirect(url_for("reports"))
+    return jsonify(status="ok", events_generated=8)
+
+
+# --- ROUTE 6: Agent Trigger (browser) ---
+@app.route("/run-agent", methods=["POST"])
+@login_required
+def run_agent():
+    """Browser-facing wrapper around _run_agent_core()."""
+    result = _run_agent_core(triggered_by=session.get("username", "unknown"))
+
+    if "text/html" in request.accept_mimetypes:
+        if result.get("report_id"):
+            flash(
+                f"🤖 Agent complete — {result['event_count']} events analysed, "
+                f"{result['threats_found']} threat(s) detected. "
+                f"Report #{result['report_id']} saved.",
+                "success",
+            )
+        elif result.get("message"):
+            flash(f"⚠️ {result['message']}", "warning")
         else:
             flash("🤖 Agent ran but found no threats in the current events.", "info")
         return redirect(url_for("reports"))
-    return jsonify(status="ok", threats_found=threat_count, report_id=report_id)
+    return jsonify(**result)
+
+
+# --- ROUTE 7: Cron endpoint (no session — authenticated by CRON_SECRET header) ---
+@app.route("/cron/run", methods=["POST"])
+def cron_run():
+    """
+    Combined simulate + agent run for Railway's scheduled cron job.
+
+    Trust boundary: requires X-Cron-Secret header matching the CRON_SECRET
+    environment variable.  Returns 404 (not 403) if CRON_SECRET is unset so
+    the route is invisible to scanners.
+
+    Railway cron command:
+        curl -s -X POST https://<your-app>/cron/run \\
+             -H "X-Cron-Secret: $CRON_SECRET"
+    """
+    expected = os.environ.get("CRON_SECRET", "")
+    provided = request.headers.get("X-Cron-Secret", "")
+    if not expected or provided != expected:
+        abort(404)
+
+    events_generated = _simulate_attack_core()
+    result           = _run_agent_core(triggered_by="cron")
+
+    security_log.info(
+        f"CRON_RUN events_generated={events_generated} "
+        f"threats_found={result['threats_found']} report_id={result.get('report_id')}"
+    )
+    return jsonify(
+        status="ok",
+        events_generated=events_generated,
+        threats_found=result["threats_found"],
+        report_id=result.get("report_id"),
+    )
 
 
 # --- Startup ---

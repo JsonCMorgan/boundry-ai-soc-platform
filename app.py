@@ -228,6 +228,10 @@ def login():
     On success, store username in the signed session cookie.
     On failure, return a generic error — never reveal which field was wrong.
     """
+    # Already logged in — send straight to the dashboard
+    if "username" in session:
+        return redirect(url_for("reports"))
+
     error = None
 
     if request.method == "POST":
@@ -241,7 +245,7 @@ def login():
         if row and bcrypt.checkpw(password.encode(), row["password"].encode()):
             session["username"] = username   # session is signed — safe to trust
             security_log.info(f"LOGIN_SUCCESS username={username} ip={request.remote_addr}")
-            return redirect(url_for("index"))
+            return redirect(url_for("reports"))  # go straight to dashboard
         else:
             security_log.warning(f"LOGIN_FAILED username={username} ip={request.remote_addr}")
             error = "Invalid username or password."  # generic — don't hint which field failed

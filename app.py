@@ -198,6 +198,20 @@ def init_db():
         )
     """)
 
+    # Auto-create analyst account on startup if ANALYST_USERNAME + ANALYST_PASSWORD are set.
+    # This means even if Railway wipes the DB, the analyst account is recreated automatically
+    # on the next deploy — no manual re-registration needed.
+    analyst_username = os.environ.get("ANALYST_USERNAME", "").strip()
+    analyst_password = os.environ.get("ANALYST_PASSWORD", "").strip()
+    if analyst_username and analyst_password:
+        existing = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", (analyst_username,))
+        if not existing:
+            hashed = bcrypt.hashpw(analyst_password.encode(), bcrypt.gensalt())
+            db_run(
+                f"INSERT INTO users (username, password, role) VALUES ({PH}, {PH}, 'analyst')",
+                (analyst_username, hashed.decode()),
+            )
+
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.

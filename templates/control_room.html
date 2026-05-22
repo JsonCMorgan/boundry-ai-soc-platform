@@ -540,6 +540,7 @@
                     <thead>
                         <tr>
                             <th>#</th>
+                            <th>Client</th>
                             <th>Generated</th>
                             <th>Events</th>
                             <th>Threats</th>
@@ -552,6 +553,9 @@
                             {% for r in reports %}
                             <tr>
                                 <td>#{{ r.id }}</td>
+                                <td style="color:#888; font-size:0.85em;">
+                                    {{ r.owner_username or '—' }}
+                                </td>
                                 <td>
                                     <span class="local-time" data-utc="{{ r.created_at }}">
                                         {{ r.created_at }}
@@ -585,7 +589,7 @@
                             </tr>
                             {% endfor %}
                         {% else %}
-                            <tr class="empty-row"><td colspan="6">No reports yet — run the agent to generate one.</td></tr>
+                            <tr class="empty-row"><td colspan="7">No reports yet — run the agent to generate one.</td></tr>
                         {% endif %}
                     </tbody>
                 </table>

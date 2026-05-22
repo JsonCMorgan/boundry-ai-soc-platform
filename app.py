@@ -175,11 +175,12 @@ def init_db():
             content TEXT NOT NULL
         )
     """)
-    # Migration: add event_count, status, and analyst_notes to reports.
+    # Migration: add event_count, status, analyst_notes, owner_id to reports.
     if DATABASE_URL:
         db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS event_count    INTEGER NOT NULL DEFAULT 0")
         db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS status         TEXT    NOT NULL DEFAULT 'new'")
         db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS analyst_notes  TEXT    NOT NULL DEFAULT ''")
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS owner_id       INTEGER")
     else:
         existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
         if "event_count"   not in existing_cols:
@@ -188,6 +189,8 @@ def init_db():
             db_run("ALTER TABLE reports ADD COLUMN status        TEXT    NOT NULL DEFAULT 'new'")
         if "analyst_notes" not in existing_cols:
             db_run("ALTER TABLE reports ADD COLUMN analyst_notes TEXT    NOT NULL DEFAULT ''")
+        if "owner_id"      not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN owner_id      INTEGER")
 
     # Security events table — stores simulated / real attack events for the agent to read.
     # On Railway there is no LOG_FILE, so /simulate-attack writes here instead.
@@ -203,13 +206,16 @@ def init_db():
             processed  INTEGER NOT NULL DEFAULT 0
         )
     """)
-    # Migration: add processed column to existing security_events tables.
+    # Migration: add processed and owner_id to security_events.
     if DATABASE_URL:
         db_run("ALTER TABLE security_events ADD COLUMN IF NOT EXISTS processed INTEGER NOT NULL DEFAULT 0")
+        db_run("ALTER TABLE security_events ADD COLUMN IF NOT EXISTS owner_id  INTEGER")
     else:
         existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(security_events)")]
         if "processed" not in existing_cols:
             db_run("ALTER TABLE security_events ADD COLUMN processed INTEGER NOT NULL DEFAULT 0")
+        if "owner_id"  not in existing_cols:
+            db_run("ALTER TABLE security_events ADD COLUMN owner_id  INTEGER")
 
     # Auto-create analyst account on startup if ANALYST_USERNAME + ANALYST_PASSWORD are set.
     # This means even if Railway wipes the DB, the analyst account is recreated automatically
@@ -326,6 +332,7 @@ def login():
                     security_log.warning(f"ANALYST_UPGRADE_FAILED username={username} error={exc}")
 
             session["username"] = username
+            session["user_id"]  = row["id"]
             session["role"]     = row.get("role", "client")
             security_log.info(f"LOGIN_SUCCESS username={username} ip={request.remote_addr}")
             # Analysts go to the Control Room; clients go to the reports dashboard.
@@ -529,8 +536,13 @@ def reports():
     (the ephemeral filesystem would lose .md files on every push).
     Protected by login_required: clients log in to view their reports.
     """
+    # Clients see only their own reports (owner_id = their user_id).
+    # Analysts use /control-room which shows all reports.
+    user_id = session.get("user_id")
     report_list = db_fetchall(
-        "SELECT id, created_at, threat_count, event_count FROM reports ORDER BY id DESC"
+        f"SELECT id, created_at, threat_count, event_count FROM reports "
+        f"WHERE owner_id = {PH} ORDER BY id DESC",
+        (user_id,),
     )
     return render_template("reports.html", reports=report_list)
 
@@ -543,13 +555,19 @@ def report_detail(report_id):
     Uses an integer primary key — no path traversal risk (no filesystem access).
     """
     row = db_fetchone(
-        f"SELECT id, created_at, threat_count, event_count, content, status, analyst_notes "
+        f"SELECT id, created_at, threat_count, event_count, content, status, analyst_notes, owner_id "
         f"FROM reports WHERE id = {PH}",
         (report_id,),
     )
 
     if not row:
         abort(404)
+
+    # Clients can only view their own reports (A01: Broken Access Control).
+    # Analysts can view any report.
+    if session.get("role") != "analyst":
+        if row["owner_id"] != session.get("user_id"):
+            abort(403)
 
     html_content = Markup(markdown.markdown(row["content"], extensions=["tables"]))
     return render_template(
@@ -575,7 +593,10 @@ def control_room():
     """
     clients     = db_fetchall("SELECT id, username, role FROM users ORDER BY username ASC")
     all_reports = db_fetchall(
-        "SELECT id, created_at, threat_count, event_count, status FROM reports ORDER BY id DESC"
+        "SELECT r.id, r.created_at, r.threat_count, r.event_count, r.status, "
+        "u.username AS owner_username "
+        "FROM reports r LEFT JOIN users u ON r.owner_id = u.id "
+        "ORDER BY r.id DESC"
     )
     pending_row   = db_fetchone(f"SELECT COUNT(*) AS cnt FROM security_events WHERE processed = {PH}", (0,))
     pending_count = pending_row["cnt"] if pending_row else 0
@@ -607,10 +628,11 @@ def control_room():
 
 # ── Shared business logic (used by browser routes AND cron) ──────────────────
 
-def _simulate_attack_core():
+def _simulate_attack_core(owner_id=None):
     """
     Write 8 fake attack events to the log and DB security_events table.
     Randomises IPs, target usernames, and injection payloads each run for realism.
+    owner_id tags events to a specific client (None = system/cron events).
     Called by /simulate-attack (browser) and /cron/run (automated).
     Returns the number of events generated.
     """
@@ -641,32 +663,34 @@ def _simulate_attack_core():
     for _ in range(5):
         security_log.warning(f"LOGIN_FAILED username={target_user} ip={attacker_ip}")
         db_run(
-            f"INSERT INTO security_events (event_type, username, ip, extra)"
-            f" VALUES ({PH},{PH},{PH},{PH})",
-            ("LOGIN_FAILED", target_user, attacker_ip, ""),
+            f"INSERT INTO security_events (event_type, username, ip, extra, owner_id)"
+            f" VALUES ({PH},{PH},{PH},{PH},{PH})",
+            ("LOGIN_FAILED", target_user, attacker_ip, "", owner_id),
         )
 
     security_log.info(f"LOGIN_SUCCESS username={target_user} ip={attacker_ip}")
     db_run(
-        f"INSERT INTO security_events (event_type, username, ip, extra)"
-        f" VALUES ({PH},{PH},{PH},{PH})",
-        ("LOGIN_SUCCESS", target_user, attacker_ip, ""),
+        f"INSERT INTO security_events (event_type, username, ip, extra, owner_id)"
+        f" VALUES ({PH},{PH},{PH},{PH},{PH})",
+        ("LOGIN_SUCCESS", target_user, attacker_ip, "", owner_id),
     )
 
     for payload in payloads:
         security_log.info(f"SEARCH username={target_user} query={payload!r} ip={attacker_ip}")
         db_run(
-            f"INSERT INTO security_events (event_type, username, ip, extra)"
-            f" VALUES ({PH},{PH},{PH},{PH})",
-            ("SEARCH", target_user, attacker_ip, payload),
+            f"INSERT INTO security_events (event_type, username, ip, extra, owner_id)"
+            f" VALUES ({PH},{PH},{PH},{PH},{PH})",
+            ("SEARCH", target_user, attacker_ip, payload, owner_id),
         )
 
     return 8
 
 
-def _run_agent_core(triggered_by="unknown"):
+def _run_agent_core(triggered_by="unknown", owner_id=None):
     """
     Read events, detect threats, generate and save a report.
+    owner_id scopes events and the saved report to a specific client.
+    None = system/cron run (processes all unowned events, report visible to analyst only).
     Called by /run-agent (browser) and /cron/run (automated).
     Returns a dict: {status, threats_found, event_count, report_id, message}.
     """
@@ -703,9 +727,17 @@ def _run_agent_core(triggered_by="unknown"):
                 elif event_type == "register_success":events["register"].append(record)
 
     # Source 2: DB security_events table (production / Railway path)
-    db_rows = db_fetchall(
-        f"SELECT * FROM security_events WHERE processed = {PH} ORDER BY id ASC", (0,)
-    )
+    # Scope to owner_id — each client only processes their own events.
+    if owner_id is not None:
+        db_rows = db_fetchall(
+            f"SELECT * FROM security_events WHERE processed = {PH} AND owner_id = {PH} ORDER BY id ASC",
+            (0, owner_id),
+        )
+    else:
+        db_rows = db_fetchall(
+            f"SELECT * FROM security_events WHERE processed = {PH} AND owner_id IS NULL ORDER BY id ASC",
+            (0,),
+        )
     for row in db_rows:
         record = {"timestamp": str(row["created_at"]),
                   "username":  row["username"], "ip": row["ip"]}
@@ -718,7 +750,16 @@ def _run_agent_core(triggered_by="unknown"):
         elif etype == "REGISTER_SUCCESS":events["register"].append(record)
     if db_rows:
         # Mark processed — keep for the live event feed history, never delete
-        db_run(f"UPDATE security_events SET processed = {PH} WHERE processed = {PH}", (1, 0))
+        if owner_id is not None:
+            db_run(
+                f"UPDATE security_events SET processed = {PH} WHERE processed = {PH} AND owner_id = {PH}",
+                (1, 0, owner_id),
+            )
+        else:
+            db_run(
+                f"UPDATE security_events SET processed = {PH} WHERE processed = {PH} AND owner_id IS NULL",
+                (1, 0),
+            )
 
     # No events at all — nothing to analyse
     if not db_rows and not log_path:
@@ -864,12 +905,12 @@ def _run_agent_core(triggered_by="unknown"):
                       "The agent found no brute-force or injection patterns in the current events.\n"]
         content = "\n".join(lines)
 
-    # Save report
+    # Save report — tagged with owner_id for multi-tenancy
     ts_expr = "NOW()" if DATABASE_URL else "datetime('now')"
     db_run(
-        f"INSERT INTO reports (created_at, threat_count, event_count, content)"
-        f" VALUES ({ts_expr}, {PH}, {PH}, {PH})",
-        (threat_count, event_count, content),
+        f"INSERT INTO reports (created_at, threat_count, event_count, content, owner_id)"
+        f" VALUES ({ts_expr}, {PH}, {PH}, {PH}, {PH})",
+        (threat_count, event_count, content, owner_id),
     )
     row       = db_fetchone("SELECT id FROM reports ORDER BY id DESC LIMIT 1")
     report_id = row["id"] if row else None
@@ -915,7 +956,7 @@ def save_notes(report_id):
 @login_required
 def simulate_attack():
     """Browser-facing wrapper around _simulate_attack_core()."""
-    _simulate_attack_core()
+    _simulate_attack_core(owner_id=session.get("user_id"))
     if "text/html" in request.accept_mimetypes:
         flash("⚡ Attack simulation complete — 8 events written. Now click Run Agent.", "info")
         dest = "control_room" if session.get("role") == "analyst" else "reports"
@@ -928,7 +969,7 @@ def simulate_attack():
 @login_required
 def run_agent():
     """Browser-facing wrapper around _run_agent_core()."""
-    result = _run_agent_core(triggered_by=session.get("username", "unknown"))
+    result = _run_agent_core(triggered_by=session.get("username", "unknown"), owner_id=session.get("user_id"))
 
     if "text/html" in request.accept_mimetypes:
         if result.get("report_id"):
@@ -966,18 +1007,39 @@ def cron_run():
     if not expected or provided != expected:
         abort(404)
 
-    events_generated = _simulate_attack_core()
-    result           = _run_agent_core(triggered_by="cron")
+    # Run per client — each client gets their own simulated events and report
+    clients = db_fetchall("SELECT id FROM users WHERE role = 'client'")
+    total_events = 0
+    total_threats = 0
+    report_ids = []
+    for client in clients:
+        total_events += _simulate_attack_core(owner_id=client["id"])
+        result = _run_agent_core(triggered_by="cron", owner_id=client["id"])
+        total_threats += result.get("threats_found", 0)
+        if result.get("report_id"):
+            report_ids.append(result["report_id"])
+
+    # Fallback: if no clients exist, run a system-level simulation
+    if not clients:
+        total_events = _simulate_attack_core(owner_id=None)
+        result = _run_agent_core(triggered_by="cron", owner_id=None)
+        total_threats = result.get("threats_found", 0)
+        if result.get("report_id"):
+            report_ids.append(result["report_id"])
+        result = {"threats_found": total_threats, "report_id": report_ids[0] if report_ids else None}
+    else:
+        result = {"threats_found": total_threats, "report_id": report_ids[-1] if report_ids else None}
 
     security_log.info(
-        f"CRON_RUN events_generated={events_generated} "
-        f"threats_found={result['threats_found']} report_id={result.get('report_id')}"
+        f"CRON_RUN events_generated={total_events} clients={len(clients)} "
+        f"threats_found={total_threats} report_ids={report_ids}"
     )
     return jsonify(
         status="ok",
-        events_generated=events_generated,
-        threats_found=result["threats_found"],
-        report_id=result.get("report_id"),
+        events_generated=total_events,
+        clients_processed=len(clients),
+        threats_found=total_threats,
+        report_ids=report_ids,
     )
 
 

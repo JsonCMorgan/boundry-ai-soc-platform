@@ -185,7 +185,7 @@
         <form method="POST" action="/run-agent" style="display:inline">
             <button type="submit" class="btn-run">&#x1F916; Run Agent</button>
         </form>
-        <span class="btn-hint">After running the agent, refresh this page to see the new report.</span>
+        <span class="btn-hint">Run both in order — the new report appears automatically.</span>
     </div>
 
     {% if reports %}
@@ -193,7 +193,8 @@
         <div class="report-card">
             <div>
                 <div class="report-date">
-                    Report #{{ r.id }} &mdash; {{ r.created_at }}
+                    Report #{{ r.id }} &mdash;
+                    <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
                     {% if loop.first %}<span class="badge">Latest</span>{% endif %}
                 </div>
                 <div class="report-label">Automated threat detection report &mdash; {{ r.threat_count }} threat(s) detected</div>
@@ -229,5 +230,25 @@
 
     <hr style="margin-top: 40px; border-color: #eee;">
     <p style="font-size: 0.8em; color: #aaa;">Boundry.AI — Security that speaks your language.</p>
+
+    <script>
+        // Convert UTC timestamps to the visitor's local timezone.
+        // PostgreSQL stores NOW() as UTC; this runs in the browser so it always
+        // shows the correct local time without any server-side timezone logic.
+        document.querySelectorAll('.local-time').forEach(function (el) {
+            var raw = el.getAttribute('data-utc').trim().replace(' ', 'T');
+            // Append Z so the browser knows this is UTC (not ambiguous local)
+            if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('-', 10)) {
+                raw += 'Z';
+            }
+            var d = new Date(raw);
+            if (!isNaN(d)) {
+                el.textContent = d.toLocaleString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            }
+        });
+    </script>
 </body>
 </html>

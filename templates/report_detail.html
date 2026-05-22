@@ -55,7 +55,9 @@
 
     <a class="back-link" href="/reports">← Back to Reports</a>
     <div class="filename-label">
-        Report #{{ report_id }} &mdash; Generated: {{ created_at }} &mdash; {{ threat_count }} threat(s) detected
+        Report #{{ report_id }} &mdash; Generated:
+        <span class="local-time" data-utc="{{ created_at }}">{{ created_at }}</span>
+        &mdash; {{ threat_count }} threat(s) detected
     </div>
 
     <div class="report-body">
@@ -64,5 +66,21 @@
 
     <hr>
     <p style="font-size: 0.8em; color: #aaa;">Boundry.AI — Security that speaks your language.</p>
+
+    <script>
+        document.querySelectorAll('.local-time').forEach(function (el) {
+            var raw = el.getAttribute('data-utc').trim().replace(' ', 'T');
+            if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('-', 10)) {
+                raw += 'Z';
+            }
+            var d = new Date(raw);
+            if (!isNaN(d)) {
+                el.textContent = d.toLocaleString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            }
+        });
+    </script>
 </body>
 </html>

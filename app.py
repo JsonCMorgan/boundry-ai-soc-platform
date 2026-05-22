@@ -194,9 +194,17 @@ def init_db():
             event_type TEXT NOT NULL,
             username   TEXT NOT NULL DEFAULT '',
             ip         TEXT NOT NULL DEFAULT '',
-            extra      TEXT NOT NULL DEFAULT ''
+            extra      TEXT NOT NULL DEFAULT '',
+            processed  INTEGER NOT NULL DEFAULT 0
         )
     """)
+    # Migration: add processed column to existing security_events tables.
+    if DATABASE_URL:
+        db_run("ALTER TABLE security_events ADD COLUMN IF NOT EXISTS processed INTEGER NOT NULL DEFAULT 0")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(security_events)")]
+        if "processed" not in existing_cols:
+            db_run("ALTER TABLE security_events ADD COLUMN processed INTEGER NOT NULL DEFAULT 0")
 
     # Auto-create analyst account on startup if ANALYST_USERNAME + ANALYST_PASSWORD are set.
     # This means even if Railway wipes the DB, the analyst account is recreated automatically
@@ -561,8 +569,14 @@ def control_room():
     all_reports = db_fetchall(
         "SELECT id, created_at, threat_count, event_count FROM reports ORDER BY id DESC"
     )
-    pending_events = db_fetchone("SELECT COUNT(*) AS cnt FROM security_events")
-    pending_count  = pending_events["cnt"] if pending_events else 0
+    pending_row   = db_fetchone(f"SELECT COUNT(*) AS cnt FROM security_events WHERE processed = {PH}", (0,))
+    pending_count = pending_row["cnt"] if pending_row else 0
+
+    # Live event feed — last 100 events (processed + pending) for the analyst feed panel
+    recent_events = db_fetchall(
+        "SELECT id, created_at, event_type, username, ip, extra, processed "
+        "FROM security_events ORDER BY id DESC LIMIT 100"
+    )
 
     # Summary stats for the header bar
     total_clients = len([c for c in clients if c["role"] == "client"])
@@ -575,6 +589,7 @@ def control_room():
         clients=clients,
         reports=all_reports,
         pending_count=pending_count,
+        recent_events=recent_events,
         total_clients=total_clients,
         total_reports=total_reports,
         total_threats=total_threats,
@@ -587,32 +602,55 @@ def control_room():
 def _simulate_attack_core():
     """
     Write 8 fake attack events to the log and DB security_events table.
+    Randomises IPs, target usernames, and injection payloads each run for realism.
     Called by /simulate-attack (browser) and /cron/run (automated).
     Returns the number of events generated.
     """
-    attacker_ip = "203.0.113.42"   # TEST-NET-3 — documentation-only range, never real
+    import random
+
+    # TEST-NET ranges (RFC 5737) — documentation-only, never real routable IPs
+    attacker_ips = [
+        "203.0.113.42", "203.0.113.99",
+        "198.51.100.17", "198.51.100.88",
+        "192.0.2.55",
+    ]
+    # Common brute-force targets
+    target_usernames = ["admin", "administrator", "root", "user", "test"]
+    # Varied SQL injection payloads
+    injection_payloads = [
+        "' OR '1'='1",
+        "' UNION SELECT username, password FROM users--",
+        "'; DROP TABLE users;--",
+        "' AND 1=1--",
+        "1' OR '1'='1' /*",
+        "' OR 1=1--",
+    ]
+
+    attacker_ip  = random.choice(attacker_ips)
+    target_user  = random.choice(target_usernames)
+    payloads     = random.sample(injection_payloads, 2)
 
     for _ in range(5):
-        security_log.warning(f"LOGIN_FAILED username=admin ip={attacker_ip}")
+        security_log.warning(f"LOGIN_FAILED username={target_user} ip={attacker_ip}")
         db_run(
             f"INSERT INTO security_events (event_type, username, ip, extra)"
             f" VALUES ({PH},{PH},{PH},{PH})",
-            ("LOGIN_FAILED", "admin", attacker_ip, ""),
+            ("LOGIN_FAILED", target_user, attacker_ip, ""),
         )
 
-    security_log.info(f"LOGIN_SUCCESS username=admin ip={attacker_ip}")
+    security_log.info(f"LOGIN_SUCCESS username={target_user} ip={attacker_ip}")
     db_run(
         f"INSERT INTO security_events (event_type, username, ip, extra)"
         f" VALUES ({PH},{PH},{PH},{PH})",
-        ("LOGIN_SUCCESS", "admin", attacker_ip, ""),
+        ("LOGIN_SUCCESS", target_user, attacker_ip, ""),
     )
 
-    for payload in ["' OR '1'='1", "' UNION SELECT username, password FROM users--"]:
-        security_log.info(f"SEARCH username=admin query={payload!r} ip={attacker_ip}")
+    for payload in payloads:
+        security_log.info(f"SEARCH username={target_user} query={payload!r} ip={attacker_ip}")
         db_run(
             f"INSERT INTO security_events (event_type, username, ip, extra)"
             f" VALUES ({PH},{PH},{PH},{PH})",
-            ("SEARCH", "admin", attacker_ip, payload),
+            ("SEARCH", target_user, attacker_ip, payload),
         )
 
     return 8
@@ -657,7 +695,9 @@ def _run_agent_core(triggered_by="unknown"):
                 elif event_type == "register_success":events["register"].append(record)
 
     # Source 2: DB security_events table (production / Railway path)
-    db_rows = db_fetchall("SELECT * FROM security_events ORDER BY id ASC")
+    db_rows = db_fetchall(
+        f"SELECT * FROM security_events WHERE processed = {PH} ORDER BY id ASC", (0,)
+    )
     for row in db_rows:
         record = {"timestamp": str(row["created_at"]),
                   "username":  row["username"], "ip": row["ip"]}
@@ -669,12 +709,25 @@ def _run_agent_core(triggered_by="unknown"):
             events["search"].append(record)
         elif etype == "REGISTER_SUCCESS":events["register"].append(record)
     if db_rows:
-        db_run("DELETE FROM security_events")
+        # Mark processed — keep for the live event feed history, never delete
+        db_run(f"UPDATE security_events SET processed = {PH} WHERE processed = {PH}", (1, 0))
 
     # No events at all — nothing to analyse
     if not db_rows and not log_path:
         return {"status": "ok", "threats_found": 0, "event_count": 0,
                 "report_id": None, "message": "No events found. Run Simulate Attack first."}
+
+    # MITRE ATT&CK mapping — used in threat objects and AI prompt
+    MITRE_MAP = {
+        "BRUTE_FORCE": {
+            "id": "T1110", "name": "Brute Force",
+            "tactic": "Credential Access",
+        },
+        "SQL_INJECTION_ATTEMPT": {
+            "id": "T1190", "name": "Exploit Public-Facing Application",
+            "tactic": "Initial Access",
+        },
+    }
 
     # Threat detection
     BRUTE_THRESHOLD = 3
@@ -694,6 +747,7 @@ def _run_agent_core(triggered_by="unknown"):
                 "ip": attempts[0].get("ip", "unknown"), "succeeded": success,
                 "first_seen": attempts[0]["timestamp"],
                 "last_seen":  attempts[-1]["timestamp"],
+                "mitre": MITRE_MAP["BRUTE_FORCE"],
             })
 
     for e in events["search"]:
@@ -704,6 +758,7 @@ def _run_agent_core(triggered_by="unknown"):
                 "username": e.get("username", "unknown"),
                 "query": query, "ip": e.get("ip", "unknown"),
                 "timestamp": e["timestamp"],
+                "mitre": MITRE_MAP["SQL_INJECTION_ATTEMPT"],
             })
 
     threat_count = len(threats)
@@ -723,17 +778,34 @@ def _run_agent_core(triggered_by="unknown"):
                 "threats": threats,
             }
             prompt = (
-                "You are a cybersecurity analyst writing an incident report for a client.\n\n"
-                "Analyze the following threat findings from a web application security log and write a "
-                "professional incident report. Be concise but thorough. Use plain language a business "
-                "owner can understand — not just technical jargon.\n\n"
-                f"Log Summary:\n{_json.dumps(summary, indent=2)}\n\n"
-                "Write the report with these sections:\n"
-                "1. Executive Summary (2-3 sentences, plain English)\n"
-                "2. Findings (one paragraph per threat — what happened, what it means, severity)\n"
-                "3. Recommended Actions (bullet points, specific and actionable)\n"
-                "4. Risk Level (Overall: Critical/High/Medium/Low with one sentence justification)\n\n"
-                "Format as clean markdown."
+                "You are a senior SOC (Security Operations Centre) analyst writing a formal "
+                "incident report for a client. Your audience is both the business owner "
+                "(plain English) and the IT team (technical detail).\n\n"
+                "Analyse the following threat data from a web application security monitoring "
+                "system and produce a professional incident report.\n\n"
+                f"Incident Data:\n{_json.dumps(summary, indent=2)}\n\n"
+                "Write the report using exactly these sections:\n\n"
+                "## Executive Summary\n"
+                "2-3 sentences. What happened, the business impact, and the bottom line.\n\n"
+                "## Attack Timeline\n"
+                "Chronological bullet points of the attack sequence from first event to last.\n\n"
+                "## Threat Analysis\n"
+                "One sub-section per threat. For each include:\n"
+                "- Threat type and MITRE ATT&CK technique (use the ID and name from the data)\n"
+                "- What the attacker did, in plain English\n"
+                "- Whether the attack succeeded\n"
+                "- Severity and potential business impact\n\n"
+                "## Indicators of Compromise (IOCs)\n"
+                "A markdown table with columns: Type | Value | Context\n"
+                "Include all attacker IPs, targeted usernames, and malicious payloads observed.\n\n"
+                "## Recommended Actions\n"
+                "Prioritised bullet points split into:\n"
+                "- **Immediate (0-24 hours)**\n"
+                "- **Short-term (1-7 days)**\n"
+                "- **Long-term hardening**\n\n"
+                "## Overall Risk Level\n"
+                "Critical / High / Medium / Low — one sentence justification.\n\n"
+                "Format as clean markdown. Use tables where appropriate."
             )
             ai_client = _anthropic.Anthropic(api_key=api_key)
             message   = ai_client.messages.create(
@@ -810,7 +882,8 @@ def simulate_attack():
     _simulate_attack_core()
     if "text/html" in request.accept_mimetypes:
         flash("⚡ Attack simulation complete — 8 events written. Now click Run Agent.", "info")
-        return redirect(url_for("reports"))
+        dest = "control_room" if session.get("role") == "analyst" else "reports"
+        return redirect(url_for(dest))
     return jsonify(status="ok", events_generated=8)
 
 
@@ -833,7 +906,8 @@ def run_agent():
             flash(f"⚠️ {result['message']}", "warning")
         else:
             flash("🤖 Agent ran but found no threats in the current events.", "info")
-        return redirect(url_for("reports"))
+        dest = "control_room" if session.get("role") == "analyst" else "reports"
+        return redirect(url_for(dest))
     return jsonify(**result)
 
 

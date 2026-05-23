@@ -132,6 +132,13 @@
 </head>
 <body>
 
+{% if session.get('is_demo') %}
+<div style="background:#7b3f00; color:#ffd580; padding:10px 32px; font-size:0.88em; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <span>&#x1F4CB; <strong>Demo account</strong> — this is a sample incident report. Real clients receive reports like this automatically when a threat is detected.</span>
+    <a href="mailto:jason.morgan@boundry.ai" style="background:#c0392b; color:white; text-decoration:none; padding:6px 16px; border-radius:4px; font-weight:bold; white-space:nowrap; font-size:0.9em;">Book a Consultation &rarr;</a>
+</div>
+{% endif %}
+
 {% if session.get('role') == 'analyst' %}
     <div class="topbar">
         <span class="topbar-brand">&#x1F6E1; Boundry.AI — Incident Report #{{ report_id }}</span>

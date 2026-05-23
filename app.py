@@ -10,6 +10,7 @@ from pathlib import Path
 
 import markdown
 import bcrypt
+from datetime import datetime, timedelta
 from functools import wraps
 from markupsafe import Markup
 from flask import Flask, render_template, request, redirect, url_for, session, abort, flash, jsonify
@@ -128,6 +129,155 @@ logging.basicConfig(
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
 security_log = logging.getLogger("security")
+
+
+_DEMO_REPORT_1 = """## Executive Summary
+A sustained brute force attack was detected against your admin account over a 33-minute window. The attacker made 47 failed login attempts before successfully authenticating. The account was compromised and immediate remediation was carried out. This incident is now closed.
+
+## Attack Timeline
+- **02:14 UTC** — First failed login attempt for account `admin` from IP `203.0.113.42`
+- **02:14–02:47 UTC** — 47 consecutive failed attempts at approximately 1.5 per minute
+- **02:51 UTC** — Successful login recorded for `admin` from the same IP
+- **02:52–03:04 UTC** — Post-compromise account activity detected
+- **03:10 UTC** — Account locked, password forcibly reset by analyst
+
+## Threat Analysis
+### Brute Force — T1110 (Credential Access)
+The attacker systematically tried common passwords against the `admin` account from a single IP address. The low attempt rate (~1.5/min) was designed to stay under lockout thresholds. The attack succeeded, indicating the account password did not meet complexity requirements.
+
+**Severity:** HIGH | **Attack succeeded:** Yes — account compromised at 02:51 UTC
+
+## Indicators of Compromise (IOCs)
+| Type | Value | Context |
+|------|-------|---------|
+| IP Address | 203.0.113.42 | Source of all 47 failed attempts |
+| Username | admin | Target account — compromised at 02:51 UTC |
+
+## Recommended Actions
+**Immediate (0–24 hours)**
+- Force a password reset on the `admin` account ✅ Done
+- Review all activity under `admin` since 02:51 UTC
+- Block IP `203.0.113.42` at your firewall
+
+**Short-term (1–7 days)**
+- Enable multi-factor authentication on all admin accounts
+- Implement account lockout after 5 failed attempts
+- Audit all user accounts for weak passwords
+
+**Long-term hardening**
+- Rename or disable the default `admin` account
+- Consider IP allowlisting for administrative access
+
+## Overall Risk Level
+**HIGH** — Attack succeeded but was contained within 19 minutes of compromise. Password reset completed. Monitor for further activity from this IP range.
+"""
+
+_DEMO_REPORT_2 = """## Executive Summary
+Three SQL injection attempts were detected via your application's search function within a nine-minute window. All three attacks were blocked by parameterised query defences. No data was accessed or modified. The attacker appears to have been probing systematically.
+
+## Attack Timeline
+- **14:22 UTC** — First injection attempt: `' OR '1'='1` via the search field
+- **14:23 UTC** — Second attempt: `' UNION SELECT username, password FROM users--`
+- **14:31 UTC** — Third attempt: `'; DROP TABLE users;--`
+- All three payloads returned no results — database was not affected
+
+## Threat Analysis
+### SQL Injection — T1190 (Exploit Public-Facing Application)
+The attacker submitted malicious SQL syntax through your public-facing search form, attempting to bypass authentication and extract credentials. The progression from a basic bypass (`OR '1'='1`) to a destructive payload (`DROP TABLE`) suggests a methodical, script-assisted attack. All attempts were neutralised by parameterised queries.
+
+**Severity:** HIGH | **Attack succeeded:** No — all attempts blocked
+
+## Indicators of Compromise (IOCs)
+| Type | Value | Context |
+|------|-------|---------|
+| IP Address | 198.51.100.17 | Source of all injection attempts |
+| Payload | `' OR '1'='1` | Authentication bypass attempt |
+| Payload | `' UNION SELECT username, password FROM users--` | Credential extraction |
+| Payload | `'; DROP TABLE users;--` | Destructive payload |
+
+## Recommended Actions
+**Immediate (0–24 hours)**
+- Block IP `198.51.100.17`
+- Review all requests from this IP across your full access log
+
+**Short-term (1–7 days)**
+- Confirm all database queries use parameterised statements
+- Implement a Web Application Firewall (WAF)
+- Add input validation and length limits to all form fields
+
+**Long-term hardening**
+- Schedule a full application security audit
+- Implement automated vulnerability scanning on a regular cadence
+
+## Overall Risk Level
+**HIGH** — Blocked successfully, but the attacker demonstrated intent and technical capability. Your defences held — ensure they are applied consistently across every route in your application.
+"""
+
+_DEMO_REPORT_3 = """## Executive Summary
+A credential stuffing attack targeted six user accounts simultaneously from a single IP address. One account was successfully compromised, confirming the attacker used a leaked credential database containing real passwords. Immediate investigation of the affected account is required.
+
+## Attack Timeline
+- **09:04–09:11 UTC** — Failed login attempts for: `admin`, `alice`, `bob`, `support`, `test`, `user` — all from IP `192.0.2.55`
+- **09:12 UTC** — Successful login recorded for account `alice` from the same IP
+- Each account was attempted only 1–2 times — consistent with credential stuffing, not brute force
+
+## Threat Analysis
+### Credential Stuffing — T1110.004 (Credential Access)
+Unlike brute force attacks that guess passwords repeatedly against one account, credential stuffing uses real username/password pairs obtained from previous data breaches. The fact that only 1–2 attempts were made per account — and one succeeded immediately — confirms the attacker had a list of compromised credentials. The password for `alice` was most likely obtained from a third-party breach database and had been reused on this application.
+
+**Severity:** CRITICAL | **Attack succeeded:** Yes — `alice` compromised at 09:12 UTC
+
+## Indicators of Compromise (IOCs)
+| Type | Value | Context |
+|------|-------|---------|
+| IP Address | 192.0.2.55 | Source of all stuffing attempts |
+| Username | alice | Account compromised — credentials found in breach data |
+| Username | admin, bob, support, test, user | Probed but not compromised |
+
+## Recommended Actions
+**Immediate (0–24 hours)**
+- Force a password reset on account `alice` immediately
+- Terminate all active sessions for `alice`
+- Review all activity under `alice` since 09:12 UTC for data access or changes
+- Block IP `192.0.2.55`
+
+**Short-term (1–7 days)**
+- Notify `alice` that their credentials appeared in a third-party breach
+- Force password resets for all accounts using common or previously breached passwords
+- Enable multi-factor authentication across all accounts
+
+**Long-term hardening**
+- Integrate with a breach monitoring service to detect exposed credentials
+- Implement anomalous login detection (new IP, unusual hours)
+- Add login alerts for users when access occurs from a new device or location
+
+## Overall Risk Level
+**CRITICAL** — A real user account was compromised using credentials stolen from a third-party breach. The attacker has authenticated access. Treat this as an active incident until the `alice` account is fully investigated and secured.
+"""
+
+
+def _seed_demo_reports(demo_user_id):
+    """Seed three realistic pre-written reports for the demo user on first run."""
+    existing = db_fetchone(
+        f"SELECT COUNT(*) AS cnt FROM reports WHERE owner_id = {PH}", (demo_user_id,)
+    )
+    if existing and existing["cnt"] > 0:
+        return  # already seeded
+
+    now = datetime.utcnow()
+    demo_data = [
+        # (days_ago, threat_count, event_count, status, content)
+        (7,  1, 49, "closed",    _DEMO_REPORT_1),
+        (3,  1,  5, "reviewing", _DEMO_REPORT_2),
+        (0,  1, 14, "new",       _DEMO_REPORT_3),
+    ]
+    for days_ago, tc, ec, status, content in demo_data:
+        ts = (now - timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M:%S")
+        db_run(
+            f"INSERT INTO reports (created_at, threat_count, event_count, content, status, owner_id)"
+            f" VALUES ({PH},{PH},{PH},{PH},{PH},{PH})",
+            (ts, tc, ec, content, status, demo_user_id),
+        )
 
 
 def init_db():
@@ -271,6 +421,21 @@ def init_db():
                 (username, hashed.decode()),
             )
 
+    # Demo user — created after seed so the cnt==0 check above is not skewed.
+    # Password is a random secret (never used — /demo bypasses auth entirely).
+    import secrets as _secrets
+    demo_user = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", ("demo",))
+    if not demo_user:
+        _demo_pw  = bcrypt.hashpw(_secrets.token_urlsafe(32).encode(), bcrypt.gensalt())
+        _demo_key = _secrets.token_urlsafe(32)
+        db_run(
+            f"INSERT INTO users (username, password, role, api_key) VALUES ({PH},{PH},'client',{PH})",
+            ("demo", _demo_pw.decode(), _demo_key),
+        )
+        demo_user = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", ("demo",))
+    if demo_user:
+        _seed_demo_reports(demo_user["id"])
+
 
 # --- Password validation helper ---
 def validate_password(password):
@@ -316,6 +481,26 @@ def analyst_required(f):
             abort(403)
         return f(*args, **kwargs)
     return decorated
+
+
+# --- ROUTE 0: Demo (public — no login required) ---
+@app.route("/demo")
+def demo():
+    """
+    Public demo login — auto-authenticates as the pre-seeded demo user.
+    No credentials required. Designed to be shared by Peta with prospects.
+    The demo user can only view their pre-seeded reports — no controls exposed.
+    """
+    user = db_fetchone(f"SELECT * FROM users WHERE username = {PH}", ("demo",))
+    if not user:
+        flash("Demo account is not available right now.", "warning")
+        return redirect(url_for("index"))
+    session.clear()
+    session["username"] = "demo"
+    session["user_id"]  = user["id"]
+    session["role"]     = "client"
+    session["is_demo"]  = True
+    return redirect(url_for("reports"))
 
 
 # --- ROUTE 0: Login / Logout (A01: Broken Access Control, A07: Auth Failures) ---
@@ -381,6 +566,9 @@ def logout():
 @login_required
 @limiter.limit("5 per minute")
 def change_password():
+    if session.get("is_demo"):
+        flash("Password changes are not available in the demo account.", "info")
+        return redirect(url_for("reports"))
     """
     Allow a logged-in user to change their own password.
 
@@ -1437,6 +1625,9 @@ def save_notes(report_id):
 @app.route("/integration")
 @login_required
 def integration():
+    if session.get("is_demo"):
+        flash("Integration setup is not available in the demo. Contact us to get started.", "info")
+        return redirect(url_for("reports"))
     """
     Shows the client their API key and copy-paste integration snippets.
     Clients use this to connect their real application to Boundry.AI.

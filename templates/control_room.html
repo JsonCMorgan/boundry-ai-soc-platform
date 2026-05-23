@@ -1050,6 +1050,15 @@
                     <div class="client-avatar">{{ c.username[0] }}</div>
                     <span class="client-name">{{ c.username }}</span>
                     <span class="role-pill role-{{ c.role }}">{{ c.role }}</span>
+                    {% if c.role == 'client' %}
+                    <a href="/analyst/client/{{ c.id }}/integration"
+                       style="margin-left:auto; font-size:0.72em; color:#5a8ae0; text-decoration:none;
+                              background:#1a2a3a; border:1px solid #2a4a7a; padding:3px 9px;
+                              border-radius:3px; white-space:nowrap;"
+                       title="View integration code for {{ c.username }}">
+                        &#x1F527; Integration
+                    </a>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

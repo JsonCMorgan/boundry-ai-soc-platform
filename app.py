@@ -1919,30 +1919,52 @@ def save_notes(report_id):
 @app.route("/integration")
 @login_required
 def integration():
-    if session.get("is_demo"):
-        flash("Integration setup is not available in the demo. Contact us to get started.", "info")
-        return redirect(url_for("reports"))
     """
-    Shows the client their API key and copy-paste integration snippets.
-    Clients use this to connect their real application to Boundry.AI.
+    Clients are redirected — Jason handles integration on their behalf.
+    Analysts are redirected to the control room to pick a client.
     """
-    user = db_fetchone(
-        f"SELECT id, username, api_key FROM users WHERE id = {PH}",
-        (session["user_id"],),
+    if session.get("role") == "analyst":
+        flash("Select a client from the control room to manage their integration.", "info")
+        return redirect(url_for("control_room"))
+    # Client or demo — integration is managed by the analyst
+    flash(
+        "Your analyst sets up and manages your integration. "
+        "Contact jason.morgan@boundry.ai to get started.",
+        "info",
     )
-    if not user:
+    return redirect(url_for("reports"))
+
+
+@app.route("/analyst/client/<int:client_id>/integration")
+@analyst_required
+def analyst_integration(client_id):
+    """
+    Analyst-only: view and copy integration code pre-filled with a specific
+    client's API key. Jason uses this to install monitoring on a client's app.
+    """
+    client = db_fetchone(
+        f"SELECT id, username, api_key FROM users WHERE id = {PH} AND role = 'client'",
+        (client_id,),
+    )
+    if not client:
         abort(404)
 
-    # Generate a key if somehow missing (shouldn't happen post-migration)
-    if not user["api_key"]:
+    # Generate a key if somehow missing
+    if not client["api_key"]:
         import secrets as _secrets
         new_key = _secrets.token_urlsafe(32)
-        db_run(f"UPDATE users SET api_key = {PH} WHERE id = {PH}", (new_key, user["id"]))
-        user = dict(user)
-        user["api_key"] = new_key
+        db_run(f"UPDATE users SET api_key = {PH} WHERE id = {PH}", (new_key, client["id"]))
+        client = dict(client)
+        client["api_key"] = new_key
 
     ingest_url = request.url_root.rstrip("/") + "/api/ingest"
-    return render_template("integration.html", api_key=user["api_key"], ingest_url=ingest_url)
+    return render_template(
+        "integration.html",
+        api_key=client["api_key"],
+        ingest_url=ingest_url,
+        client_username=client["username"],
+        analyst_mode=True,
+    )
 
 
 # --- ROUTE 4f: Event Ingest API ---

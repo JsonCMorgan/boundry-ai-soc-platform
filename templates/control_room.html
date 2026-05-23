@@ -1000,7 +1000,9 @@
             {% if pending_count > 0 %}
                 <span class="pending-badge">&#x26A0; {{ pending_count }} unprocessed event(s) in queue</span>
             {% endif %}
-            <form method="POST" action="/simulate-attack" style="display:inline; display:flex; align-items:center; gap:8px;">
+
+            <!-- Single-scenario simulation -->
+            <form method="POST" action="/simulate-attack" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <select name="difficulty" style="background:#20243a; color:#aaa; border:1px solid #3a3d5a; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer;">
                     <option value="easy">Easy — obvious single attack</option>
                     <option value="medium" selected>Medium — realistic scenario</option>
@@ -1008,6 +1010,18 @@
                 </select>
                 <button type="submit" class="btn-simulate">&#x26A1; Simulate Attack</button>
             </form>
+
+            <!-- APT chain simulation -->
+            <form method="POST" action="/simulate-attack" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed #2a2d3a;">
+                <span style="font-size:0.75em; color:#555; text-transform:uppercase; letter-spacing:0.07em;">&#x1F517; APT Chain:</span>
+                <select name="chain" style="background:#1a1d27; color:#c0a0ff; border:1px solid #4a3d6a; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer; flex:1; min-width:260px;">
+                    <option value="recon_to_takeover">Recon &rarr; Stuffing &rarr; Takeover &rarr; Priv Esc</option>
+                    <option value="web_exploit_chain">Brute Force &rarr; Login &rarr; XSS &rarr; SQLi &rarr; Traversal</option>
+                    <option value="stealthy_apt">Password Spray &rarr; Suspicious Login &rarr; XSS &rarr; Priv Esc</option>
+                </select>
+                <button type="submit" class="btn-simulate" style="background:#4a2a7a; border-color:#6a3a9a; color:#d0a0ff;">&#x1F517; Run Chain</button>
+            </form>
+
             <form method="POST" action="/run-agent" style="display:inline">
                 <button type="submit" class="btn-run">&#x1F916; Run Agent</button>
             </form>

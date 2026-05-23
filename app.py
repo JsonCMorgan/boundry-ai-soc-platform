@@ -1058,13 +1058,18 @@ def _fetch_breach_intel():
     return saved
 
 
-def _simulate_attack_core(owner_id=None, difficulty="medium"):
+def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None):
     """
     Generate a randomised attack scenario and write events to the DB.
     difficulty: "easy" | "medium" | "hard"
     - easy:   single obvious attack type, no false positives
     - medium: realistic multi-event scenarios, varied techniques
     - hard:   subtle patterns, false positives mixed in, multi-vector
+
+    chain: named multi-stage APT scenario (overrides difficulty if set)
+    - "recon_to_takeover"  Enumeration → Stuffing → Account Takeover → Priv Esc
+    - "web_exploit_chain"  Brute Force → Login → SQL Injection → Traversal
+    - "stealthy_apt"       Password Spray → Suspicious Login → XSS → Priv Esc
 
     owner_id tags events to a specific client (None = cron/system).
     Returns the number of events generated.
@@ -1174,6 +1179,76 @@ def _simulate_attack_core(owner_id=None, difficulty="medium"):
         # Legitimate search with SQL-like word (e.g. "SELECT all items")
         insert("SEARCH", legit, fp_ip, "SELECT all items from last month")
 
+    # ── APT CHAIN SCENARIOS ───────────────────────────────────────────────────
+    # Each chain fires events in a logical kill-chain order so the AI report
+    # can identify the full attack progression, not just isolated incidents.
+
+    def chain_recon_to_takeover():
+        """Reconnaissance → Credential Access → Account Takeover → Persistence
+        T1589.001 → T1110.004 → T1078 → T1548
+        The classic APT entry pattern: find valid usernames, use a breach list,
+        get in, then immediately try to escalate privileges."""
+        # Phase 1 — Reconnaissance: probe for valid usernames
+        probed = random.sample(USERNAMES + LEGIT_USERS, random.randint(6, 8))
+        for u in probed:
+            insert("ACCOUNT_ENUM", u, ip)
+        # Phase 2 — Credential stuffing using discovered usernames
+        for v in probed[:random.randint(4, 6)]:
+            insert("LOGIN_FAILED", v, ip)
+        # Phase 3 — One account was in the breach database
+        compromised = random.choice(LEGIT_USERS)
+        insert("LOGIN_SUCCESS", compromised, ip)
+        # Phase 4 — Immediately attempt privilege escalation
+        for route in random.sample(PRIV_ESC_ROUTES, random.randint(3, 4)):
+            insert("PRIV_ESC_ATTEMPT", compromised, ip, route)
+
+    def chain_web_exploit_chain():
+        """Initial Access → Execution → Discovery → Collection
+        T1110 → T1078 → T1059.007 → T1190 → T1083
+        Attacker forces their way in via brute force, then methodically
+        probes for data extraction vectors."""
+        # Phase 1 — Brute force the login
+        for _ in range(random.randint(7, 12)):
+            insert("LOGIN_FAILED", target, ip)
+        # Phase 2 — Break in
+        insert("LOGIN_SUCCESS", target, ip)
+        # Phase 3 — XSS probing (trying to plant a persistent payload)
+        for p in random.sample(XSS_PAYLOADS, random.randint(2, 3)):
+            insert("XSS_ATTEMPT", target, ip, p)
+        # Phase 4 — SQL injection (trying to extract the database)
+        for p in random.sample(SQL_PAYLOADS, random.randint(3, 4)):
+            insert("SEARCH", target, ip, p)
+        # Phase 5 — Directory traversal (hunting for config files)
+        for path in random.sample(TRAVERSAL_PATHS, random.randint(2, 4)):
+            insert("DIRECTORY_TRAVERSAL", target, ip, path)
+
+    def chain_stealthy_apt():
+        """Credential Access → Initial Access → Execution → Privilege Escalation
+        T1110.003 → T1078 → T1059.007 → T1548
+        Low-and-slow attack designed to evade detection. Password spray keeps
+        failure counts per account below lockout thresholds. Once in, the
+        attacker moves carefully — probing before striking."""
+        # Phase 1 — Slow password spray (1 attempt per account, looks like typos)
+        password = random.choice(SPRAY_PASSWORDS)
+        spray_targets = random.sample(USERNAMES + LEGIT_USERS, random.randint(6, 9))
+        for v in spray_targets:
+            insert("LOGIN_FAILED", v, ip, f"sprayed_password={password}")
+        # Phase 2 — One account had that exact password (it was in a previous breach)
+        entry_account = random.choice(LEGIT_USERS)
+        insert("LOGIN_SUCCESS", entry_account, ip, "new_ip=true unusual_hour=true")
+        # Phase 3 — Quiet reconnaissance: XSS to steal session cookies
+        for p in random.sample(XSS_PAYLOADS, 2):
+            insert("XSS_ATTEMPT", entry_account, ip, p)
+        # Phase 4 — Escalation attempt once the lay of the land is known
+        for route in random.sample(PRIV_ESC_ROUTES, random.randint(4, 6)):
+            insert("PRIV_ESC_ATTEMPT", entry_account, ip, route)
+
+    APT_CHAINS = {
+        "recon_to_takeover": chain_recon_to_takeover,
+        "web_exploit_chain": chain_web_exploit_chain,
+        "stealthy_apt":      chain_stealthy_apt,
+    }
+
     # ── DIFFICULTY POOLS ─────────────────────────────────────────────────────
     easy_scenarios = [
         scenario_brute_force,
@@ -1195,7 +1270,9 @@ def _simulate_attack_core(owner_id=None, difficulty="medium"):
         scenario_credential_stuffing,
     ]
 
-    if difficulty == "easy":
+    if chain and chain in APT_CHAINS:
+        APT_CHAINS[chain]()
+    elif difficulty == "easy":
         chosen = random.choice(easy_scenarios)
         chosen()
     elif difficulty == "hard":
@@ -1520,6 +1597,14 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                 "2-3 sentences. What happened, the business impact, and the bottom line.\n\n"
                 "## Attack Timeline\n"
                 "Chronological bullet points of the attack sequence from first event to last.\n\n"
+                "## Kill Chain Analysis\n"
+                "IMPORTANT: Before writing individual threat sections, first determine whether "
+                "the threats form a connected multi-stage attack chain. If two or more threats "
+                "share the same attacker IP and follow a logical progression (e.g. enumeration → "
+                "credential access → account takeover → privilege escalation), identify this as "
+                "an APT (Advanced Persistent Threat) campaign and describe the full kill chain in "
+                "one paragraph. State each phase, the MITRE technique, and how each phase enabled "
+                "the next. If the threats are unrelated incidents, state that clearly and skip this section.\n\n"
                 "## Threat Analysis\n"
                 "One sub-section per threat. For each include:\n"
                 "- Threat type and MITRE ATT&CK technique (use the ID and name from the data)\n"
@@ -1803,23 +1888,35 @@ def api_ingest():
 
 
 # --- ROUTE 5: Attack Simulation (browser) ---
+VALID_CHAINS = {
+    "recon_to_takeover": "Recon → Credential Stuffing → Account Takeover → Priv Esc",
+    "web_exploit_chain": "Brute Force → Login → XSS → SQL Injection → Traversal",
+    "stealthy_apt":      "Password Spray → Suspicious Login → XSS → Priv Esc",
+}
+
 @app.route("/simulate-attack", methods=["POST"])
 @login_required
 def simulate_attack():
     """Browser-facing wrapper around _simulate_attack_core()."""
+    chain = request.form.get("chain", "").strip()
     difficulty = request.form.get("difficulty", "medium")
     if difficulty not in ("easy", "medium", "hard"):
         difficulty = "medium"
-    count = _simulate_attack_core(owner_id=session.get("user_id"), difficulty=difficulty)
+
+    if chain and chain in VALID_CHAINS:
+        count = _simulate_attack_core(owner_id=session.get("user_id"), chain=chain)
+        label = VALID_CHAINS[chain]
+        msg   = f"🔗 APT Chain queued: {label} — {count} events. Now click Run Agent."
+    else:
+        chain = None
+        count = _simulate_attack_core(owner_id=session.get("user_id"), difficulty=difficulty)
+        msg   = f"⚡ Attack simulation complete ({difficulty.upper()}) — {count} event(s) queued. Now click Run Agent."
+
     if "text/html" in request.accept_mimetypes:
-        flash(
-            f"⚡ Attack simulation complete ({difficulty.upper()}) — "
-            f"{count} event(s) queued. Now click Run Agent.",
-            "info",
-        )
+        flash(msg, "info")
         dest = "control_room" if session.get("role") == "analyst" else "reports"
         return redirect(url_for(dest))
-    return jsonify(status="ok", events_generated=count, difficulty=difficulty)
+    return jsonify(status="ok", events_generated=count, chain=chain, difficulty=difficulty)
 
 
 # --- ROUTE 6: Agent Trigger (browser) ---

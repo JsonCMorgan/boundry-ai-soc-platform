@@ -168,6 +168,29 @@ The attacker systematically tried common passwords against the `admin` account f
 - Rename or disable the default `admin` account
 - Consider IP allowlisting for administrative access
 
+## Remediation Timeline
+| Action | Estimated Time | Who Does It |
+|--------|---------------|-------------|
+| Password reset on `admin` | 30 minutes | Analyst |
+| Block attacker IP at firewall | 15 minutes | Analyst / Hosting provider |
+| Review post-compromise activity logs | 2–4 hours | Analyst |
+| Enable multi-factor authentication | 2–3 hours | Developer |
+| Implement account lockout policy | 1–2 hours | Developer |
+| Audit all user accounts for weak passwords | Half a day | Analyst + Business Owner |
+| Rename/disable default `admin` account | 1 hour | Developer |
+
+**Total estimated time to be fully protected:** 1–2 business days.
+
+## What to Tell Your Customers
+**Your customers / clients:**
+No customer data was accessed during this incident. The compromised account was an internal administrative account only. You are **not required** to notify your customers about this event, and we recommend you do not — doing so may cause unnecessary concern about an incident that has been fully contained.
+
+**Your staff:**
+> *"We identified and responded to a security incident affecting one of our internal admin accounts. The issue has been fully resolved and our systems are secure. As a precaution, please ensure your account password is strong and unique — your IT team will be sending guidance shortly. If you notice anything unusual with your account, contact us immediately."*
+
+**Legal obligations:**
+Because no customer or employee personal data was accessed, this incident is unlikely to trigger mandatory breach notification requirements under GDPR or similar regulations. However, we recommend you log this incident internally and confirm with your legal adviser if you are in a regulated industry (finance, healthcare, legal). We are not providing legal advice — this is guidance only.
+
 ## Overall Risk Level
 **HIGH** — Attack succeeded but was contained within 19 minutes of compromise. Password reset completed. Monitor for further activity from this IP range.
 """
@@ -208,6 +231,28 @@ The attacker submitted malicious SQL syntax through your public-facing search fo
 **Long-term hardening**
 - Schedule a full application security audit
 - Implement automated vulnerability scanning on a regular cadence
+
+## Remediation Timeline
+| Action | Estimated Time | Who Does It |
+|--------|---------------|-------------|
+| Block IP `198.51.100.17` | 15 minutes | Analyst / Hosting provider |
+| Review full access log for this IP | 1–2 hours | Analyst |
+| Confirm parameterised queries on all routes | 2–4 hours | Developer |
+| Deploy a Web Application Firewall (WAF) | Half a day | Developer / Hosting provider |
+| Add input validation and field length limits | 2–4 hours | Developer |
+| Schedule full application security audit | 1 week to arrange | Business Owner + Analyst |
+
+**Total estimated time to be fully protected:** 1–2 business days.
+
+## What to Tell Your Customers
+**Your customers / clients:**
+No customer data was accessed or exposed during this incident. All three injection attempts were blocked automatically by your application's defences. You are **not required** to notify your customers, and we recommend you do not — the attack did not succeed and there is no impact to report.
+
+**Your staff:**
+> *"Our security monitoring detected and blocked an attempted attack on our application this week. No data was accessed or compromised. Our analyst is reviewing the incident and strengthening our defences. No action is required from you — we will keep you updated."*
+
+**Legal obligations:**
+Because the attacks were fully blocked and no data was accessed, this incident does not trigger mandatory breach notification requirements under GDPR or similar regulations. We recommend logging this incident internally for your records. If you are in a regulated industry (finance, healthcare, legal), confirm with your legal adviser that no additional reporting is required. This is guidance only — not legal advice.
 
 ## Overall Risk Level
 **HIGH** — Blocked successfully, but the attacker demonstrated intent and technical capability. Your defences held — ensure they are applied consistently across every route in your application.
@@ -251,26 +296,66 @@ Unlike brute force attacks that guess passwords repeatedly against one account, 
 - Implement anomalous login detection (new IP, unusual hours)
 - Add login alerts for users when access occurs from a new device or location
 
+## Remediation Timeline
+| Action | Estimated Time | Who Does It |
+|--------|---------------|-------------|
+| Force password reset on `alice` | 15 minutes | Analyst |
+| Terminate all active sessions for `alice` | 15 minutes | Analyst / Developer |
+| Block IP `192.0.2.55` | 15 minutes | Analyst / Hosting provider |
+| Review all `alice` activity since 09:12 UTC | 2–4 hours | Analyst |
+| Notify `alice` that credentials were breached | 30 minutes | Business Owner (with Analyst support) |
+| Audit all accounts for reused/weak passwords | Half a day | Analyst + Business Owner |
+| Enable multi-factor authentication | 2–3 hours | Developer |
+| Integrate breach credential monitoring | 1–2 days | Developer |
+| Implement anomalous login detection | 2–3 days | Developer |
+
+**Total estimated time to be fully protected:** 2–4 business days. The first three actions should be completed within the hour.
+
+## What to Tell Your Customers
+**Your customers / clients:**
+If `alice` is a customer account, or if `alice` had access to customer data, **you may be required to notify affected customers under GDPR or equivalent data protection law.** We recommend treating this as a potential data breach until your review of `alice`'s activity confirms otherwise.
+
+If customer data was accessed, your notification should include: what data may have been seen, when the incident occurred, what steps you have taken, and who they can contact with questions. Your analyst will provide a written summary you can use as the basis for this communication.
+
+**Your staff:**
+> *"We have identified a security incident involving one of our user accounts. Our security analyst has contained the threat and is investigating. If you use the same password on this platform as on any other service, please change it immediately. Multi-factor authentication is being enabled across all accounts as an additional precaution. If you notice anything unusual, contact us straight away."*
+
+**Legal obligations:**
+This incident may trigger mandatory breach notification requirements. Under GDPR, you have **72 hours** from becoming aware of a breach to notify your supervisory authority if personal data has been affected. If `alice`'s account contained personal data belonging to others, affected individuals must also be notified without undue delay. We strongly recommend contacting your legal adviser today. We are not providing legal advice — this is guidance only, and timing is critical.
+
 ## Overall Risk Level
 **CRITICAL** — A real user account was compromised using credentials stolen from a third-party breach. The attacker has authenticated access. Treat this as an active incident until the `alice` account is fully investigated and secured.
 """
 
 
 def _seed_demo_reports(demo_user_id):
-    """Seed three realistic pre-written reports for the demo user on first run."""
-    existing = db_fetchone(
-        f"SELECT COUNT(*) AS cnt FROM reports WHERE owner_id = {PH}", (demo_user_id,)
-    )
-    if existing and existing["cnt"] > 0:
-        return  # already seeded
-
-    now = datetime.utcnow()
+    """Seed three realistic pre-written reports for the demo user.
+    Always refreshes content so updated report sections appear after redeploy.
+    """
     demo_data = [
         # (days_ago, threat_count, event_count, status, content)
         (7,  1, 49, "closed",    _DEMO_REPORT_1),
         (3,  1,  5, "reviewing", _DEMO_REPORT_2),
         (0,  1, 14, "new",       _DEMO_REPORT_3),
     ]
+
+    existing = db_fetchall(
+        f"SELECT id FROM reports WHERE owner_id = {PH} ORDER BY created_at ASC",
+        (demo_user_id,),
+    )
+
+    if existing and len(existing) == len(demo_data):
+        # Reports already exist — refresh content so new sections appear after redeploy
+        for row, (_, tc, ec, status, content) in zip(existing, demo_data):
+            db_run(
+                f"UPDATE reports SET content = {PH} WHERE id = {PH}",
+                (content, row["id"]),
+            )
+        return
+
+    # No reports yet — delete any partial rows and insert fresh
+    db_run(f"DELETE FROM reports WHERE owner_id = {PH}", (demo_user_id,))
+    now = datetime.utcnow()
     for days_ago, tc, ec, status, content in demo_data:
         ts = (now - timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M:%S")
         db_run(
@@ -1449,6 +1534,19 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                 "- **Immediate (0-24 hours)**\n"
                 "- **Short-term (1-7 days)**\n"
                 "- **Long-term hardening**\n\n"
+                "## Remediation Timeline\n"
+                "A realistic time estimate for each recommended action. "
+                "Be honest — a business owner needs to know if this is a 30-minute fix or a two-week project. "
+                "Format as a table with columns: Action | Estimated Time | Who Does It (Analyst / Developer / Business Owner)\n\n"
+                "## What to Tell Your Customers\n"
+                "This section is critical. Provide ready-to-use plain-English language for three audiences:\n"
+                "- **Your customers / clients** — if any of their data may have been affected, what do you say? "
+                "If no customer data was involved, state that clearly so the business owner knows they do not need to communicate externally.\n"
+                "- **Your staff** — what do employees need to know and watch out for?\n"
+                "- **Legal obligations** — does this incident trigger any notification requirements "
+                "(e.g., GDPR, data protection authority, affected individuals)? "
+                "Be direct about whether they likely need to notify anyone and within what timeframe. "
+                "Note that you are not providing legal advice — recommend they confirm with a solicitor if required.\n\n"
                 "## Overall Risk Level\n"
                 "Critical / High / Medium / Low — one sentence justification.\n\n"
                 "Format as clean markdown. Use tables where appropriate."

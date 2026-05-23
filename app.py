@@ -1291,6 +1291,68 @@ def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None):
     )["cnt"]
 
 
+def _lookup_ip_reputation(ip):
+    """
+    Query AbuseIPDB for a single IP address.
+    Returns a dict with reputation data, or None if the key is not configured
+    or the lookup fails.
+
+    Free tier: 1,000 checks/day. Simulated TEST-NET IPs (203.0.113.x etc.)
+    will return 0 reports — that is expected and correct for RFC 5737 addresses.
+    Real attacker IPs from the /api/ingest route will return live data.
+    """
+    api_key = os.environ.get("ABUSEIPDB_API_KEY", "").strip()
+    if not api_key:
+        return None
+    try:
+        import requests as _req
+        resp = _req.get(
+            "https://api.abuseipdb.com/api/v2/check",
+            headers={"Key": api_key, "Accept": "application/json"},
+            params={"ipAddress": ip, "maxAgeInDays": 90},
+            timeout=5,
+        )
+        if resp.status_code == 200:
+            d = resp.json().get("data", {})
+            return {
+                "ip":                    d.get("ipAddress", ip),
+                "abuse_score":           d.get("abuseConfidenceScore", 0),   # 0–100
+                "total_reports":         d.get("totalReports", 0),
+                "country":               d.get("countryCode", "??"),
+                "isp":                   d.get("isp", "Unknown"),
+                "usage_type":            d.get("usageType", "Unknown"),
+                "last_reported":         d.get("lastReportedAt", None),
+                "is_tor":                d.get("isTor", False),
+                "is_public":             d.get("isPublic", True),
+            }
+    except Exception:
+        pass
+    return None
+
+
+def _enrich_threats_with_ip_reputation(threats):
+    """
+    For each unique attacker IP in the threat list, fetch AbuseIPDB reputation
+    and attach it to every threat that shares that IP.
+    Deduplicates API calls — each IP is looked up at most once.
+    """
+    unique_ips = {t.get("ip") for t in threats if t.get("ip")}
+    reputation_cache = {}
+    for ip in unique_ips:
+        rep = _lookup_ip_reputation(ip)
+        if rep:
+            reputation_cache[ip] = rep
+
+    if not reputation_cache:
+        return threats  # No API key or all lookups failed — return unmodified
+
+    for threat in threats:
+        ip = threat.get("ip")
+        if ip and ip in reputation_cache:
+            threat["ip_reputation"] = reputation_cache[ip]
+    return threats
+
+
 def _run_agent_core(triggered_by="unknown", owner_id=None):
     """
     Read events, detect threats, generate and save a report.
@@ -1568,6 +1630,9 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
     threat_count = len(threats)
     event_count  = sum(len(v) for v in events.values())
 
+    # Enrich attacker IPs with AbuseIPDB reputation data
+    threats = _enrich_threats_with_ip_reputation(threats)
+
     # Generate report content
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if api_key and threat_count > 0:
@@ -1613,7 +1678,11 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                 "- Severity and potential business impact\n\n"
                 "## Indicators of Compromise (IOCs)\n"
                 "A markdown table with columns: Type | Value | Context\n"
-                "Include all attacker IPs, targeted usernames, and malicious payloads observed.\n\n"
+                "Include all attacker IPs, targeted usernames, and malicious payloads observed.\n"
+                "For any IP that has an ip_reputation field in the threat data, add a second row "
+                "below it showing: Abuse Score (0-100), country, ISP, total prior reports, and "
+                "whether it is a Tor exit node. If abuse_score >= 50, flag it as KNOWN MALICIOUS. "
+                "If total_reports == 0 and it is a documentation/TEST-NET IP, note that.\n\n"
                 "## Recommended Actions\n"
                 "Prioritised bullet points split into:\n"
                 "- **Immediate (0-24 hours)**\n"

@@ -29,5 +29,8 @@ anthropic==0.49.0
 # RSS feed parsing (breach intel ticker)
 feedparser==6.0.11
 
+# IP reputation lookups (AbuseIPDB)
+requests==2.33.1
+
 # Production server
 gunicorn==26.0.0

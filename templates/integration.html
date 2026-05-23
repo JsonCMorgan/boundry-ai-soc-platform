@@ -2,317 +2,563 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Boundry.AI — Integration</title>
+    <title>Boundry.AI — Integration Setup</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; color: #222; }
-        nav { margin-bottom: 30px; }
-        nav a { color: #c0392b; text-decoration: none; margin-right: 16px; }
-        h1 { color: #c0392b; }
-        .subtitle { color: #555; margin-top: -10px; margin-bottom: 32px; }
-        .section { margin-bottom: 40px; }
-        .section h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 24px; color: #222; background: #f7f8fa; }
 
-        /* API key box */
+        /* ── Nav ── */
+        .topbar {
+            background: #fff; border: 1px solid #e8e8e8; border-radius: 6px;
+            padding: 12px 20px; display: flex; align-items: center;
+            justify-content: space-between; margin-bottom: 28px;
+        }
+        .topbar-brand { font-weight: bold; color: #c0392b; font-size: 1em; text-decoration: none; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 18px; font-size: 0.88em; }
+        .topbar nav a:hover { color: #c0392b; }
+
+        h1 { color: #c0392b; margin: 0 0 4px; font-size: 1.4em; }
+        .subtitle { color: #777; font-size: 0.9em; margin: 0 0 24px; }
+
+        .section { background: #fff; border: 1px solid #e8e8e8; border-radius: 6px; padding: 22px 24px; margin-bottom: 18px; }
+        .section h2 { font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.07em; color: #c0392b; border-bottom: 1px solid #f0e0e0; padding-bottom: 8px; margin: 0 0 16px; }
+
+        /* ── Info box ── */
+        .info-box {
+            background: #f0f6ff; border: 1px solid #aac8f5; border-left: 4px solid #2980b9;
+            color: #1a5276; padding: 10px 16px; border-radius: 4px; font-size: 0.88em;
+            margin-bottom: 18px; line-height: 1.5;
+        }
+
+        /* ── API key ── */
         .key-box {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-            border-left: 4px solid #c0392b;
-            border-radius: 4px;
-            padding: 14px 16px;
+            display: flex; align-items: center; gap: 12px;
+            background: #f9f9f9; border: 1px solid #ddd; border-left: 4px solid #c0392b;
+            border-radius: 4px; padding: 12px 16px;
         }
-        .key-value {
-            font-family: monospace;
-            font-size: 0.95em;
-            color: #333;
-            flex: 1;
-            word-break: break-all;
-        }
+        .key-value { font-family: monospace; font-size: 0.9em; color: #333; flex: 1; word-break: break-all; }
         .btn-copy {
-            background: #c0392b;
-            color: white;
-            border: none;
-            padding: 7px 16px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            cursor: pointer;
-            white-space: nowrap;
-            font-weight: bold;
+            background: #c0392b; color: white; border: none; padding: 7px 16px;
+            border-radius: 4px; font-size: 0.82em; cursor: pointer; white-space: nowrap; font-weight: bold;
         }
         .btn-copy:hover { background: #a93226; }
-        .key-warning {
-            font-size: 0.8em;
-            color: #888;
-            margin-top: 8px;
-        }
+        .key-warning { font-size: 0.78em; color: #999; margin-top: 8px; }
 
-        /* Code blocks */
-        .code-block {
-            background: #1e1e2e;
-            color: #cdd6f4;
-            border-radius: 6px;
-            padding: 18px 20px;
-            font-family: monospace;
-            font-size: 0.88em;
-            line-height: 1.6;
-            overflow-x: auto;
-            position: relative;
-            margin-top: 12px;
-        }
-        .code-block .comment { color: #6c7086; }
-        .code-block .string  { color: #a6e3a1; }
-        .code-block .keyword { color: #cba6f7; }
-        .code-block .fn      { color: #89b4fa; }
-        .code-block .var     { color: #f9e2af; }
-        .btn-copy-code {
-            position: absolute;
-            top: 10px; right: 10px;
-            background: #313244;
-            color: #cdd6f4;
-            border: 1px solid #45475a;
-            padding: 4px 10px;
-            border-radius: 3px;
-            font-size: 0.75em;
-            cursor: pointer;
-        }
-        .btn-copy-code:hover { background: #45475a; }
+        /* ── Event types table ── */
+        .event-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        .event-table th { background: #c0392b; color: white; padding: 8px 12px; text-align: left; }
+        .event-table td { padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+        .event-table tr:last-child td { border-bottom: none; }
+        .event-table code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 0.95em; }
+        .mitre-tag { font-size: 0.75em; color: #888; }
 
-        /* Event table */
-        .event-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        .event-table th { background: #c0392b; color: white; padding: 8px 12px; text-align: left; font-size: 0.85em; }
-        .event-table td { padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 0.88em; }
-        .event-table code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+        /* ── What to monitor checklist ── */
+        .checklist { list-style: none; padding: 0; margin: 0; }
+        .checklist li {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.88em;
+        }
+        .checklist li:last-child { border-bottom: none; }
+        .checklist .tick { color: #c0392b; font-weight: bold; flex-shrink: 0; margin-top: 1px; }
+        .checklist .route { font-family: monospace; font-size: 0.9em; color: #333; font-weight: bold; }
+        .checklist .desc { color: #666; font-size: 0.85em; margin-top: 2px; }
 
-        /* Tabs */
-        .tabs { display: flex; gap: 4px; margin-bottom: 0; }
+        /* ── Tabs ── */
+        .tabs { display: flex; gap: 4px; margin-bottom: 0; flex-wrap: wrap; }
         .tab-btn {
             background: #eee; border: 1px solid #ddd; border-bottom: none;
-            padding: 7px 18px; border-radius: 4px 4px 0 0;
-            font-size: 0.85em; cursor: pointer; color: #666;
+            padding: 7px 16px; border-radius: 4px 4px 0 0;
+            font-size: 0.82em; cursor: pointer; color: #666;
         }
         .tab-btn.active { background: #1e1e2e; color: #cdd6f4; border-color: #1e1e2e; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        .info-box {
-            background: #f0f6ff; border: 1px solid #aac8f5; border-left: 4px solid #2980b9;
-            color: #1a5276; padding: 10px 16px; border-radius: 4px; font-size: 0.88em;
-            margin-bottom: 20px;
+        /* ── Code blocks ── */
+        .code-block {
+            background: #1e1e2e; color: #cdd6f4; border-radius: 0 6px 6px 6px;
+            padding: 18px 20px; font-family: monospace; font-size: 0.85em;
+            line-height: 1.65; overflow-x: auto; position: relative; margin-bottom: 0;
+            white-space: pre;
         }
+        .code-block .c  { color: #6c7086; }  /* comment */
+        .code-block .s  { color: #a6e3a1; }  /* string */
+        .code-block .k  { color: #cba6f7; }  /* keyword */
+        .code-block .f  { color: #89b4fa; }  /* function */
+        .code-block .v  { color: #f9e2af; }  /* variable */
+        .code-block .n  { color: #fab387; }  /* number */
+        .btn-copy-code {
+            position: absolute; top: 10px; right: 10px;
+            background: #313244; color: #cdd6f4; border: 1px solid #45475a;
+            padding: 4px 10px; border-radius: 3px; font-size: 0.75em; cursor: pointer;
+        }
+        .btn-copy-code:hover { background: #45475a; }
+
+        /* ── Test section ── */
+        .test-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        #test-result { font-size: 0.88em; }
+
+        footer { text-align: center; font-size: 0.78em; color: #bbb; margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
+
+<div class="topbar">
+    <a class="topbar-brand" href="/">Boundry.AI</a>
     <nav>
         <a href="/reports">← Reports</a>
         <a href="/change-password">Change Password</a>
         <a href="/logout">Logout</a>
     </nav>
+</div>
 
-    <h1>Integration Setup</h1>
-    <p class="subtitle">Connect your application to Boundry.AI in minutes.</p>
+<h1>Integration Setup</h1>
+<p class="subtitle">Connect your application to Boundry.AI in under an hour.</p>
 
-    <div class="info-box">
-        &#x1F4CB; <strong>How it works:</strong> Add a few lines to your app to send security events to Boundry.AI.
-        The agent analyses them automatically and generates incident reports on your dashboard.
+<div class="info-box">
+    &#x1F4CB; <strong>How it works:</strong> Add a small logging function to your app.
+    Every time a security-relevant event happens (a login attempt, a search, a failed auth),
+    your app sends a single POST request to Boundry.AI. The agent analyses those events and
+    generates incident reports automatically — you don't need to change anything else.
+</div>
+
+<!-- ── Step 1: API Key ── -->
+<div class="section">
+    <h2>Step 1 — Your API Key</h2>
+    <div class="key-box">
+        <span class="key-value" id="api-key-value">{{ api_key }}</span>
+        <button class="btn-copy" onclick="copyKey()">Copy</button>
     </div>
+    <p class="key-warning">&#x26A0; Keep this private. Anyone with this key can send events to your account. Store it in an environment variable — never commit it to source control.</p>
+</div>
 
-    <!-- API Key -->
-    <div class="section">
-        <h2>Your API Key</h2>
-        <div class="key-box">
-            <span class="key-value" id="api-key-value">{{ api_key }}</span>
-            <button class="btn-copy" onclick="copyKey()">Copy</button>
-        </div>
-        <p class="key-warning">⚠ Keep this private. Anyone with this key can send events to your account. Never commit it to source control.</p>
-    </div>
-
-    <!-- Supported events -->
-    <div class="section">
-        <h2>Supported Event Types</h2>
-        <table class="event-table">
-            <thead>
-                <tr><th>event_type</th><th>When to send it</th><th>MITRE ATT&CK</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>LOGIN_FAILED</code></td><td>A login attempt failed (wrong password)</td><td>T1110 Brute Force</td></tr>
-                <tr><td><code>LOGIN_SUCCESS</code></td><td>A user successfully logged in</td><td>T1078 Valid Accounts</td></tr>
-                <tr><td><code>SEARCH</code></td><td>A search or query was executed — include the query in <code>extra</code></td><td>T1190 Exploit Public-Facing App</td></tr>
-                <tr><td><code>REGISTER_SUCCESS</code></td><td>A new account was created</td><td>—</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Code snippets -->
-    <div class="section">
-        <h2>Integration Code</h2>
-        <p style="font-size:0.9em; color:#555; margin-bottom:12px;">Add this to your application's auth and search logic. Replace <code>YOUR_API_KEY</code> with your key above.</p>
-
-        <div class="tabs">
-            <button class="tab-btn active" onclick="showTab('python')">Python / Flask</button>
-            <button class="tab-btn" onclick="showTab('node')">Node.js / Express</button>
-            <button class="tab-btn" onclick="showTab('curl')">cURL</button>
-        </div>
-
-        <!-- Python -->
-        <div class="tab-content active" id="tab-python">
-            <div class="code-block" id="code-python">
-                <button class="btn-copy-code" onclick="copyCode('code-python')">Copy</button>
-<span class="keyword">import</span> requests
-
-BOUNDRY_API_KEY = <span class="string">"YOUR_API_KEY"</span>
-BOUNDRY_INGEST_URL = <span class="string">"https://web-production-31963.up.railway.app/api/ingest"</span>
-
-<span class="keyword">def</span> <span class="fn">send_security_event</span>(event_type, username, ip, extra=<span class="string">""</span>):
-    <span class="comment"># Fire-and-forget — don't let monitoring errors break your app</span>
-    <span class="keyword">try</span>:
-        requests.post(
-            BOUNDRY_INGEST_URL,
-            json={<span class="string">"event_type"</span>: event_type, <span class="string">"username"</span>: username,
-                  <span class="string">"ip"</span>: ip, <span class="string">"extra"</span>: extra},
-            headers={<span class="string">"X-API-Key"</span>: BOUNDRY_API_KEY},
-            timeout=<span class="var">2</span>,
-        )
-    <span class="keyword">except</span> Exception:
-        <span class="keyword">pass</span>  <span class="comment"># never block the user if monitoring is down</span>
-
-<span class="comment"># ── In your login route ───────────────────────────────────────────</span>
-<span class="comment"># On failed login:</span>
-send_security_event(<span class="string">"LOGIN_FAILED"</span>, username=username, ip=request.remote_addr)
-
-<span class="comment"># On successful login:</span>
-send_security_event(<span class="string">"LOGIN_SUCCESS"</span>, username=username, ip=request.remote_addr)
-
-<span class="comment"># ── In your search route ──────────────────────────────────────────</span>
-send_security_event(<span class="string">"SEARCH"</span>, username=session.get(<span class="string">"username"</span>),
-                    ip=request.remote_addr, extra=search_query)
+<!-- ── Step 2: What to monitor ── -->
+<div class="section">
+    <h2>Step 2 — What to Monitor</h2>
+    <p style="font-size:0.85em; color:#666; margin: -8px 0 14px;">Add monitoring calls to these points in your application. You don't need all of them on day one — start with login and search.</p>
+    <ul class="checklist">
+        <li>
+            <span class="tick">▸</span>
+            <div>
+                <div class="route">Login route — failed attempt</div>
+                <div class="desc">Every time someone enters the wrong password. This is how we detect brute force and credential stuffing.</div>
             </div>
-        </div>
+        </li>
+        <li>
+            <span class="tick">▸</span>
+            <div>
+                <div class="route">Login route — successful login</div>
+                <div class="desc">Establishes a baseline of normal logins so we can flag suspicious ones (new IP, unusual hours).</div>
+            </div>
+        </li>
+        <li>
+            <span class="tick">▸</span>
+            <div>
+                <div class="route">Search / query routes</div>
+                <div class="desc">Pass the search query in <code>extra</code> — we scan it for SQL injection patterns.</div>
+            </div>
+        </li>
+        <li>
+            <span class="tick">▸</span>
+            <div>
+                <div class="route">Admin / restricted routes (403 responses)</div>
+                <div class="desc">Log when a user is denied access to a route they shouldn't reach — catches privilege escalation attempts.</div>
+            </div>
+        </li>
+        <li>
+            <span class="tick">▸</span>
+            <div>
+                <div class="route">Registration / new account creation</div>
+                <div class="desc">Useful for detecting mass account creation or enumeration attempts.</div>
+            </div>
+        </li>
+        <li>
+            <span class="tick">▸</span>
+            <div>
+                <div class="route">Form inputs / comment fields</div>
+                <div class="desc">Pass the submitted value in <code>extra</code> — we detect XSS payloads and script injection.</div>
+            </div>
+        </li>
+    </ul>
+</div>
 
-        <!-- Node.js -->
-        <div class="tab-content" id="tab-node">
-            <div class="code-block" id="code-node">
-                <button class="btn-copy-code" onclick="copyCode('code-node')">Copy</button>
-<span class="keyword">const</span> <span class="var">BOUNDRY_API_KEY</span> = <span class="string">'YOUR_API_KEY'</span>;
-<span class="keyword">const</span> <span class="var">BOUNDRY_INGEST_URL</span> = <span class="string">'https://web-production-31963.up.railway.app/api/ingest'</span>;
+<!-- ── Step 3: Event types ── -->
+<div class="section">
+    <h2>Step 3 — Supported Event Types</h2>
+    <table class="event-table">
+        <thead>
+            <tr><th>event_type</th><th>When to send it</th><th>MITRE ATT&amp;CK</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>LOGIN_FAILED</code></td><td>A login attempt failed — wrong password or username</td><td class="mitre-tag">T1110 Brute Force</td></tr>
+            <tr><td><code>LOGIN_SUCCESS</code></td><td>A user successfully authenticated</td><td class="mitre-tag">T1078 Valid Accounts</td></tr>
+            <tr><td><code>SEARCH</code></td><td>A search or database query was submitted — include the query string in <code>extra</code></td><td class="mitre-tag">T1190 Exploit Public-Facing App</td></tr>
+            <tr><td><code>XSS_ATTEMPT</code></td><td>A form field received input containing script tags or JS events — include the raw input in <code>extra</code></td><td class="mitre-tag">T1059.007 JavaScript</td></tr>
+            <tr><td><code>DIRECTORY_TRAVERSAL</code></td><td>A request path contained <code>../</code> or encoded traversal sequences — include the path in <code>extra</code></td><td class="mitre-tag">T1083 File Discovery</td></tr>
+            <tr><td><code>PRIV_ESC_ATTEMPT</code></td><td>A user attempted to access an admin route or resource they are not authorised for — include the route in <code>extra</code></td><td class="mitre-tag">T1548 Abuse Elevation</td></tr>
+            <tr><td><code>ACCOUNT_ENUM</code></td><td>A login attempt for a username that does not exist — helps detect username enumeration</td><td class="mitre-tag">T1589.001 Account Discovery</td></tr>
+            <tr><td><code>REGISTER_SUCCESS</code></td><td>A new account was created</td><td class="mitre-tag">—</td></tr>
+        </tbody>
+    </table>
+</div>
 
-<span class="keyword">async function</span> <span class="fn">sendSecurityEvent</span>(eventType, username, ip, extra = <span class="string">''</span>) {
-  <span class="keyword">try</span> {
-    <span class="keyword">await</span> fetch(BOUNDRY_INGEST_URL, {
-      method: <span class="string">'POST'</span>,
-      headers: { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>, <span class="string">'X-API-Key'</span>: BOUNDRY_API_KEY },
-      body: JSON.stringify({ event_type: eventType, username, ip, extra }),
-      signal: AbortSignal.timeout(<span class="var">2000</span>),
-    });
-  } <span class="keyword">catch</span> (e) { <span class="comment">/* never block the user */</span> }
+<!-- ── Step 4: Integration code ── -->
+<div class="section">
+    <h2>Step 4 — Integration Code</h2>
+    <p style="font-size:0.85em; color:#666; margin: -8px 0 14px;">
+        Your API key is injected automatically below. Copy the snippet for your stack and drop it in.
+    </p>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('flask', this)">Python / Flask</button>
+        <button class="tab-btn" onclick="showTab('django', this)">Python / Django</button>
+        <button class="tab-btn" onclick="showTab('node', this)">Node.js / Express</button>
+        <button class="tab-btn" onclick="showTab('php', this)">PHP / WordPress</button>
+        <button class="tab-btn" onclick="showTab('curl', this)">cURL (test)</button>
+    </div>
+
+    <!-- Flask -->
+    <div class="tab-content active" id="tab-flask">
+        <div class="code-block" id="code-flask"><button class="btn-copy-code" onclick="copyCode('code-flask')">Copy</button><span class="c"># boundry.py — drop this file into your project root</span>
+<span class="k">import</span> threading, requests
+
+BOUNDRY_API_KEY  = <span class="s" data-inject="key">"YOUR_API_KEY"</span>
+BOUNDRY_ENDPOINT = <span class="s">"{{ ingest_url }}"</span>
+
+<span class="k">def</span> <span class="f">log_event</span>(event_type, username=<span class="s">""</span>, ip=<span class="s">""</span>, extra=<span class="s">""</span>):
+    <span class="c">"""Fire-and-forget — runs in a background thread so it never slows your app."""</span>
+    <span class="k">def</span> <span class="f">_send</span>():
+        <span class="k">try</span>:
+            requests.post(
+                BOUNDRY_ENDPOINT,
+                json={<span class="s">"event_type"</span>: event_type, <span class="s">"username"</span>: username,
+                      <span class="s">"ip"</span>: ip, <span class="s">"extra"</span>: extra},
+                headers={<span class="s">"X-API-Key"</span>: BOUNDRY_API_KEY},
+                timeout=<span class="n">3</span>,
+            )
+        <span class="k">except</span> Exception:
+            <span class="k">pass</span>  <span class="c"># never block your users if monitoring is down</span>
+    threading.Thread(target=_send, daemon=<span class="k">True</span>).start()
+
+
+<span class="c"># ── In your Flask login route ─────────────────────────────────────────────</span>
+<span class="k">from</span> boundry <span class="k">import</span> log_event
+
+<span class="k">@app</span>.route(<span class="s">"/login"</span>, methods=[<span class="s">"POST"</span>])
+<span class="k">def</span> <span class="f">login</span>():
+    username = request.form.get(<span class="s">"username"</span>, <span class="s">""</span>)
+    ip = request.remote_addr
+
+    user = get_user(username)
+    <span class="k">if not</span> user:
+        log_event(<span class="s">"ACCOUNT_ENUM"</span>, username=username, ip=ip)   <span class="c"># username doesn't exist</span>
+        flash(<span class="s">"Invalid credentials"</span>)
+        <span class="k">return</span> redirect(<span class="s">"/login"</span>)
+
+    <span class="k">if not</span> check_password(user, request.form.get(<span class="s">"password"</span>)):
+        log_event(<span class="s">"LOGIN_FAILED"</span>, username=username, ip=ip)
+        flash(<span class="s">"Invalid credentials"</span>)
+        <span class="k">return</span> redirect(<span class="s">"/login"</span>)
+
+    log_event(<span class="s">"LOGIN_SUCCESS"</span>, username=username, ip=ip)
+    session[<span class="s">"user"</span>] = username
+    <span class="k">return</span> redirect(<span class="s">"/"</span>)
+
+
+<span class="c"># ── In your search route ──────────────────────────────────────────────────</span>
+<span class="k">@app</span>.route(<span class="s">"/search"</span>)
+<span class="k">def</span> <span class="f">search</span>():
+    q = request.args.get(<span class="s">"q"</span>, <span class="s">""</span>)
+    log_event(<span class="s">"SEARCH"</span>, username=session.get(<span class="s">"user"</span>), ip=request.remote_addr, extra=q)
+    <span class="c"># ... rest of your search logic</span>
+
+
+<span class="c"># ── On a 403 / unauthorised access ───────────────────────────────────────</span>
+<span class="k">@app</span>.errorhandler(<span class="n">403</span>)
+<span class="k">def</span> <span class="f">forbidden</span>(e):
+    log_event(<span class="s">"PRIV_ESC_ATTEMPT"</span>, username=session.get(<span class="s">"user"</span>),
+              ip=request.remote_addr, extra=request.path)
+    <span class="k">return</span> <span class="s">"Forbidden"</span>, <span class="n">403</span>
+</div>
+    </div>
+
+    <!-- Django -->
+    <div class="tab-content" id="tab-django">
+        <div class="code-block" id="code-django"><button class="btn-copy-code" onclick="copyCode('code-django')">Copy</button><span class="c"># boundry.py — drop this in your Django project root (next to manage.py)</span>
+<span class="k">import</span> threading, requests
+
+BOUNDRY_API_KEY  = <span class="s" data-inject="key">"YOUR_API_KEY"</span>
+BOUNDRY_ENDPOINT = <span class="s">"{{ ingest_url }}"</span>
+
+<span class="k">def</span> <span class="f">log_event</span>(event_type, username=<span class="s">""</span>, ip=<span class="s">""</span>, extra=<span class="s">""</span>):
+    <span class="k">def</span> <span class="f">_send</span>():
+        <span class="k">try</span>:
+            requests.post(
+                BOUNDRY_ENDPOINT,
+                json={<span class="s">"event_type"</span>: event_type, <span class="s">"username"</span>: username,
+                      <span class="s">"ip"</span>: ip, <span class="s">"extra"</span>: extra},
+                headers={<span class="s">"X-API-Key"</span>: BOUNDRY_API_KEY},
+                timeout=<span class="n">3</span>,
+            )
+        <span class="k">except</span> Exception:
+            <span class="k">pass</span>
+    threading.Thread(target=_send, daemon=<span class="k">True</span>).start()
+
+
+<span class="c"># ── In your Django login view ─────────────────────────────────────────────</span>
+<span class="k">from</span> django.contrib.auth <span class="k">import</span> authenticate, login
+<span class="k">from</span> boundry <span class="k">import</span> log_event
+
+<span class="k">def</span> <span class="f">login_view</span>(request):
+    <span class="k">if</span> request.method == <span class="s">"POST"</span>:
+        username = request.POST.get(<span class="s">"username"</span>, <span class="s">""</span>)
+        ip = request.META.get(<span class="s">"REMOTE_ADDR"</span>, <span class="s">""</span>)
+
+        user = authenticate(request, username=username,
+                            password=request.POST.get(<span class="s">"password"</span>))
+        <span class="k">if</span> user:
+            login(request, user)
+            log_event(<span class="s">"LOGIN_SUCCESS"</span>, username=username, ip=ip)
+            <span class="k">return</span> redirect(<span class="s">"/"</span>)
+        <span class="k">else</span>:
+            log_event(<span class="s">"LOGIN_FAILED"</span>, username=username, ip=ip)
+
+    <span class="k">return</span> render(request, <span class="s">"login.html"</span>)
+
+
+<span class="c"># ── Middleware to catch 403s automatically (settings.py → MIDDLEWARE list) ─</span>
+<span class="c"># boundry_middleware.py</span>
+<span class="k">class</span> <span class="f">BoundryMiddleware</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, get_response):
+        self.get_response = get_response
+
+    <span class="k">def</span> <span class="f">__call__</span>(self, request):
+        response = self.get_response(request)
+        <span class="k">if</span> response.status_code == <span class="n">403</span>:
+            <span class="k">from</span> boundry <span class="k">import</span> log_event
+            username = request.user.username <span class="k">if</span> request.user.is_authenticated <span class="k">else</span> <span class="s">""</span>
+            log_event(<span class="s">"PRIV_ESC_ATTEMPT"</span>, username=username,
+                      ip=request.META.get(<span class="s">"REMOTE_ADDR"</span>, <span class="s">""</span>), extra=request.path)
+        <span class="k">return</span> response
+</div>
+    </div>
+
+    <!-- Node.js -->
+    <div class="tab-content" id="tab-node">
+        <div class="code-block" id="code-node"><button class="btn-copy-code" onclick="copyCode('code-node')">Copy</button><span class="c">// boundry.js — drop this in your project root</span>
+<span class="k">const</span> <span class="v">BOUNDRY_API_KEY</span>  = <span class="s" data-inject="key">'YOUR_API_KEY'</span>;
+<span class="k">const</span> <span class="v">BOUNDRY_ENDPOINT</span> = <span class="s">'{{ ingest_url }}'</span>;
+
+<span class="k">function</span> <span class="f">logEvent</span>(eventType, username = <span class="s">''</span>, ip = <span class="s">''</span>, extra = <span class="s">''</span>) {
+  <span class="c">// Non-blocking — errors are swallowed so monitoring never breaks your app</span>
+  fetch(BOUNDRY_ENDPOINT, {
+    method: <span class="s">'POST'</span>,
+    headers: { <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span>, <span class="s">'X-API-Key'</span>: BOUNDRY_API_KEY },
+    body: JSON.stringify({ event_type: eventType, username, ip, extra }),
+    signal: AbortSignal.timeout(<span class="n">3000</span>),
+  }).catch(() => {});  <span class="c">// fire and forget</span>
 }
 
-<span class="comment">// On failed login:</span>
-<span class="keyword">await</span> <span class="fn">sendSecurityEvent</span>(<span class="string">'LOGIN_FAILED'</span>, username, req.ip);
+module.exports = { logEvent };
 
-<span class="comment">// On successful login:</span>
-<span class="keyword">await</span> <span class="fn">sendSecurityEvent</span>(<span class="string">'LOGIN_SUCCESS'</span>, username, req.ip);
 
-<span class="comment">// On search:</span>
-<span class="keyword">await</span> <span class="fn">sendSecurityEvent</span>(<span class="string">'SEARCH'</span>, username, req.ip, searchQuery);
-            </div>
-        </div>
+<span class="c">// ── In your Express login route ───────────────────────────────────────────</span>
+<span class="k">const</span> { <span class="v">logEvent</span> } = require(<span class="s">'./boundry'</span>);
 
-        <!-- cURL -->
-        <div class="tab-content" id="tab-curl">
-            <div class="code-block" id="code-curl">
-                <button class="btn-copy-code" onclick="copyCode('code-curl')">Copy</button>
-<span class="comment"># Test your integration from the command line</span>
-curl -s -X POST https://web-production-31963.up.railway.app/api/ingest \
-  -H <span class="string">"X-API-Key: YOUR_API_KEY"</span> \
-  -H <span class="string">"Content-Type: application/json"</span> \
-  -d <span class="string">'{"event_type":"LOGIN_FAILED","username":"admin","ip":"1.2.3.4"}'</span>
+app.post(<span class="s">'/login'</span>, async (req, res) => {
+  <span class="k">const</span> { <span class="v">username</span>, <span class="v">password</span> } = req.body;
+  <span class="k">const</span> <span class="v">ip</span> = req.ip;
 
-<span class="comment"># Expected response:</span>
-<span class="string">{"event_type":"LOGIN_FAILED","status":"ok"}</span>
-            </div>
-        </div>
+  <span class="k">const</span> <span class="v">user</span> = await User.findOne({ username });
+  <span class="k">if</span> (!user || !await user.checkPassword(password)) {
+    logEvent(<span class="s">'LOGIN_FAILED'</span>, username, ip);
+    <span class="k">return</span> res.status(<span class="n">401</span>).send(<span class="s">'Invalid credentials'</span>);
+  }
+
+  logEvent(<span class="s">'LOGIN_SUCCESS'</span>, username, ip);
+  req.session.user = username;
+  res.redirect(<span class="s">'/'</span>);
+});
+
+
+<span class="c">// ── Express middleware: catch 403s automatically ───────────────────────────</span>
+app.use((req, res, next) => {
+  <span class="k">const</span> <span class="v">originalSend</span> = res.send.bind(res);
+  res.send = (body) => {
+    <span class="k">if</span> (res.statusCode === <span class="n">403</span>) {
+      logEvent(<span class="s">'PRIV_ESC_ATTEMPT'</span>, req.session?.user || <span class="s">''</span>, req.ip, req.path);
+    }
+    <span class="k">return</span> originalSend(body);
+  };
+  next();
+});
+</div>
     </div>
 
-    <!-- Test button -->
-    <div class="section">
-        <h2>Test Your Connection</h2>
-        <p style="font-size:0.9em; color:#555; margin-bottom:12px;">Send a test event to verify your API key is working.</p>
-        <button class="btn-copy" onclick="sendTestEvent()" id="test-btn">Send Test Event</button>
-        <span id="test-result" style="margin-left:14px; font-size:0.88em;"></span>
+    <!-- PHP / WordPress -->
+    <div class="tab-content" id="tab-php">
+        <div class="code-block" id="code-php"><button class="btn-copy-code" onclick="copyCode('code-php')">Copy</button><span class="c">// boundry.php — drop this in your theme or plugin folder</span>
+<span class="k">&lt;?php</span>
+<span class="k">define</span>(<span class="s">'BOUNDRY_API_KEY'</span>,  <span class="s" data-inject="key">'YOUR_API_KEY'</span>);
+<span class="k">define</span>(<span class="s">'BOUNDRY_ENDPOINT'</span>, <span class="s">'{{ ingest_url }}'</span>);
+
+<span class="k">function</span> <span class="f">boundry_log_event</span>(<span class="v">$event_type</span>, <span class="v">$username</span> = <span class="s">''</span>, <span class="v">$ip</span> = <span class="s">''</span>, <span class="v">$extra</span> = <span class="s">''</span>) {
+    <span class="c">// Non-blocking post using wp_remote_post (WordPress) or curl fallback</span>
+    <span class="v">$body</span> = json_encode([
+        <span class="s">'event_type'</span> => <span class="v">$event_type</span>,
+        <span class="s">'username'</span>   => <span class="v">$username</span>,
+        <span class="s">'ip'</span>        => <span class="v">$ip</span>,
+        <span class="s">'extra'</span>     => <span class="v">$extra</span>,
+    ]);
+    <span class="k">if</span> (function_exists(<span class="s">'wp_remote_post'</span>)) {
+        wp_remote_post(BOUNDRY_ENDPOINT, [
+            <span class="s">'body'</span>    => <span class="v">$body</span>,
+            <span class="s">'headers'</span> => [<span class="s">'Content-Type'</span> => <span class="s">'application/json'</span>,
+                          <span class="s">'X-API-Key'</span>    => BOUNDRY_API_KEY],
+            <span class="s">'timeout'</span> => <span class="n">3</span>, <span class="s">'blocking'</span> => <span class="k">false</span>,  <span class="c">// non-blocking</span>
+        ]);
+    } <span class="k">else</span> {
+        <span class="v">$ch</span> = curl_init(BOUNDRY_ENDPOINT);
+        curl_setopt_array(<span class="v">$ch</span>, [
+            CURLOPT_POST           => <span class="k">true</span>,
+            CURLOPT_POSTFIELDS     => <span class="v">$body</span>,
+            CURLOPT_HTTPHEADER     => [<span class="s">'Content-Type: application/json'</span>,
+                                      <span class="s">'X-API-Key: '</span> . BOUNDRY_API_KEY],
+            CURLOPT_TIMEOUT        => <span class="n">3</span>,
+            CURLOPT_RETURNTRANSFER => <span class="k">true</span>,
+        ]);
+        curl_exec(<span class="v">$ch</span>); curl_close(<span class="v">$ch</span>);
+    }
+}
+
+
+<span class="c">// ── WordPress: hook into failed and successful logins ─────────────────────</span>
+add_action(<span class="s">'wp_login_failed'</span>, <span class="k">function</span>(<span class="v">$username</span>) {
+    boundry_log_event(<span class="s">'LOGIN_FAILED'</span>, <span class="v">$username</span>, <span class="v">$_SERVER</span>[<span class="s">'REMOTE_ADDR'</span>]);
+});
+
+add_action(<span class="s">'wp_login'</span>, <span class="k">function</span>(<span class="v">$username</span>) {
+    boundry_log_event(<span class="s">'LOGIN_SUCCESS'</span>, <span class="v">$username</span>, <span class="v">$_SERVER</span>[<span class="s">'REMOTE_ADDR'</span>]);
+});
+
+<span class="c">// ── Catch requests to wp-admin by non-admins ──────────────────────────────</span>
+add_action(<span class="s">'admin_init'</span>, <span class="k">function</span>() {
+    <span class="k">if</span> (!current_user_can(<span class="s">'manage_options'</span>)) {
+        <span class="v">$user</span> = wp_get_current_user();
+        boundry_log_event(<span class="s">'PRIV_ESC_ATTEMPT'</span>, <span class="v">$user</span>->user_login,
+                         <span class="v">$_SERVER</span>[<span class="s">'REMOTE_ADDR'</span>], <span class="v">$_SERVER</span>[<span class="s">'REQUEST_URI'</span>]);
+    }
+});
+</div>
     </div>
 
-    <hr style="border-color:#eee; margin-top:40px;">
-    <p style="font-size:0.8em; color:#aaa;">Boundry.AI — Security that speaks your language.</p>
+    <!-- cURL -->
+    <div class="tab-content" id="tab-curl">
+        <div class="code-block" id="code-curl"><button class="btn-copy-code" onclick="copyCode('code-curl')">Copy</button><span class="c"># Test your integration from the command line</span>
+<span class="c"># LOGIN_FAILED</span>
+curl -s -X POST {{ ingest_url }} \
+  -H <span class="s" data-inject="key-header">"X-API-Key: YOUR_API_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"event_type":"LOGIN_FAILED","username":"admin","ip":"1.2.3.4"}'</span>
 
-    <script>
-        function copyKey() {
-            var key = document.getElementById('api-key-value').textContent.trim();
-            navigator.clipboard.writeText(key).then(function() {
-                var btn = document.querySelector('.btn-copy');
-                btn.textContent = 'Copied!';
-                setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
-            });
-        }
+<span class="c"># Expected response:</span>
+<span class="s">{"event_type":"LOGIN_FAILED","status":"ok"}</span>
 
-        function copyCode(id) {
-            var el = document.getElementById(id);
-            // Get text content without the button text
-            var lines = [];
-            el.childNodes.forEach(function(n) {
-                if (n.nodeName !== 'BUTTON') lines.push(n.textContent || '');
-            });
-            navigator.clipboard.writeText(lines.join('').trim()).then(function() {
-                var btn = el.querySelector('.btn-copy-code');
-                btn.textContent = 'Copied!';
-                setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
-            });
-        }
+<span class="c"># XSS_ATTEMPT (include the payload in extra)</span>
+curl -s -X POST {{ ingest_url }} \
+  -H <span class="s" data-inject="key-header">"X-API-Key: YOUR_API_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"event_type":"XSS_ATTEMPT","username":"visitor","ip":"5.6.7.8","extra":"&lt;script&gt;alert(1)&lt;/script&gt;"}'</span>
 
-        function showTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-            document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
-            document.getElementById('tab-' + tab).classList.add('active');
-            event.target.classList.add('active');
-        }
+<span class="c"># PRIV_ESC_ATTEMPT (include the route in extra)</span>
+curl -s -X POST {{ ingest_url }} \
+  -H <span class="s" data-inject="key-header">"X-API-Key: YOUR_API_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"event_type":"PRIV_ESC_ATTEMPT","username":"alice","ip":"5.6.7.8","extra":"/admin/users"}'</span>
+</div>
+    </div>
+</div>
 
-        function sendTestEvent() {
-            var btn = document.getElementById('test-btn');
-            var result = document.getElementById('test-result');
-            btn.disabled = true;
-            btn.textContent = 'Sending...';
-            result.textContent = '';
+<!-- ── Step 5: Test your connection ── -->
+<div class="section">
+    <h2>Step 5 — Test Your Connection</h2>
+    <p style="font-size:0.85em; color:#666; margin:-8px 0 14px;">Send a live test event to confirm your API key is working correctly.</p>
+    <div class="test-row">
+        <button class="btn-copy" onclick="sendTestEvent()" id="test-btn">&#x26A1; Send Test Event</button>
+        <span id="test-result"></span>
+    </div>
+</div>
 
-            fetch('/api/ingest', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': '{{ api_key }}'
-                },
-                body: JSON.stringify({
-                    event_type: 'LOGIN_FAILED',
-                    username: 'test_user',
-                    ip: '127.0.0.1',
-                    extra: 'integration test'
-                })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.status === 'ok') {
-                    result.innerHTML = '<span style="color:#27ae60">✓ Success — event received. Run the agent to see it in your report.</span>';
-                } else {
-                    result.innerHTML = '<span style="color:#c0392b">Error: ' + JSON.stringify(data) + '</span>';
-                }
-            })
-            .catch(function(e) {
-                result.innerHTML = '<span style="color:#c0392b">Request failed: ' + e.message + '</span>';
-            })
-            .finally(function() {
-                btn.disabled = false;
-                btn.textContent = 'Send Test Event';
-            });
-        }
-    </script>
+<footer>Boundry.AI &mdash; Security that speaks your language.</footer>
+
+<script>
+    var REAL_KEY = {{ api_key | tojson }};
+    var INGEST_URL = {{ ingest_url | tojson }};
+
+    // Inject the real API key into all code blocks on load
+    document.querySelectorAll('[data-inject="key"]').forEach(function(el) {
+        el.textContent = '"' + REAL_KEY + '"';
+    });
+    document.querySelectorAll('[data-inject="key-header"]').forEach(function(el) {
+        el.textContent = '"X-API-Key: ' + REAL_KEY + '"';
+    });
+
+    function copyKey() {
+        navigator.clipboard.writeText(REAL_KEY).then(function() {
+            var btn = document.querySelector('.key-box .btn-copy');
+            btn.textContent = 'Copied!';
+            setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+        });
+    }
+
+    function copyCode(id) {
+        var el = document.getElementById(id);
+        var lines = [];
+        el.childNodes.forEach(function(n) {
+            if (n.nodeName !== 'BUTTON') lines.push(n.textContent || '');
+        });
+        navigator.clipboard.writeText(lines.join('').trim()).then(function() {
+            var btn = el.querySelector('.btn-copy-code');
+            btn.textContent = 'Copied!';
+            setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+        });
+    }
+
+    function showTab(tab, btn) {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        document.getElementById('tab-' + tab).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function sendTestEvent() {
+        var btn = document.getElementById('test-btn');
+        var result = document.getElementById('test-result');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        result.textContent = '';
+        fetch(INGEST_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-API-Key': REAL_KEY },
+            body: JSON.stringify({ event_type: 'LOGIN_FAILED', username: 'test_user',
+                                   ip: '127.0.0.1', extra: 'integration test' })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                result.innerHTML = '<span style="color:#27ae60">&#x2713; Connected — event received. Ask your analyst to run the agent to see it in your report.</span>';
+            } else {
+                result.innerHTML = '<span style="color:#c0392b">Error: ' + JSON.stringify(data) + '</span>';
+            }
+        })
+        .catch(function(e) {
+            result.innerHTML = '<span style="color:#c0392b">Request failed: ' + e.message + '</span>';
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.textContent = '⚡ Send Test Event';
+        });
+    }
+</script>
 </body>
 </html>

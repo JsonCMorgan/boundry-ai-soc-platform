@@ -1941,7 +1941,8 @@ def integration():
         user = dict(user)
         user["api_key"] = new_key
 
-    return render_template("integration.html", api_key=user["api_key"])
+    ingest_url = request.url_root.rstrip("/") + "/api/ingest"
+    return render_template("integration.html", api_key=user["api_key"], ingest_url=ingest_url)
 
 
 # --- ROUTE 4f: Event Ingest API ---

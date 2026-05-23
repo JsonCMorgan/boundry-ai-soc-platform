@@ -2,248 +2,343 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Boundry.AI — Incident Reports</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — Your Security Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #222; }
-        h1 { color: #c0392b; }
-        .subtitle { color: #555; margin-top: -10px; margin-bottom: 30px; }
-        .report-card {
-            border: 1px solid #ddd;
-            border-left: 4px solid #c0392b;
-            border-radius: 4px;
-            padding: 16px 20px;
-            margin-bottom: 12px;
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f8fa;
+            color: #222;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            padding: 0 40px;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
+            height: 58px;
         }
-        .report-card:hover { background: #fdf5f5; }
-        .report-date { font-weight: bold; font-size: 1.05em; }
-        .report-label { font-size: 0.85em; color: #888; margin-top: 4px; }
-        .view-btn {
-            background: #c0392b;
-            color: white;
+        .topbar-brand {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: #c0392b;
             text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 0.9em;
+            letter-spacing: -0.3px;
         }
-        .view-btn:hover { background: #a93226; }
-        .empty { color: #888; font-style: italic; margin-top: 40px; }
-        nav { margin-bottom: 30px; }
-        nav a { color: #c0392b; text-decoration: none; margin-right: 16px; }
-        /* Agent control panel */
-        .agent-panel {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 28px;
-            padding: 16px 20px;
-            background: #f9f9f9;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .agent-panel-label {
-            font-size: 0.85em;
+        .topbar-brand span { color: #222; }
+        .topbar-nav { display: flex; align-items: center; gap: 24px; }
+        .topbar-nav a {
             color: #666;
-            flex: 1 1 100%;
-            margin-bottom: 4px;
+            text-decoration: none;
+            font-size: 0.88em;
         }
-        .btn-simulate {
-            background: #2c3e50;
-            color: white;
-            border: none;
-            padding: 9px 18px;
+        .topbar-nav a:hover { color: #c0392b; }
+        .topbar-nav .logout {
+            background: #f0f0f0;
+            padding: 6px 14px;
             border-radius: 4px;
+            color: #444;
+        }
+        .topbar-nav .logout:hover { background: #e5e5e5; }
+
+        /* ── Status banner ── */
+        .status-banner {
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            padding: 14px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #27ae60;
+            border-radius: 50%;
+            animation: pulse-green 2s infinite;
+            flex-shrink: 0;
+        }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(39,174,96,0.4); }
+            50%       { box-shadow: 0 0 0 6px rgba(39,174,96,0); }
+        }
+        .status-text {
+            font-size: 0.88em;
+            color: #444;
+        }
+        .status-text strong { color: #222; }
+        .status-right {
+            font-size: 0.82em;
+            color: #aaa;
+        }
+
+        /* ── Main container ── */
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* ── Page header ── */
+        .page-header {
+            margin-bottom: 32px;
+        }
+        .page-header h1 {
+            font-size: 1.5em;
+            color: #1a1a1a;
+            margin: 0 0 6px;
+        }
+        .page-header p {
+            color: #777;
             font-size: 0.9em;
-            cursor: pointer;
-            font-weight: bold;
+            margin: 0;
         }
-        .btn-simulate:hover { background: #1a252f; }
-        .btn-run {
-            background: #c0392b;
-            color: white;
-            border: none;
-            padding: 9px 18px;
-            border-radius: 4px;
-            font-size: 0.9em;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        .btn-run:hover { background: #a93226; }
-        .btn-hint {
-            font-size: 0.8em;
-            color: #999;
-            margin-left: 4px;
-        }
+
+        /* ── Flash messages ── */
         .flash-success {
             background: #f0faf0; border: 1px solid #b0d8b0; border-left: 4px solid #27ae60;
-            color: #1e8449; padding: 10px 16px; border-radius: 4px; margin-bottom: 18px;
+            color: #1e8449; padding: 10px 16px; border-radius: 4px; margin-bottom: 20px;
             font-size: 0.9em;
         }
         .flash-warning {
             background: #fffbf0; border: 1px solid #f5d88b; border-left: 4px solid #f39c12;
-            color: #7d6608; padding: 10px 16px; border-radius: 4px; margin-bottom: 18px;
+            color: #7d6608; padding: 10px 16px; border-radius: 4px; margin-bottom: 20px;
             font-size: 0.9em;
         }
         .flash-info {
             background: #f0f6ff; border: 1px solid #aac8f5; border-left: 4px solid #2980b9;
-            color: #1a5276; padding: 10px 16px; border-radius: 4px; margin-bottom: 18px;
+            color: #1a5276; padding: 10px 16px; border-radius: 4px; margin-bottom: 20px;
             font-size: 0.9em;
         }
-        .badge {
+
+        /* ── Report cards ── */
+        .report-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-left: 4px solid #c0392b;
+            border-radius: 6px;
+            padding: 18px 22px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            transition: box-shadow 0.15s;
+        }
+        .report-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+        .report-card.no-threats { border-left-color: #27ae60; }
+        .report-date {
+            font-weight: bold;
+            font-size: 0.95em;
+            color: #222;
+            margin-bottom: 4px;
+        }
+        .report-meta {
+            font-size: 0.82em;
+            color: #888;
+        }
+        .badge-threats {
             display: inline-block;
+            background: #fdf5f5;
+            color: #c0392b;
+            border: 1px solid #e8c8c8;
+            font-size: 0.78em;
+            font-weight: bold;
+            padding: 2px 9px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+        .badge-new {
+            display: inline-block;
+            background: #eaf4ff;
+            color: #2980b9;
+            border: 1px solid #b0d4f5;
+            font-size: 0.72em;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .view-btn {
             background: #c0392b;
             color: white;
-            font-size: 0.75em;
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 4px;
+            font-size: 0.88em;
+            font-weight: bold;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+        .view-btn:hover { background: #a93226; }
+
+        /* ── Status badge ── */
+        .status-pill {
+            display: inline-block;
+            font-size: 0.7em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
             padding: 2px 8px;
             border-radius: 10px;
             margin-left: 8px;
-            vertical-align: middle;
         }
-        /* Empty / onboarding state */
+        .status-new       { background: #eaf4ff; color: #2980b9; border: 1px solid #b0d4f5; }
+        .status-reviewing { background: #fffbf0; color: #e67e22; border: 1px solid #f5d88b; }
+        .status-escalated { background: #fdf5f5; color: #c0392b; border: 1px solid #e8c8c8; }
+        .status-closed    { background: #f0faf0; color: #27ae60; border: 1px solid #b0d8b0; }
+
+        /* ── Empty state ── */
         .empty-state {
             text-align: center;
-            margin-top: 60px;
-            padding: 40px 30px;
-            border: 2px dashed #e0b0ad;
+            padding: 64px 20px;
+            background: #fff;
+            border: 1px solid #e8e8e8;
             border-radius: 8px;
-            background: #fdf5f5;
         }
-        .shield-icon {
-            font-size: 3em;
-            margin-bottom: 12px;
-        }
-        .empty-state-title {
-            color: #c0392b;
-            font-size: 1.4em;
-            margin: 0 0 12px;
-        }
-        .empty-state-body {
-            color: #555;
-            line-height: 1.6;
-            max-width: 520px;
-            margin: 0 auto 28px;
-        }
-        .empty-state-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            text-align: left;
-            max-width: 480px;
-            margin: 0 auto;
-        }
-        .step {
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-            color: #444;
-            font-size: 0.95em;
-        }
-        .step-num {
-            flex-shrink: 0;
-            width: 28px;
-            height: 28px;
-            background: #c0392b;
-            color: white;
-            border-radius: 50%;
+        .empty-icon { font-size: 3em; margin-bottom: 16px; }
+        .empty-state h2 { color: #222; font-size: 1.2em; margin-bottom: 10px; }
+        .empty-state p { color: #888; font-size: 0.92em; max-width: 420px; margin: 0 auto; line-height: 1.6; }
+
+        /* ── Contact card ── */
+        .contact-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 24px 28px;
+            margin-top: 40px;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .contact-card-left h3 { font-size: 1em; color: #222; margin: 0 0 4px; }
+        .contact-card-left p { font-size: 0.88em; color: #888; margin: 0; }
+        .contact-btn {
+            background: #c0392b;
+            color: white;
+            text-decoration: none;
+            padding: 9px 22px;
+            border-radius: 4px;
+            font-size: 0.88em;
             font-weight: bold;
-            font-size: 0.85em;
+            white-space: nowrap;
+        }
+        .contact-btn:hover { background: #a93226; }
+
+        footer {
+            text-align: center;
+            padding: 28px 20px;
+            font-size: 0.8em;
+            color: #bbb;
+            border-top: 1px solid #eee;
+            margin-top: 48px;
         }
     </style>
 </head>
 <body>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/search">Search Users</a>
-        <a href="/change-password">Change Password</a>
-        <a href="/integration">Integration</a>
-        <a href="/logout">Logout</a>
-    </nav>
 
-    <h1>Boundry.AI — Incident Reports</h1>
-    <p class="subtitle">Logged in as: <strong>{{ session['username'] }}</strong></p>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-            <div class="flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
-    {% endwith %}
-
-    <!-- Agent control panel -->
-    <div class="agent-panel">
-        <div class="agent-panel-label">
-            <strong>Boundry.AI Agent</strong> — Step 1: simulate an attack to generate log events.
-            Step 2: run the agent to analyse them and produce a report.
+    <!-- Top bar -->
+    <div class="topbar">
+        <a class="topbar-brand" href="/">Boundry<span>.AI</span></a>
+        <div class="topbar-nav">
+            <a href="/integration">Integration Setup</a>
+            <a href="/change-password">Change Password</a>
+            <a href="/logout" class="logout">Logout</a>
         </div>
-        <form method="POST" action="/simulate-attack" style="display:inline">
-            <button type="submit" class="btn-simulate">&#x26A1; Simulate Attack</button>
-        </form>
-        <form method="POST" action="/run-agent" style="display:inline">
-            <button type="submit" class="btn-run">&#x1F916; Run Agent</button>
-        </form>
-        <span class="btn-hint">Run both in order — the new report appears automatically.</span>
     </div>
 
-    {% if reports %}
-        {% for r in reports %}
-        <div class="report-card">
-            <div>
-                <div class="report-date">
-                    Report #{{ r.id }} &mdash;
-                    <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
-                    {% if loop.first %}<span class="badge">Latest</span>{% endif %}
-                </div>
-                <div class="report-label">
-                    {{ r.event_count }} event(s) analysed &mdash; {{ r.threat_count }} threat(s) detected
-                </div>
-            </div>
-            <a class="view-btn" href="/reports/{{ r.id }}">View Report</a>
-        </div>
-        {% endfor %}
-    {% else %}
-        <div class="empty-state">
-            <div class="shield-icon">&#x1F6E1;</div>
-            <h2 class="empty-state-title">Your dashboard is ready.</h2>
-            <p class="empty-state-body">
-                The Boundry.AI agent monitors your application logs around the clock.
-                It will automatically generate a plain-English incident report here
-                the moment a threat is detected — no setup required.
-            </p>
-            <div class="empty-state-steps">
-                <div class="step">
-                    <span class="step-num">1</span>
-                    <span>Agent scans your security log for brute force and injection attempts</span>
-                </div>
-                <div class="step">
-                    <span class="step-num">2</span>
-                    <span>Threats are analysed and a plain-English report is generated</span>
-                </div>
-                <div class="step">
-                    <span class="step-num">3</span>
-                    <span>Report appears here — readable by you, not just your IT team</span>
-                </div>
+    <!-- Analyst status banner -->
+    <div class="status-banner">
+        <div class="status-left">
+            <div class="status-dot"></div>
+            <div class="status-text">
+                <strong>Your analyst is actively monitoring your application.</strong>
+                Reports are generated automatically when threats are detected.
             </div>
         </div>
-    {% endif %}
+        <div class="status-right">
+            Logged in as <strong>{{ session['username'] }}</strong>
+        </div>
+    </div>
 
-    <hr style="margin-top: 40px; border-color: #eee;">
-    <p style="font-size: 0.8em; color: #aaa;">Boundry.AI — Security that speaks your language.</p>
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="page-header">
+            <h1>Your Incident Reports</h1>
+            <p>Each report is generated by your dedicated Boundry.AI analyst when a security event is detected on your application.</p>
+        </div>
+
+        {% if reports %}
+            {% for r in reports %}
+            <div class="report-card {% if r.threat_count == 0 %}no-threats{% endif %}">
+                <div>
+                    <div class="report-date">
+                        Report #{{ r.id }} &mdash;
+                        <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
+                        {% if loop.first %}<span class="badge-new">Latest</span>{% endif %}
+                        {% if r.threat_count > 0 %}
+                            <span class="badge-threats">&#x26A0; {{ r.threat_count }} threat(s) detected</span>
+                        {% endif %}
+                        {% if r.status %}
+                            <span class="status-pill status-{{ r.status }}">{{ r.status }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="report-meta">
+                        {{ r.event_count }} event(s) analysed
+                        {% if r.threat_count == 0 %} &mdash; &#x2705; No threats detected{% endif %}
+                    </div>
+                </div>
+                <a class="view-btn" href="/reports/{{ r.id }}">View Report &rarr;</a>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">&#x1F6E1;</div>
+                <h2>Your dashboard is ready.</h2>
+                <p>Your analyst is watching. Incident reports will appear here automatically whenever a security event is detected on your application.</p>
+            </div>
+        {% endif %}
+
+        <!-- Contact card -->
+        <div class="contact-card">
+            <div class="contact-card-left">
+                <h3>Questions about a report?</h3>
+                <p>Your Boundry.AI analyst is available to walk you through any incident. Don't hesitate to reach out.</p>
+            </div>
+            <a class="contact-btn" href="mailto:jason.morgan@boundry.ai">&#x2709; Contact Your Analyst</a>
+        </div>
+
+    </div>
+
+    <footer>Boundry.AI &mdash; Security that speaks your language. &copy; 2026</footer>
 
     <script>
-        // Convert UTC timestamps to the visitor's local timezone.
-        // PostgreSQL stores NOW() as UTC; this runs in the browser so it always
-        // shows the correct local time without any server-side timezone logic.
         document.querySelectorAll('.local-time').forEach(function (el) {
             var raw = el.getAttribute('data-utc').trim().replace(' ', 'T');
-            // Append Z so the browser knows this is UTC (not ambiguous local)
-            if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('-', 10)) {
-                raw += 'Z';
-            }
+            if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('-', 10)) raw += 'Z';
             var d = new Date(raw);
             if (!isNaN(d)) {
                 el.textContent = d.toLocaleString(undefined, {
@@ -253,5 +348,6 @@
             }
         });
     </script>
+
 </body>
 </html>

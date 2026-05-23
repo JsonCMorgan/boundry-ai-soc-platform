@@ -241,6 +241,19 @@ def init_db():
                 (analyst_username, hashed.decode()),
             )
 
+    # Breach intelligence table — stores AI-curated breach/incident reports from RSS feeds
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS breach_intel (
+            {id_col},
+            {ts_col},
+            title    TEXT NOT NULL DEFAULT '',
+            source   TEXT NOT NULL DEFAULT '',
+            url      TEXT NOT NULL DEFAULT '',
+            summary  TEXT NOT NULL DEFAULT '',
+            severity TEXT NOT NULL DEFAULT 'MEDIUM'
+        )
+    """)
+
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.
@@ -625,6 +638,13 @@ def control_room():
     total_threats = sum(r["threat_count"] for r in all_reports)
     total_events  = sum(r["event_count"]  for r in all_reports)
 
+    # Breach intel — last 30 items for the ticker + panel, newest first
+    breach_items = db_fetchall(
+        "SELECT id, created_at, title, source, url, summary, severity "
+        "FROM breach_intel ORDER BY id DESC LIMIT 30"
+    )
+    last_intel_update = breach_items[0]["created_at"] if breach_items else None
+
     return render_template(
         "control_room.html",
         clients=clients,
@@ -635,10 +655,135 @@ def control_room():
         total_reports=total_reports,
         total_threats=total_threats,
         total_events=total_events,
+        breach_items=breach_items,
+        last_intel_update=last_intel_update,
     )
 
 
 # ── Shared business logic (used by browser routes AND cron) ──────────────────
+
+def _fetch_breach_intel():
+    """
+    Pull the latest breach/incident reports from security RSS feeds.
+    Filters for breach-relevant items, then uses Claude to triage and summarise
+    the top 8 most significant ones.  Saves new items to the breach_intel table
+    (deduplicates by URL so repeated runs don't create duplicates).
+    Returns the number of new items saved.
+    """
+    import feedparser as _fp
+    import json as _json
+
+    FEEDS = [
+        ("The Hacker News",   "https://feeds.feedburner.com/TheHackersNews"),
+        ("BleepingComputer",  "https://www.bleepingcomputer.com/feed/"),
+        ("Krebs on Security", "https://krebsonsecurity.com/feed/"),
+        ("DataBreaches.net",  "https://www.databreaches.net/feed/"),
+    ]
+
+    BREACH_KEYWORDS = [
+        "breach", "leak", "hack", "ransomware", "stolen", "exposed",
+        "compromised", "credentials", "phishing", "malware", "zero-day",
+        "vulnerability", "CVE", "attack", "exploit", "data theft",
+    ]
+
+    # Collect relevant items from all feeds
+    raw_items = []
+    for source_name, feed_url in FEEDS:
+        try:
+            feed = _fp.parse(feed_url)
+            for entry in feed.entries[:12]:
+                title   = entry.get("title",   "")
+                summary = entry.get("summary", entry.get("description", ""))
+                url     = entry.get("link",    "")
+                content = (title + " " + summary).lower()
+                if any(kw in content for kw in BREACH_KEYWORDS):
+                    raw_items.append({
+                        "source":  source_name,
+                        "title":   title[:200],
+                        "summary": re.sub(r"<[^>]+>", "", summary)[:400],  # strip HTML tags
+                        "url":     url[:500],
+                    })
+        except Exception as exc:
+            security_log.warning(f"BREACH_INTEL_FEED_ERROR source={source_name} error={exc}")
+
+    if not raw_items:
+        return 0
+
+    # Deduplicate against URLs already in the DB
+    existing_urls = {r["url"] for r in db_fetchall("SELECT url FROM breach_intel")}
+    new_items = [i for i in raw_items if i["url"] not in existing_urls]
+    if not new_items:
+        return 0
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    saved   = 0
+
+    if api_key:
+        try:
+            import anthropic as _anthropic
+            prompt = (
+                "You are a threat intelligence analyst reviewing security news.\n\n"
+                "From the list below, identify the 8 most significant items that a SOC "
+                "(Security Operations Centre) team should know about — real breaches, "
+                "active ransomware campaigns, critical zero-days, or major credential leaks. "
+                "Skip opinion pieces, product launches, and minor advisories.\n\n"
+                f"Items:\n{_json.dumps(new_items[:25], indent=2)}\n\n"
+                "Respond with ONLY a JSON array (no other text). Each object must have:\n"
+                "  title    — original title, max 120 chars\n"
+                "  source   — news source name\n"
+                "  url      — original URL\n"
+                "  summary  — one plain-English sentence: who was hit, what was taken, "
+                "scale if known. Max 140 chars.\n"
+                "  severity — HIGH (millions of records / critical infra / active exploitation), "
+                "MEDIUM (confirmed breach, limited scope), or LOW (advisory / patched)."
+            )
+            client  = _anthropic.Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model="claude-haiku-4-5",
+                max_tokens=1200,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text       = message.content[0].text.strip()
+            # Claude sometimes wraps the JSON in a code fence — strip it
+            text       = re.sub(r"^```[a-z]*\n?", "", text)
+            text       = re.sub(r"\n?```$",       "", text).strip()
+            intel_list = _json.loads(text)
+            for item in intel_list[:8]:
+                db_run(
+                    f"INSERT INTO breach_intel (title, source, url, summary, severity)"
+                    f" VALUES ({PH},{PH},{PH},{PH},{PH})",
+                    (
+                        str(item.get("title",   ""))[:200],
+                        str(item.get("source",  ""))[:100],
+                        str(item.get("url",     ""))[:500],
+                        str(item.get("summary", ""))[:300],
+                        str(item.get("severity","MEDIUM")).upper()[:10],
+                    ),
+                )
+                saved += 1
+        except Exception as exc:
+            security_log.warning(f"BREACH_INTEL_AI_ERROR {exc}")
+            # Fallback: save raw items without AI curation
+            for item in new_items[:8]:
+                db_run(
+                    f"INSERT INTO breach_intel (title, source, url, summary, severity)"
+                    f" VALUES ({PH},{PH},{PH},{PH},{PH})",
+                    (item["title"], item["source"], item["url"], item["summary"], "MEDIUM"),
+                )
+                saved += 1
+    else:
+        # No API key — save raw items directly
+        for item in new_items[:8]:
+            db_run(
+                f"INSERT INTO breach_intel (title, source, url, summary, severity)"
+                f" VALUES ({PH},{PH},{PH},{PH},{PH})",
+                (item["title"], item["source"], item["url"], item["summary"], "MEDIUM"),
+            )
+            saved += 1
+
+    security_log.info(f"BREACH_INTEL_FETCH new_items={saved}")
+    return saved
+
 
 def _simulate_attack_core(owner_id=None, difficulty="medium"):
     """
@@ -1465,6 +1610,37 @@ def cron_run():
         threats_found=total_threats,
         report_ids=report_ids,
     )
+
+
+# --- ROUTE 8: Breach Intel Cron (no session — CRON_SECRET authenticated) ---
+@app.route("/cron/breach-intel", methods=["POST"])
+def cron_breach_intel():
+    """
+    Fetch latest breach reports from security RSS feeds and save to DB.
+    Call this from cron-job.org every 6 hours.
+    Auth: same X-Cron-Secret header as /cron/run.
+    """
+    expected = os.environ.get("CRON_SECRET", "")
+    provided = request.headers.get("X-Cron-Secret", "")
+    if not expected or provided != expected:
+        abort(404)
+
+    saved = _fetch_breach_intel()
+    security_log.info(f"CRON_BREACH_INTEL saved={saved}")
+    return jsonify(status="ok", new_items_saved=saved)
+
+
+# --- ROUTE 8b: Manual Breach Intel Refresh (analyst only) ---
+@app.route("/run-breach-intel", methods=["POST"])
+@analyst_required
+def run_breach_intel():
+    """Analyst-triggered breach intel refresh. Same logic as cron, browser-accessible."""
+    saved = _fetch_breach_intel()
+    if saved > 0:
+        flash(f"🔍 Threat intel updated — {saved} new item(s) added to the ticker.", "success")
+    else:
+        flash("🔍 No new breach reports found (feeds may not have updated yet).", "info")
+    return redirect(url_for("control_room"))
 
 
 # --- Startup ---

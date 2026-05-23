@@ -26,5 +26,8 @@ Markdown==3.10.2
 # AI report generation
 anthropic==0.49.0
 
+# RSS feed parsing (breach intel ticker)
+feedparser==6.0.11
+
 # Production server
 gunicorn==26.0.0

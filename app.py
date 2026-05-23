@@ -476,6 +476,31 @@ def init_db():
                 (analyst_username, hashed.decode()),
             )
 
+    # Triage log — every status change on a report is recorded with a timestamp.
+    # Used by the analyst scorecard to compute response times and escalation rates.
+    if DATABASE_URL:
+        triage_ts = "changed_at TIMESTAMP NOT NULL DEFAULT NOW()"
+    else:
+        triage_ts = "changed_at TEXT NOT NULL DEFAULT (datetime('now'))"
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS triage_log (
+            {id_col},
+            report_id  INTEGER NOT NULL,
+            old_status TEXT    NOT NULL DEFAULT '',
+            new_status TEXT    NOT NULL,
+            {triage_ts}
+        )
+    """)
+
+    # Migration: add notes_updated_at to reports (tracks discipline — did Jason
+    # write notes before or after reading the AI report?)
+    if DATABASE_URL:
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS notes_updated_at TIMESTAMP")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
+        if "notes_updated_at" not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN notes_updated_at TEXT")
+
     # Breach intelligence table — stores AI-curated breach/incident reports from RSS feeds
     db_run(f"""
         CREATE TABLE IF NOT EXISTS breach_intel (
@@ -1853,7 +1878,15 @@ def triage_report(report_id):
     status = request.form.get("status", "new")
     if status not in ("new", "reviewing", "escalated", "closed"):
         abort(400)
+    # Fetch current status before overwriting (needed for triage_log)
+    current = db_fetchone(f"SELECT status FROM reports WHERE id = {PH}", (report_id,))
+    old_status = current["status"] if current else "new"
     db_run(f"UPDATE reports SET status = {PH} WHERE id = {PH}", (status, report_id))
+    # Record the status change in the triage log for scorecard metrics
+    db_run(
+        f"INSERT INTO triage_log (report_id, old_status, new_status) VALUES ({PH},{PH},{PH})",
+        (report_id, old_status, status),
+    )
     flash(f"Report #{report_id} marked as {status.upper()}.", "success")
     # Return to wherever the analyst came from
     referrer = request.referrer or ""
@@ -1868,7 +1901,16 @@ def triage_report(report_id):
 def save_notes(report_id):
     """Save analyst investigation notes on a report. Analyst-only."""
     notes = request.form.get("notes", "").strip()
-    db_run(f"UPDATE reports SET analyst_notes = {PH} WHERE id = {PH}", (notes, report_id))
+    if DATABASE_URL:
+        db_run(
+            f"UPDATE reports SET analyst_notes = {PH}, notes_updated_at = NOW() WHERE id = {PH}",
+            (notes, report_id),
+        )
+    else:
+        db_run(
+            f"UPDATE reports SET analyst_notes = {PH}, notes_updated_at = datetime('now') WHERE id = {PH}",
+            (notes, report_id),
+        )
     flash("Investigation notes saved.", "success")
     return redirect(url_for("report_detail", report_id=report_id))
 
@@ -2096,6 +2138,120 @@ def run_breach_intel():
     else:
         flash("🔍 No new breach reports found (feeds may not have updated yet).", "info")
     return redirect(url_for("control_room"))
+
+
+@app.route("/scorecard")
+@analyst_required
+def scorecard():
+    """Analyst performance scorecard — response times, escalation rate, notes discipline."""
+
+    # ── Total reports and breakdown by status ────────────────────────────────
+    all_reports = db_fetchall(
+        "SELECT id, created_at, status, threat_count, analyst_notes, notes_updated_at FROM reports"
+    )
+    total = len(all_reports)
+    by_status = {"new": 0, "reviewing": 0, "escalated": 0, "closed": 0}
+    for r in all_reports:
+        s = r.get("status", "new")
+        by_status[s] = by_status.get(s, 0) + 1
+
+    # ── Notes discipline ─────────────────────────────────────────────────────
+    # Did Jason write notes before triaging? notes_updated_at < first triage action.
+    # Simpler fallback: just track which reports have any notes at all.
+    reports_with_notes = sum(1 for r in all_reports if (r.get("analyst_notes") or "").strip())
+    notes_pct = round(reports_with_notes / total * 100) if total else 0
+
+    # ── Triage log stats ─────────────────────────────────────────────────────
+    triage_rows = db_fetchall(
+        "SELECT report_id, old_status, new_status, changed_at FROM triage_log ORDER BY changed_at ASC"
+    )
+
+    # Time to first action: gap between report created_at and first triage log entry
+    report_map = {r["id"]: r for r in all_reports}
+    first_action_hours = []
+    close_hours = []
+    seen_first = set()
+
+    for row in triage_rows:
+        rid = row["report_id"]
+        report = report_map.get(rid)
+        if not report:
+            continue
+        try:
+            created = datetime.fromisoformat(str(report["created_at"]).replace(" ", "T").rstrip("Z"))
+            changed = datetime.fromisoformat(str(row["changed_at"]).replace(" ", "T").rstrip("Z"))
+            diff_h  = (changed - created).total_seconds() / 3600
+            if rid not in seen_first:
+                first_action_hours.append(diff_h)
+                seen_first.add(rid)
+            if row["new_status"] == "closed":
+                close_hours.append(diff_h)
+        except Exception:
+            pass
+
+    def fmt_hours(h):
+        if h < 1:
+            return f"{int(h * 60)}m"
+        return f"{h:.1f}h"
+
+    avg_triage = fmt_hours(sum(first_action_hours) / len(first_action_hours)) if first_action_hours else "—"
+    avg_close  = fmt_hours(sum(close_hours)        / len(close_hours))        if close_hours        else "—"
+
+    # ── Escalation rate ───────────────────────────────────────────────────────
+    escalated_count = by_status.get("escalated", 0)
+    # Also count reports that passed through escalated (now closed)
+    ever_escalated = len({r["report_id"] for r in triage_rows if r["new_status"] == "escalated"})
+    esc_pct = round(ever_escalated / total * 100) if total else 0
+
+    # ── Recent triage activity (last 15 actions) ──────────────────────────────
+    recent = db_fetchall(
+        "SELECT tl.report_id, tl.old_status, tl.new_status, tl.changed_at "
+        "FROM triage_log tl ORDER BY tl.changed_at DESC LIMIT 15"
+    )
+
+    # ── Notes discipline detail: per-report notes vs triage timing ────────────
+    discipline_rows = []
+    first_triage_by_report = {}
+    for row in triage_rows:
+        rid = row["report_id"]
+        if rid not in first_triage_by_report:
+            first_triage_by_report[rid] = row["changed_at"]
+
+    for r in sorted(all_reports, key=lambda x: x["created_at"], reverse=True)[:20]:
+        rid = r["id"]
+        has_notes = bool((r.get("analyst_notes") or "").strip())
+        notes_ts  = r.get("notes_updated_at")
+        triage_ts = first_triage_by_report.get(rid)
+        if notes_ts and triage_ts:
+            try:
+                nt = datetime.fromisoformat(str(notes_ts).replace(" ", "T").rstrip("Z"))
+                tt = datetime.fromisoformat(str(triage_ts).replace(" ", "T").rstrip("Z"))
+                before = nt < tt
+            except Exception:
+                before = None
+        else:
+            before = None
+        discipline_rows.append({
+            "id": rid,
+            "status": r.get("status", "new"),
+            "has_notes": has_notes,
+            "notes_before_triage": before,
+            "threat_count": r.get("threat_count", 0),
+        })
+
+    return render_template(
+        "scorecard.html",
+        total=total,
+        by_status=by_status,
+        notes_pct=notes_pct,
+        avg_triage=avg_triage,
+        avg_close=avg_close,
+        esc_pct=esc_pct,
+        ever_escalated=ever_escalated,
+        recent=recent,
+        discipline_rows=discipline_rows,
+        reports_with_notes=reports_with_notes,
+    )
 
 
 # --- Startup ---

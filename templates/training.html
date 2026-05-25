@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boundry.AI — SOC Analyst Training</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d0d0d0; }
+
+        .topbar {
+            background: #12151f; border-bottom: 1px solid #1e2235;
+            padding: 12px 28px; display: flex; align-items: center;
+            justify-content: space-between; position: sticky; top: 0; z-index: 100;
+        }
+        .topbar-brand { font-size: 1em; font-weight: bold; color: #00b432; letter-spacing: 0.04em; }
+        .topbar nav a { color: #888; text-decoration: none; margin-left: 18px; font-size: 0.82em; }
+        .topbar nav a:hover { color: #00b432; }
+
+        .page { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+
+        /* Stats bar */
+        .stats-bar { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 36px; }
+        .stat-card {
+            flex: 1; min-width: 140px; background: #12151f;
+            border: 1px solid #1e2235; border-radius: 8px; padding: 18px 16px; text-align: center;
+        }
+        .stat-num { font-size: 2em; font-weight: bold; color: #00b432; line-height: 1; }
+        .stat-label { font-size: 0.7em; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+        /* Section header */
+        .section-head {
+            font-size: 0.7em; color: #555; text-transform: uppercase; letter-spacing: 0.1em;
+            margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #1e2235;
+        }
+        .section-head span { color: #00b432; }
+
+        /* Progress bar */
+        .prog-label { font-size: 0.78em; color: #555; margin-bottom: 6px; }
+        .prog-label b { color: #00b432; }
+        .prog-wrap { background: #1a1d2a; border-radius: 4px; height: 6px; margin-bottom: 20px; overflow: hidden; }
+        .prog-fill  { height: 100%; background: #00b432; border-radius: 4px; }
+
+        /* MITRE checklist */
+        .mitre-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 8px; margin-bottom: 28px;
+        }
+        .mitre-item {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+            position: relative; overflow: hidden; transition: border-color 0.3s, background 0.3s;
+        }
+        .mitre-item.done { border-color: #1a3a1a; background: #0c110c; }
+        .chk {
+            width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+            border: 2px solid #2a2d3a; display: flex; align-items: center; justify-content: center;
+            font-size: 0.72em; font-weight: bold; font-family: monospace;
+            transition: all 0.3s;
+        }
+        .mitre-item.done .chk { background: #00b432; border-color: #00b432; color: #000; }
+        .mitre-id   { font-family: monospace; font-size: 0.72em; color: #555; display: block; }
+        .mitre-name { font-size: 0.8em; color: #aaa; }
+        .mitre-name-link {
+            font-size: 0.8em; color: #7090b0; text-decoration: none;
+            transition: color 0.15s;
+        }
+        .mitre-name-link:hover { color: #00b432; text-decoration: underline; }
+        .mitre-item.done .mitre-name-link { color: #40b060; }
+        .btn-mark {
+            margin-left: auto; font-size: 0.7em; color: #555; background: none;
+            border: 1px solid #2a2d3a; padding: 2px 7px; border-radius: 3px; cursor: pointer;
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-mark:hover { color: #00b432; border-color: #00b432; }
+        .review-link { margin-left: auto; font-size: 0.7em; color: #1e4a1e;
+                       text-decoration: none; flex-shrink: 0; }
+        .review-link:hover { color: #40b060; }
+
+        /* ── Hackers animation ── */
+        @keyframes glitch {
+            0%,100% { transform: translate(0,0); clip-path: none; }
+            20%  { transform: translate(-2px, 1px); filter: hue-rotate(90deg) brightness(1.4); }
+            40%  { transform: translate(2px,-1px); }
+            60%  { transform: translate(-1px, 2px); filter: hue-rotate(-90deg) brightness(1.2); }
+            80%  { transform: translate(1px,-2px); }
+        }
+        @keyframes scanSwipe {
+            0%   { left: -110%; }
+            100% { left: 110%; }
+        }
+        @keyframes floatUp {
+            0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-28px); }
+        }
+        @keyframes borderPulse {
+            0%,100% { box-shadow: 0 0 4px #00ff41, 0 0 8px #00ff4144; }
+            50%     { box-shadow: 0 0 12px #00ff41, 0 0 28px #00ff4166, 0 0 2px #00ff41 inset; }
+        }
+        .mitre-item.hacking {
+            animation: glitch 0.08s infinite, borderPulse 0.4s infinite;
+            border-color: #00ff41 !important;
+        }
+        .mitre-item.hacking .chk {
+            border-color: #00ff41; color: #00ff41;
+            text-shadow: 0 0 6px #00ff41;
+        }
+        .mitre-item.hacked {
+            border-color: #00b432 !important;
+            background: #091409 !important;
+            box-shadow: 0 0 8px #00b43244;
+        }
+        .mitre-item.hacked .chk {
+            background: #00b432; border-color: #00b432; color: #000;
+            box-shadow: 0 0 8px #00ff41;
+        }
+        /* scan line sweep */
+        .mitre-item .scan-line {
+            position: absolute; top: 0; height: 100%; width: 40%;
+            background: linear-gradient(90deg, transparent, #00ff4122, transparent);
+            animation: scanSwipe 0.6s ease-in-out forwards;
+            pointer-events: none; z-index: 2;
+        }
+        /* floating "INDEXED" text */
+        .hack-float {
+            position: absolute; left: 50%; top: 50%;
+            transform: translateX(-50%) translateY(0);
+            font-family: 'Courier New', monospace;
+            font-size: 0.65em; font-weight: bold;
+            color: #00ff41; text-shadow: 0 0 8px #00ff41;
+            letter-spacing: 0.12em; pointer-events: none;
+            animation: floatUp 1.4s ease-out forwards;
+            white-space: nowrap; z-index: 10;
+        }
+
+        /* ── Matrix canvas ── */
+        #matrix-bg {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+            opacity: 0.32;
+        }
+        .page { position: relative; z-index: 1; }
+
+        /* ── Confirm-kill overlay ── */
+        @keyframes overlayIn {
+            from { opacity: 0; transform: scale(1.04); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes overlayOut {
+            from { opacity: 1; transform: scale(1); }
+            to   { opacity: 0; transform: scale(0.96); }
+        }
+        @keyframes idGlow {
+            0%,100% { text-shadow: 0 0 10px #00ff41, 0 0 30px #00ff4188, 0 0 60px #00ff4144; }
+            50%     { text-shadow: 0 0 24px #00ff41, 0 0 70px #00ff41cc, 0 0 120px #00ff4177; }
+        }
+        @keyframes blinkCursor {
+            0%,100% { opacity: 1; }
+            50%     { opacity: 0; }
+        }
+        @keyframes gridRush {
+            0%   { transform: perspective(600px) rotateX(18deg) translateY(0px); }
+            100% { transform: perspective(600px) rotateX(18deg) translateY(60px); }
+        }
+        @keyframes cornerFlash {
+            0%,100% { opacity: 0.4; }
+            50%     { opacity: 1; }
+        }
+        #kill-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,4,12,0.96);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            animation: overlayIn 0.22s ease forwards;
+            overflow: hidden;
+        }
+        /* Scanline layer */
+        #kill-overlay::before {
+            content: '';
+            position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0,255,65,0.03) 0px, rgba(0,255,65,0.03) 1px,
+                transparent 1px, transparent 3px
+            );
+        }
+        /* Wireframe 3D grid — the Hackers cyberspace floor ── */
+        #ko-grid {
+            position: absolute; inset: 0; z-index: 0; pointer-events: none;
+        }
+        #kill-overlay.closing {
+            animation: overlayOut 0.32s ease forwards;
+            pointer-events: none;
+        }
+        .ko-inner {
+            position: relative; z-index: 2;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            user-select: none;
+        }
+        .ko-system {
+            font-size: 0.72em; color: #006644; letter-spacing: 0.22em;
+            margin-bottom: 18px; text-transform: uppercase;
+        }
+        .ko-id {
+            font-size: 4.8em; font-weight: bold; color: #00ff41;
+            letter-spacing: 0.08em; line-height: 1;
+            animation: idGlow 1.2s ease-in-out infinite;
+        }
+        .ko-label {
+            font-size: 0.9em; color: #00cc44; letter-spacing: 0.28em;
+            margin-top: 14px; text-transform: uppercase;
+        }
+        .ko-divider {
+            width: 280px; height: 1px;
+            background: linear-gradient(90deg, transparent, #00ff4166, transparent);
+            margin: 20px auto;
+        }
+        .ko-cta {
+            font-size: 0.8em; color: #1a4a1a; letter-spacing: 0.2em;
+            animation: blinkCursor 0.85s step-end infinite;
+        }
+        .ko-cta.active { color: #00ff41; animation: none; }
+        /* Corner brackets — Hackers HUD style */
+        .ko-corner {
+            position: absolute; width: 22px; height: 22px;
+            border-color: #00ff4188; border-style: solid;
+            animation: cornerFlash 1.8s ease-in-out infinite;
+        }
+        .ko-corner.tl { top: 28px;  left: 28px;  border-width: 2px 0 0 2px; }
+        .ko-corner.tr { top: 28px;  right: 28px; border-width: 2px 2px 0 0; }
+        .ko-corner.bl { bottom: 28px; left: 28px;  border-width: 0 0 2px 2px; }
+        .ko-corner.br { bottom: 28px; right: 28px; border-width: 0 2px 2px 0; }
+
+        /* Flash layer inside the kill overlay — lights up on each hit */
+        #ko-flash {
+            position: absolute; inset: 0; z-index: 1;
+            background: #00ff41;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.04s ease-out;
+        }
+
+        /* Unlock notice */
+        .unlock-notice {
+            background: #0d1020; border: 1px dashed #252840; border-radius: 6px;
+            padding: 14px; text-align: center; font-size: 0.82em; color: #444;
+            margin-bottom: 32px;
+        }
+        .unlock-notice b { color: #666; }
+
+        /* Track sections */
+        .track-section { margin-bottom: 28px; }
+        .track-pill {
+            display: inline-block; font-size: 0.68em; font-weight: bold;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            padding: 3px 10px; border-radius: 3px; margin-bottom: 10px;
+        }
+        .tp-beginner     { background: #0c1a0c; color: #40b060; border: 1px solid #1a4a1a; }
+        .tp-intermediate { background: #1a190a; color: #c0a020; border: 1px solid #4a3a10; }
+        .tp-advanced     { background: #1a0c0c; color: #e05555; border: 1px solid #4a1a1a; }
+        .tp-apt          { background: #0c0c1a; color: #5588e0; border: 1px solid #1a1a4a; }
+
+        /* Scenario cards */
+        .scenario-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;
+        }
+        .sc-card {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 8px;
+            padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+        }
+        .sc-card.done { border-color: #1a3a1a; background: #0c110c; }
+        .sc-top { display: flex; align-items: flex-start; gap: 8px; }
+        .sc-name { font-size: 0.88em; font-weight: bold; color: #ccc; flex: 1; }
+        .sc-card.done .sc-name { color: #40b060; }
+        .sc-desc { font-size: 0.8em; color: #666; line-height: 1.5; }
+        .tech-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+        .tc { font-family: monospace; font-size: 0.7em; padding: 2px 6px;
+              background: #1a1d2a; border: 1px solid #2a2d3a; border-radius: 3px; color: #6080b0; }
+
+        /* Score badge */
+        .sc-badge {
+            font-size: 0.7em; padding: 2px 7px; border-radius: 3px;
+            font-weight: bold; white-space: nowrap; flex-shrink: 0;
+        }
+        .sb-perfect  { background: #0a250a; color: #40d060; border: 1px solid #1a4a1a; }
+        .sb-good     { background: #182208; color: #a0c020; border: 1px solid #3a4a10; }
+        .sb-pass     { background: #221e08; color: #c0a020; border: 1px solid #4a3a10; }
+        .sb-retry    { background: #220808; color: #e05555; border: 1px solid #4a1a1a; }
+
+        .btn-start {
+            display: block; text-align: center; padding: 9px;
+            background: #00b432; color: #000; border: none; border-radius: 4px;
+            font-size: 0.85em; font-weight: bold; cursor: pointer; text-decoration: none;
+        }
+        .btn-start:hover { background: #00d43c; }
+        .btn-retry-style { background: #172717; color: #40b060; border: 1px solid #2a4a2a; }
+        .btn-retry-style:hover { background: #1e341e; }
+        .btn-locked {
+            display: block; text-align: center; padding: 9px;
+            background: #141720; color: #333; border-radius: 4px; font-size: 0.82em;
+        }
+
+        /* History table */
+        .hist-table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+        .hist-table th {
+            background: #12151f; color: #444; text-align: left; padding: 8px 10px;
+            font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.06em;
+            border-bottom: 1px solid #1e2235;
+        }
+        .hist-table td { padding: 8px 10px; border-bottom: 1px solid #141720; color: #888; }
+        .hist-table tr:hover td { background: #10131c; }
+        .score-cell { font-weight: bold; }
+        .score-hi  { color: #40b060; }
+        .score-mid { color: #c0a020; }
+        .score-lo  { color: #e05555; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="topbar-brand">🎓 Boundry.AI — SOC Analyst Training</span>
+    <nav>
+        <a href="/control-room">← Control Room</a>
+        <a href="/reports">Reports</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</div>
+
+<div class="page">
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-num">{{ mitre_read_count }}/9</div>
+            <div class="stat-label">References Read</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ scenarios_done }}/10</div>
+            <div class="stat-label">Scenarios Done</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ avg_score }}/25</div>
+            <div class="stat-label">Average Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ total_attempts }}</div>
+            <div class="stat-label">Total Attempts</div>
+        </div>
+    </div>
+
+    <!-- Phase 1 -->
+    <div class="section-head">Phase 1 — <span>Foundation Reading</span></div>
+    {% set pct = ((mitre_read_count / 9) * 100) | int %}
+    <div class="prog-label"><b>{{ mitre_read_count }}</b> of 9 MITRE references read &nbsp;·&nbsp; {{ pct }}%</div>
+    <div class="prog-wrap"><div class="prog-fill" style="width:{{ pct }}%;"></div></div>
+
+    <div class="mitre-grid">
+    {% for t in all_mitre %}
+    {% set done = t.id in read_ids %}
+    <div class="mitre-item {% if done %}done{% endif %}" data-technique-id="{{ t.id }}">
+        <div class="chk">{% if done %}✓{% endif %}</div>
+        <div style="flex:1;min-width:0;">
+            <span class="mitre-id">{{ t.id }}</span>
+            <a href="/mitre/{{ t.id }}" class="mitre-name-link">{{ t.name }}</a>
+        </div>
+        {% if done %}
+            <a href="/mitre/{{ t.id }}" class="review-link">Review →</a>
+        {% else %}
+            <form method="POST" action="/training/mitre-read/{{ t.id }}" style="margin:0;">
+                <button class="btn-mark" type="submit">Mark Read</button>
+            </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+    </div>
+
+    {% if mitre_read_count < 9 %}
+    <div class="unlock-notice">
+        📖 <b>Finish Phase 1 to unlock the scenarios below.</b>
+        Open each technique at <code>/mitre/&lt;ID&gt;</code>, read it thoroughly, then click "Mark Read."
+    </div>
+    {% endif %}
+
+    <!-- Phase 2 -->
+    <div class="section-head">Phase 2 — <span>Scenario Challenges</span></div>
+
+    {% set tracks = [
+        ("Beginner",     "tp-beginner",     "🟢"),
+        ("Intermediate", "tp-intermediate", "🟡"),
+        ("Advanced",     "tp-advanced",     "🔴"),
+        ("APT Chain",    "tp-apt",          "🔵"),
+    ] %}
+
+    {% for track_name, tp_class, icon in tracks %}
+    {% set track_items = scenario_list | selectattr("track", "equalto", track_name) | list %}
+    {% if track_items %}
+    <div class="track-section">
+        <div class="track-pill {{ tp_class }}">{{ icon }} {{ track_name }}</div>
+        <div class="scenario-grid">
+        {% for sc in track_items %}
+        <div class="sc-card {% if sc.is_done %}done{% endif %}">
+            <div class="sc-top">
+                <span class="sc-name">{{ sc.label }}</span>
+                {% if sc.best_score is not none %}
+                    {% set bs = sc.best_score %}
+                    {% if bs >= 23 %}
+                        <span class="sc-badge sb-perfect">{{ bs }}/25 ⭐</span>
+                    {% elif bs >= 18 %}
+                        <span class="sc-badge sb-good">{{ bs }}/25</span>
+                    {% elif bs >= 13 %}
+                        <span class="sc-badge sb-pass">{{ bs }}/25</span>
+                    {% else %}
+                        <span class="sc-badge sb-retry">{{ bs }}/25</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+            <div class="sc-desc">{{ sc.description }}</div>
+            <div class="tech-chips">
+                {% for tid in sc.techniques %}
+                <span class="tc">{{ tid }}</span>
+                {% endfor %}
+            </div>
+            {% if mitre_read_count >= 9 %}
+            <form method="POST" action="/training/start/{{ sc.key }}">
+                <button type="submit"
+                    class="btn-start {% if sc.is_done %}btn-retry-style{% endif %}">
+                    {% if sc.is_done %}↺ Run Again{% else %}▶ Start Challenge{% endif %}
+                </button>
+            </form>
+            {% else %}
+            <div class="btn-locked">🔒 Complete Phase 1 to unlock</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Phase 3: History -->
+    {% if recent_attempts %}
+    <div class="section-head" style="margin-top:40px;">Phase 3 — <span>Attempt History</span></div>
+    <table class="hist-table">
+        <thead>
+            <tr>
+                <th>Scenario</th>
+                <th>Total</th>
+                <th>Techniques</th>
+                <th>IP</th>
+                <th>Succeeded?</th>
+                <th>IOCs</th>
+                <th>Response</th>
+                <th>Date</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for a in recent_attempts %}
+        {% set t = a.score_total or 0 %}
+        <tr>
+            <td>{{ a.scenario_label }}</td>
+            <td class="score-cell {% if t >= 23 %}score-hi{% elif t >= 13 %}score-mid{% else %}score-lo{% endif %}">
+                {{ t }}/25
+            </td>
+            <td>{{ a.score_techniques or 0 }}/5</td>
+            <td>{{ a.score_ip or 0 }}/5</td>
+            <td>{{ a.score_succeeded or 0 }}/5</td>
+            <td>{{ a.score_iocs or 0 }}/5</td>
+            <td>{{ a.score_response or 0 }}/5</td>
+            <td style="white-space:nowrap;">{{ a.submitted_at[:16] if a.submitted_at else '—' }}</td>
+            <td><a href="/training/result/{{ a.id }}" style="font-size:0.78em;color:#5588e0;">Review</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+</div>
+
+<!-- Matrix rain canvas — sits behind everything -->
+<canvas id="matrix-bg"></canvas>
+
+<script>
+// ── Matrix rain ─────────────────────────────────────────────────────────────
+(function() {
+    var canvas = document.getElementById('matrix-bg');
+    var ctx    = canvas.getContext('2d');
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+
+    var chars  = '01アイウエオカキクケコ░▒▓ABCDEF#@$%^&*!?><{}[]';
+    var colW   = 16;
+    var drops  = [];
+    function initDrops() {
+        drops = [];
+        var cols = Math.floor(canvas.width / colW);
+        for (var i = 0; i < cols; i++) drops.push(Math.random() * -50 | 0);
+    }
+    initDrops();
+    window.addEventListener('resize', initDrops);
+
+    function draw() {
+        ctx.fillStyle = 'rgba(11,14,23,0.06)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '13px monospace';
+        for (var i = 0; i < drops.length; i++) {
+            var bright = Math.random() > 0.91;
+            ctx.fillStyle = bright ? '#00ff41' : '#00b43270';
+            var ch = chars[Math.floor(Math.random() * chars.length)];
+            ctx.fillText(ch, i * colW, drops[i] * colW);
+            if (drops[i] * colW > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+        }
+    }
+    setInterval(draw, 55);
+})();
+
+// ── DJ Bomb Drop (Web Audio API — 100% offline synthesis) ────────────────────
+// Classic Funkmaster Flex / DJ Clue bomb: falling whistle that drops into a
+// massive BOOM. Flash 1 = whistle falls, flash 2 = explosion hits, flash 3 =
+// deep sub rumble settling. The whistle duration matches the 400ms flash gap.
+function fireExplosion(ac) {
+    // Silent 1-sample warmup — wakes audio thread so whistle fires on time
+    var warmBuf = ac.createBuffer(1, 1, ac.sampleRate);
+    var warmSrc = ac.createBufferSource();
+    warmSrc.buffer = warmBuf;
+    warmSrc.connect(ac.destination);
+    warmSrc.start(0);
+
+    var t = ac.currentTime + 0.015;
+
+    // Hard limiter — each layer can be loud without clipping the output
+    var lim = ac.createDynamicsCompressor();
+    lim.threshold.value = -1; lim.knee.value = 0;
+    lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.2;
+    lim.connect(ac.destination);
+
+    // ── PHASE 1: Falling whistle ─ 400ms, lands exactly on flash 2 ──────────
+    var wDur = 0.40;
+    var wOsc = ac.createOscillator();
+    var wEnv = ac.createGain();
+    wOsc.type = 'sine';
+    wOsc.frequency.setValueAtTime(1100, t);
+    wOsc.frequency.exponentialRampToValueAtTime(60, t + wDur);   // screams down
+    wEnv.gain.setValueAtTime(0.9, t);
+    wEnv.gain.exponentialRampToValueAtTime(0.001, t + wDur);
+    wOsc.connect(wEnv); wEnv.connect(lim);
+    wOsc.start(t); wOsc.stop(t + wDur + 0.02);
+
+    // ── PHASE 2: BOOM — starts at wDur, perfectly on flash 2 ────────────────
+    var bt      = t + wDur;   // boom time
+    var boomDur = 2.8;        // long rumble
+
+    // Noise body — LP filter sweeps closed as rumble dies
+    var noiseLen = Math.floor(ac.sampleRate * (boomDur + 0.1));
+    var nBuf = ac.createBuffer(1, noiseLen, ac.sampleRate);
+    var nd   = nBuf.getChannelData(0);
+    for (var i = 0; i < noiseLen; i++) nd[i] = Math.random() * 2 - 1;
+    var nSrc = ac.createBufferSource();
+    nSrc.buffer = nBuf;
+    var nLP  = ac.createBiquadFilter();
+    nLP.type = 'lowpass';
+    nLP.frequency.setValueAtTime(2200, bt);
+    nLP.frequency.exponentialRampToValueAtTime(100, bt + boomDur);
+    nLP.Q.value = 0.6;
+    var nEnv = ac.createGain();
+    nEnv.gain.setValueAtTime(2.2, bt);
+    nEnv.gain.exponentialRampToValueAtTime(0.001, bt + boomDur);
+    nSrc.connect(nLP); nLP.connect(nEnv); nEnv.connect(lim);
+    nSrc.start(bt); nSrc.stop(bt + boomDur + 0.1);
+
+    // Sub-bass thump — deep sine drops from 100 → 28 Hz
+    var sub    = ac.createOscillator();
+    var subEnv = ac.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(100, bt);
+    sub.frequency.exponentialRampToValueAtTime(28, bt + 0.55);
+    subEnv.gain.setValueAtTime(5.0, bt);
+    subEnv.gain.exponentialRampToValueAtTime(0.001, bt + 1.2);
+    sub.connect(subEnv); subEnv.connect(lim);
+    sub.start(bt); sub.stop(bt + 1.3);
+
+    // Mid crunch — hard-clipped noise for the initial impact crack
+    var cLen = Math.floor(ac.sampleRate * 0.35);
+    var cBuf = ac.createBuffer(1, cLen, ac.sampleRate);
+    var cd   = cBuf.getChannelData(0);
+    for (var j = 0; j < cLen; j++) {
+        var v = (Math.random() * 2 - 1) * 4;
+        cd[j] = Math.max(-1, Math.min(1, v));
+    }
+    var cSrc = ac.createBufferSource();
+    var cLP  = ac.createBiquadFilter();
+    var cEnv = ac.createGain();
+    cSrc.buffer = cBuf;
+    cLP.type = 'lowpass'; cLP.frequency.value = 1400;
+    cEnv.gain.setValueAtTime(1.8, bt);
+    cEnv.gain.exponentialRampToValueAtTime(0.001, bt + 0.35);
+    cSrc.connect(cLP); cLP.connect(cEnv); cEnv.connect(lim);
+    cSrc.start(bt);
+
+    // High sizzle — debris / air rushing out
+    var sLen = Math.floor(ac.sampleRate * 1.2);
+    var sBuf = ac.createBuffer(1, sLen, ac.sampleRate);
+    var sd   = sBuf.getChannelData(0);
+    for (var k = 0; k < sLen; k++) sd[k] = Math.random() * 2 - 1;
+    var sSrc = ac.createBufferSource();
+    var sHP  = ac.createBiquadFilter();
+    var sEnv = ac.createGain();
+    sSrc.buffer = sBuf;
+    sHP.type = 'highpass'; sHP.frequency.value = 4000;
+    sEnv.gain.setValueAtTime(1.0, bt);
+    sEnv.gain.exponentialRampToValueAtTime(0.001, bt + 1.0);
+    sSrc.connect(sHP); sHP.connect(sEnv); sEnv.connect(lim);
+    sSrc.start(bt);
+}
+
+// ── Hackers animation on return from Mark-as-Read ───────────────────────────
+(function() {
+    var glyphSet = '01█▓░▒|/\\-+=<>#@$%!?XZQK';
+    var justRead = new URLSearchParams(window.location.search).get('just_read');
+    if (!justRead) return;
+
+    // Clean the URL so refresh doesn't re-trigger
+    history.replaceState({}, '', '/training');
+
+    var card = document.querySelector('[data-technique-id="' + justRead + '"]');
+
+    // ── Build the confirm-kill overlay ───────────────────────────────────────
+    var overlay = document.createElement('div');
+    overlay.id  = 'kill-overlay';
+    overlay.innerHTML =
+        '<canvas id="ko-grid"></canvas>' +
+        '<div id="ko-flash"></div>' +
+        '<div class="ko-corner tl"></div>' +
+        '<div class="ko-corner tr"></div>' +
+        '<div class="ko-corner bl"></div>' +
+        '<div class="ko-corner br"></div>' +
+        '<div class="ko-inner">' +
+            '<div class="ko-system">BOUNDRY.AI // KNOWLEDGE BASE</div>' +
+            '<div class="ko-id">'  + justRead + '</div>' +
+            '<div class="ko-label">TECHNIQUE ACQUIRED</div>' +
+            '<div class="ko-divider"></div>' +
+            '<div class="ko-cta" id="ko-cta-text">[ TAP TO CONFIRM KILL ]</div>' +
+        '</div>';
+    document.body.appendChild(overlay);
+
+    // ── Wireframe 3D grid (Hackers cyberspace floor) ─────────────────────────
+    (function() {
+        var gc   = document.getElementById('ko-grid');
+        var gctx = gc.getContext('2d');
+        gc.width  = window.innerWidth;
+        gc.height = window.innerHeight;
+
+        var W = gc.width, H = gc.height;
+        var horizon = H * 0.52;   // where grid "vanishes"
+        var vx = W / 2;           // vanishing point x
+        var cols = 14, rows = 18;
+        var offset = 0;
+
+        function drawGrid() {
+            gctx.clearRect(0, 0, W, H);
+
+            // Grid spans bottom half of screen
+            var gridTop    = horizon;
+            var gridBottom = H + 20;
+            var gridLeft   = -W * 0.3;
+            var gridRight  = W  * 1.3;
+
+            // -- Horizontal lines (perspective rows) --
+            for (var r = 0; r <= rows; r++) {
+                var t   = ((r + offset) % rows) / rows;   // 0..1, scrolling
+                var y   = gridTop + Math.pow(t, 1.8) * (gridBottom - gridTop);
+                var xL  = vx + (gridLeft  - vx) * (1 - t * 0.82);
+                var xR  = vx + (gridRight - vx) * (1 - t * 0.82);
+                var alpha = t * 0.55 + 0.04;
+                gctx.beginPath();
+                gctx.moveTo(xL, y);
+                gctx.lineTo(xR, y);
+                gctx.strokeStyle = 'rgba(0,200,80,' + alpha + ')';
+                gctx.lineWidth   = 0.6 + t * 1.2;
+                gctx.stroke();
+            }
+
+            // -- Vertical lines (perspective columns) --
+            for (var c = 0; c <= cols; c++) {
+                var fx  = gridLeft + (gridRight - gridLeft) * (c / cols);
+                var nearX = vx + (fx - vx) * (1 - 0.82);   // bottom intercept
+                var alpha2 = 0.22;
+                gctx.beginPath();
+                gctx.moveTo(vx, horizon);
+                gctx.lineTo(nearX, gridBottom);
+                gctx.strokeStyle = 'rgba(0,255,65,' + alpha2 + ')';
+                gctx.lineWidth   = 0.5;
+                gctx.stroke();
+            }
+
+            // Horizon glow line
+            gctx.beginPath();
+            gctx.moveTo(0, horizon);
+            gctx.lineTo(W, horizon);
+            var grad = gctx.createLinearGradient(0, horizon, W, horizon);
+            grad.addColorStop(0,   'rgba(0,255,65,0)');
+            grad.addColorStop(0.5, 'rgba(0,255,65,0.35)');
+            grad.addColorStop(1,   'rgba(0,255,65,0)');
+            gctx.strokeStyle = grad;
+            gctx.lineWidth   = 1.5;
+            gctx.stroke();
+        }
+
+        var gridAnim;
+        function animGrid() {
+            offset += 0.022;
+            drawGrid();
+            gridAnim = requestAnimationFrame(animGrid);
+        }
+        animGrid();
+
+        // Stop grid when overlay closes
+        overlay._stopGrid = function() { cancelAnimationFrame(gridAnim); };
+    })();
+
+    // ── On tap: gong strike + 3 screen flashes ──────────────────────────────
+    // One gong fires immediately on click and fades over the 3 visual flashes.
+    // No multi-hit scheduling — simple and reliable.
+    overlay.addEventListener('click', function onKill() {
+        overlay.removeEventListener('click', onKill);
+
+        var AC      = window.AudioContext || window.webkitAudioContext;
+        var ac      = AC ? new AC() : null;
+        var flashEl = document.getElementById('ko-flash');
+        var inner   = overlay.querySelector('.ko-inner');
+        var cta     = document.getElementById('ko-cta-text');
+        var GAP_MS  = 400;
+
+        function doVisualFlash(flashNum) {
+            if (flashEl) { flashEl.style.transition = 'none'; flashEl.style.opacity = '0.26'; }
+            if (inner)   { inner.style.transition = 'transform 0.04s'; inner.style.transform = 'scale(1.07)'; }
+
+            setTimeout(function() {
+                if (flashEl) { flashEl.style.transition = 'opacity 0.15s ease-out'; flashEl.style.opacity = '0'; }
+                if (inner)   { inner.style.transform = 'scale(1)'; }
+            }, 75);
+
+            if (flashNum < 3) {
+                setTimeout(function() { doVisualFlash(flashNum + 1); }, GAP_MS);
+            } else {
+                setTimeout(function() {
+                    if (cta) { cta.textContent = '[ ACCESS GRANTED ]'; cta.className = 'ko-cta active'; }
+                    setTimeout(function() {
+                        overlay.classList.add('closing');
+                        if (overlay._stopGrid) overlay._stopGrid();
+                        setTimeout(function() { overlay.remove(); }, 340);
+                    }, 300);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(function() { runHackAnimation(card, justRead); }, 640);
+                    }
+                }, 240);
+            }
+        }
+
+        var go = function() {
+            if (ac) {
+                fireExplosion(ac);
+                setTimeout(function() { try { ac.close(); } catch(e) {} }, 5000);
+            }
+            doVisualFlash(1);
+        };
+
+        if (ac) {
+            if (ac.state === 'running') { go(); }
+            else { ac.resume().then(go).catch(go); }
+        } else {
+            go();
+        }
+    });
+
+    // ── The card animation ───────────────────────────────────────────────────
+    function runHackAnimation(card, techId) {
+        var chk   = card.querySelector('.chk');
+        var count = 0;
+        var total = 22;
+
+        card.classList.add('hacking');
+
+        var scramble = setInterval(function() {
+            chk.textContent = glyphSet[Math.floor(Math.random() * glyphSet.length)];
+            count++;
+            if (count >= total) {
+                clearInterval(scramble);
+
+                // Settle
+                card.classList.remove('hacking');
+                card.classList.add('hacked', 'done');
+                chk.textContent    = '✓';
+                chk.style.background  = '#00b432';
+                chk.style.borderColor = '#00b432';
+                chk.style.color       = '#000';
+
+                var nameLink = card.querySelector('.mitre-name-link');
+                if (nameLink) nameLink.style.color = '#40b060';
+
+                var form = card.querySelector('form');
+                if (form) {
+                    var rev = document.createElement('a');
+                    rev.href = '/mitre/' + techId;
+                    rev.className = 'review-link';
+                    rev.textContent = 'Review →';
+                    form.replaceWith(rev);
+                }
+
+                // Scan line sweep
+                var scan = document.createElement('div');
+                scan.className = 'scan-line';
+                card.appendChild(scan);
+                setTimeout(function() { scan.remove(); }, 700);
+
+                // Float text
+                var flt = document.createElement('div');
+                flt.className   = 'hack-float';
+                flt.textContent = '>> ' + techId + ' INDEXED ✓';
+                card.appendChild(flt);
+                setTimeout(function() { flt.remove(); }, 1600);
+
+                updateProgress();
+            }
+        }, 55);
+    }
+
+    // ── Update progress bar + stats live ────────────────────────────────────
+    function updateProgress() {
+        var total   = document.querySelectorAll('[data-technique-id]').length;
+        var done    = document.querySelectorAll('.mitre-item.done').length;
+        var pct     = Math.round((done / total) * 100);
+        var fill    = document.querySelector('.prog-fill');
+        var label   = document.querySelector('.prog-label b');
+        var statNum = document.querySelector('.stat-card:first-child .stat-num');
+        if (fill)    fill.style.width      = pct + '%';
+        if (label)   label.textContent     = done;
+        if (statNum) statNum.textContent   = done + '/9';
+
+        if (done >= total) {
+            var notice = document.querySelector('.unlock-notice');
+            if (notice) {
+                notice.style.transition = 'opacity 1s';
+                notice.style.opacity    = '0';
+                setTimeout(function() { notice.remove(); }, 1100);
+            }
+            document.querySelectorAll('.btn-locked').forEach(function(el) {
+                el.outerHTML = '<button type="submit" class="btn-start">▶ Start Challenge</button>';
+            });
+        }
+    }
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,11 @@
 # Secrets - never commit
 .env
+
+# Boundry.AI operational files — internal only
+clients.json
+alert_state.json
+alert_task.xml
+inspect_db.py
 *.db
 instance/
 docs/LAB_CREDENTIALS.md

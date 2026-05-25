@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boundry.AI Training — {{ sc.label }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d0d0d0; }
+
+        .topbar {
+            background: #12151f; border-bottom: 1px solid #1e2235;
+            padding: 12px 28px; display: flex; align-items: center;
+            justify-content: space-between;
+        }
+        .topbar-brand { font-size: 1em; font-weight: bold; color: #00b432; }
+        .topbar nav a { color: #888; text-decoration: none; margin-left: 18px; font-size: 0.82em; }
+        .topbar nav a:hover { color: #00b432; }
+
+        .page {
+            max-width: 1000px; margin: 0 auto; padding: 28px 20px 60px;
+            display: grid; grid-template-columns: 1fr 420px; gap: 24px;
+        }
+
+        /* ── Left: Event feed ── */
+        .feed-panel {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 8px;
+            overflow: hidden;
+        }
+        .feed-header {
+            background: #0d1020; padding: 14px 18px; border-bottom: 1px solid #1e2235;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .feed-title { font-size: 0.85em; font-weight: bold; color: #ccc; }
+        .feed-count { font-size: 0.75em; color: #555; }
+        .feed-body  { padding: 0; max-height: 600px; overflow-y: auto; }
+
+        .event-row {
+            padding: 10px 16px; border-bottom: 1px solid #0f1220;
+            display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start;
+        }
+        .event-row:last-child { border-bottom: none; }
+        .event-row:hover { background: #131620; }
+
+        .evt-type {
+            font-family: monospace; font-size: 0.75em; padding: 2px 7px;
+            border-radius: 3px; white-space: nowrap; font-weight: bold;
+        }
+        .et-LOGIN_FAILED        { background: #2a0a0a; color: #e07070; }
+        .et-LOGIN_SUCCESS       { background: #0a2a0a; color: #40c060; }
+        .et-SEARCH              { background: #1a1a0a; color: #c0a030; }
+        .et-XSS_ATTEMPT         { background: #1a0a2a; color: #a070d0; }
+        .et-DIRECTORY_TRAVERSAL { background: #0a1a2a; color: #5090d0; }
+        .et-PRIV_ESC_ATTEMPT    { background: #2a1a0a; color: #e09030; }
+        .et-ACCOUNT_ENUM        { background: #0a2a2a; color: #30b0b0; }
+
+        .evt-mid { min-width: 0; }
+        .evt-user { font-size: 0.8em; color: #aaa; }
+        .evt-extra {
+            font-family: monospace; font-size: 0.72em; color: #e07050;
+            word-break: break-all; margin-top: 2px;
+        }
+        .evt-ip {
+            font-family: monospace; font-size: 0.75em; color: #5588e0; white-space: nowrap;
+        }
+        .evt-time { font-size: 0.7em; color: #333; margin-top: 2px; text-align: right; }
+
+        /* Scenario info bar */
+        .scenario-info {
+            background: #0d1020; border: 1px solid #1e2235; border-radius: 8px;
+            padding: 14px 16px; margin-bottom: 12px; grid-column: 1 / -1;
+        }
+        .si-label { font-size: 0.7em; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+        .si-title { font-size: 1em; font-weight: bold; color: #ccc; margin-bottom: 6px; }
+        .si-desc  { font-size: 0.82em; color: #666; line-height: 1.5; }
+        .si-hint  {
+            margin-top: 10px; font-size: 0.8em; color: #4a5a6a;
+            border-left: 3px solid #1e3a4a; padding-left: 10px; font-style: italic;
+        }
+
+        /* ── Right: Challenge form ── */
+        .challenge-panel {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 8px;
+            overflow: hidden; align-self: start; position: sticky; top: 20px;
+        }
+        .challenge-header {
+            background: #0d1020; padding: 14px 18px; border-bottom: 1px solid #1e2235;
+        }
+        .ch-title { font-size: 0.88em; font-weight: bold; color: #ccc; }
+        .ch-sub   { font-size: 0.75em; color: #555; margin-top: 3px; }
+
+        .challenge-body { padding: 16px 18px; }
+
+        .q-block { margin-bottom: 18px; }
+        .q-label {
+            font-size: 0.75em; font-weight: bold; color: #888;
+            text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .q-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: #1a2a1a; border: 1px solid #2a4a2a;
+            font-size: 0.8em; color: #00b432; flex-shrink: 0;
+        }
+        .q-scoring { font-size: 0.7em; color: #3a5a3a; font-weight: normal; margin-left: auto; }
+        .q-scoring.ai-scored { color: #3a4a5a; }
+
+        /* ── Q1: Technique checkboxes ── */
+        .technique-grid {
+            display: flex; flex-direction: column; gap: 5px;
+        }
+        .tech-option {
+            display: flex; align-items: center; gap: 9px;
+            padding: 7px 10px; border-radius: 4px;
+            border: 1px solid #1a1d2a; background: #0d1018;
+            cursor: pointer; transition: border-color 0.15s, background 0.15s;
+            user-select: none;
+        }
+        .tech-option:hover { border-color: #2a4a2a; background: #0b120b; }
+        .tech-option.selected { border-color: #00b432; background: #091409; }
+        .tech-option input[type="checkbox"] {
+            accent-color: #00b432; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer;
+        }
+        .tech-id   { font-family: monospace; font-size: 0.75em; color: #00b432; min-width: 82px; flex-shrink: 0; }
+        .tech-name { font-size: 0.78em; color: #777; }
+        .tech-option.selected .tech-name { color: #aaa; }
+
+        /* ── Q2: IP dropdown ── */
+        select {
+            width: 100%; background: #0d1018; color: #c8c8c8;
+            border: 1px solid #1a1d2a; border-radius: 4px;
+            padding: 8px 10px; font-family: monospace; font-size: 0.85em;
+            cursor: pointer; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center;
+            padding-right: 28px;
+        }
+        select:focus { outline: none; border-color: #00b432; }
+        select option { background: #0d1018; }
+
+        /* ── Q3: Radio buttons ── */
+        .radio-group { display: flex; gap: 10px; }
+        .radio-option {
+            display: flex; align-items: center; gap: 7px; cursor: pointer;
+            flex: 1; padding: 8px 12px; border-radius: 4px;
+            border: 1px solid #1a1d2a; background: #0d1018;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .radio-option:hover { border-color: #2a4a2a; background: #0b120b; }
+        .radio-option input[type="radio"] { accent-color: #00b432; cursor: pointer; }
+        .radio-option span { font-size: 0.85em; color: #aaa; }
+        .radio-option.selected { border-color: #00b432; background: #091409; }
+
+        /* ── Q4/Q5: Textareas ── */
+        textarea {
+            width: 100%; background: #0d1018; color: #c8c8c8;
+            border: 1px solid #1a1d2a; border-radius: 4px;
+            padding: 8px 10px; font-family: Arial, sans-serif; font-size: 0.85em;
+            min-height: 78px; resize: vertical; line-height: 1.5;
+        }
+        textarea:focus { outline: none; border-color: #00b432; }
+        textarea::placeholder { color: #2a2d3a; }
+
+        .strict-notice {
+            background: #150a0a; border: 1px solid #3a1a1a; border-radius: 4px;
+            padding: 10px 12px; font-size: 0.78em; color: #885555;
+            margin-bottom: 16px; line-height: 1.5;
+        }
+        .strict-notice strong { color: #c06060; }
+
+        .btn-submit {
+            width: 100%; padding: 12px; background: #00b432; color: #000;
+            border: none; border-radius: 4px; font-size: 0.9em; font-weight: bold;
+            cursor: pointer; margin-top: 4px;
+        }
+        .btn-submit:hover { background: #00d43c; }
+
+        /* Flash messages */
+        .flash { padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; font-size: 0.85em; }
+        .flash-danger { background: #2a0a0a; color: #e07070; border: 1px solid #5a1a1a; }
+
+        /* Validation error highlight */
+        .field-error { border-color: #e05555 !important; }
+        .val-msg { font-size: 0.75em; color: #e05555; margin-top: 4px; display: none; }
+        .val-msg.show { display: block; }
+
+        @media (max-width: 750px) {
+            .page { grid-template-columns: 1fr; }
+            .challenge-panel { position: static; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="topbar-brand">🎓 Boundry.AI — Training Challenge</span>
+    <nav>
+        <a href="/training">← Training Dashboard</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</div>
+
+<div class="page">
+
+    <!-- Scenario info banner (full width) -->
+    <div class="scenario-info">
+        <div class="si-label">Active Challenge</div>
+        <div class="si-title">{{ sc.label }}</div>
+        <div class="si-desc">{{ sc.description }}</div>
+        <div class="si-hint">💡 Hint: {{ sc.hint }}</div>
+    </div>
+
+    <!-- Left: Event feed -->
+    <div class="feed-panel">
+        <div class="feed-header">
+            <span class="feed-title">🔴 Live Event Feed — {{ events | length }} event(s) generated</span>
+            <span class="feed-count">Analyse these events to answer the questions →</span>
+        </div>
+        <div class="feed-body">
+            {% if events %}
+            {% for e in events %}
+            <div class="event-row">
+                <span class="evt-type et-{{ e.event_type }}">{{ e.event_type }}</span>
+                <div class="evt-mid">
+                    <div class="evt-user">{{ e.username }}</div>
+                    {% if e.extra %}
+                    <div class="evt-extra">{{ e.extra }}</div>
+                    {% endif %}
+                </div>
+                <div style="text-align:right;">
+                    <div class="evt-ip">{{ e.ip }}</div>
+                    <div class="evt-time">{{ e.created_at[:16] if e.created_at else '' }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="padding:24px; text-align:center; color:#444; font-size:0.85em;">
+                Events not available — check the Control Room event feed for this scenario.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right: Challenge form -->
+    <div class="challenge-panel">
+        <div class="challenge-header">
+            <div class="ch-title">🔒 Answer All 5 Questions to Unlock the Report</div>
+            <div class="ch-sub">Scored out of 25 points. Q1–Q3 rule-based · Q4–Q5 AI-scored.</div>
+        </div>
+        <div class="challenge-body">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for cat, msg in messages %}
+            <div class="flash flash-{{ cat }}">{{ msg }}</div>
+            {% endfor %}
+            {% endwith %}
+
+            <div class="strict-notice">
+                <strong>Strict Mode Active.</strong>
+                All questions must be answered before the AI report unlocks.
+            </div>
+
+            <form method="POST" action="/training/challenge/{{ attempt.id }}/submit" id="challenge-form">
+
+                <!-- Hidden field assembled by JS from checkboxes -->
+                <input type="hidden" name="answer_techniques" id="answer_techniques">
+
+                <!-- Q1: Technique checkboxes -->
+                <div class="q-block">
+                    <div class="q-label">
+                        <span class="q-num">1</span>
+                        Which MITRE technique(s) fired?
+                        <span class="q-scoring">⚖ Rule-based · /5</span>
+                    </div>
+                    <div class="technique-grid" id="technique-grid">
+                        {% for t in all_mitre %}
+                        <label class="tech-option" id="lbl-{{ t.id | replace('.', '_') }}">
+                            <input type="checkbox" name="technique_cb" value="{{ t.id }}">
+                            <span class="tech-id">{{ t.id }}</span>
+                            <span class="tech-name">{{ t.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="val-msg" id="q1-error">Please select at least one technique.</div>
+                </div>
+
+                <!-- Q2: Attacker IP dropdown -->
+                <div class="q-block">
+                    <div class="q-label">
+                        <span class="q-num">2</span>
+                        What is the attacker's IP address?
+                        <span class="q-scoring">⚖ Rule-based · /5</span>
+                    </div>
+                    <select name="answer_ip" id="answer_ip" required>
+                        <option value="">— Select an IP from the feed —</option>
+                        {% for ip in event_ips %}
+                        {% if ip %}
+                        <option value="{{ ip }}">{{ ip }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <div class="val-msg" id="q2-error">Please select an IP address.</div>
+                </div>
+
+                <!-- Q3: Did the attack succeed? (radio) -->
+                <div class="q-block">
+                    <div class="q-label">
+                        <span class="q-num">3</span>
+                        Did any attack succeed?
+                        <span class="q-scoring">⚖ Rule-based · /5</span>
+                    </div>
+                    <div class="radio-group" style="margin-top:2px;">
+                        <label class="radio-option" id="radio-yes">
+                            <input type="radio" name="answer_succeeded" value="Yes — the attack succeeded">
+                            <span>Yes — attack succeeded</span>
+                        </label>
+                        <label class="radio-option" id="radio-no">
+                            <input type="radio" name="answer_succeeded" value="No — the attack was blocked or failed">
+                            <span>No — blocked / failed</span>
+                        </label>
+                    </div>
+                    <div class="val-msg" id="q3-error">Please select Yes or No.</div>
+                </div>
+
+                <!-- Q4: IOCs (free text, AI-scored) -->
+                <div class="q-block">
+                    <div class="q-label">
+                        <span class="q-num">4</span>
+                        What are the IOCs (Indicators of Compromise)?
+                        <span class="q-scoring ai-scored">🤖 AI-scored · /5</span>
+                    </div>
+                    <textarea name="answer_iocs" id="answer_iocs"
+                        placeholder="List the IOCs you can identify — IP addresses, usernames targeted, payloads, event patterns, timestamps, any anomalies..."
+                        required></textarea>
+                    <div class="val-msg" id="q4-error">Please describe the IOCs you identified.</div>
+                </div>
+
+                <!-- Q5: Response action (free text, AI-scored) -->
+                <div class="q-block">
+                    <div class="q-label">
+                        <span class="q-num">5</span>
+                        What is your immediate response action?
+                        <span class="q-scoring ai-scored">🤖 AI-scored · /5</span>
+                    </div>
+                    <textarea name="answer_response" id="answer_response"
+                        placeholder="What would you do right now? Block the IP? Lock accounts? Escalate? Check for data exfiltration? Be specific..."
+                        required></textarea>
+                    <div class="val-msg" id="q5-error">Please describe your response action.</div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btn-submit">
+                    Submit Analysis &amp; Unlock Report →
+                </button>
+
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ── Visual feedback: technique checkboxes ────────────────────────────────────
+document.querySelectorAll('input[name="technique_cb"]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        var lbl = this.closest('.tech-option');
+        if (this.checked) { lbl.classList.add('selected'); }
+        else              { lbl.classList.remove('selected'); }
+    });
+});
+
+// ── Visual feedback: radio buttons ──────────────────────────────────────────
+document.querySelectorAll('input[name="answer_succeeded"]').forEach(function(r) {
+    r.addEventListener('change', function() {
+        document.querySelectorAll('.radio-option').forEach(function(el) {
+            el.classList.remove('selected');
+        });
+        this.closest('.radio-option').classList.add('selected');
+    });
+});
+
+// ── Form submit: assemble + validate ────────────────────────────────────────
+document.getElementById('challenge-form').addEventListener('submit', function(e) {
+    var ok = true;
+
+    // Q1 — at least one technique
+    var checked = Array.from(document.querySelectorAll('input[name="technique_cb"]:checked'));
+    var q1err   = document.getElementById('q1-error');
+    if (checked.length === 0) {
+        q1err.classList.add('show');
+        document.getElementById('technique-grid').classList.add('field-error');
+        ok = false;
+    } else {
+        q1err.classList.remove('show');
+        document.getElementById('technique-grid').classList.remove('field-error');
+        document.getElementById('answer_techniques').value =
+            checked.map(function(c) { return c.value; }).join(', ');
+    }
+
+    // Q2 — IP selected
+    var ipSel = document.getElementById('answer_ip');
+    var q2err = document.getElementById('q2-error');
+    if (!ipSel.value) {
+        ipSel.classList.add('field-error');
+        q2err.classList.add('show');
+        ok = false;
+    } else {
+        ipSel.classList.remove('field-error');
+        q2err.classList.remove('show');
+    }
+
+    // Q3 — radio selected
+    var radios   = document.querySelectorAll('input[name="answer_succeeded"]');
+    var anyRadio = Array.from(radios).some(function(r) { return r.checked; });
+    var q3err    = document.getElementById('q3-error');
+    if (!anyRadio) {
+        q3err.classList.add('show');
+        ok = false;
+    } else {
+        q3err.classList.remove('show');
+    }
+
+    // Q4 + Q5 — free text not empty
+    ['answer_iocs', 'answer_response'].forEach(function(id, i) {
+        var el  = document.getElementById(id);
+        var err = document.getElementById('q' + (i + 4) + '-error');
+        if (!el.value.trim()) {
+            el.classList.add('field-error');
+            err.classList.add('show');
+            ok = false;
+        } else {
+            el.classList.remove('field-error');
+            err.classList.remove('show');
+        }
+    });
+
+    if (!ok) e.preventDefault();
+});
+</script>
+
+</body>
+</html>

@@ -13,7 +13,7 @@ import bcrypt
 from datetime import datetime, timedelta
 from functools import wraps
 from markupsafe import Markup
-from flask import Flask, render_template, request, redirect, url_for, session, abort, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, abort, flash, jsonify, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -514,6 +514,47 @@ def init_db():
         )
     """)
 
+    # Training mode — MITRE reading progress tracker
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS training_mitre_progress (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            technique_id TEXT    NOT NULL,
+            read_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(analyst_id, technique_id)
+        )
+    """)
+
+    # Training mode — scenario attempt records with answers and scores
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS training_attempts (
+            {id_col},
+            analyst_id        INTEGER NOT NULL,
+            scenario_name     TEXT    NOT NULL,
+            scenario_label    TEXT    NOT NULL,
+            started_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+            submitted_at      TEXT,
+            report_id         INTEGER,
+            actual_techniques TEXT    NOT NULL DEFAULT '[]',
+            actual_attacker_ip TEXT   NOT NULL DEFAULT '',
+            actual_succeeded  INTEGER NOT NULL DEFAULT 0,
+            answer_techniques TEXT,
+            answer_ip         TEXT,
+            answer_succeeded  TEXT,
+            answer_iocs       TEXT,
+            answer_response   TEXT,
+            score_techniques  INTEGER,
+            score_ip          INTEGER,
+            score_succeeded   INTEGER,
+            score_iocs        INTEGER,
+            score_response    INTEGER,
+            score_total       INTEGER,
+            ai_feedback_iocs     TEXT,
+            ai_feedback_response TEXT,
+            ai_feedback_overall  TEXT
+        )
+    """)
+
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.
@@ -905,6 +946,564 @@ def report_detail(report_id):
     )
 
 
+# --- ROUTE 4a: PDF Report Download ---
+@app.route("/reports/<int:report_id>/pdf")
+@login_required
+def report_pdf(report_id):
+    """
+    Generate and stream a branded Boundry.AI PDF for a given report.
+    Clients can only download their own reports; analysts can download any.
+    """
+    row = db_fetchone(
+        f"SELECT id, created_at, threat_count, event_count, content, owner_id "
+        f"FROM reports WHERE id = {PH}",
+        (report_id,),
+    )
+    if not row:
+        abort(404)
+
+    # Access control — clients see only their own reports
+    if session.get("role") != "analyst":
+        if row["owner_id"] != session.get("user_id"):
+            abort(403)
+
+    try:
+        from pdf_generator import generate_report_pdf
+        pdf_bytes = generate_report_pdf(
+            report_id    = row["id"],
+            created_at   = row["created_at"],
+            threat_count = row["threat_count"],
+            event_count  = row["event_count"],
+            content_md   = row["content"],
+        )
+        filename = f"BoundryAI_Incident_Report_{report_id}.pdf"
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as exc:
+        security_log.error(f"PDF_GENERATION_ERROR report_id={report_id} error={exc}")
+        flash(f"PDF generation failed: {exc}", "danger")
+        return redirect(url_for("report_detail", report_id=report_id))
+
+
+# --- Training Mode scenario catalogue ---
+# Each entry defines one structured training challenge.
+# sim_fn maps to SCENARIO_MAP keys inside _simulate_attack_core.
+# sim_chain maps to VALID_CHAINS / APT_CHAINS keys.
+# techniques / succeeded are the GROUND TRUTH used for rule-based scoring.
+TRAINING_SCENARIOS = {
+    "t01_brute_force": {
+        "label": "Scenario 1 — Brute Force",
+        "track": "Beginner", "order": 1,
+        "description": "A single-vector credential attack against one account. Classic and the easiest pattern to spot.",
+        "sim_fn": "brute_force", "sim_chain": None,
+        "techniques": ["T1110"], "succeeded": True,
+        "hint": "Count the LOGIN_FAILED events from a single IP. Then look for what comes after.",
+    },
+    "t02_sql_injection": {
+        "label": "Scenario 2 — SQL Injection",
+        "track": "Beginner", "order": 2,
+        "description": "An attacker probing web input fields with SQL payloads to extract database data.",
+        "sim_fn": "sql_injection", "sim_chain": None,
+        "techniques": ["T1190"], "succeeded": False,
+        "hint": "Check the SEARCH event payloads — they contain the injection strings.",
+    },
+    "t03_directory_traversal": {
+        "label": "Scenario 3 — Directory Traversal",
+        "track": "Beginner", "order": 3,
+        "description": "An attacker attempting to escape the web root to read system files.",
+        "sim_fn": "directory_traversal", "sim_chain": None,
+        "techniques": ["T1083"], "succeeded": False,
+        "hint": "Look for ../ and %2e%2e%2f patterns in DIRECTORY_TRAVERSAL events.",
+    },
+    "t04_credential_stuffing": {
+        "label": "Scenario 4 — Credential Stuffing",
+        "track": "Intermediate", "order": 4,
+        "description": "A breach dump used to test credentials across multiple accounts simultaneously.",
+        "sim_fn": "credential_stuffing", "sim_chain": None,
+        "techniques": ["T1110.004"], "succeeded": True,
+        "hint": "Same IP, many different accounts, each failing 1-2 times — then one succeeds.",
+    },
+    "t05_password_spray": {
+        "label": "Scenario 5 — Password Spray",
+        "track": "Intermediate", "order": 5,
+        "description": "One common password tried across many accounts — designed to stay below lockout thresholds.",
+        "sim_fn": "password_spray", "sim_chain": None,
+        "techniques": ["T1110.003"], "succeeded": False,
+        "hint": "Check the extra field on LOGIN_FAILED events — it contains a key clue.",
+    },
+    "t06_privilege_escalation": {
+        "label": "Scenario 6 — Privilege Escalation",
+        "track": "Intermediate", "order": 6,
+        "description": "A logged-in account probing restricted admin routes to gain elevated access.",
+        "sim_fn": "privilege_escalation", "sim_chain": None,
+        "techniques": ["T1548"], "succeeded": False,
+        "hint": "Look for PRIV_ESC_ATTEMPT events following a LOGIN_SUCCESS from the same IP.",
+    },
+    "t07_suspicious_login": {
+        "label": "Scenario 7 — Account Takeover",
+        "track": "Advanced", "order": 7,
+        "description": "A valid account logs in from an unusual IP at an unusual hour. No failed attempts — credentials were stolen, not guessed.",
+        "sim_fn": "suspicious_login", "sim_chain": None,
+        "techniques": ["T1078"], "succeeded": True,
+        "hint": "No brute force precedes this. The extra field on the LOGIN_SUCCESS event is the tell.",
+    },
+    "t08_recon_to_takeover": {
+        "label": "APT 1 — Recon → Stuffing → Takeover → Priv Esc",
+        "track": "APT Chain", "order": 8,
+        "description": "Four-phase attack: Reconnaissance → Credential Stuffing → Account Takeover → Privilege Escalation. The classic APT entry pattern.",
+        "sim_fn": None, "sim_chain": "recon_to_takeover",
+        "techniques": ["T1589.001", "T1110.004", "T1078", "T1548"], "succeeded": True,
+        "hint": "This is a kill chain — four techniques in sequence. Identify each phase.",
+    },
+    "t09_web_exploit_chain": {
+        "label": "APT 2 — Brute Force → Login → XSS → SQLi → Traversal",
+        "track": "APT Chain", "order": 9,
+        "description": "Five-phase attack: force entry via brute force, then methodically probe for data extraction. Full web attack chain.",
+        "sim_fn": None, "sim_chain": "web_exploit_chain",
+        "techniques": ["T1110", "T1078", "T1059.007", "T1190", "T1083"], "succeeded": True,
+        "hint": "Map each unique event type to its MITRE technique. There are five.",
+    },
+    "t10_stealthy_apt": {
+        "label": "APT 3 — Stealthy APT (Low-and-Slow)",
+        "track": "APT Chain", "order": 10,
+        "description": "The hardest scenario: low-and-slow spray → suspicious login → quiet XSS → careful escalation. Designed to evade detection.",
+        "sim_fn": None, "sim_chain": "stealthy_apt",
+        "techniques": ["T1110.003", "T1078", "T1059.007", "T1548"], "succeeded": True,
+        "hint": "Low failure counts, valid credentials, patient probing. Think like the defender, not just the log reader.",
+    },
+}
+
+
+# --- ROUTE 4c: MITRE ATT&CK Technique Detail Pages ---
+@app.route("/mitre/<technique_id>")
+@analyst_required
+def mitre_detail(technique_id):
+    """
+    Full-page MITRE ATT&CK reference for a single technique.
+    Covers: what it is, how it works, detection signals, business impact,
+    mitigation controls, and incident response playbook.
+    Analyst-only — client accounts don't need raw framework detail.
+    """
+    from mitre_reference import get_technique, get_all_techniques
+    technique = get_technique(technique_id.upper())
+    if not technique:
+        abort(404)
+    all_techniques = get_all_techniques()
+    return render_template(
+        "mitre_detail.html",
+        technique=technique,
+        all_techniques=all_techniques,
+    )
+
+
+# --- ROUTE 4d: Training Mode ---
+
+@app.route("/training")
+@analyst_required
+def training_dashboard():
+    """Main training dashboard — curriculum progress, scenario grid, stats."""
+    import json as _json
+    analyst_id = session["user_id"]
+
+    # MITRE reading progress
+    read_rows = db_fetchall(
+        f"SELECT technique_id FROM training_mitre_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    read_ids = {r["technique_id"] for r in read_rows}
+
+    from mitre_reference import get_all_techniques
+    all_mitre = get_all_techniques()
+
+    # Completed attempts (submitted only)
+    attempts = db_fetchall(
+        f"SELECT scenario_name, score_total, submitted_at FROM training_attempts "
+        f"WHERE analyst_id = {PH} AND submitted_at IS NOT NULL ORDER BY submitted_at DESC",
+        (analyst_id,),
+    )
+    completed_names = {a["scenario_name"] for a in attempts}
+
+    # Per-scenario best score
+    best_scores = {}
+    for a in attempts:
+        sn = a["scenario_name"]
+        st = a["score_total"] or 0
+        if sn not in best_scores or st > best_scores[sn]:
+            best_scores[sn] = st
+
+    # Overall stats
+    total_attempts   = len(attempts)
+    avg_score        = round(sum(a["score_total"] or 0 for a in attempts) / max(total_attempts, 1), 1)
+    scenarios_done   = len(completed_names)
+    mitre_read_count = len(read_ids)
+
+    # Build flat scenario list with key and best_score embedded
+    scenario_list = []
+    for k, v in sorted(TRAINING_SCENARIOS.items(), key=lambda x: x[1]["order"]):
+        scenario_list.append({
+            **v,
+            "key":        k,
+            "is_done":    k in completed_names,
+            "best_score": best_scores.get(k),
+        })
+
+    # Recent attempts with enough context for the history table
+    recent_attempts = db_fetchall(
+        f"SELECT id, scenario_label, score_total, score_techniques, score_ip, "
+        f"score_succeeded, score_iocs, score_response, submitted_at "
+        f"FROM training_attempts WHERE analyst_id = {PH} AND submitted_at IS NOT NULL "
+        f"ORDER BY submitted_at DESC LIMIT 30",
+        (analyst_id,),
+    )
+
+    return render_template(
+        "training.html",
+        all_mitre=all_mitre,
+        read_ids=read_ids,
+        scenario_list=scenario_list,
+        recent_attempts=recent_attempts,
+        total_attempts=total_attempts,
+        avg_score=avg_score,
+        scenarios_done=scenarios_done,
+        mitre_read_count=mitre_read_count,
+    )
+
+
+@app.route("/training/mitre-read/<technique_id>", methods=["POST"])
+@analyst_required
+def training_mitre_read(technique_id):
+    """Mark a MITRE technique as read. Idempotent."""
+    analyst_id = session["user_id"]
+    try:
+        db_run(
+            f"INSERT OR IGNORE INTO training_mitre_progress (analyst_id, technique_id) VALUES ({PH},{PH})",
+            (analyst_id, technique_id.upper()),
+        )
+    except Exception:
+        pass
+    return redirect(url_for("training_dashboard", just_read=technique_id.upper()))
+
+
+@app.route("/training/start/<scenario_name>", methods=["POST"])
+@analyst_required
+def training_start(scenario_name):
+    """
+    Fire a training scenario: flush stale events, simulate, run agent,
+    capture ground truth, create attempt record, redirect to challenge page.
+    """
+    import json as _json
+    if scenario_name not in TRAINING_SCENARIOS:
+        abort(404)
+
+    sc         = TRAINING_SCENARIOS[scenario_name]
+    analyst_id = session["user_id"]
+
+    # 1. Mark all existing unprocessed events as processed so only this
+    #    scenario's events land in the training report.
+    db_run(
+        f"UPDATE security_events SET processed = {PH} "
+        f"WHERE processed = {PH} AND owner_id = {PH}",
+        (1, 0, analyst_id),
+    )
+
+    # 2. Capture max event ID before firing (to isolate new events)
+    before_row = db_fetchone(
+        f"SELECT COALESCE(MAX(id), 0) AS max_id FROM security_events WHERE owner_id = {PH}",
+        (analyst_id,),
+    )
+    before_max = before_row["max_id"]
+
+    # 3. Fire the simulation
+    _simulate_attack_core(
+        owner_id  = analyst_id,
+        scenario  = sc["sim_fn"],
+        chain     = sc["sim_chain"],
+    )
+
+    # 4. Fetch the events just inserted
+    new_events = db_fetchall(
+        f"SELECT * FROM security_events WHERE owner_id = {PH} AND id > {PH} ORDER BY id",
+        (analyst_id, before_max),
+    )
+
+    # 5. Derive ground truth from actual events
+    #    Attacker IPs are non-RFC-1918 / non-loopback addresses
+    attacker_ips = list({
+        e["ip"] for e in new_events
+        if not e["ip"].startswith("10.")
+        and not e["ip"].startswith("172.")
+        and not e["ip"].startswith("192.168.")
+        and e["ip"] not in ("127.0.0.1", "::1", "")
+    })
+    actual_ip = attacker_ips[0] if attacker_ips else "unknown"
+    actual_succeeded = int(any(
+        e["event_type"] == "LOGIN_SUCCESS" and e["ip"] == actual_ip
+        for e in new_events
+    ))
+
+    # 6. Run agent to generate the AI report
+    result = _run_agent_core(
+        triggered_by = session.get("username", "training"),
+        owner_id     = analyst_id,
+    )
+    report_id = result.get("report_id")
+
+    # 7. Create the attempt record
+    db_run(
+        f"INSERT INTO training_attempts "
+        f"(analyst_id, scenario_name, scenario_label, report_id, "
+        f" actual_techniques, actual_attacker_ip, actual_succeeded) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            scenario_name,
+            sc["label"],
+            report_id,
+            _json.dumps(sc["techniques"]),
+            actual_ip,
+            actual_succeeded,
+        ),
+    )
+    attempt_id = db_fetchone(
+        f"SELECT MAX(id) AS aid FROM training_attempts WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )["aid"]
+
+    # Store events for the challenge page (as JSON in session — they're small)
+    session["training_events"] = [
+        {
+            "event_type": e["event_type"],
+            "username":   e["username"],
+            "ip":         e["ip"],
+            "extra":      e["extra"],
+            "created_at": e["created_at"],
+        }
+        for e in new_events
+    ]
+
+    return redirect(url_for("training_challenge", attempt_id=attempt_id))
+
+
+@app.route("/training/challenge/<int:attempt_id>")
+@analyst_required
+def training_challenge(attempt_id):
+    """Show the locked challenge page — events feed + 5 questions."""
+    import json as _json
+    analyst_id = session["user_id"]
+    attempt = db_fetchone(
+        f"SELECT * FROM training_attempts WHERE id = {PH} AND analyst_id = {PH}",
+        (attempt_id, analyst_id),
+    )
+    if not attempt:
+        abort(404)
+    if attempt["submitted_at"]:
+        return redirect(url_for("training_result", attempt_id=attempt_id))
+
+    sc = TRAINING_SCENARIOS.get(attempt["scenario_name"], {})
+    events = session.get("training_events", [])
+
+    from mitre_reference import get_all_techniques
+    all_mitre = get_all_techniques()
+
+    # Unique IPs from the event feed (order-preserving) for the dropdown
+    event_ips = list(dict.fromkeys(
+        e["ip"] for e in events if e.get("ip")
+    ))
+
+    return render_template(
+        "training_challenge.html",
+        attempt=attempt,
+        sc=sc,
+        events=events,
+        all_mitre=all_mitre,
+        event_ips=event_ips,
+    )
+
+
+@app.route("/training/challenge/<int:attempt_id>/submit", methods=["POST"])
+@analyst_required
+def training_submit(attempt_id):
+    """Score the submission and unlock the report."""
+    import json as _json
+    analyst_id = session["user_id"]
+    attempt = db_fetchone(
+        f"SELECT * FROM training_attempts WHERE id = {PH} AND analyst_id = {PH}",
+        (attempt_id, analyst_id),
+    )
+    if not attempt:
+        abort(404)
+    if attempt["submitted_at"]:
+        return redirect(url_for("training_result", attempt_id=attempt_id))
+
+    # Collect answers
+    ans_tech      = request.form.get("answer_techniques", "").strip()
+    ans_ip        = request.form.get("answer_ip", "").strip()
+    ans_succeeded = request.form.get("answer_succeeded", "").strip()
+    ans_iocs      = request.form.get("answer_iocs", "").strip()
+    ans_response  = request.form.get("answer_response", "").strip()
+
+    # Strict mode: all five answers required
+    missing = [f for f, v in [
+        ("MITRE techniques", ans_tech), ("Attacker IP", ans_ip),
+        ("Attack succeeded?", ans_succeeded), ("IOCs", ans_iocs),
+        ("Response action", ans_response),
+    ] if not v]
+    if missing:
+        flash(f"Please answer all questions before submitting: {', '.join(missing)}", "danger")
+        return redirect(url_for("training_challenge", attempt_id=attempt_id))
+
+    sc               = TRAINING_SCENARIOS.get(attempt["scenario_name"], {})
+    actual_techs     = _json.loads(attempt["actual_techniques"])
+    actual_ip        = attempt["actual_attacker_ip"]
+    actual_succeeded = bool(attempt["actual_succeeded"])
+
+    # ── Rule-based scoring ────────────────────────────────────────────────────
+
+    # Techniques (0-5): proportion of correct IDs mentioned
+    ans_upper   = ans_tech.upper()
+    correct_ids = [t for t in actual_techs if t.upper() in ans_upper]
+    ratio       = len(correct_ids) / max(len(actual_techs), 1)
+    score_tech  = round(ratio * 5)
+
+    # IP (0 or 5)
+    score_ip = 5 if actual_ip and actual_ip in ans_ip else 0
+
+    # Succeeded (0 or 5)
+    ans_succ_lower = ans_succeeded.lower()
+    if actual_succeeded:
+        score_succ = 5 if any(w in ans_succ_lower for w in ("yes", "succeed", "true", "did", "compromised", "breached")) else 0
+    else:
+        score_succ = 5 if any(w in ans_succ_lower for w in ("no", "fail", "false", "didn", "not succeed", "blocked", "prevented")) else 0
+
+    # ── AI scoring via Ollama ─────────────────────────────────────────────────
+    fb_iocs = fb_response = fb_overall = ""
+    score_iocs = score_resp = 3  # safe default if Ollama unavailable
+
+    ai_prompt = f"""You are a senior cybersecurity trainer evaluating a SOC analyst student at Boundry.AI.
+
+SCENARIO: {sc.get('label', attempt['scenario_label'])}
+ACTUAL MITRE TECHNIQUES: {', '.join(actual_techs)}
+ACTUAL ATTACKER IP: {actual_ip}
+ATTACK SUCCEEDED: {'Yes' if actual_succeeded else 'No'}
+
+STUDENT ANSWERS:
+Q4 — IOC Identification: "{ans_iocs}"
+Q5 — Incident Response Plan: "{ans_response}"
+
+Score each answer 0-5 using this scale:
+5 = Complete, accurate, professional-grade answer
+4 = Mostly correct, minor gaps
+3 = Partially correct, key points present but incomplete
+2 = Some understanding but significant gaps
+1 = Minimal correct content
+0 = Incorrect or empty
+
+Return ONLY valid JSON, no other text:
+{{
+  "score_iocs": <integer 0-5>,
+  "feedback_iocs": "<1-2 sentences of specific feedback>",
+  "score_response": <integer 0-5>,
+  "feedback_response": "<1-2 sentences of specific feedback>",
+  "overall_feedback": "<2-3 sentences: what they did well, what to focus on next>"
+}}"""
+
+    try:
+        import json as _j
+        import urllib.request as _urlreq
+        ollama_base  = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        ollama_model = os.environ.get("OLLAMA_MODEL", "llama3.1:8b")
+        payload = _j.dumps({
+            "model": ollama_model,
+            "messages": [{"role": "user", "content": ai_prompt}],
+            "max_tokens": 512,
+            "temperature": 0.2,
+        }).encode()
+        req = _urlreq.Request(
+            f"{ollama_base}/chat/completions",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with _urlreq.urlopen(req, timeout=60) as resp:
+            raw    = _j.loads(resp.read())
+            text   = raw["choices"][0]["message"]["content"].strip()
+            # Strip any markdown code fences if present
+            text   = re.sub(r"^```[a-z]*\n?", "", text).rstrip("`").strip()
+            scored = _j.loads(text)
+            score_iocs  = max(0, min(5, int(scored.get("score_iocs",  3))))
+            score_resp  = max(0, min(5, int(scored.get("score_response", 3))))
+            fb_iocs     = scored.get("feedback_iocs", "")
+            fb_response = scored.get("feedback_response", "")
+            fb_overall  = scored.get("overall_feedback", "")
+    except Exception as exc:
+        security_log.warning(f"TRAINING_AI_SCORE_FAILED error={exc}")
+        fb_overall = "AI scoring unavailable — scores for Q4 and Q5 are estimated."
+
+    score_total = score_tech + score_ip + score_succ + score_iocs + score_resp
+
+    # Persist results
+    db_run(
+        f"UPDATE training_attempts SET "
+        f"submitted_at={PH}, answer_techniques={PH}, answer_ip={PH}, "
+        f"answer_succeeded={PH}, answer_iocs={PH}, answer_response={PH}, "
+        f"score_techniques={PH}, score_ip={PH}, score_succeeded={PH}, "
+        f"score_iocs={PH}, score_response={PH}, score_total={PH}, "
+        f"ai_feedback_iocs={PH}, ai_feedback_response={PH}, ai_feedback_overall={PH} "
+        f"WHERE id={PH}",
+        (
+            datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            ans_tech, ans_ip, ans_succeeded, ans_iocs, ans_response,
+            score_tech, score_ip, score_succ, score_iocs, score_resp, score_total,
+            fb_iocs, fb_response, fb_overall,
+            attempt_id,
+        ),
+    )
+    # Clear events from session
+    session.pop("training_events", None)
+    return redirect(url_for("training_result", attempt_id=attempt_id))
+
+
+@app.route("/training/result/<int:attempt_id>")
+@analyst_required
+def training_result(attempt_id):
+    """Show scores, AI feedback, and the now-unlocked incident report."""
+    import json as _json
+    analyst_id = session["user_id"]
+    attempt = db_fetchone(
+        f"SELECT * FROM training_attempts WHERE id = {PH} AND analyst_id = {PH}",
+        (attempt_id, analyst_id),
+    )
+    if not attempt:
+        abort(404)
+    if not attempt["submitted_at"]:
+        return redirect(url_for("training_challenge", attempt_id=attempt_id))
+
+    report = None
+    if attempt["report_id"]:
+        report = db_fetchone(
+            f"SELECT id, created_at, threat_count, event_count, content FROM reports WHERE id = {PH}",
+            (attempt["report_id"],),
+        )
+        if report:
+            report = dict(report)
+            report["content_html"] = Markup(markdown.markdown(
+                report["content"],
+                extensions=["tables", "fenced_code"],
+            ))
+
+    actual_techniques = _json.loads(attempt["actual_techniques"] or "[]")
+    sc = TRAINING_SCENARIOS.get(attempt["scenario_name"], {})
+    return render_template(
+        "training_result.html",
+        attempt=attempt,
+        sc=sc,
+        report=report,
+        actual_techniques=actual_techniques,
+    )
+
+
 # --- ROUTE 4b: Analyst Control Room ---
 @app.route("/control-room")
 @analyst_required
@@ -1083,7 +1682,7 @@ def _fetch_breach_intel():
     return saved
 
 
-def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None):
+def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None, scenario=None):
     """
     Generate a randomised attack scenario and write events to the DB.
     difficulty: "easy" | "medium" | "hard"
@@ -1295,8 +1894,22 @@ def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None):
         scenario_credential_stuffing,
     ]
 
+    SCENARIO_MAP = {
+        "brute_force":          scenario_brute_force,
+        "sql_injection":        scenario_sql_injection,
+        "xss_attack":           scenario_xss_attack,
+        "directory_traversal":  scenario_directory_traversal,
+        "credential_stuffing":  scenario_credential_stuffing,
+        "password_spray":       scenario_password_spray,
+        "privilege_escalation": scenario_privilege_escalation,
+        "account_enumeration":  scenario_account_enumeration,
+        "suspicious_login":     scenario_suspicious_login,
+    }
+
     if chain and chain in APT_CHAINS:
         APT_CHAINS[chain]()
+    elif scenario and scenario in SCENARIO_MAP:
+        SCENARIO_MAP[scenario]()
     elif difficulty == "easy":
         chosen = random.choice(easy_scenarios)
         chosen()
@@ -1376,6 +1989,60 @@ def _enrich_threats_with_ip_reputation(threats):
         if ip and ip in reputation_cache:
             threat["ip_reputation"] = reputation_cache[ip]
     return threats
+
+
+def _generate_report_with_ai(prompt):
+    """
+    Generate an AI incident report. Priority order:
+      1. Local Ollama  — 100% private, runs on your GPU (preferred for Boundry.AI)
+      2. Anthropic Claude — cloud fallback only if ANTHROPIC_API_KEY is set
+    Returns the report text string, or None if both backends are unavailable.
+    Controlled by env vars:
+      OLLAMA_BASE_URL  (default: http://localhost:11434/v1)
+      OLLAMA_MODEL     (default: llama3.1:8b)
+    """
+    import json as _j
+    import urllib.request as _urlreq
+
+    # --- 1. Local Ollama (zero cloud, zero cost) ---
+    ollama_base  = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    ollama_model = os.environ.get("OLLAMA_MODEL",    "llama3.1:8b")
+    try:
+        payload = _j.dumps({
+            "model":       ollama_model,
+            "messages":    [{"role": "user", "content": prompt}],
+            "max_tokens":  2048,
+            "temperature": 0.3,
+        }).encode()
+        req = _urlreq.Request(
+            f"{ollama_base}/chat/completions",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with _urlreq.urlopen(req, timeout=120) as resp:
+            data = _j.loads(resp.read())
+            text = data["choices"][0]["message"]["content"].strip()
+            security_log.info(f"REPORT_AI_BACKEND backend=ollama model={ollama_model}")
+            return text
+    except Exception as exc:
+        security_log.warning(f"REPORT_OLLAMA_FAILED error={exc}")
+
+    # --- 2. Anthropic Claude (cloud fallback) ---
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if api_key:
+        try:
+            import anthropic as _anthropic
+            ai_client = _anthropic.Anthropic(api_key=api_key)
+            message   = ai_client.messages.create(
+                model="claude-opus-4-5", max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            security_log.info("REPORT_AI_BACKEND backend=anthropic")
+            return message.content[0].text.strip()
+        except Exception as exc:
+            security_log.warning(f"REPORT_ANTHROPIC_FAILED error={exc}")
+
+    return None  # Both backends unavailable
 
 
 def _run_agent_core(triggered_by="unknown", owner_id=None):
@@ -1658,11 +2325,10 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
     # Enrich attacker IPs with AbuseIPDB reputation data
     threats = _enrich_threats_with_ip_reputation(threats)
 
-    # Generate report content
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if api_key and threat_count > 0:
+    # Generate report content — Ollama (local) → Anthropic (cloud) → basic markdown
+    content = None
+    if threat_count > 0:
         try:
-            import anthropic as _anthropic
             summary = {
                 "total_events": event_count,
                 "failed_logins": len(events["login_failed"]),
@@ -1730,15 +2396,10 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                 "Critical / High / Medium / Low — one sentence justification.\n\n"
                 "Format as clean markdown. Use tables where appropriate."
             )
-            ai_client = _anthropic.Anthropic(api_key=api_key)
-            message   = ai_client.messages.create(
-                model="claude-opus-4-5", max_tokens=1024,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            content = message.content[0].text
+            content = _generate_report_with_ai(prompt)
         except Exception as exc:
-            content = f"# Report Generation Error\n\nAI report could not be generated: {exc}"
-    else:
+            security_log.warning(f"REPORT_GENERATION_FAILED error={exc}")
+    if not content:
         failed_ct    = len(events["login_failed"])
         success_ct   = len(events["login_success"])
         search_ct    = len(events["search"])
@@ -1845,8 +2506,9 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                         f"- **Timestamp:** {t.get('timestamp','')}\n"
                     )
             lines += ["---\n",
-                      "> **Note:** Add `ANTHROPIC_API_KEY` as a Railway environment variable "
-                      "to replace this report with a full AI-generated narrative."]
+                      "> **Note:** AI report generation uses local Ollama by default "
+                      "(http://localhost:11434 — ensure Ollama is running). "
+                      "Set `ANTHROPIC_API_KEY` as a fallback for cloud-based generation."]
         else:
             lines += ["## No Threats Detected\n",
                       "The agent found no threat patterns in the current events.\n"]

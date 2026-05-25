@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boundry.AI Training — Results</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d0d0d0; }
+
+        .topbar {
+            background: #12151f; border-bottom: 1px solid #1e2235;
+            padding: 12px 28px; display: flex; align-items: center;
+            justify-content: space-between;
+        }
+        .topbar-brand { font-size: 1em; font-weight: bold; color: #00b432; }
+        .topbar nav a { color: #888; text-decoration: none; margin-left: 18px; font-size: 0.82em; }
+        .topbar nav a:hover { color: #00b432; }
+
+        .page { max-width: 940px; margin: 0 auto; padding: 28px 20px 60px; }
+
+        /* ── Score hero ── */
+        .score-hero {
+            background: linear-gradient(135deg, #0d1020 0%, #12151f 100%);
+            border: 1px solid #1e2235; border-radius: 8px;
+            padding: 28px 32px; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 32px; flex-wrap: wrap;
+        }
+        .big-score { text-align: center; flex-shrink: 0; }
+        .score-num  { font-size: 4em; font-weight: bold; line-height: 1; }
+        .score-denom { font-size: 1em; color: #555; }
+        .score-label { font-size: 0.72em; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+        .score-perfect { color: #40d060; }
+        .score-good    { color: #a0c020; }
+        .score-pass    { color: #c0a020; }
+        .score-low     { color: #e05555; }
+
+        .score-right { flex: 1; min-width: 200px; }
+        .scenario-title { font-size: 1.1em; font-weight: bold; color: #ccc; margin-bottom: 6px; }
+        .grade-text { font-size: 0.9em; color: #888; margin-bottom: 16px; line-height: 1.5; }
+
+        /* ── Score breakdown ── */
+        .breakdown { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 24px; }
+        .bd-item {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 12px; text-align: center;
+            /* Hidden until JS reveals it */
+            opacity: 0; transform: translateY(18px);
+            transition: opacity 0.4s ease, transform 0.4s ease, border-color 0.3s, box-shadow 0.3s;
+        }
+        .bd-item.revealed      { opacity: 1; transform: translateY(0); }
+        .bd-item.bd-correct    { border-color: #1a4a1a; box-shadow: 0 0 10px #00b43233; }
+        .bd-item.bd-partial    { border-color: #3a3a10; }
+        .bd-item.bd-wrong      { border-color: #3a1010; }
+        .bd-score { font-size: 1.5em; font-weight: bold; color: #00b432; line-height: 1; }
+        .bd-max   { font-size: 0.7em; color: #333; }
+        .bd-label { font-size: 0.68em; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+        .bd-method { font-size: 0.63em; color: #333; margin-top: 2px; }
+        .bd-item.bd-wrong   .bd-score { color: #e05555; }
+        .bd-item.bd-partial .bd-score { color: #c0a020; }
+
+        /* ── Section cards ── */
+        .card { background: #12151f; border: 1px solid #1e2235; border-radius: 6px; margin-bottom: 16px; overflow: hidden; }
+        .card-header { padding: 12px 18px; border-bottom: 1px solid #1e2235; display: flex; align-items: center; gap: 8px; }
+        .card-icon  { font-size: 1em; }
+        .card-title { font-size: 0.85em; font-weight: bold; color: #ccc; flex: 1; }
+        .card-body  { padding: 16px 18px; }
+
+        /* ── Answer comparison table ── */
+        .compare-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        .compare-table th {
+            text-align: left; padding: 8px 10px; font-size: 0.72em;
+            text-transform: uppercase; letter-spacing: 0.06em; color: #444;
+            border-bottom: 1px solid #1a1d2a;
+        }
+        .compare-table td { padding: 10px; border-bottom: 1px solid #141720; vertical-align: top; }
+        .compare-table tr:last-child td { border-bottom: none; }
+        .q-tag { font-size: 0.72em; color: #555; display: block; margin-bottom: 3px; }
+        .answer-given  { color: #c8c8c8; }
+        .answer-actual { color: #00b432; font-family: monospace; font-size: 0.9em; }
+        .result-tick   { font-size: 1.1em; text-align: center; }
+
+        /* Compare rows — hidden then revealed */
+        .compare-row {
+            opacity: 0; transition: opacity 0.5s ease;
+        }
+        .compare-row.revealed { opacity: 1; }
+
+        /* ── AI feedback ── */
+        .fb-box {
+            background: #0d1020; border-left: 3px solid #00b432;
+            border-radius: 0 4px 4px 0; padding: 12px 16px;
+            font-size: 0.88em; color: #aaa; line-height: 1.6; margin-bottom: 10px;
+        }
+        .fb-box.fb-amber { border-left-color: #c0a020; }
+        .fb-box.fb-red   { border-left-color: #e05555; }
+        .fb-label { font-size: 0.72em; color: #555; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
+        .overall-fb {
+            background: #0a1a0a; border: 1px solid #1a3a1a; border-radius: 6px;
+            padding: 14px 16px; font-size: 0.9em; color: #80b080; line-height: 1.7; margin-bottom: 16px;
+            opacity: 0; transition: opacity 0.6s ease;
+        }
+        .overall-fb.revealed { opacity: 1; }
+
+        /* ── MITRE links ── */
+        .mitre-links { display: flex; flex-wrap: wrap; gap: 8px; }
+        .mitre-link-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #1a1d2a; border: 1px solid #2a2d3a; border-radius: 4px;
+            padding: 8px 14px; text-decoration: none; color: #7090c0;
+            font-size: 0.82em; font-weight: bold; transition: all 0.15s;
+        }
+        .mitre-link-btn:hover { background: #20243a; color: #88aaff; border-color: #3a3d5a; }
+        .mitre-link-chip { font-family: monospace; color: #5588e0; }
+
+        /* ── Unlocked report ── */
+        .report-unlock-banner {
+            background: #0a2a0a; border: 1px solid #1a4a1a; border-radius: 6px;
+            padding: 12px 16px; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.85em; color: #40b060;
+        }
+        .report-body { line-height: 1.75; font-size: 0.92em; }
+        .report-body h1 { color: #e05555; border-bottom: 2px solid #e05555; padding-bottom: 8px; font-size: 1.4em; margin-bottom: 16px; margin-top: 20px; }
+        .report-body h2 { color: #ccc; margin-top: 28px; font-size: 1.1em; border-left: 3px solid #e05555; padding-left: 10px; }
+        .report-body h3 { color: #aaa; margin-top: 16px; font-size: 1em; }
+        .report-body p  { color: #b8b8b8; margin: 8px 0; }
+        .report-body ul, .report-body ol { padding-left: 20px; }
+        .report-body li { margin-bottom: 5px; color: #b8b8b8; }
+        .report-body blockquote { border-left: 4px solid #e05555; margin: 8px 0; padding: 8px 14px; background: #1a1820; color: #aaa; font-style: italic; }
+        .report-body table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .report-body th { background: #20243a; color: #e05555; padding: 8px 10px; text-align: left; font-size: 0.82em; text-transform: uppercase; }
+        .report-body td { padding: 8px 10px; border-bottom: 1px solid #1e2235; color: #aaa; font-size: 0.88em; }
+        .report-body code { background: #1e2130; color: #e07050; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; }
+        .report-body hr { border: none; border-top: 1px solid #1e2235; margin: 24px 0; }
+        .report-body strong { color: #ddd; }
+
+        /* ── Nav ── */
+        .nav-row { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+        .nav-btn {
+            flex: 1; min-width: 180px; display: flex; align-items: center; gap: 8px;
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 12px 16px; text-decoration: none; color: #777;
+            font-size: 0.85em; transition: all 0.15s;
+        }
+        .nav-btn:hover { background: #1a1d2a; color: #ccc; }
+        .nav-btn-green { background: #0a2a0a; border-color: #1a4a1a; color: #40b060; }
+        .nav-btn-green:hover { background: #0d340d; color: #60d080; }
+
+        /* ── Screen flash overlay ── */
+        #result-flash {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #00ff41; opacity: 0; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Full-screen flash layer -->
+<div id="result-flash"></div>
+
+<div class="topbar">
+    <span class="topbar-brand">🎓 Boundry.AI — Training Result</span>
+    <nav>
+        <a href="/training">← Training Dashboard</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</div>
+
+<div class="page">
+
+    <!-- Score hero — visible immediately -->
+    {% set total = attempt.score_total or 0 %}
+    {% if total >= 23 %}
+        {% set grade = "Excellent" %}
+        {% set grade_msg = "Outstanding analysis. Professional-grade SOC work." %}
+        {% set score_class = "score-perfect" %}
+    {% elif total >= 18 %}
+        {% set grade = "Good" %}
+        {% set grade_msg = "Solid work. Minor gaps — review the areas you missed below." %}
+        {% set score_class = "score-good" %}
+    {% elif total >= 13 %}
+        {% set grade = "Passing" %}
+        {% set grade_msg = "You're getting there. Re-read the MITRE references for the techniques in this scenario." %}
+        {% set score_class = "score-pass" %}
+    {% else %}
+        {% set grade = "Needs Work" %}
+        {% set grade_msg = "Don't worry — this is how you learn. Read the MITRE pages for these techniques and try again." %}
+        {% set score_class = "score-low" %}
+    {% endif %}
+
+    <div class="score-hero">
+        <div class="big-score">
+            <div class="score-num {{ score_class }}">{{ total }}<span class="score-denom">/25</span></div>
+            <div class="score-label">{{ grade }}</div>
+        </div>
+        <div class="score-right">
+            <div class="scenario-title">{{ attempt.scenario_label }}</div>
+            <div class="grade-text">{{ grade_msg }}</div>
+            <!-- Breakdown — each block revealed one by one by JS -->
+            <div class="breakdown">
+                <div class="bd-item" id="bd-tech">
+                    {% set s = attempt.score_techniques or 0 %}
+                    <div class="bd-score">{{ s }}<span class="bd-max">/5</span></div>
+                    <div class="bd-label">Techniques</div>
+                    <div class="bd-method">Rule-scored</div>
+                </div>
+                <div class="bd-item" id="bd-ip">
+                    {% set s = attempt.score_ip or 0 %}
+                    <div class="bd-score">{{ s }}<span class="bd-max">/5</span></div>
+                    <div class="bd-label">IP Address</div>
+                    <div class="bd-method">Rule-scored</div>
+                </div>
+                <div class="bd-item" id="bd-succ">
+                    {% set s = attempt.score_succeeded or 0 %}
+                    <div class="bd-score">{{ s }}<span class="bd-max">/5</span></div>
+                    <div class="bd-label">Succeeded?</div>
+                    <div class="bd-method">Rule-scored</div>
+                </div>
+                <div class="bd-item" id="bd-iocs">
+                    {% set s = attempt.score_iocs or 0 %}
+                    <div class="bd-score">{{ s }}<span class="bd-max">/5</span></div>
+                    <div class="bd-label">IOCs</div>
+                    <div class="bd-method">AI-scored</div>
+                </div>
+                <div class="bd-item" id="bd-resp">
+                    {% set s = attempt.score_response or 0 %}
+                    <div class="bd-score">{{ s }}<span class="bd-max">/5</span></div>
+                    <div class="bd-label">Response</div>
+                    <div class="bd-method">AI-scored</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI overall feedback -->
+    {% if attempt.ai_feedback_overall %}
+    <div class="overall-fb" id="overall-fb">
+        🤖 <strong>Trainer Feedback:</strong> {{ attempt.ai_feedback_overall }}
+    </div>
+    {% endif %}
+
+    <!-- Answer comparison -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-icon">📋</span>
+            <span class="card-title">Your Answers vs Ground Truth</span>
+        </div>
+        <div class="card-body">
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th style="width:40%;">Your Answer</th>
+                        <th style="width:35%;">Ground Truth</th>
+                        <th style="width:10%;">Score</th>
+                        <th>Feedback</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="compare-row" id="row-q1">
+                        <td>
+                            <span class="q-tag">Q1 — MITRE Technique(s)</span>
+                            <span class="answer-given">{{ attempt.answer_techniques or '—' }}</span>
+                        </td>
+                        <td><span class="answer-actual">{{ actual_techniques | join(', ') }}</span></td>
+                        <td class="result-tick">
+                            {% set s = attempt.score_techniques or 0 %}
+                            {% if s == 5 %}✅{% elif s >= 2 %}⚠️{% else %}❌{% endif %}
+                            <div style="font-size:0.75em;color:#555;">{{ s }}/5</div>
+                        </td>
+                        <td>
+                            {% if (attempt.score_techniques or 0) < 5 %}
+                            <div style="font-size:0.8em;color:#888;">
+                                Missing: {{ actual_techniques | reject("in", (attempt.answer_techniques or "").upper()) | list | join(', ') or 'check your IDs' }}
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="compare-row" id="row-q2">
+                        <td>
+                            <span class="q-tag">Q2 — Attacker IP</span>
+                            <span class="answer-given">{{ attempt.answer_ip or '—' }}</span>
+                        </td>
+                        <td><span class="answer-actual">{{ attempt.actual_attacker_ip }}</span></td>
+                        <td class="result-tick">
+                            {% if (attempt.score_ip or 0) == 5 %}✅{% else %}❌{% endif %}
+                            <div style="font-size:0.75em;color:#555;">{{ attempt.score_ip or 0 }}/5</div>
+                        </td>
+                        <td>
+                            {% if (attempt.score_ip or 0) == 0 %}
+                            <div style="font-size:0.8em;color:#888;">The IP was visible in the event feed.</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="compare-row" id="row-q3">
+                        <td>
+                            <span class="q-tag">Q3 — Did Attack Succeed?</span>
+                            <span class="answer-given">{{ attempt.answer_succeeded or '—' }}</span>
+                        </td>
+                        <td><span class="answer-actual">{{ 'Yes — succeeded' if attempt.actual_succeeded else 'No — blocked/failed' }}</span></td>
+                        <td class="result-tick">
+                            {% if (attempt.score_succeeded or 0) == 5 %}✅{% else %}❌{% endif %}
+                            <div style="font-size:0.75em;color:#555;">{{ attempt.score_succeeded or 0 }}/5</div>
+                        </td>
+                        <td>
+                            {% if (attempt.score_succeeded or 0) == 0 %}
+                            <div style="font-size:0.8em;color:#888;">Look for LOGIN_SUCCESS events from the attacker IP.</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="compare-row" id="row-q4">
+                        <td>
+                            <span class="q-tag">Q4 — IOC Identification (AI-scored)</span>
+                            <span class="answer-given">{{ attempt.answer_iocs or '—' }}</span>
+                        </td>
+                        <td><span style="font-size:0.82em;color:#555;">AI evaluation</span></td>
+                        <td class="result-tick">
+                            {% set s = attempt.score_iocs or 0 %}
+                            {% if s >= 4 %}✅{% elif s >= 2 %}⚠️{% else %}❌{% endif %}
+                            <div style="font-size:0.75em;color:#555;">{{ s }}/5</div>
+                        </td>
+                        <td>
+                            {% if attempt.ai_feedback_iocs %}
+                            <div style="font-size:0.8em;color:#888;">{{ attempt.ai_feedback_iocs }}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="compare-row" id="row-q5">
+                        <td>
+                            <span class="q-tag">Q5 — Response Action (AI-scored)</span>
+                            <span class="answer-given">{{ attempt.answer_response or '—' }}</span>
+                        </td>
+                        <td><span style="font-size:0.82em;color:#555;">AI evaluation</span></td>
+                        <td class="result-tick">
+                            {% set s = attempt.score_response or 0 %}
+                            {% if s >= 4 %}✅{% elif s >= 2 %}⚠️{% else %}❌{% endif %}
+                            <div style="font-size:0.75em;color:#555;">{{ s }}/5</div>
+                        </td>
+                        <td>
+                            {% if attempt.ai_feedback_response %}
+                            <div style="font-size:0.8em;color:#888;">{{ attempt.ai_feedback_response }}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Technique reference links -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-icon">📖</span>
+            <span class="card-title">Study These Techniques</span>
+        </div>
+        <div class="card-body">
+            <div class="mitre-links">
+                {% for tid in actual_techniques %}
+                <a href="/mitre/{{ tid }}" class="mitre-link-btn">
+                    <span class="mitre-link-chip">{{ tid }}</span>
+                    Full Playbook →
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Unlocked AI report -->
+    {% if report %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-icon">🔓</span>
+            <span class="card-title">Unlocked: AI Incident Report #{{ report.id }}</span>
+        </div>
+        <div class="card-body">
+            <div class="report-unlock-banner">
+                ✅ Report unlocked. Compare this to your answers above to see what you missed.
+            </div>
+            <div class="report-body">{{ report.content_html }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Nav -->
+    <div class="nav-row">
+        <a href="/training/start/{{ attempt.scenario_name }}" class="nav-btn" style="max-width:220px;"
+           onclick="return confirm('Run this scenario again from scratch?')">
+            ↺ Retry This Scenario
+        </a>
+        <a href="/training" class="nav-btn nav-btn-green">
+            ← Back to Training Dashboard
+        </a>
+        {% if report %}
+        <a href="/reports/{{ report.id }}/pdf" class="nav-btn" style="max-width:200px;">
+            ⬇ Download PDF
+        </a>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+// ── Score data from server ───────────────────────────────────────────────────
+var SCORES = {
+    tech:  {{ attempt.score_techniques or 0 }},
+    ip:    {{ attempt.score_ip or 0 }},
+    succ:  {{ attempt.score_succeeded or 0 }},
+    iocs:  {{ attempt.score_iocs or 0 }},
+    resp:  {{ attempt.score_response or 0 }},
+    total: {{ attempt.score_total or 0 }}
+};
+
+// Reveal sequence — bd id, row id, threshold for "correct"
+var REVEALS = [
+    { bd: 'bd-tech', row: 'row-q1', score: SCORES.tech,  correct: SCORES.tech  === 5, partial: SCORES.tech  > 0 },
+    { bd: 'bd-ip',   row: 'row-q2', score: SCORES.ip,    correct: SCORES.ip    === 5, partial: false },
+    { bd: 'bd-succ', row: 'row-q3', score: SCORES.succ,  correct: SCORES.succ  === 5, partial: false },
+    { bd: 'bd-iocs', row: 'row-q4', score: SCORES.iocs,  correct: SCORES.iocs  >= 4,  partial: SCORES.iocs  >= 2 },
+    { bd: 'bd-resp', row: 'row-q5', score: SCORES.resp,  correct: SCORES.resp  >= 4,  partial: SCORES.resp  >= 2 },
+];
+
+// ── Shared AudioContext ──────────────────────────────────────────────────────
+var _ac = null;
+function getAC() {
+    if (!_ac || _ac.state === 'closed') {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) _ac = new AC();
+    }
+    return _ac;
+}
+
+// ── Short boom — for each correct answer ────────────────────────────────────
+// No whistle — just the impact crack + sub thump + filtered noise, ~1.2s.
+function fireShortBoom() {
+    var ac = getAC();
+    if (!ac) return;
+
+    var warmBuf = ac.createBuffer(1, 1, ac.sampleRate);
+    var warmSrc = ac.createBufferSource();
+    warmSrc.buffer = warmBuf;
+    warmSrc.connect(ac.destination);
+    warmSrc.start(0);
+
+    var t   = ac.currentTime + 0.015;
+    var dur = 1.2;
+
+    var lim = ac.createDynamicsCompressor();
+    lim.threshold.value = -1; lim.knee.value = 0;
+    lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.15;
+    lim.connect(ac.destination);
+
+    // Noise body
+    var nLen = Math.floor(ac.sampleRate * (dur + 0.1));
+    var nBuf = ac.createBuffer(1, nLen, ac.sampleRate);
+    var nd   = nBuf.getChannelData(0);
+    for (var i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
+    var nSrc = ac.createBufferSource();
+    nSrc.buffer = nBuf;
+    var nLP  = ac.createBiquadFilter();
+    nLP.type = 'lowpass';
+    nLP.frequency.setValueAtTime(2000, t);
+    nLP.frequency.exponentialRampToValueAtTime(150, t + dur);
+    var nEnv = ac.createGain();
+    nEnv.gain.setValueAtTime(2.0, t);
+    nEnv.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    nSrc.connect(nLP); nLP.connect(nEnv); nEnv.connect(lim);
+    nSrc.start(t); nSrc.stop(t + dur + 0.1);
+
+    // Sub thump
+    var sub    = ac.createOscillator();
+    var subEnv = ac.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(90, t);
+    sub.frequency.exponentialRampToValueAtTime(28, t + 0.35);
+    subEnv.gain.setValueAtTime(4.5, t);
+    subEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    sub.connect(subEnv); subEnv.connect(lim);
+    sub.start(t); sub.stop(t + 0.7);
+
+    // Impact crack
+    var cLen = Math.floor(ac.sampleRate * 0.018);
+    var cBuf = ac.createBuffer(1, cLen, ac.sampleRate);
+    var cd   = cBuf.getChannelData(0);
+    for (var j = 0; j < cLen; j++) {
+        var v = (Math.random() * 2 - 1) * 4;
+        cd[j] = Math.max(-1, Math.min(1, v));
+    }
+    var cSrc = ac.createBufferSource();
+    var cLP  = ac.createBiquadFilter();
+    var cEnv = ac.createGain();
+    cSrc.buffer = cBuf;
+    cLP.type = 'lowpass'; cLP.frequency.value = 1400;
+    cEnv.gain.setValueAtTime(1.8, t);
+    cEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    cSrc.connect(cLP); cLP.connect(cEnv); cEnv.connect(lim);
+    cSrc.start(t);
+}
+
+// ── Full DJ bomb — finale for a good total score ─────────────────────────────
+// Falling whistle → massive boom. Same as the training MITRE read animation.
+function fireDJBomb() {
+    var ac = getAC();
+    if (!ac) return;
+
+    var warmBuf = ac.createBuffer(1, 1, ac.sampleRate);
+    var warmSrc = ac.createBufferSource();
+    warmSrc.buffer = warmBuf;
+    warmSrc.connect(ac.destination);
+    warmSrc.start(0);
+
+    var t = ac.currentTime + 0.015;
+
+    var lim = ac.createDynamicsCompressor();
+    lim.threshold.value = -1; lim.knee.value = 0;
+    lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.2;
+    lim.connect(ac.destination);
+
+    // Falling whistle (400ms)
+    var wDur = 0.40;
+    var wOsc = ac.createOscillator();
+    var wEnv = ac.createGain();
+    wOsc.type = 'sine';
+    wOsc.frequency.setValueAtTime(1100, t);
+    wOsc.frequency.exponentialRampToValueAtTime(60, t + wDur);
+    wEnv.gain.setValueAtTime(0.9, t);
+    wEnv.gain.exponentialRampToValueAtTime(0.001, t + wDur);
+    wOsc.connect(wEnv); wEnv.connect(lim);
+    wOsc.start(t); wOsc.stop(t + wDur + 0.02);
+
+    var bt = t + wDur; var boomDur = 2.8;
+
+    // Noise body
+    var noiseLen = Math.floor(ac.sampleRate * (boomDur + 0.1));
+    var nBuf = ac.createBuffer(1, noiseLen, ac.sampleRate);
+    var nd   = nBuf.getChannelData(0);
+    for (var i = 0; i < noiseLen; i++) nd[i] = Math.random() * 2 - 1;
+    var nSrc = ac.createBufferSource();
+    nSrc.buffer = nBuf;
+    var nLP  = ac.createBiquadFilter();
+    nLP.type = 'lowpass';
+    nLP.frequency.setValueAtTime(2200, bt);
+    nLP.frequency.exponentialRampToValueAtTime(100, bt + boomDur);
+    var nEnv = ac.createGain();
+    nEnv.gain.setValueAtTime(2.2, bt);
+    nEnv.gain.exponentialRampToValueAtTime(0.001, bt + boomDur);
+    nSrc.connect(nLP); nLP.connect(nEnv); nEnv.connect(lim);
+    nSrc.start(bt); nSrc.stop(bt + boomDur + 0.1);
+
+    // Sub thump
+    var sub    = ac.createOscillator();
+    var subEnv = ac.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(100, bt);
+    sub.frequency.exponentialRampToValueAtTime(28, bt + 0.55);
+    subEnv.gain.setValueAtTime(5.0, bt);
+    subEnv.gain.exponentialRampToValueAtTime(0.001, bt + 1.2);
+    sub.connect(subEnv); subEnv.connect(lim);
+    sub.start(bt); sub.stop(bt + 1.3);
+
+    // Crack
+    var cLen = Math.floor(ac.sampleRate * 0.35);
+    var cBuf = ac.createBuffer(1, cLen, ac.sampleRate);
+    var cd   = cBuf.getChannelData(0);
+    for (var j = 0; j < cLen; j++) {
+        var v = (Math.random() * 2 - 1) * 4;
+        cd[j] = Math.max(-1, Math.min(1, v));
+    }
+    var cSrc = ac.createBufferSource();
+    var cLP  = ac.createBiquadFilter();
+    var cEnv = ac.createGain();
+    cSrc.buffer = cBuf;
+    cLP.type = 'lowpass'; cLP.frequency.value = 1400;
+    cEnv.gain.setValueAtTime(1.8, bt);
+    cEnv.gain.exponentialRampToValueAtTime(0.001, bt + 0.35);
+    cSrc.connect(cLP); cLP.connect(cEnv); cEnv.connect(lim);
+    cSrc.start(bt);
+
+    // Sizzle
+    var sLen = Math.floor(ac.sampleRate * 1.2);
+    var sBuf = ac.createBuffer(1, sLen, ac.sampleRate);
+    var sd   = sBuf.getChannelData(0);
+    for (var k = 0; k < sLen; k++) sd[k] = Math.random() * 2 - 1;
+    var sSrc = ac.createBufferSource();
+    var sHP  = ac.createBiquadFilter();
+    var sEnv = ac.createGain();
+    sSrc.buffer = sBuf;
+    sHP.type = 'highpass'; sHP.frequency.value = 4000;
+    sEnv.gain.setValueAtTime(1.0, bt);
+    sEnv.gain.exponentialRampToValueAtTime(0.001, bt + 1.0);
+    sSrc.connect(sHP); sHP.connect(sEnv); sEnv.connect(lim);
+    sSrc.start(bt);
+}
+
+// ── Screen flash ─────────────────────────────────────────────────────────────
+var flashEl = document.getElementById('result-flash');
+function doFlash(strength) {
+    strength = strength || 0.28;
+    flashEl.style.transition = 'none';
+    flashEl.style.opacity    = String(strength);
+    setTimeout(function() {
+        flashEl.style.transition = 'opacity 0.18s ease-out';
+        flashEl.style.opacity    = '0';
+    }, 70);
+}
+
+// Three flashes spaced 140ms apart (tighter than the MITRE version — snappier)
+function doTripleFlash() {
+    doFlash(0.30);
+    setTimeout(function() { doFlash(0.20); }, 160);
+    setTimeout(function() { doFlash(0.14); }, 320);
+}
+
+// ── Warm up the AC early so first boom fires on time ────────────────────────
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        var ac = getAC();
+        if (ac) {
+            ac.resume().then(function() {
+                var b = ac.createBuffer(1, 1, ac.sampleRate);
+                var s = ac.createBufferSource();
+                s.buffer = b; s.connect(ac.destination); s.start(0);
+            }).catch(function() {});
+        }
+    }, 200);
+});
+
+// ── Staggered reveal sequence ────────────────────────────────────────────────
+var GAP   = 1000;   // ms between each question reveal
+var START = 700;    // ms before first reveal
+
+REVEALS.forEach(function(r, idx) {
+    setTimeout(function() {
+        var bdEl  = document.getElementById(r.bd);
+        var rowEl = document.getElementById(r.row);
+
+        // Colour-class the breakdown block
+        if (r.correct)       { bdEl.classList.add('bd-correct'); }
+        else if (r.partial)  { bdEl.classList.add('bd-partial'); }
+        else                 { bdEl.classList.add('bd-wrong');   }
+
+        // Reveal both elements
+        bdEl.classList.add('revealed');
+        if (rowEl) rowEl.classList.add('revealed');
+
+        // Sound + flash for correct answers
+        if (r.correct) {
+            var ac = getAC();
+            if (ac) {
+                ac.resume().then(function() { fireShortBoom(); }).catch(function() { fireShortBoom(); });
+            }
+            doTripleFlash();
+        }
+    }, START + idx * GAP);
+});
+
+// After all reveals: show overall feedback, then DJ bomb if score is good
+var finaleDelay = START + REVEALS.length * GAP + 400;
+
+setTimeout(function() {
+    var fb = document.getElementById('overall-fb');
+    if (fb) fb.classList.add('revealed');
+}, finaleDelay);
+
+if (SCORES.total >= 18) {
+    setTimeout(function() {
+        var ac = getAC();
+        if (ac) {
+            ac.resume().then(function() { fireDJBomb(); }).catch(function() { fireDJBomb(); });
+        }
+        doTripleFlash();
+        setTimeout(function() { doFlash(0.22); }, 400);
+        setTimeout(function() { doFlash(0.16); }, 800);
+    }, finaleDelay + 600);
+}
+</script>
+
+</body>
+</html>

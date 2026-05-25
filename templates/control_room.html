@@ -4,10 +4,15 @@
     <meta charset="UTF-8">
     <title>Boundry.AI — Control Room</title>
     <style>
+        /* ── Colour tokens ─────────────────────────────────────────────────────
+           Green  #00b432 / #00ff41   brand · safe · success · resolved
+           Orange #ff6a00 / #e07000   threats · alerts · HIGH · danger
+           Purple #9944ee / #7733cc   info · stats · neutral data · recon
+        ── */
         * { box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
-            background: #0f1117;
+            background: #0b0e17;
             color: #d4d4d4;
             margin: 0;
             padding: 0;
@@ -15,54 +20,59 @@
 
         /* ── Top bar ── */
         .topbar {
-            background: #1a1d27;
-            border-bottom: 1px solid #2a2d3a;
+            background: #12151f;
+            border-bottom: 2px solid #00b43233;
             padding: 14px 32px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: sticky; top: 0; z-index: 50;
+            box-shadow: 0 2px 18px #00b43211;
         }
         .topbar-brand {
             font-size: 1.1em;
             font-weight: bold;
-            color: #e05555;
+            color: #00b432;
             letter-spacing: 0.04em;
+            text-shadow: 0 0 12px #00b43266;
         }
         .topbar-user {
             font-size: 0.85em;
-            color: #888;
+            color: #666;
         }
-        .topbar-user strong { color: #ccc; }
+        .topbar-user strong { color: #aaa; }
         .topbar nav a {
-            color: #aaa;
+            color: #666;
             text-decoration: none;
             margin-left: 20px;
             font-size: 0.85em;
+            transition: color 0.15s;
         }
-        .topbar nav a:hover { color: #e05555; }
+        .topbar nav a:hover { color: #00b432; }
 
         /* ── Stat bar ── */
         .statbar {
-            background: #151821;
-            border-bottom: 1px solid #2a2d3a;
+            background: #0e1119;
+            border-bottom: 1px solid #1e2235;
             display: flex;
             padding: 0 32px;
         }
         .stat {
             padding: 18px 28px 18px 0;
-            border-right: 1px solid #2a2d3a;
+            border-right: 1px solid #1e2235;
             margin-right: 28px;
         }
         .stat:last-child { border-right: none; }
         .stat-value {
             font-size: 2em;
             font-weight: bold;
-            color: #e05555;
+            color: #ff6a00;
             line-height: 1;
+            text-shadow: 0 0 10px #ff6a0044;
         }
         .stat-label {
             font-size: 0.75em;
-            color: #666;
+            color: #555;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-top: 4px;
@@ -80,36 +90,37 @@
 
         /* ── Panel ── */
         .panel {
-            background: #1a1d27;
-            border: 1px solid #2a2d3a;
+            background: #12151f;
+            border: 1px solid #1e2235;
             border-radius: 6px;
             overflow: hidden;
         }
         .panel-header {
-            background: #20243a;
+            background: #161923;
             padding: 12px 16px;
             font-size: 0.8em;
             text-transform: uppercase;
             letter-spacing: 0.07em;
-            color: #aaa;
-            border-bottom: 1px solid #2a2d3a;
+            color: #888;
+            border-bottom: 1px solid #1e2235;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .panel-header .badge-count {
-            background: #e05555;
+            background: #ff6a00;
             color: white;
             font-size: 0.8em;
             padding: 1px 7px;
             border-radius: 10px;
             font-weight: bold;
+            box-shadow: 0 0 8px #ff6a0055;
         }
 
         /* ── Agent panel ── */
         .agent-panel {
-            background: #1a1d27;
-            border: 1px solid #2a2d3a;
+            background: #12151f;
+            border: 1px solid #1e2235;
             border-radius: 6px;
             padding: 20px;
             margin-bottom: 24px;
@@ -122,55 +133,57 @@
         .agent-label {
             flex: 1;
             font-size: 0.9em;
-            color: #888;
+            color: #666;
         }
-        .agent-label strong { color: #ccc; }
+        .agent-label strong { color: #aaa; }
         .btn-simulate {
-            background: #2c3e50;
-            color: #ccc;
-            border: 1px solid #3d5166;
+            background: #161923;
+            color: #aaa;
+            border: 1px solid #2a2d3a;
             padding: 9px 20px;
             border-radius: 4px;
             font-size: 0.9em;
             cursor: pointer;
             font-weight: bold;
+            transition: background 0.15s, color 0.15s;
         }
-        .btn-simulate:hover { background: #3d5166; color: white; }
+        .btn-simulate:hover { background: #1e2235; color: white; }
         .btn-run {
-            background: #7b1818;
-            color: #ffcccc;
-            border: 1px solid #a02020;
+            background: #2a1400;
+            color: #ff9944;
+            border: 1px solid #cc4400;
             padding: 9px 20px;
             border-radius: 4px;
             font-size: 0.9em;
             cursor: pointer;
             font-weight: bold;
+            transition: background 0.15s;
         }
-        .btn-run:hover { background: #a02020; color: white; }
+        .btn-run:hover { background: #3a1e00; color: #ffaa55; }
         .pending-badge {
             font-size: 0.8em;
-            color: #f39c12;
+            color: #ff9944;
             padding: 4px 10px;
-            background: #2a2310;
-            border: 1px solid #5a4a10;
+            background: #2a1400;
+            border: 1px solid #994400;
             border-radius: 4px;
         }
 
         /* ── Flash messages ── */
         .flash-success {
             grid-column: 1 / -1;
-            background: #0d2a1a; border: 1px solid #1a5c30; border-left: 4px solid #27ae60;
-            color: #4dbb7a; padding: 10px 16px; border-radius: 4px; font-size: 0.9em;
+            background: #0a1a0a; border: 1px solid #1a4a1a; border-left: 4px solid #00b432;
+            color: #40b060; padding: 10px 16px; border-radius: 4px; font-size: 0.9em;
         }
         .flash-warning {
             grid-column: 1 / -1;
-            background: #2a2010; border: 1px solid #5a4a10; border-left: 4px solid #f39c12;
-            color: #f0b429; padding: 10px 16px; border-radius: 4px; font-size: 0.9em;
+            background: #2a1400; border: 1px solid #883300; border-left: 4px solid #ff6a00;
+            color: #ff9944; padding: 10px 16px; border-radius: 4px; font-size: 0.9em;
         }
         .flash-info {
             grid-column: 1 / -1;
-            background: #0d1a2a; border: 1px solid #1a3a5c; border-left: 4px solid #2980b9;
-            color: #5aabde; padding: 10px 16px; border-radius: 4px; font-size: 0.9em;
+            background: #120a22; border: 1px solid #441a88; border-left: 4px solid #9944ee;
+            color: #bb88ff; padding: 10px 16px; border-radius: 4px; font-size: 0.9em;
         }
 
         /* ── Client list ── */
@@ -178,18 +191,18 @@
             display: flex;
             align-items: center;
             padding: 10px 16px;
-            border-bottom: 1px solid #23263a;
+            border-bottom: 1px solid #1a1d2a;
             font-size: 0.88em;
             gap: 10px;
         }
         .client-row:last-child { border-bottom: none; }
         .client-avatar {
             width: 28px; height: 28px;
-            background: #2a2d3a;
+            background: #1e2235;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-size: 0.75em;
-            color: #888;
+            color: #666;
             flex-shrink: 0;
             text-transform: uppercase;
             font-weight: bold;
@@ -202,33 +215,31 @@
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
-        .role-analyst { background: #2a1a3a; color: #b07de0; border: 1px solid #5a3a7a; }
-        .role-client  { background: #1a2a1a; color: #5aaa5a; border: 1px solid #3a6a3a; }
+        .role-analyst { background: #1a0a2a; color: #9944ee; border: 1px solid #4a2a7a; }
+        .role-client  { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
 
         /* ── Event feed ── */
-        .feed-panel {
-            grid-column: 1 / -1;
-        }
+        .feed-panel { grid-column: 1 / -1; }
         .event-table { width: 100%; border-collapse: collapse; }
         .event-table th {
-            background: #20243a;
-            color: #888;
+            background: #161923;
+            color: #555;
             font-size: 0.72em;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             padding: 10px 16px;
             text-align: left;
-            border-bottom: 1px solid #2a2d3a;
+            border-bottom: 1px solid #1e2235;
         }
         .event-table td {
             padding: 8px 16px;
-            border-bottom: 1px solid #1e2130;
+            border-bottom: 1px solid #141720;
             font-size: 0.83em;
             color: #bbb;
             font-family: monospace;
         }
         .event-table tr:last-child td { border-bottom: none; }
-        .event-table tr:hover td { background: #1e2235; }
+        .event-table tr:hover td { background: #14172a; }
         .evt-badge {
             display: inline-block;
             font-size: 0.75em;
@@ -238,23 +249,23 @@
             letter-spacing: 0.03em;
             font-family: monospace;
         }
-        .evt-login-failed  { background: #3a1a1a; color: #e05555; border: 1px solid #6a2a2a; }
-        .evt-login-success { background: #1a3a1a; color: #5aaa5a; border: 1px solid #2a6a2a; }
-        .evt-search        { background: #1a1a3a; color: #5a8ae0; border: 1px solid #2a3a7a; }
-        .evt-xss           { background: #2a1a3a; color: #c07ae0; border: 1px solid #5a2a7a; }
-        .evt-traversal     { background: #2a2a1a; color: #d0b040; border: 1px solid #6a5a10; }
-        .evt-priv-esc      { background: #3a2a1a; color: #e07030; border: 1px solid #7a4a10; }
-        .evt-account-enum  { background: #1a2a3a; color: #40a0c0; border: 1px solid #10507a; }
-        .evt-other         { background: #2a2a2a; color: #888;    border: 1px solid #444; }
-        .status-pending   { color: #f0b429; font-size: 0.75em; font-weight: bold; }
-        .status-processed { color: #444;    font-size: 0.75em; }
+        .evt-login-failed  { background: #2a1400; color: #ff6a00; border: 1px solid #883300; }
+        .evt-login-success { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
+        .evt-search        { background: #120a22; color: #9944ee; border: 1px solid #441a88; }
+        .evt-xss           { background: #2a1400; color: #ff9944; border: 1px solid #884400; }
+        .evt-traversal     { background: #1a1400; color: #cc9900; border: 1px solid #554400; }
+        .evt-priv-esc      { background: #1a0a00; color: #ff6a00; border: 1px solid #773300; }
+        .evt-account-enum  { background: #0a0a22; color: #7755cc; border: 1px solid #332288; }
+        .evt-other         { background: #1a1d2a; color: #666;    border: 1px solid #333; }
+        .status-pending    { color: #ff9944; font-size: 0.75em; font-weight: bold; }
+        .status-processed  { color: #333;    font-size: 0.75em; }
         .mitre-tag {
             font-size: 0.72em;
-            color: #7a9ecf;
+            color: #7744cc;
             font-family: monospace;
         }
         .payload-text {
-            color: #e07050;
+            color: #ff8855;
             font-size: 0.82em;
             max-width: 200px;
             overflow: hidden;
@@ -266,43 +277,44 @@
         /* ── Reports table ── */
         .reports-table { width: 100%; border-collapse: collapse; }
         .reports-table th {
-            background: #20243a;
-            color: #888;
+            background: #161923;
+            color: #555;
             font-size: 0.72em;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             padding: 10px 16px;
             text-align: left;
-            border-bottom: 1px solid #2a2d3a;
+            border-bottom: 1px solid #1e2235;
         }
         .reports-table td {
             padding: 10px 16px;
-            border-bottom: 1px solid #1e2130;
+            border-bottom: 1px solid #141720;
             font-size: 0.88em;
             color: #bbb;
         }
         .reports-table tr:last-child td { border-bottom: none; }
-        .reports-table tr:hover td { background: #1e2235; }
-        .threat-high  { color: #e05555; font-weight: bold; }
-        .threat-none  { color: #555; }
+        .reports-table tr:hover td { background: #14172a; }
+        .threat-high  { color: #ff6a00; font-weight: bold; text-shadow: 0 0 8px #ff6a0044; }
+        .threat-none  { color: #444; }
         .view-link {
-            color: #e05555;
+            color: #00b432;
             text-decoration: none;
             font-size: 0.85em;
+            transition: color 0.15s;
         }
-        .view-link:hover { text-decoration: underline; }
+        .view-link:hover { color: #00ff41; text-decoration: underline; }
         .empty-row td {
-            color: #444;
+            color: #333;
             font-style: italic;
             text-align: center;
             padding: 28px;
         }
 
         /* ── Triage status badges ── */
-        .status-new        { background: #1a2a3a; color: #5a8ae0; border: 1px solid #2a4a7a; }
-        .status-reviewing  { background: #2a2010; color: #f0b429; border: 1px solid #5a4a10; }
-        .status-escalated  { background: #3a1a1a; color: #e05555; border: 1px solid #6a2a2a; }
-        .status-closed     { background: #1a2a1a; color: #5aaa5a; border: 1px solid #2a6a2a; }
+        .status-new        { background: #0a0a22; color: #7755cc; border: 1px solid #331a88; }
+        .status-reviewing  { background: #1a1000; color: #cc8800; border: 1px solid #664400; }
+        .status-escalated  { background: #2a1400; color: #ff6a00; border: 1px solid #883300; }
+        .status-closed     { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
         .status-badge {
             display: inline-block;
             font-size: 0.72em;
@@ -313,43 +325,42 @@
             text-transform: uppercase;
         }
         .triage-btn {
-            background: #20243a;
-            color: #aaa;
-            border: 1px solid #3a3d5a;
+            background: #161923;
+            color: #888;
+            border: 1px solid #2a2d3a;
             padding: 3px 10px;
             border-radius: 3px;
             font-size: 0.75em;
             cursor: pointer;
             margin-left: 4px;
+            transition: background 0.15s;
         }
-        .triage-btn:hover { background: #2a2d4a; color: white; }
+        .triage-btn:hover { background: #1e2235; color: white; }
 
         /* ── Breach intel ticker ── */
         .ticker-bar {
             background: #0a0c14;
-            border-bottom: 1px solid #1e2235;
+            border-bottom: 1px solid #1a1d2a;
             padding: 7px 0;
             overflow: hidden;
             white-space: nowrap;
             position: relative;
         }
         .ticker-label {
-            display: inline-block;
-            background: #e05555;
-            color: white;
+            display: inline-flex; align-items: center;
+            background: #ff6a00;
+            color: #000;
             font-size: 0.7em;
             font-weight: bold;
-            letter-spacing: 0.07em;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
             padding: 2px 10px;
-            margin-right: 16px;
             position: absolute;
             left: 0; top: 0; bottom: 0;
-            display: flex; align-items: center;
             z-index: 2;
+            box-shadow: 4px 0 12px #ff6a0044;
         }
         .ticker-mask-left {
-            /* Fade out the left edge so items don't hard-cut behind the label */
             position: absolute;
             left: 72px; top: 0; bottom: 0;
             width: 40px;
@@ -359,7 +370,7 @@
         }
         .ticker-track {
             display: inline-block;
-            padding-left: 100px; /* clear the LIVE label */
+            padding-left: 100px;
             animation: ticker-scroll 90s linear infinite;
         }
         .ticker-track:hover { animation-play-state: paused; }
@@ -371,39 +382,37 @@
             display: inline-block;
             margin-right: 48px;
             font-size: 0.8em;
-            color: #aaa;
+            color: #888;
         }
-        .ticker-item a {
-            color: inherit;
-            text-decoration: none;
-        }
+        .ticker-item a { color: inherit; text-decoration: none; }
         .ticker-item a:hover { color: white; text-decoration: underline; }
-        .ticker-sev-high   { color: #e05555; font-weight: bold; }
-        .ticker-sev-medium { color: #f0b429; }
-        .ticker-sev-low    { color: #5aaa5a; }
-        .ticker-dot { color: #333; margin-right: 48px; }
+        .ticker-sev-HIGH   { color: #ff6a00; font-weight: bold; }
+        .ticker-sev-MEDIUM { color: #cc8800; }
+        .ticker-sev-LOW    { color: #00b432; }
+        .ticker-dot { color: #222; margin-right: 48px; }
 
         /* ── Breach intel panel ── */
         .breach-panel {
             grid-column: 1 / -1;
-            background: #1a1d27;
-            border: 1px solid #2a2d3a;
+            background: #12151f;
+            border: 1px solid #1e2235;
             border-radius: 6px;
             overflow: hidden;
         }
         .breach-toggle {
-            background: #20243a;
+            background: #161923;
             padding: 12px 16px;
             font-size: 0.8em;
             text-transform: uppercase;
             letter-spacing: 0.07em;
-            color: #aaa;
-            border-bottom: 1px solid #2a2d3a;
+            color: #888;
+            border-bottom: 1px solid #1e2235;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
             user-select: none;
+            transition: color 0.15s;
         }
         .breach-toggle:hover { color: #ccc; }
         .breach-body { padding: 20px; display: none; }
@@ -414,11 +423,11 @@
             gap: 14px;
         }
         .breach-card {
-            background: #0f1117;
-            border: 1px solid #2a2d3a;
+            background: #0b0e17;
+            border: 1px solid #1e2235;
             border-radius: 5px;
             padding: 14px 16px;
-            border-left: 3px solid var(--sev-color, #555);
+            border-left: 3px solid var(--sev-color, #444);
         }
         .breach-card-header {
             display: flex;
@@ -437,55 +446,40 @@
             flex-shrink: 0;
             margin-top: 2px;
         }
-        .sev-HIGH   { --sev-color: #e05555; background: #3a1a1a; color: #e05555; border: 1px solid #6a2a2a; }
-        .sev-MEDIUM { --sev-color: #f0b429; background: #2a2010; color: #f0b429; border: 1px solid #5a4a10; }
-        .sev-LOW    { --sev-color: #5aaa5a; background: #1a2a1a; color: #5aaa5a; border: 1px solid #2a6a2a; }
-        .breach-title {
-            font-size: 0.85em;
-            color: #ddd;
-            line-height: 1.35;
-            font-weight: bold;
-        }
-        .breach-title a {
-            color: inherit;
-            text-decoration: none;
-        }
-        .breach-title a:hover { color: #e05555; text-decoration: underline; }
-        .breach-summary {
-            font-size: 0.8em;
-            color: #888;
-            line-height: 1.5;
-            margin-top: 6px;
-        }
+        .sev-HIGH   { --sev-color: #ff6a00; background: #2a1400; color: #ff6a00; border: 1px solid #883300; }
+        .sev-MEDIUM { --sev-color: #cc8800; background: #1a1000; color: #cc8800; border: 1px solid #664400; }
+        .sev-LOW    { --sev-color: #00b432; background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
+        .breach-title { font-size: 0.85em; color: #ddd; line-height: 1.35; font-weight: bold; }
+        .breach-title a { color: inherit; text-decoration: none; }
+        .breach-title a:hover { color: #00b432; text-decoration: underline; }
+        .breach-summary { font-size: 0.8em; color: #777; line-height: 1.5; margin-top: 6px; }
         .breach-meta {
-            font-size: 0.72em;
-            color: #444;
-            margin-top: 8px;
-            display: flex;
-            justify-content: space-between;
+            font-size: 0.72em; color: #444; margin-top: 8px;
+            display: flex; justify-content: space-between;
         }
 
         /* ── MITRE reference panel ── */
         .mitre-panel {
             grid-column: 1 / -1;
-            background: #1a1d27;
-            border: 1px solid #2a2d3a;
+            background: #12151f;
+            border: 1px solid #1e2235;
             border-radius: 6px;
             overflow: hidden;
         }
         .mitre-toggle {
-            background: #20243a;
+            background: #161923;
             padding: 12px 16px;
             font-size: 0.8em;
             text-transform: uppercase;
             letter-spacing: 0.07em;
-            color: #aaa;
-            border-bottom: 1px solid #2a2d3a;
+            color: #888;
+            border-bottom: 1px solid #1e2235;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
             user-select: none;
+            transition: color 0.15s;
         }
         .mitre-toggle:hover { color: #ccc; }
         .mitre-body { padding: 20px; display: none; }
@@ -496,11 +490,15 @@
             gap: 14px;
         }
         .mitre-card {
-            background: #0f1117;
-            border: 1px solid #2a2d3a;
+            background: #0b0e17;
+            border: 1px solid #1e2235;
             border-radius: 5px;
             padding: 14px 16px;
-            border-left: 3px solid var(--tactic-color, #555);
+            border-left: 3px solid var(--tactic-color, #444);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .mitre-card:hover {
+            box-shadow: 0 0 12px var(--tactic-color, #444)22;
         }
         .mitre-card-header {
             display: flex;
@@ -514,17 +512,12 @@
             font-weight: bold;
             padding: 2px 8px;
             border-radius: 3px;
-            background: #1e2130;
-            color: var(--tactic-color, #aaa);
+            background: #161923;
+            color: var(--tactic-color, #888);
             border: 1px solid #2a2d3a;
             white-space: nowrap;
         }
-        .mitre-name {
-            font-size: 0.88em;
-            font-weight: bold;
-            color: #ddd;
-            line-height: 1.3;
-        }
+        .mitre-name { font-size: 0.88em; font-weight: bold; color: #ddd; line-height: 1.3; }
         .mitre-tactic {
             display: inline-block;
             font-size: 0.68em;
@@ -533,67 +526,64 @@
             padding: 2px 8px;
             border-radius: 10px;
             margin-bottom: 10px;
-            background: #1e2130;
-            color: var(--tactic-color, #888);
+            background: #161923;
+            color: var(--tactic-color, #666);
             border: 1px solid #2a2d3a;
         }
         .mitre-section {
-            font-size: 0.75em;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin: 8px 0 3px;
+            font-size: 0.75em; color: #555; text-transform: uppercase;
+            letter-spacing: 0.05em; margin: 8px 0 3px;
         }
-        .mitre-detail {
-            font-size: 0.82em;
-            color: #aaa;
-            line-height: 1.5;
-        }
+        .mitre-detail { font-size: 0.82em; color: #999; line-height: 1.5; }
         .mitre-detail code {
-            background: #1e2130;
-            color: #e07050;
-            padding: 1px 5px;
-            border-radius: 3px;
-            font-size: 0.9em;
+            background: #161923; color: #ff8855;
+            padding: 1px 5px; border-radius: 3px; font-size: 0.9em;
         }
         .mitre-distinguish {
-            font-size: 0.82em;
-            color: #7a9ecf;
-            line-height: 1.5;
-            border-top: 1px solid #1e2130;
-            padding-top: 8px;
-            margin-top: 8px;
+            font-size: 0.82em; color: #7755aa; line-height: 1.5;
+            border-top: 1px solid #1e2235;
+            padding-top: 8px; margin-top: 8px;
         }
-        /* tactic colour variables */
-        .tac-credential  { --tactic-color: #e05555; }
-        .tac-initial     { --tactic-color: #e07030; }
-        .tac-execution   { --tactic-color: #b07ae0; }
-        .tac-discovery   { --tactic-color: #d0b040; }
-        .tac-privesc     { --tactic-color: #e09030; }
-        .tac-recon       { --tactic-color: #40a0c0; }
-        .tac-defense     { --tactic-color: #5aaa5a; }
+        .mitre-learn-link {
+            display: inline-block; margin-top: 10px;
+            font-size: 0.78em; color: #00b432;
+            text-decoration: none; font-weight: bold;
+            letter-spacing: 0.03em; opacity: 0.8;
+            transition: opacity 0.15s, color 0.15s;
+        }
+        .mitre-learn-link:hover { opacity: 1; color: #00ff41; text-decoration: underline; }
+
+        /* tactic colour tokens — Green/Orange/Purple palette */
+        .tac-credential  { --tactic-color: #ff6a00; }   /* orange — credential attacks = threat */
+        .tac-initial     { --tactic-color: #ff8833; }   /* amber-orange — initial access */
+        .tac-execution   { --tactic-color: #9944ee; }   /* purple — code execution */
+        .tac-discovery   { --tactic-color: #7755cc; }   /* mid-purple — discovery/recon */
+        .tac-privesc     { --tactic-color: #ff6600; }   /* orange — privilege escalation = threat */
+        .tac-recon       { --tactic-color: #aa66ff; }   /* light purple — recon */
+        .tac-defense     { --tactic-color: #00b432; }   /* green — defense evasion */
 
         /* ── Shift checklist ── */
         .checklist-panel {
             grid-column: 1 / -1;
-            background: #1a1d27;
-            border: 1px solid #2a2d3a;
+            background: #12151f;
+            border: 1px solid #1e2235;
             border-radius: 6px;
             overflow: hidden;
         }
         .checklist-toggle {
-            background: #20243a;
+            background: #161923;
             padding: 12px 16px;
             font-size: 0.8em;
             text-transform: uppercase;
             letter-spacing: 0.07em;
-            color: #aaa;
-            border-bottom: 1px solid #2a2d3a;
+            color: #888;
+            border-bottom: 1px solid #1e2235;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
             user-select: none;
+            transition: color 0.15s;
         }
         .checklist-toggle:hover { color: #ccc; }
         .checklist-body { padding: 16px 20px; display: none; }
@@ -610,46 +600,30 @@
             font-size: 0.88em;
             color: #bbb;
             padding: 8px 0;
-            border-bottom: 1px solid #1e2130;
+            border-bottom: 1px solid #141720;
         }
         .checklist-item input[type="checkbox"] {
             margin-top: 2px;
-            accent-color: #e05555;
+            accent-color: #00b432;
             flex-shrink: 0;
             width: 15px; height: 15px;
         }
         .checklist-item label { cursor: pointer; line-height: 1.4; }
-        .checklist-item input:checked + label {
-            text-decoration: line-through;
-            color: #555;
-        }
-        .checklist-meta {
-            font-size: 0.75em;
-            color: #666;
-            margin-top: 4px;
-            font-style: italic;
-        }
+        .checklist-item input:checked + label { text-decoration: line-through; color: #444; }
+        .checklist-meta { font-size: 0.75em; color: #555; margin-top: 4px; font-style: italic; }
         .checklist-footer {
             margin-top: 14px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
+            display: flex; align-items: center; gap: 16px;
         }
         .btn-reset-checklist {
-            background: transparent;
-            color: #555;
-            border: 1px solid #333;
-            padding: 5px 14px;
-            border-radius: 3px;
-            font-size: 0.78em;
-            cursor: pointer;
+            background: transparent; color: #444;
+            border: 1px solid #222; padding: 5px 14px;
+            border-radius: 3px; font-size: 0.78em; cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
         }
         .btn-reset-checklist:hover { color: #aaa; border-color: #555; }
-        .shift-progress {
-            font-size: 0.78em;
-            color: #555;
-        }
-        .shift-progress span { color: #e05555; font-weight: bold; }
+        .shift-progress { font-size: 0.78em; color: #444; }
+        .shift-progress span { color: #ff6a00; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -660,6 +634,7 @@
             <span class="topbar-user">Analyst: <strong>{{ session['username'] }}</strong></span>
             <nav>
                 <a href="/scorecard">&#x1F4CA; Scorecard</a>
+                <a href="/training" style="color:#00b432; font-weight:bold;">🎓 Training</a>
                 <a href="/reports">Client View</a>
                 <a href="/logout">Logout</a>
             </nav>
@@ -678,7 +653,7 @@
                     {% if item.severity == 'HIGH' %}🔴{% elif item.severity == 'MEDIUM' %}🟡{% else %}🟢{% endif %}
                     [{{ item.severity }}]
                 </span>
-                <span style="color:#666; margin: 0 5px;">{{ item.source }}:</span>
+                <span style="color:#555; margin: 0 5px;">{{ item.source }}:</span>
                 <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
             </span>
             <span class="ticker-dot">⬥</span>
@@ -686,7 +661,7 @@
         </div>
         {% else %}
         <div class="ticker-track" style="animation:none; padding-left:100px;">
-            <span class="ticker-item" style="color:#444; font-style:italic;">
+            <span class="ticker-item" style="color:#333; font-style:italic;">
                 No threat intel loaded yet — click Refresh Threat Intel to fetch the latest breach reports.
             </span>
         </div>
@@ -726,7 +701,7 @@
                 <span>
                     🔍 Threat Intelligence Feed
                     {% if breach_items %}
-                        <span style="font-size:0.85em; color:#555; text-transform:none; letter-spacing:0;">
+                        <span style="font-size:0.85em; color:#444; text-transform:none; letter-spacing:0;">
                             — {{ breach_items|length }} item(s)
                         </span>
                     {% endif %}
@@ -759,8 +734,8 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div style="color:#444; font-style:italic; text-align:center; padding:28px;">
-                    No threat intel yet. Click <strong style="color:#888;">Refresh Threat Intel</strong> to pull the latest breach reports.
+                <div style="color:#333; font-style:italic; text-align:center; padding:28px;">
+                    No threat intel yet. Click <strong style="color:#666;">Refresh Threat Intel</strong> to pull the latest breach reports.
                 </div>
                 {% endif %}
             </div>
@@ -791,6 +766,7 @@
                             ↔ vs <strong>T1110.003 Spray</strong>: brute force = one account, many passwords.<br>
                             ↔ vs <strong>T1110.004 Stuffing</strong>: brute force tries guesses, stuffing uses a known leaked list.
                         </div>
+                        <a href="/mitre/T1110" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                     <!-- T1110.003 Password Spraying -->
@@ -808,6 +784,7 @@
                             ↔ vs <strong>T1110 Brute Force</strong>: spray = many accounts, one password — designed to stay below lockout thresholds.<br>
                             ↔ vs <strong>T1110.004 Stuffing</strong>: spray uses a common password; stuffing uses unique credentials per account.
                         </div>
+                        <a href="/mitre/T1110.003" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                     <!-- T1110.004 Credential Stuffing -->
@@ -825,6 +802,7 @@
                             ↔ vs <strong>T1110.003 Spray</strong>: stuffing uses unique logins per account from a breach dump, not one shared password.<br>
                             ↔ vs <strong>T1110 Brute Force</strong>: stuffing hits many accounts once each; brute force hits one account many times.
                         </div>
+                        <a href="/mitre/T1110.004" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                     <!-- T1190 SQLi -->
@@ -842,6 +820,7 @@
                             ↔ vs <strong>T1059.007 XSS</strong>: SQLi targets the <em>database</em>; XSS targets the <em>browser</em> of another user.<br>
                             Key indicator: SQL keywords (<code>SELECT</code>, <code>UNION</code>) vs HTML/JS tags (<code>&lt;script&gt;</code>).
                         </div>
+                        <a href="/mitre/T1190" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                     <!-- T1059.007 XSS -->
@@ -859,6 +838,7 @@
                             ↔ vs <strong>T1190 SQLi</strong>: XSS targets <em>users' browsers</em> to steal cookies or redirect; SQLi targets the <em>database</em>.<br>
                             Key indicator: HTML/JS syntax vs SQL keywords.
                         </div>
+                        <a href="/mitre/T1059.007" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                     <!-- T1083 Directory Traversal -->
@@ -876,6 +856,7 @@
                             ↔ vs <strong>T1548 Priv Esc</strong>: traversal probes the <em>filesystem</em> via paths; priv esc probes <em>restricted routes</em> inside the application.<br>
                             Both are discovery-type behaviours but at different layers.
                         </div>
+                        <a href="/mitre/T1083" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                     <!-- T1548 Priv Esc -->
@@ -893,6 +874,7 @@
                             ↔ vs <strong>T1083 Traversal</strong>: priv esc is about <em>application routes</em> (HTTP 403 doors); traversal is about <em>filesystem paths</em>.<br>
                             Key pattern: always follows a successful login from the same IP.
                         </div>
+                        <a href="/mitre/T1548" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                     <!-- T1589.001 Account Enumeration -->
@@ -910,6 +892,7 @@
                             ↔ vs <strong>T1110 Brute Force</strong>: enumeration just checks <em>existence</em> (no password attempts); brute force comes after — it <em>uses</em> the confirmed usernames.<br>
                             Think of this as the "shopping list" phase before the attack.
                         </div>
+                        <a href="/mitre/T1589.001" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                     <!-- T1078 Suspicious Login -->
@@ -927,11 +910,12 @@
                             ↔ vs <strong>T1110 Brute Force</strong>: T1078 succeeds immediately with <em>no</em> prior failures — credentials were already stolen, not guessed.<br>
                             Hardest to detect because it looks like a legitimate login.
                         </div>
+                        <a href="/mitre/T1078" class="mitre-learn-link">Full Playbook: Detection, Mitigation &amp; IR →</a>
                     </div>
 
                 </div>
-                <p style="font-size:0.75em; color:#444; margin: 16px 0 0; text-align:right;">
-                    Reference: <a href="https://attack.mitre.org" target="_blank" style="color:#555;">attack.mitre.org</a>
+                <p style="font-size:0.75em; color:#333; margin: 16px 0 0; text-align:right;">
+                    Reference: <a href="https://attack.mitre.org" target="_blank" style="color:#444;">attack.mitre.org</a>
                 </p>
             </div>
         </div>
@@ -1002,9 +986,8 @@
                 <span class="pending-badge">&#x26A0; {{ pending_count }} unprocessed event(s) in queue</span>
             {% endif %}
 
-            <!-- Single-scenario simulation -->
             <form method="POST" action="/simulate-attack" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <select name="difficulty" style="background:#20243a; color:#aaa; border:1px solid #3a3d5a; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer;">
+                <select name="difficulty" style="background:#161923; color:#888; border:1px solid #2a2d3a; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer;">
                     <option value="easy">Easy — obvious single attack</option>
                     <option value="medium" selected>Medium — realistic scenario</option>
                     <option value="hard">Hard — subtle, multi-vector + false positives</option>
@@ -1012,15 +995,14 @@
                 <button type="submit" class="btn-simulate">&#x26A1; Simulate Attack</button>
             </form>
 
-            <!-- APT chain simulation -->
-            <form method="POST" action="/simulate-attack" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed #2a2d3a;">
-                <span style="font-size:0.75em; color:#555; text-transform:uppercase; letter-spacing:0.07em;">&#x1F517; APT Chain:</span>
-                <select name="chain" style="background:#1a1d27; color:#c0a0ff; border:1px solid #4a3d6a; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer; flex:1; min-width:260px;">
+            <form method="POST" action="/simulate-attack" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed #1e2235;">
+                <span style="font-size:0.75em; color:#444; text-transform:uppercase; letter-spacing:0.07em;">&#x1F517; APT Chain:</span>
+                <select name="chain" style="background:#12151f; color:#aa66ff; border:1px solid #441a88; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer; flex:1; min-width:260px;">
                     <option value="recon_to_takeover">Recon &rarr; Stuffing &rarr; Takeover &rarr; Priv Esc</option>
                     <option value="web_exploit_chain">Brute Force &rarr; Login &rarr; XSS &rarr; SQLi &rarr; Traversal</option>
                     <option value="stealthy_apt">Password Spray &rarr; Suspicious Login &rarr; XSS &rarr; Priv Esc</option>
                 </select>
-                <button type="submit" class="btn-simulate" style="background:#4a2a7a; border-color:#6a3a9a; color:#d0a0ff;">&#x1F517; Run Chain</button>
+                <button type="submit" class="btn-simulate" style="background:#1a0a2a; border-color:#441a88; color:#aa66ff;">&#x1F517; Run Chain</button>
             </form>
 
             <form method="POST" action="/run-agent" style="display:inline">
@@ -1032,7 +1014,7 @@
                 </button>
             </form>
             {% if last_intel_update %}
-            <span style="font-size:0.75em; color:#444;">
+            <span style="font-size:0.75em; color:#333;">
                 Last updated: <span class="local-time" data-utc="{{ last_intel_update }}">{{ last_intel_update }}</span>
             </span>
             {% endif %}
@@ -1052,8 +1034,8 @@
                     <span class="role-pill role-{{ c.role }}">{{ c.role }}</span>
                     {% if c.role == 'client' %}
                     <a href="/analyst/client/{{ c.id }}/integration"
-                       style="margin-left:auto; font-size:0.72em; color:#5a8ae0; text-decoration:none;
-                              background:#1a2a3a; border:1px solid #2a4a7a; padding:3px 9px;
+                       style="margin-left:auto; font-size:0.72em; color:#aa66ff; text-decoration:none;
+                              background:#1a0a2a; border:1px solid #441a88; padding:3px 9px;
                               border-radius:3px; white-space:nowrap;"
                        title="View integration code for {{ c.username }}">
                         &#x1F527; Integration
@@ -1088,13 +1070,9 @@
                             {% for r in reports %}
                             <tr>
                                 <td>#{{ r.id }}</td>
-                                <td style="color:#888; font-size:0.85em;">
-                                    {{ r.owner_username or '—' }}
-                                </td>
+                                <td style="color:#666; font-size:0.85em;">{{ r.owner_username or '—' }}</td>
                                 <td>
-                                    <span class="local-time" data-utc="{{ r.created_at }}">
-                                        {{ r.created_at }}
-                                    </span>
+                                    <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
                                 </td>
                                 <td>{{ r.event_count }}</td>
                                 <td>
@@ -1114,9 +1092,9 @@
                                             <button class="triage-btn" name="status" value="reviewing">Review</button>
                                         {% endif %}
                                         {% if r.status in ('new', 'reviewing', None) %}
-                                            <button class="triage-btn" name="status" value="escalated" style="color:#e05555">Escalate</button>
+                                            <button class="triage-btn" name="status" value="escalated" style="color:#ff6a00">Escalate</button>
                                         {% endif %}
-                                        <button class="triage-btn" name="status" value="closed" style="color:#5aaa5a">Close</button>
+                                        <button class="triage-btn" name="status" value="closed" style="color:#00b432">Close</button>
                                     </form>
                                     {% endif %}
                                 </td>
@@ -1183,7 +1161,7 @@
                                     {% if e.extra %}
                                         <span class="payload-text" title="{{ e.extra }}">{{ e.extra }}</span>
                                     {% else %}
-                                        <span style="color:#444">—</span>
+                                        <span style="color:#333">—</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -1202,7 +1180,7 @@
                                     {% elif e.event_type == 'ACCOUNT_ENUM' %}
                                         <span class="mitre-tag">T1589.001</span>
                                     {% else %}
-                                        <span style="color:#444">—</span>
+                                        <span style="color:#333">—</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -1218,7 +1196,7 @@
                     </table>
                 </div>
                 {% else %}
-                    <div style="color:#444; font-style:italic; text-align:center; padding:28px;">
+                    <div style="color:#333; font-style:italic; text-align:center; padding:28px;">
                         No events yet — click Simulate Attack to generate some.
                     </div>
                 {% endif %}
@@ -1231,9 +1209,7 @@
         // ── Timezone conversion ──
         document.querySelectorAll('.local-time').forEach(function (el) {
             var raw = el.getAttribute('data-utc').trim().replace(' ', 'T');
-            if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('-', 10)) {
-                raw += 'Z';
-            }
+            if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('-', 10)) raw += 'Z';
             var d = new Date(raw);
             if (!isNaN(d)) {
                 el.textContent = d.toLocaleString(undefined, {
@@ -1243,7 +1219,7 @@
             }
         });
 
-        // ── Shift checklist (persists in localStorage, resets on "Start New Shift") ──
+        // ── Shift checklist ──
         var CHECKLIST_KEY = 'boundry_shift_checklist';
         var TOTAL = 8;
 
@@ -1252,25 +1228,17 @@
             var checked = 0;
             for (var i = 1; i <= TOTAL; i++) {
                 var el = document.getElementById('c' + i);
-                if (el) {
-                    el.checked = !!saved['c' + i];
-                    if (el.checked) checked++;
-                }
+                if (el) { el.checked = !!saved['c' + i]; if (el.checked) checked++; }
             }
             updateProgress(checked);
-            // Auto-open checklist if shift is in progress
             if (checked > 0 && checked < TOTAL) openChecklist();
         }
 
         function saveChecklist() {
-            var state = {};
-            var checked = 0;
+            var state = {}, checked = 0;
             for (var i = 1; i <= TOTAL; i++) {
                 var el = document.getElementById('c' + i);
-                if (el) {
-                    state['c' + i] = el.checked;
-                    if (el.checked) checked++;
-                }
+                if (el) { state['c' + i] = el.checked; if (el.checked) checked++; }
             }
             localStorage.setItem(CHECKLIST_KEY, JSON.stringify(state));
             updateProgress(checked);
@@ -1278,23 +1246,15 @@
 
         function updateProgress(checked) {
             var el = document.getElementById('shift-progress');
-            if (el) {
-                if (checked === TOTAL) {
-                    el.innerHTML = '✅ Shift complete — all steps done.';
-                } else if (checked === 0) {
-                    el.innerHTML = 'Shift not started.';
-                } else {
-                    el.innerHTML = '<span>' + checked + ' / ' + TOTAL + '</span> steps completed.';
-                }
-            }
+            if (!el) return;
+            if (checked === TOTAL)     el.innerHTML = '✅ Shift complete — all steps done.';
+            else if (checked === 0)    el.innerHTML = 'Shift not started.';
+            else                       el.innerHTML = '<span>' + checked + ' / ' + TOTAL + '</span> steps completed.';
         }
 
         function resetChecklist() {
             localStorage.removeItem(CHECKLIST_KEY);
-            for (var i = 1; i <= TOTAL; i++) {
-                var el = document.getElementById('c' + i);
-                if (el) el.checked = false;
-            }
+            for (var i = 1; i <= TOTAL; i++) { var el = document.getElementById('c' + i); if (el) el.checked = false; }
             updateProgress(0);
             openChecklist();
         }
@@ -1307,49 +1267,31 @@
         function toggleChecklist() {
             var body = document.getElementById('checklist-body');
             var arrow = document.getElementById('checklist-arrow');
-            if (body.classList.contains('open')) {
-                body.classList.remove('open');
-                arrow.textContent = '▼';
-            } else {
-                body.classList.add('open');
-                arrow.textContent = '▲';
-            }
+            if (body.classList.contains('open')) { body.classList.remove('open'); arrow.textContent = '▼'; }
+            else { body.classList.add('open'); arrow.textContent = '▲'; }
         }
 
         loadChecklist();
 
-        // ── Ticker: duplicate content for seamless loop ──
+        // ── Ticker duplicate for seamless loop ──
         (function () {
             var track = document.getElementById('ticker-track');
-            if (track) {
-                track.innerHTML = track.innerHTML + track.innerHTML;
-            }
+            if (track) track.innerHTML = track.innerHTML + track.innerHTML;
         })();
 
-        // ── Breach intel panel toggle ──
+        // ── Panel toggles ──
         function toggleBreach() {
-            var body  = document.getElementById('breach-body');
+            var body = document.getElementById('breach-body');
             var arrow = document.getElementById('breach-arrow');
-            if (body.classList.contains('open')) {
-                body.classList.remove('open');
-                arrow.textContent = '▼';
-            } else {
-                body.classList.add('open');
-                arrow.textContent = '▲';
-            }
+            if (body.classList.contains('open')) { body.classList.remove('open'); arrow.textContent = '▼'; }
+            else { body.classList.add('open'); arrow.textContent = '▲'; }
         }
 
-        // ── MITRE panel toggle ──
         function toggleMitre() {
-            var body  = document.getElementById('mitre-body');
+            var body = document.getElementById('mitre-body');
             var arrow = document.getElementById('mitre-arrow');
-            if (body.classList.contains('open')) {
-                body.classList.remove('open');
-                arrow.textContent = '▼';
-            } else {
-                body.classList.add('open');
-                arrow.textContent = '▲';
-            }
+            if (body.classList.contains('open')) { body.classList.remove('open'); arrow.textContent = '▼'; }
+            else { body.classList.add('open'); arrow.textContent = '▲'; }
         }
     </script>
 

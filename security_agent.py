@@ -38,8 +38,20 @@ from collections import defaultdict
 LOG_PATH    = Path(__file__).parent / "flask_security.log"
 REPORTS_DIR = Path(__file__).parent / "docs" / "reports"
 BRUTE_FORCE_THRESHOLD = 3
-CORRELATION_WINDOW_HOURS = 24   # brute force, spray, stuffing, enum, traversal
-SINGLE_EVENT_WINDOW_HOURS = 24 * 7  # SQLi, XSS, priv esc, suspicious login
+
+# Per-threat detection windows (hours).
+# Tighter windows for fast, noisy attacks; wider for slow/methodical ones.
+BRUTE_FORCE_WINDOW_HOURS      = 24   # Brute force is rapid — 1 day is ample
+TRAVERSAL_WINDOW_HOURS        = 24   # Directory traversal is a quick probe
+ENUM_WINDOW_HOURS             = 24   # Account enumeration is fast by nature
+INJECTION_WINDOW_HOURS        = 72   # SQLi may be slow/methodical — 3 days
+XSS_WINDOW_HOURS              = 72   # XSS probing can be spread across days
+PRIV_ESC_WINDOW_HOURS         = 168  # Privilege escalation can be very slow — 7 days
+SUSPICIOUS_LOGIN_WINDOW_HOURS = 48   # Catch logins from the past 2 days
+
+# Legacy aliases kept for any callers that reference the old names directly
+CORRELATION_WINDOW_HOURS  = BRUTE_FORCE_WINDOW_HOURS
+SINGLE_EVENT_WINDOW_HOURS = INJECTION_WINDOW_HOURS
 
 # ── Local-first AI configuration ─────────────────────────────────────────────
 # Default: qwen2.5-coder:7b — strong on code/security analysis and runs on a
@@ -315,17 +327,44 @@ def detect_threats(events: dict) -> list:
     Run all 9 threat detectors against the parsed event data.
     Returns a list of threat dicts with MITRE ATT&CK mappings.
     """
-    threats      = []
-    injection_re = re.compile(r"(?i)(' OR|' AND|--|'=|1=1|UNION|SELECT|DROP)")
+    threats = []
 
-    login_failed       = _events_in_window(events["login_failed"], CORRELATION_WINDOW_HOURS)
-    login_success      = _events_in_window(events["login_success"], CORRELATION_WINDOW_HOURS)
-    searches           = _events_in_window(events["search"], SINGLE_EVENT_WINDOW_HOURS)
-    xss_attempts       = _events_in_window(events["xss_attempt"], SINGLE_EVENT_WINDOW_HOURS)
-    directory_traversal = _events_in_window(events["directory_traversal"], CORRELATION_WINDOW_HOURS)
-    priv_esc_attempt   = _events_in_window(events["priv_esc_attempt"], SINGLE_EVENT_WINDOW_HOURS)
-    account_enum       = _events_in_window(events["account_enum"], CORRELATION_WINDOW_HOURS)
-    suspicious_logins  = _events_in_window(events["login_success"], SINGLE_EVENT_WINDOW_HOURS)
+    # SQLi detection regex — stricter than a simple keyword blocklist.
+    # Matches real injection patterns while avoiding false positives on
+    # legitimate searches that happen to contain words like "select" or "drop".
+    injection_re = re.compile(
+        r"(?i)("
+        # String-termination + logic manipulation  e.g.  ' OR '1'='1
+        r"'\s*(OR|AND)\s+['\d\(]"
+        # SQL comment termination  --  or  #
+        r"|--[\s;]|#\s*$"
+        # Statement chaining with DDL/DML  ; DROP TABLE
+        r"|;\s*(DROP|DELETE|TRUNCATE|INSERT|UPDATE|CREATE|ALTER)\b"
+        # Tautology variants  '='  or  1=1
+        r"|'\s*=\s*'|(?<!\w)1\s*=\s*1(?!\w)"
+        # Union-based extraction  UNION SELECT / UNION ALL SELECT
+        r"|\bUNION\s+(ALL\s+)?SELECT\b"
+        # Explicit data extraction  SELECT col FROM table
+        r"|\bSELECT\s+(\*|\w+)\s+FROM\b"
+        # Schema enumeration
+        r"|\bINFORMATION_SCHEMA\b|\bSYS\.(TABLES|COLUMNS|OBJECTS)\b"
+        # Time-based blind injection
+        r"|\bSLEEP\s*\(|\bWAITFOR\s+DELAY\b|\bBENCHMARK\s*\("
+        # Hex-encoded payloads  0x414243
+        r"|0x[0-9a-fA-F]{4,}"
+        # Error-based / stacked queries
+        r"|\bEXTRACTVALUE\s*\(|\bUPDATEXML\s*\("
+        r")"
+    )
+
+    login_failed        = _events_in_window(events["login_failed"],        BRUTE_FORCE_WINDOW_HOURS)
+    login_success       = _events_in_window(events["login_success"],        BRUTE_FORCE_WINDOW_HOURS)
+    searches            = _events_in_window(events["search"],               INJECTION_WINDOW_HOURS)
+    xss_attempts        = _events_in_window(events["xss_attempt"],          XSS_WINDOW_HOURS)
+    directory_traversal = _events_in_window(events["directory_traversal"],  TRAVERSAL_WINDOW_HOURS)
+    priv_esc_attempt    = _events_in_window(events["priv_esc_attempt"],      PRIV_ESC_WINDOW_HOURS)
+    account_enum        = _events_in_window(events["account_enum"],         ENUM_WINDOW_HOURS)
+    suspicious_logins   = _events_in_window(events["login_success"],        SUSPICIOUS_LOGIN_WINDOW_HOURS)
 
     # 1. Brute Force — T1110
     failed_by_user = defaultdict(list)

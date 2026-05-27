@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CISSP CAT Exam Result — Boundry.AI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0f0a; color: #d0d0d0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+            background: #0d1a0d; border-bottom: 1px solid #1a3a1a; flex-wrap: wrap; }
+  .topbar .logo { font-family: 'Courier New', monospace; font-weight: 800; font-size: 16px;
+                  color: #00b432; letter-spacing: 2px; }
+  .topbar a { color: #aaa; text-decoration: none; font-size: 13px; padding: 4px 8px;
+              border-radius: 4px; transition: color 0.2s; }
+  .topbar a:hover { color: #00b432; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .xp-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .xp-level-badge { background: #1a2a1a; border: 1px solid #00b432; border-radius: 4px;
+                    padding: 2px 8px; font-weight: 700; color: #00b432; font-size: 12px;
+                    text-decoration: none; }
+  .xp-bar-track { width: 100px; height: 8px; background: #1a1a1a; border-radius: 4px;
+                  overflow: hidden; border: 1px solid #333; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg,#00b432,#44ff66); border-radius:4px; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+
+  /* Score hero */
+  .score-hero { border-radius: 12px; padding: 36px; margin-bottom: 28px;
+                text-align: center; position: relative; overflow: hidden; }
+  .score-hero.pass { background: linear-gradient(135deg, #0d2a0d 0%, #0d1a0d 100%);
+                     border: 2px solid #00b432; }
+  .score-hero.fail { background: linear-gradient(135deg, #2a0d0d 0%, #1a0d0d 100%);
+                     border: 2px solid #ff4444; }
+  .score-num { font-size: 72px; font-weight: 900; line-height: 1; }
+  .score-num.pass { color: #00b432; }
+  .score-num.fail { color: #ff4444; }
+  .score-denom { font-size: 20px; color: #555; }
+  .score-label { font-size: 22px; font-weight: 800; margin: 8px 0; }
+  .score-label.pass { color: #44ff66; }
+  .score-label.fail { color: #ff8888; }
+  .score-sub { font-size: 14px; color: #666; }
+  .pass-threshold { font-size: 12px; color: #555; margin-top: 6px; }
+
+  .stats-row { display: flex; justify-content: center; gap: 32px; margin-top: 20px;
+               flex-wrap: wrap; }
+  .stat-item { text-align: center; }
+  .stat-item .val { font-size: 24px; font-weight: 800; color: #00b432; }
+  .stat-item .lbl { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Score meter */
+  .score-meter-wrap { margin: 24px auto; max-width: 500px; }
+  .score-meter-track { height: 16px; background: #111; border-radius: 8px; overflow: hidden;
+                       border: 1px solid #1a2a1a; position: relative; }
+  .score-meter-fill { height: 100%; border-radius: 8px;
+                      transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  .score-meter-fill.pass { background: linear-gradient(90deg,#00b432,#44ff66); }
+  .score-meter-fill.fail { background: linear-gradient(90deg,#ff4444,#ff8888); }
+  .pass-line { position: absolute; left: 70%; top: 0; bottom: 0; width: 2px;
+               background: rgba(255,140,0,0.6); }
+  .pass-line-label { font-size: 10px; color: #ff8c00; text-align: center;
+                     margin-top: 4px; }
+
+  /* Domain breakdown */
+  h2.section-title { font-size: 13px; font-weight: 800; letter-spacing: 2px;
+                     text-transform: uppercase; color: #555; border-bottom: 1px solid #1a2a1a;
+                     padding-bottom: 8px; margin-bottom: 16px; }
+
+  .domain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                 gap: 10px; margin-bottom: 28px; }
+  .domain-card { background: #0d150d; border: 1px solid #1a2a1a; border-radius: 8px; padding: 14px; }
+  .dc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .dc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dc-name { font-size: 12px; font-weight: 700; color: #ccc; }
+  .dc-stats { font-size: 11px; color: #555; margin-bottom: 6px; }
+  .dc-bar-track { height: 5px; background: #111; border-radius: 3px; overflow: hidden; }
+  .dc-bar-fill { height: 100%; border-radius: 3px; }
+
+  /* Ability curve */
+  .ability-chart-wrap { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 8px;
+                         padding: 20px; margin-bottom: 28px; }
+  .ability-chart-wrap h3 { font-size: 13px; color: #888; margin-bottom: 14px; }
+
+  /* Action buttons */
+  .action-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .btn { padding: 10px 24px; border-radius: 6px; font-weight: 700; font-size: 14px;
+         cursor: pointer; text-decoration: none; display: inline-block; border: none; }
+  .btn-primary   { background: #00b432; color: #000; }
+  .btn-primary:hover { background: #00d43a; }
+  .btn-secondary { background: transparent; border: 1px solid #333; color: #aaa; }
+  .btn-secondary:hover { border-color: #00b432; color: #00b432; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">BOUNDRY.AI</span>
+  <a href="/cissp">📘 CISSP Hub</a>
+  <a href="/cissp/exam">📝 CAT Exam</a>
+  <a href="/cissp/practice">🎯 Practice</a>
+  <a href="/cissp/flashcards">🃏 Flashcards</a>
+  <a href="/profile">⚔️ Profile</a>
+  <div class="topbar-right">
+    {% if player %}
+    <div class="xp-bar-wrap">
+      <a href="/profile" class="xp-level-badge" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+      <div class="xp-bar-track"><div class="xp-bar-fill" id="xp-bar-fill" style="width:{{ player.level_pct }}%"></div></div>
+      <span id="xp-bar-label" style="font-size:11px;color:#666;">{{ "{:,}".format(player.xp) }} XP</span>
+    </div>
+    {% endif %}
+    <a href="/logout" style="color:#555;">Logout</a>
+  </div>
+</div>
+
+<main>
+
+  <!-- Score hero -->
+  <div class="score-hero {{ 'pass' if passed else 'fail' }}">
+    <div class="score-num {{ 'pass' if passed else 'fail' }}">
+      {{ score }}<span class="score-denom">/1000</span>
+    </div>
+    <div class="score-label {{ 'pass' if passed else 'fail' }}">
+      {% if passed %}✅ PASS — Exam Passed{% else %}❌ FAIL — Below Pass Threshold{% endif %}
+    </div>
+    <div class="score-sub">
+      Completed {{ exam.completed_at[:16] if exam.completed_at else '—' }} ·
+      {{ exam.questions_answered }} questions answered
+    </div>
+    <div class="pass-threshold">Pass threshold: 700 / 1000</div>
+
+    <div class="score-meter-wrap">
+      <div class="score-meter-track">
+        <div class="score-meter-fill {{ 'pass' if passed else 'fail' }}"
+             id="score-meter" style="width:0%"></div>
+        <div class="pass-line"></div>
+      </div>
+      <div class="pass-line-label">700 pass threshold</div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="val">{{ exam.questions_answered }}</div>
+        <div class="lbl">Questions</div>
+      </div>
+      <div class="stat-item">
+        <div class="val">{{ exam.correct_count }}</div>
+        <div class="lbl">Correct</div>
+      </div>
+      <div class="stat-item">
+        <div class="val">{{ ((exam.correct_count / exam.questions_answered * 100)|int) if exam.questions_answered else 0 }}%</div>
+        <div class="lbl">Accuracy</div>
+      </div>
+      <div class="stat-item">
+        <div class="val" style="color:#ff8c00">{{ (ability * 100)|round(1) }}%</div>
+        <div class="lbl">Ability Estimate</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Domain breakdown -->
+  <h2 class="section-title">Domain Performance</h2>
+  <div class="domain-grid">
+    {% for d, info in cissp_domains.items() %}
+    {% set stats = domain_breakdown.get(d, {"attempted": 0, "correct": 0, "pct": 0}) %}
+    <div class="domain-card">
+      <div class="dc-header">
+        <div class="dc-dot" style="background:{{ info.color }}"></div>
+        <div class="dc-name">D{{ d }}: {{ info.name[:24] }}{% if info.name|length > 24 %}…{% endif %}</div>
+      </div>
+      <div class="dc-stats">
+        {% if stats.attempted > 0 %}
+          {{ stats.correct }}/{{ stats.attempted }} correct ({{ stats.pct }}%)
+        {% else %}
+          Not assessed
+        {% endif %}
+      </div>
+      <div class="dc-bar-track">
+        <div class="dc-bar-fill" style="width:{{ stats.pct }}%;
+          background:{% if stats.pct >= 70 %}#00b432{% elif stats.pct >= 50 %}#ff8c00{% else %}#ff4444{% endif %}">
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Weak domains callout -->
+  {% set weak_domains = [] %}
+  {% for d, stats in domain_breakdown.items() %}
+    {% if stats.attempted > 0 and stats.pct < 60 %}
+      {% set _ = weak_domains.append(d) %}
+    {% endif %}
+  {% endfor %}
+  {% if weak_domains %}
+  <div style="background:#1a1a0d;border:1px solid #4a4a1a;border-radius:8px;padding:16px;margin-bottom:24px;font-size:13px;color:#cc8;">
+    <strong>⚠️ Focus Areas:</strong>
+    Your weakest domains are
+    {% for d in weak_domains %}D{{ d }} ({{ cissp_domains[d].name }}){% if not loop.last %}, {% endif %}{% endfor %}.
+    Head to the <a href="/cissp" style="color:#00b432">CISSP Study Hub</a> to drill these.
+  </div>
+  {% endif %}
+
+  <!-- Actions -->
+  <div class="action-row">
+    <a href="/cissp/exam/start" class="btn btn-primary"
+       onclick="return confirm('Start a new exam session?')">🔄 Retake Exam</a>
+    <a href="/cissp" class="btn btn-secondary">📘 Study Hub</a>
+    <a href="/cissp/practice" class="btn btn-secondary">🎯 Practice Mode</a>
+    <a href="/profile" class="btn btn-secondary">⚔️ Profile</a>
+  </div>
+
+</main>
+
+<script src="/static/game.js"></script>
+<script>
+// Animate score meter on load
+window.addEventListener('load', function() {
+  var score = {{ score }};
+  setTimeout(function() {
+    document.getElementById('score-meter').style.width = (score / 10) + '%';
+  }, 300);
+});
+</script>
+</body>
+</html>

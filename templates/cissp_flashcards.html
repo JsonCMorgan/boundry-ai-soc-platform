@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CISSP Flashcards — Boundry.AI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0f0a; color: #d0d0d0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+            background: #0d1a0d; border-bottom: 1px solid #1a3a1a; flex-wrap: wrap; }
+  .topbar .logo { font-family: 'Courier New', monospace; font-weight: 800; font-size: 16px;
+                  color: #00b432; letter-spacing: 2px; }
+  .topbar a { color: #aaa; text-decoration: none; font-size: 13px; padding: 4px 8px;
+              border-radius: 4px; transition: color 0.2s; }
+  .topbar a:hover { color: #00b432; }
+  .topbar a.active { color: #00b432; font-weight: 700; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .xp-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .xp-level-badge { background: #1a2a1a; border: 1px solid #00b432; border-radius: 4px;
+                    padding: 2px 8px; font-weight: 700; color: #00b432; font-size: 12px;
+                    text-decoration: none; }
+  .xp-bar-track { width: 100px; height: 8px; background: #1a1a1a; border-radius: 4px;
+                  overflow: hidden; border: 1px solid #333; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg,#00b432,#44ff66); border-radius:4px; }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 32px 20px; }
+  h1 { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 28px; }
+
+  /* Domain grid */
+  .domain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                 gap: 12px; margin-bottom: 32px; }
+  .domain-card { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 8px;
+                 padding: 16px; cursor: pointer; transition: border-color 0.2s; }
+  .domain-card:hover { border-color: var(--dc); }
+  .domain-card.active { border-color: var(--dc); background: #0d1f0d; }
+  .dc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .dc-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dc); }
+  .dc-due { font-size: 12px; font-weight: 800; color: #00b432; }
+  .dc-due.none { color: #333; }
+  .dc-name { font-size: 13px; font-weight: 700; color: #ccc; margin-bottom: 6px; }
+  .dc-total { font-size: 11px; color: #555; }
+  .btn-gen { width: 100%; margin-top: 10px; background: transparent; border: 1px solid #1a3a1a;
+             border-radius: 4px; padding: 5px; font-size: 11px; color: #666; cursor: pointer;
+             transition: all 0.2s; }
+  .btn-gen:hover { border-color: #00b432; color: #00b432; }
+  .btn-gen.loading { color: #555; pointer-events: none; }
+
+  /* Review area */
+  .review-area { display: none; }
+  .review-area.show { display: block; }
+
+  .review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .review-header h2 { font-size: 18px; font-weight: 800; color: #fff; }
+  .btn-close-review { background: transparent; border: 1px solid #333; border-radius: 4px;
+                      padding: 4px 12px; font-size: 12px; color: #666; cursor: pointer; }
+  .btn-close-review:hover { color: #ff6666; border-color: #ff6666; }
+  .review-progress { font-size: 12px; color: #555; margin-left: auto; }
+
+  /* Flip card */
+  .flip-wrap { perspective: 1000px; height: 220px; margin-bottom: 24px; cursor: pointer; }
+  .flip-inner { width: 100%; height: 100%; position: relative; transition: transform 0.5s;
+                transform-style: preserve-3d; }
+  .flip-wrap.flipped .flip-inner { transform: rotateY(180deg); }
+  .card-face { position: absolute; inset: 0; border-radius: 10px; display: flex;
+               align-items: center; justify-content: center; text-align: center;
+               padding: 24px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .card-front { background: #0d1a0d; border: 2px solid var(--dc, #1a3a1a); }
+  .card-back  { background: #0d0d1a; border: 2px solid #334; transform: rotateY(180deg); }
+  .card-front-text { font-size: 22px; font-weight: 800; color: #fff; }
+  .card-back-text  { font-size: 14px; color: #ccc; line-height: 1.65; }
+  .card-tap-hint { font-size: 11px; color: #333; margin-top: 12px; }
+
+  /* Rating buttons */
+  .rating-row { display: flex; gap: 12px; justify-content: center; }
+  .rating-btn { flex: 1; max-width: 160px; padding: 12px; border-radius: 6px; border: none;
+                font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+                display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .rating-btn .interval { font-size: 10px; font-weight: 400; opacity: 0.8; }
+  .r-hard  { background: #2a0d0d; color: #ff8888; border: 1px solid #4a1a1a; }
+  .r-okay  { background: #2a2a0d; color: #cccc44; border: 1px solid #4a4a1a; }
+  .r-easy  { background: #0d2a0d; color: #44cc44; border: 1px solid #1a4a1a; }
+  .r-hard:hover { background: #3a1212; }
+  .r-okay:hover { background: #3a3a12; }
+  .r-easy:hover { background: #123a12; }
+  .r-hard:disabled, .r-okay:disabled, .r-easy:disabled { opacity: 0.4; cursor: default; }
+
+  .no-cards-msg { text-align: center; padding: 32px; color: #555; font-size: 14px; }
+  .loading-card { text-align: center; padding: 32px; color: #666; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">BOUNDRY.AI</span>
+  <a href="/control-room">Control Room</a>
+  <a href="/cissp">📘 CISSP Hub</a>
+  <a href="/cissp/practice">🎯 Practice</a>
+  <a href="/cissp/flashcards" class="active">🃏 Flashcards</a>
+  <a href="/cissp/exam">📝 CAT Exam</a>
+  <a href="/profile">⚔️ Profile</a>
+  <div class="topbar-right">
+    {% if player %}
+    <div class="xp-bar-wrap">
+      <a href="/profile" class="xp-level-badge" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+      <div class="xp-bar-track"><div class="xp-bar-fill" id="xp-bar-fill" style="width:{{ player.level_pct }}%"></div></div>
+      <span id="xp-bar-label" style="font-size:11px;color:#666;">{{ "{:,}".format(player.xp) }} XP</span>
+    </div>
+    {% endif %}
+    <a href="/logout" style="color:#555;">Logout</a>
+  </div>
+</div>
+
+<main>
+  <h1>🃏 CISSP Flashcards</h1>
+  <p class="subtitle">Spaced-repetition study cards — your local AI generates the deck. Due cards appear first.</p>
+
+  <!-- Domain grid for selecting which domain to study -->
+  <div class="domain-grid" id="domain-grid">
+    {% for d, info in cissp_domains.items() %}
+    {% set due = due_by_domain.get(d, 0) %}
+    {% set total = total_by_domain.get(d, 0) %}
+    <div class="domain-card" id="dc-{{ d }}" style="--dc:{{ info.color }}"
+         onclick="selectDomain({{ d }})">
+      <div class="dc-header">
+        <div class="dc-dot"></div>
+        <div class="dc-due {% if due == 0 %}none{% endif %}">
+          {% if due > 0 %}{{ due }} due{% elif total > 0 %}All caught up ✓{% else %}No cards yet{% endif %}
+        </div>
+      </div>
+      <div class="dc-name">D{{ d }}: {{ info.name }}</div>
+      <div class="dc-total">{{ total }} cards total</div>
+      <button class="btn-gen" id="gen-btn-{{ d }}" onclick="event.stopPropagation(); generateCards({{ d }}, '{{ info.color }}')"
+        title="Generate 8 new AI flashcards for this domain">
+        {% if total == 0 %}⚡ Generate cards{% else %}+ Generate more{% endif %}
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Review area (shown when a domain is selected) -->
+  <div class="review-area" id="review-area">
+    <div class="review-header">
+      <h2 id="review-domain-title">Reviewing…</h2>
+      <span class="review-progress" id="review-progress"></span>
+      <button class="btn-close-review" onclick="closeReview()">✕ Back to domains</button>
+    </div>
+
+    <div id="card-container">
+      <div class="loading-card">Loading cards…</div>
+    </div>
+  </div>
+</main>
+
+<script src="/static/game.js"></script>
+<script>
+var ACTIVE_DOMAIN = null;
+var ACTIVE_CARD   = null;
+var SESSION_REVIEWED = 0;
+
+function generateCards(domainNum, color) {
+  var btn = document.getElementById('gen-btn-' + domainNum);
+  btn.textContent = '⏳ Generating…';
+  btn.classList.add('loading');
+
+  fetch('/cissp/flashcards/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ domain_num: domainNum }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.classList.remove('loading');
+    if (data.error) { btn.textContent = '⚠️ Error — retry'; return; }
+    btn.textContent = '✓ ' + data.inserted + ' cards added!';
+    setTimeout(() => {
+      btn.textContent = '+ Generate more';
+      // Reload the page to refresh due counts
+      window.location.reload();
+    }, 2000);
+  })
+  .catch(() => {
+    btn.classList.remove('loading');
+    btn.textContent = '⚠️ Error — retry';
+  });
+}
+
+function selectDomain(domainNum) {
+  ACTIVE_DOMAIN = domainNum;
+  SESSION_REVIEWED = 0;
+  document.getElementById('review-area').classList.add('show');
+  document.getElementById('review-area').scrollIntoView({ behavior: 'smooth' });
+
+  var info = {{ cissp_domains | tojson }};
+  var dinfo = info[String(domainNum)] || info[domainNum] || {};
+  document.getElementById('review-domain-title').textContent = 'D' + domainNum + ': ' + (dinfo.name || '');
+
+  loadNextCard(domainNum);
+}
+
+function closeReview() {
+  document.getElementById('review-area').classList.remove('show');
+  ACTIVE_DOMAIN = null;
+  ACTIVE_CARD   = null;
+}
+
+function loadNextCard(domainNum) {
+  var container = document.getElementById('card-container');
+  container.innerHTML = '<div class="loading-card">Loading next card…</div>';
+
+  fetch('/cissp/flashcards/0/next?domain=' + (domainNum || ACTIVE_DOMAIN))
+  .then(r => r.json())
+  .then(data => {
+    if (data.done) {
+      container.innerHTML = '<div class="no-cards-msg">🎉 All cards reviewed for today!<br><span style="font-size:12px;color:#444;">Come back tomorrow for your next due cards, or generate more.</span></div>';
+      document.getElementById('review-progress').textContent = '';
+      return;
+    }
+    ACTIVE_CARD = data.card;
+    var info = {{ cissp_domains | tojson }};
+    var dinfo = info[String(ACTIVE_CARD.domain_num)] || {};
+    renderCard(data.card, dinfo.color || '#00b432');
+    document.getElementById('review-progress').textContent =
+      SESSION_REVIEWED + ' reviewed this session';
+  });
+}
+
+function renderCard(card, color) {
+  var container = document.getElementById('card-container');
+  container.innerHTML = `
+    <div class="flip-wrap" id="flip-wrap" style="--dc:${color}" onclick="flipCard()">
+      <div class="flip-inner" id="flip-inner">
+        <div class="card-face card-front">
+          <div>
+            <div class="card-front-text">${escHtml(card.front)}</div>
+            <div class="card-tap-hint">Tap to reveal definition</div>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-back-text">${escHtml(card.back)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="rating-row" id="rating-row" style="display:none">
+      <button class="rating-btn r-hard" onclick="rateCard('hard')"
+        title="Review again tomorrow">
+        😓 Hard
+        <span class="interval">Tomorrow</span>
+      </button>
+      <button class="rating-btn r-okay" onclick="rateCard('okay')"
+        title="Good — spaced review">
+        😐 Okay
+        <span class="interval">~${Math.round((card.interval_days||1)*1.8)}d</span>
+      </button>
+      <button class="rating-btn r-easy" onclick="rateCard('easy')"
+        title="Easy — longer interval">
+        😊 Easy
+        <span class="interval">~${Math.round((card.interval_days||1)*2.5)}d</span>
+      </button>
+    </div>
+  `;
+}
+
+function flipCard() {
+  var wrap = document.getElementById('flip-wrap');
+  if (!wrap) return;
+  wrap.classList.toggle('flipped');
+  // Show rating buttons after flip
+  setTimeout(() => {
+    var row = document.getElementById('rating-row');
+    if (row) row.style.display = 'flex';
+  }, 300);
+}
+
+function rateCard(rating) {
+  if (!ACTIVE_CARD) return;
+  var buttons = document.querySelectorAll('.rating-btn');
+  buttons.forEach(b => b.disabled = true);
+
+  fetch('/cissp/flashcards/' + ACTIVE_CARD.id + '/review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating: rating }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    SESSION_REVIEWED++;
+    if (data.xp) handleXpResult(data.xp);
+    setTimeout(() => loadNextCard(ACTIVE_DOMAIN), 600);
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

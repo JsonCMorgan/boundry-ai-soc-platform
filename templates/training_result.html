@@ -162,8 +162,18 @@
     <span class="topbar-brand">🎓 Boundry.AI — Training Result</span>
     <nav>
         <a href="/training">← Training Dashboard</a>
+        <a href="/control-room">Control Room</a>
+        <a href="/cissp">📘 CISSP</a>
+        <a href="/profile">⚔️ Profile</a>
         <a href="/logout">Logout</a>
     </nav>
+    {% if player %}
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;margin-left:16px;">
+      <a href="/profile" style="background:#1a2a1a;border:1px solid #00b432;border-radius:4px;padding:2px 8px;font-weight:700;color:#00b432;font-size:12px;text-decoration:none;">{{ player.level_icon }} Lv.{{ player.level }}</a>
+      <div style="width:100px;height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden;border:1px solid #333;"><div id="xp-bar-fill" style="height:100%;background:linear-gradient(90deg,#00b432,#44ff66);border-radius:4px;width:{{ player.level_pct }}%"></div></div>
+      <span id="xp-bar-label" style="font-size:11px;color:#666;">{{ "{:,}".format(player.xp) }} XP</span>
+    </div>
+    {% endif %}
 </div>
 
 <div class="page">
@@ -672,6 +682,21 @@ if (SCORES.total >= 18) {
     }, finaleDelay + 600);
 }
 </script>
+
+<script src="/static/game.js"></script>
+{% if scenario_xp %}
+<script>
+// Fire XP toasts for scenario completion reward(s) — runs once on page load
+// scenario_xp is consumed from Flask session so it won't replay on refresh
+(function() {
+  var xpEvents = {{ scenario_xp | tojson }};
+  var delay = 1800;  // let the score animation finish first
+  xpEvents.forEach(function(xp, i) {
+    setTimeout(function() { handleXpResult(xp); }, delay + i * 2200);
+  });
+})();
+</script>
+{% endif %}
 
 </body>
 </html>

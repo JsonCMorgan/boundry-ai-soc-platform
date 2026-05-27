@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CISSP CAT Exam — Boundry.AI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0f0a; color: #d0d0d0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+            background: #0d1a0d; border-bottom: 1px solid #1a3a1a; flex-wrap: wrap; }
+  .topbar .logo { font-family: 'Courier New', monospace; font-weight: 800; font-size: 16px;
+                  color: #00b432; letter-spacing: 2px; }
+  .topbar a { color: #aaa; text-decoration: none; font-size: 13px; padding: 4px 8px;
+              border-radius: 4px; transition: color 0.2s; }
+  .topbar a:hover { color: #00b432; }
+  .topbar a.active { color: #00b432; font-weight: 700; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .xp-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .xp-level-badge { background: #1a2a1a; border: 1px solid #00b432; border-radius: 4px;
+                    padding: 2px 8px; font-weight: 700; color: #00b432; font-size: 12px;
+                    text-decoration: none; }
+  .xp-bar-track { width: 100px; height: 8px; background: #1a1a1a; border-radius: 4px;
+                  overflow: hidden; border: 1px solid #333; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg,#00b432,#44ff66); border-radius:4px; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
+  h1 { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 28px; }
+
+  .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
+  .info-card { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 8px;
+               padding: 16px; text-align: center; }
+  .info-card .val { font-size: 24px; font-weight: 800; color: #00b432; }
+  .info-card .lbl { font-size: 11px; color: #555; text-transform: uppercase;
+                    letter-spacing: 1px; margin-top: 4px; }
+
+  .how-it-works { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 8px;
+                  padding: 20px; margin-bottom: 24px; font-size: 13px; color: #888;
+                  line-height: 1.7; }
+  .how-it-works h3 { color: #ccc; font-size: 14px; margin-bottom: 10px; }
+  .how-it-works ul { padding-left: 20px; }
+  .how-it-works li { margin-bottom: 4px; }
+
+  .active-session-card { background: #1a1a0d; border: 2px solid #ff8c00; border-radius: 10px;
+                          padding: 24px; margin-bottom: 24px; }
+  .active-session-card h3 { color: #ff8c00; margin-bottom: 8px; font-size: 16px; }
+  .active-session-card p  { font-size: 13px; color: #aaa; margin-bottom: 16px; }
+  .btn-resume { background: #ff8c00; color: #000; border: none; border-radius: 6px;
+                padding: 10px 28px; font-weight: 800; font-size: 14px; cursor: pointer;
+                margin-right: 12px; text-decoration: none; display: inline-block; }
+  .btn-resume:hover { background: #ffaa00; }
+
+  .btn-start-exam { background: #00b432; color: #000; border: none; border-radius: 8px;
+                    padding: 14px 40px; font-size: 16px; font-weight: 800; cursor: pointer;
+                    transition: background 0.2s; display: block; width: 100%; margin-bottom: 20px; }
+  .btn-start-exam:hover { background: #00d43a; }
+
+  .warning-box { background: #1a0d0d; border: 1px solid #4a1a1a; border-radius: 6px;
+                 padding: 12px 16px; font-size: 12px; color: #cc8888; margin-bottom: 20px; }
+
+  .history-title { font-size: 14px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+                   color: #555; border-bottom: 1px solid #1a2a1a; padding-bottom: 8px; margin-bottom: 16px; }
+  .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .history-table th { text-align: left; padding: 8px 12px; font-size: 11px; letter-spacing: 1px;
+                       text-transform: uppercase; color: #555; border-bottom: 1px solid #1a2a1a; }
+  .history-table td { padding: 8px 12px; border-bottom: 1px solid #111; }
+  .history-table tr:hover td { background: #0d150d; }
+  .score-pass { color: #00b432; font-weight: 800; }
+  .score-fail { color: #ff4444; font-weight: 800; }
+  .btn-view { font-size: 11px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px;
+              padding: 2px 8px; color: #888; text-decoration: none; }
+  .btn-view:hover { color: #00b432; border-color: #00b432; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">BOUNDRY.AI</span>
+  <a href="/control-room">Control Room</a>
+  <a href="/cissp">📘 CISSP Hub</a>
+  <a href="/cissp/practice">🎯 Practice</a>
+  <a href="/cissp/flashcards">🃏 Flashcards</a>
+  <a href="/cissp/exam" class="active">📝 CAT Exam</a>
+  <a href="/profile">⚔️ Profile</a>
+  <div class="topbar-right">
+    {% if player %}
+    <div class="xp-bar-wrap">
+      <a href="/profile" class="xp-level-badge" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+      <div class="xp-bar-track"><div class="xp-bar-fill" id="xp-bar-fill" style="width:{{ player.level_pct }}%"></div></div>
+      <span id="xp-bar-label" style="font-size:11px;color:#666;">{{ "{:,}".format(player.xp) }} XP</span>
+    </div>
+    {% endif %}
+    <a href="/logout" style="color:#555;">Logout</a>
+  </div>
+</div>
+
+<main>
+  <h1>📝 CISSP CAT Exam Simulator</h1>
+  <p class="subtitle">Computer Adaptive Testing — difficulty adjusts to your ability in real time, just like the actual CISSP exam.</p>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="val">{{ min_questions }}–{{ max_questions }}</div>
+      <div class="lbl">Questions</div>
+    </div>
+    <div class="info-card">
+      <div class="val">3 hrs</div>
+      <div class="lbl">Time Limit</div>
+    </div>
+    <div class="info-card">
+      <div class="val" style="color:#ff8c00">700</div>
+      <div class="lbl">Pass Score (/ 1000)</div>
+    </div>
+  </div>
+
+  <div class="how-it-works">
+    <h3>How CAT Works</h3>
+    <ul>
+      <li>You start at <strong>Intermediate</strong> difficulty. Each correct answer shifts difficulty up; each wrong answer shifts it down.</li>
+      <li>The exam tracks your <em>ability estimate</em> (0.0–1.0) and adjusts to keep questions near your frontier.</li>
+      <li>Exam ends at {{ max_questions }} questions, or earlier if your ability has stabilised after {{ min_questions }} questions.</li>
+      <li>Final score = <strong>150 + ability × 850</strong>. Score ≥ 700 = PASS.</li>
+      <li>Questions are AI-generated by your local Ollama model — all offline, zero cloud.</li>
+    </ul>
+  </div>
+
+  {% if active %}
+  <div class="active-session-card">
+    <h3>⚠️ Active Exam Session</h3>
+    <p>You have an exam in progress — {{ active.questions_answered }} questions answered,
+       {{ active.correct_count }} correct.
+       Starting a new exam will abandon this session.</p>
+    <a class="btn-resume" href="/cissp/exam/{{ active.id }}">▶ Resume Exam</a>
+  </div>
+  {% endif %}
+
+  {% if active %}
+  <div class="warning-box">Starting a new exam will abandon your current session and cannot be undone.</div>
+  {% endif %}
+
+  <form method="POST" action="/cissp/exam/start"
+        onsubmit="return {% if active %}confirm('Abandon current exam and start new one?'){% else %}true{% endif %}">
+    <button type="submit" class="btn-start-exam">
+      {% if active %}⚠️ Abandon & Start New Exam{% else %}🚀 Start CAT Exam{% endif %}
+    </button>
+  </form>
+
+  {% if history %}
+  <div class="history-title">Past Exams</div>
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Score</th>
+        <th>Result</th>
+        <th>Questions</th>
+        <th>Accuracy</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for exam in history %}
+      {% set pct = ((exam.correct_count / exam.questions_answered * 100)|int) if exam.questions_answered else 0 %}
+      {% set passed = (exam.final_score or 0) >= 700 %}
+      <tr>
+        <td style="color:#555;font-size:12px;">{{ exam.completed_at[:16] if exam.completed_at else '—' }}</td>
+        <td class="{{ 'score-pass' if passed else 'score-fail' }}">{{ exam.final_score or '—' }}</td>
+        <td>
+          {% if passed %}
+          <span style="color:#00b432;font-size:12px;font-weight:700;">✅ PASS</span>
+          {% else %}
+          <span style="color:#ff4444;font-size:12px;font-weight:700;">❌ FAIL</span>
+          {% endif %}
+        </td>
+        <td>{{ exam.questions_answered }}</td>
+        <td>{{ pct }}%</td>
+        <td><a class="btn-view" href="/cissp/exam/{{ exam.id }}/result">View →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</main>
+
+<script src="/static/game.js"></script>
+</body>
+</html>

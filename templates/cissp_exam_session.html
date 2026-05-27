@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CISSP CAT Exam — In Progress — Boundry.AI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080c08; color: #d0d0d0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* Exam topbar — stripped down, focus mode */
+  .exam-bar { display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+              background: #0a120a; border-bottom: 2px solid #1a3a1a; }
+  .exam-bar .logo { font-family: 'Courier New', monospace; font-weight: 800; font-size: 15px;
+                    color: #00b432; letter-spacing: 2px; }
+  .exam-title { font-size: 13px; color: #555; }
+  .timer { margin-left: auto; display: flex; align-items: center; gap: 8px;
+           background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 6px;
+           padding: 6px 14px; font-family: 'Courier New', monospace; font-size: 16px; }
+  .timer.warn { border-color: #ff8c00; color: #ff8c00; }
+  .timer.crit { border-color: #ff4444; color: #ff4444; animation: pulse 1s ease infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  .exam-progress-wrap { padding: 8px 24px; background: #0a120a;
+                        border-bottom: 1px solid #111; display: flex; align-items: center; gap: 14px; }
+  .ep-label { font-size: 12px; color: #555; min-width: 100px; }
+  .ep-track  { flex: 1; height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden; }
+  .ep-fill   { height: 100%; background: linear-gradient(90deg,#00b432,#44ff66); border-radius:3px;
+               transition: width 0.4s; }
+  .ep-ability { font-size: 11px; color: #555; min-width: 110px; text-align: right; }
+
+  main { max-width: 780px; margin: 0 auto; padding: 28px 20px; }
+
+  /* Question card */
+  .q-card { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 10px;
+            padding: 28px; }
+  .q-meta { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .q-num-badge { background: #003300; border: 1px solid #1a4a1a; border-radius: 4px;
+                 padding: 3px 10px; font-weight: 800; color: #00b432; font-size: 13px; }
+  .domain-chip { padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 11px; }
+  .mindset-badge { background: #1a1a2e; border: 1px solid #334; border-radius: 4px;
+                   padding: 2px 8px; font-size: 11px; color: #aaa; }
+  .diff-badge { border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 700; }
+  .diff-1 { background: #0d2a0d; color: #44cc44; border: 1px solid #1a4a1a; }
+  .diff-2 { background: #2a2a0d; color: #cccc44; border: 1px solid #4a4a1a; }
+  .diff-3 { background: #2a0d0d; color: #cc4444; border: 1px solid #4a1a1a; }
+
+  .scenario-text { font-size: 13px; color: #888; line-height: 1.65; margin-bottom: 16px;
+                   background: #0a140a; border-left: 3px solid #1a3a1a; padding: 12px 16px;
+                   border-radius: 0 6px 6px 0; }
+  .question-text { font-size: 16px; font-weight: 700; color: #e0e0e0; line-height: 1.5;
+                   margin-bottom: 20px; }
+
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .opt-btn { background: #0a140a; border: 1px solid #1a3a1a; border-radius: 6px;
+             padding: 13px 16px; text-align: left; cursor: pointer; color: #ccc;
+             font-size: 14px; transition: all 0.15s; display: flex; gap: 10px;
+             align-items: flex-start; width: 100%; }
+  .opt-btn:hover:not(:disabled) { border-color: #00b432; background: #0d1f0d; }
+  .opt-btn:disabled { cursor: default; }
+  .opt-btn.correct { border-color: #00b432; background: #0d2a0d; color: #44ff66; }
+  .opt-btn.wrong   { border-color: #ff4444; background: #2a0d0d; color: #ff8888; }
+  .opt-key { font-weight: 800; min-width: 20px; flex-shrink: 0; }
+
+  .feedback-box { display: none; margin-top: 20px; padding: 16px; border-radius: 6px;
+                  background: #0a120a; border: 1px solid #1a3a1a; font-size: 13px;
+                  line-height: 1.6; }
+  .feedback-box.show { display: block; }
+  .feedback-result { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+  .feedback-result.ok  { color: #44ff66; }
+  .feedback-result.err { color: #ff6666; }
+
+  /* Note: CAT exam does NOT show score during exam — CISSP rule. Feedback = correctness only. */
+  .cat-note { font-size: 11px; color: #333; margin-top: 6px; font-style: italic; }
+
+  .btn-next { margin-top: 16px; background: #00b432; color: #000; border: none;
+              border-radius: 6px; padding: 10px 28px; font-size: 14px; font-weight: 800;
+              cursor: pointer; transition: background 0.2s; }
+  .btn-next:hover { background: #00d43a; }
+  .btn-next:disabled { background: #1a1a1a; color: #555; cursor: default; }
+
+  .loading-msg { text-align: center; padding: 60px 0; color: #555; font-size: 14px; }
+  .loading-msg .spinner { font-size: 28px; animation: spin 1.2s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Exam complete overlay */
+  .complete-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+                      z-index: 1000; align-items: center; justify-content: center; }
+  .complete-overlay.show { display: flex; }
+  .complete-card { background: #0d1a0d; border: 2px solid #00b432; border-radius: 12px;
+                   padding: 40px; text-align: center; max-width: 420px; }
+  .complete-card h2 { font-size: 22px; color: #fff; margin-bottom: 8px; }
+  .complete-card p  { font-size: 14px; color: #888; margin-bottom: 24px; }
+  .btn-results { background: #00b432; color: #000; border: none; border-radius: 8px;
+                 padding: 12px 32px; font-size: 16px; font-weight: 800; cursor: pointer;
+                 text-decoration: none; display: inline-block; }
+</style>
+</head>
+<body>
+
+<div class="exam-bar">
+  <span class="logo">BOUNDRY.AI</span>
+  <span class="exam-title">📝 CISSP CAT Exam — In Progress</span>
+  <div class="timer" id="timer">⏱ 3:00:00</div>
+</div>
+
+<div class="exam-progress-wrap">
+  <span class="ep-label" id="ep-label">Question 0 / {{ max_questions }}</span>
+  <div class="ep-track"><div class="ep-fill" id="ep-fill" style="width:0%"></div></div>
+  <span class="ep-ability" id="ep-ability">Ability: calibrating…</span>
+</div>
+
+<main>
+
+  <!-- Loading state (shown before first question) -->
+  <div class="loading-msg" id="loading-msg">
+    <div class="spinner">⚙️</div>
+    <div style="margin-top:14px">Loading your first question…</div>
+  </div>
+
+  <!-- Question card (hidden until first question arrives) -->
+  <div class="q-card" id="q-card" style="display:none">
+    <div class="q-meta">
+      <span class="q-num-badge" id="q-num">Q1</span>
+      <span class="domain-chip" id="q-domain">—</span>
+      <span class="mindset-badge" id="q-mindset">—</span>
+      <span class="diff-badge" id="q-diff">—</span>
+    </div>
+    <div class="scenario-text" id="q-scenario"></div>
+    <div class="question-text" id="q-question"></div>
+    <div class="options" id="q-options"></div>
+    <div class="feedback-box" id="q-feedback">
+      <div class="feedback-result" id="fb-result"></div>
+      <div id="fb-explanation"></div>
+      <div class="cat-note">Ability estimate updated. Next question will be calibrated accordingly.</div>
+    </div>
+    <button class="btn-next" id="btn-next" style="display:none" onclick="loadNextQuestion()">
+      Next Question →
+    </button>
+  </div>
+
+</main>
+
+<!-- Exam complete overlay -->
+<div class="complete-overlay" id="complete-overlay">
+  <div class="complete-card">
+    <h2>🏁 Exam Complete</h2>
+    <p id="complete-msg">Your ability has been estimated. Calculating final score…</p>
+    <a id="btn-results" class="btn-results" href="/cissp/exam/{{ exam.id }}/result">View Results</a>
+  </div>
+</div>
+
+<script src="/static/game.js"></script>
+<script>
+var SESSION_ID = {{ exam.id }};
+var CURRENT_EQ = null;
+var REMAINING_S = {{ remaining_s }};
+var MAX_Q = {{ max_questions }};
+var MIN_Q = {{ min_questions }};
+var QUESTIONS_DONE = {{ exam.questions_answered or 0 }};
+var DIFF_LABELS = {1:'Beginner', 2:'Intermediate', 3:'Advanced'};
+var MINDSET_LABELS = {manager:'🧠 Manager', technical:'⚙️ Technical', both:'🔀 Both'};
+
+// ── Timer ────────────────────────────────────────────────────────────────────
+var timerEl = document.getElementById('timer');
+function formatTime(s) {
+  var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  return (h>0 ? h+':' : '') + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
+var timerInterval = setInterval(function() {
+  REMAINING_S--;
+  timerEl.textContent = '⏱ ' + formatTime(Math.max(0, REMAINING_S));
+  if (REMAINING_S <= 600) timerEl.className = 'timer warn';
+  if (REMAINING_S <= 120) timerEl.className = 'timer crit';
+  if (REMAINING_S <= 0)   { clearInterval(timerInterval); showComplete(true); }
+}, 1000);
+timerEl.textContent = '⏱ ' + formatTime(REMAINING_S);
+
+// ── Progress bar ─────────────────────────────────────────────────────────────
+function updateProgress(done, ability) {
+  document.getElementById('ep-label').textContent = 'Question ' + done + ' / ' + MAX_Q;
+  document.getElementById('ep-fill').style.width = Math.round(done / MAX_Q * 100) + '%';
+  if (ability !== undefined) {
+    var pct = Math.round(ability * 100);
+    document.getElementById('ep-ability').textContent = 'Ability: ' + pct + '%';
+  }
+}
+
+// ── Load next question ────────────────────────────────────────────────────────
+function loadNextQuestion() {
+  document.getElementById('q-card').style.display = 'none';
+  document.getElementById('loading-msg').style.display = 'block';
+  document.getElementById('btn-next').style.display = 'none';
+  document.getElementById('q-feedback').classList.remove('show');
+
+  fetch('/cissp/exam/' + SESSION_ID + '/question', { method: 'POST',
+    headers: {'Content-Type':'application/json'}, body: '{}' })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      document.getElementById('loading-msg').innerHTML =
+        '<div style="color:#ff6666">⚠️ ' + data.error + '</div>';
+      return;
+    }
+    if (data.complete || data.timed_out) { showComplete(data.timed_out); return; }
+    CURRENT_EQ = data;
+    QUESTIONS_DONE = data.question_num - 1;
+    renderQuestion(data);
+  })
+  .catch(() => {
+    document.getElementById('loading-msg').innerHTML =
+      '<div style="color:#ff6666">⚠️ Network error</div>';
+  });
+}
+
+function renderQuestion(d) {
+  document.getElementById('loading-msg').style.display = 'none';
+  document.getElementById('q-card').style.display = 'block';
+
+  document.getElementById('q-num').textContent = 'Q' + d.question_num;
+
+  var domEl = document.getElementById('q-domain');
+  var domInfo = {{ cissp_domains | tojson }}[String(d.domain_num)] || {};
+  domEl.textContent = 'D' + d.domain_num + ': ' + d.domain_name;
+  domEl.style.background = domInfo.color || '#00b432';
+  domEl.style.color = '#000';
+
+  document.getElementById('q-mindset').textContent = MINDSET_LABELS[d.mindset] || d.mindset;
+  var diffEl = document.getElementById('q-diff');
+  diffEl.textContent = DIFF_LABELS[d.difficulty] || 'Intermediate';
+  diffEl.className = 'diff-badge diff-' + (d.difficulty || 2);
+
+  document.getElementById('q-scenario').textContent = d.scenario;
+  document.getElementById('q-question').textContent = d.question;
+
+  var optContainer = document.getElementById('q-options');
+  optContainer.innerHTML = '';
+  ['A','B','C','D'].forEach(function(k) {
+    var btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.id = 'opt-' + k;
+    btn.innerHTML = '<span class="opt-key">' + k + '.</span>' + escHtml(d.options[k] || '');
+    btn.onclick = function() { submitAnswer(k); };
+    optContainer.appendChild(btn);
+  });
+}
+
+function submitAnswer(choice) {
+  ['A','B','C','D'].forEach(k => {
+    var b = document.getElementById('opt-' + k);
+    if (b) b.disabled = true;
+  });
+
+  fetch('/cissp/exam/' + SESSION_ID + '/answer', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ eq_id: CURRENT_EQ.eq_id, answer: choice }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+
+    var correct = data.correct_answer;
+    ['A','B','C','D'].forEach(k => {
+      var b = document.getElementById('opt-' + k);
+      if (!b) return;
+      if (k === correct) b.classList.add('correct');
+      else if (k === choice && !data.correct) b.classList.add('wrong');
+    });
+
+    var fb = document.getElementById('q-feedback');
+    var result = document.getElementById('fb-result');
+    if (data.correct) {
+      result.className = 'feedback-result ok';
+      result.textContent = '✅ Correct';
+    } else {
+      result.className = 'feedback-result err';
+      result.textContent = '❌ Incorrect — Correct: ' + correct;
+    }
+    document.getElementById('fb-explanation').textContent = data.explanation || '';
+    fb.classList.add('show');
+
+    QUESTIONS_DONE++;
+    updateProgress(QUESTIONS_DONE, data.ability);
+
+    if (data.exam_complete) {
+      setTimeout(() => showComplete(false), 2200);
+    } else {
+      document.getElementById('btn-next').style.display = 'inline-block';
+    }
+  });
+}
+
+function showComplete(timedOut) {
+  clearInterval(timerInterval);
+  var overlay = document.getElementById('complete-overlay');
+  var msg = document.getElementById('complete-msg');
+  msg.textContent = timedOut
+    ? 'Time limit reached — your exam has been scored.'
+    : 'Exam complete — ability estimate finalised.';
+  overlay.classList.add('show');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Kick off ─────────────────────────────────────────────────────────────────
+updateProgress(QUESTIONS_DONE);
+loadNextQuestion();
+</script>
+</body>
+</html>

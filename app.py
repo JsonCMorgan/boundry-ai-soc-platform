@@ -657,6 +657,56 @@ def init_db():
         )
     """)
 
+    # CISSP Flashcards — spaced-repetition deck (one card per row)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS cissp_flashcards (
+            {id_col}, {ts_col},
+            analyst_id      INTEGER NOT NULL,
+            domain_num      INTEGER NOT NULL,
+            front           TEXT    NOT NULL DEFAULT '',
+            back            TEXT    NOT NULL DEFAULT '',
+            ease_factor     REAL    NOT NULL DEFAULT 2.5,
+            interval_days   REAL    NOT NULL DEFAULT 1.0,
+            next_review     TEXT,
+            times_correct   INTEGER NOT NULL DEFAULT 0,
+            times_seen      INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
+    # CISSP CAT Exam sessions
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS cissp_exam_sessions (
+            {id_col}, {ts_col},
+            analyst_id          INTEGER NOT NULL,
+            started_at          TEXT    NOT NULL,
+            completed_at        TEXT,
+            current_ability     REAL    NOT NULL DEFAULT 0.5,
+            questions_answered  INTEGER NOT NULL DEFAULT 0,
+            correct_count       INTEGER NOT NULL DEFAULT 0,
+            final_score         INTEGER,
+            status              TEXT    NOT NULL DEFAULT 'active'
+        )
+    """)
+
+    # CISSP CAT Exam questions — per-session question log
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS cissp_exam_questions (
+            {id_col}, {ts_col},
+            session_id      INTEGER NOT NULL,
+            analyst_id      INTEGER NOT NULL,
+            domain_num      INTEGER NOT NULL,
+            difficulty      INTEGER NOT NULL DEFAULT 2,
+            question_text   TEXT    NOT NULL DEFAULT '',
+            options_json    TEXT    NOT NULL DEFAULT '{{}}',
+            correct_answer  TEXT    NOT NULL DEFAULT '',
+            user_answer     TEXT,
+            is_correct      INTEGER,
+            explanation     TEXT    NOT NULL DEFAULT '',
+            ability_before  REAL    NOT NULL DEFAULT 0.5,
+            ability_after   REAL
+        )
+    """)
+
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.
@@ -1346,6 +1396,16 @@ def award_xp(analyst_id, amount, reason, source=""):
     if total_q >= 1:   _maybe_unlock("first_blood")
     if total_q >= 100: _maybe_unlock("centurion")
 
+    # On Fire — 5 consecutive correct answers (threat-detection streak)
+    recent_answers = db_fetchall(
+        f"SELECT is_correct FROM cissp_attempts "
+        f"WHERE analyst_id = {PH} AND is_correct IS NOT NULL AND skipped = 0 "
+        f"ORDER BY id DESC LIMIT 5",
+        (analyst_id,),
+    )
+    if len(recent_answers) >= 5 and all(r["is_correct"] == 1 for r in recent_answers):
+        _maybe_unlock("on_fire")
+
     # Per-domain 10-question badges
     for d in range(1, 9):
         dom_row = db_fetchone(
@@ -1898,6 +1958,24 @@ Return ONLY valid JSON, no other text:
             attempt_id,
         ),
     )
+    # ── Award XP for scenario completion ─────────────────────────────────────
+    scenario_label = sc.get("label", attempt["scenario_label"])
+    xp_events = []
+    xp_base = award_xp(
+        analyst_id, XP_REWARDS["scenario_complete"],
+        reason=f"Completed SOC scenario: {scenario_label}",
+        source="scenario",
+    )
+    xp_events.append(xp_base)
+    if score_total >= 16:   # ≥80% of max 20 pts — high-performance bonus trigger
+        xp_bonus = award_xp(
+            analyst_id, XP_REWARDS["scenario_bonus"],
+            reason=f"High-score bonus (≥80%): {scenario_label}",
+            source="scenario_bonus",
+        )
+        xp_events.append(xp_bonus)
+    session["scenario_xp"] = xp_events
+
     # Clear events from session
     session.pop("training_events", None)
     return redirect(url_for("training_result", attempt_id=attempt_id))
@@ -1933,12 +2011,16 @@ def training_result(attempt_id):
 
     actual_techniques = _json.loads(attempt["actual_techniques"] or "[]")
     sc = TRAINING_SCENARIOS.get(attempt["scenario_name"], {})
+    player = get_player_profile(analyst_id)
+    scenario_xp = session.pop("scenario_xp", None)   # consume once — don't replay on refresh
     return render_template(
         "training_result.html",
         attempt=attempt,
         sc=sc,
         report=report,
         actual_techniques=actual_techniques,
+        player=player,
+        scenario_xp=scenario_xp,
     )
 
 
@@ -3414,11 +3496,12 @@ def scorecard():
 
 # ── CISSP study helpers ──────────────────────────────────────────────────────
 
-def _generate_cissp_question(domain_num):
+def _generate_cissp_question(domain_num, difficulty_hint=None):
     """
     Use Ollama to generate a scenario-based CISSP practice question for the given domain.
     Returns a validated dict or None if generation fails.
     The correct answer is NOT returned to the browser — it stays server-side in the DB.
+    difficulty_hint: 1=beginner, 2=intermediate, 3=advanced (used by CAT exam engine).
     """
     import json as _j
     import urllib.request as _urlreq
@@ -3428,10 +3511,19 @@ def _generate_cissp_question(domain_num):
         return None
 
     topics_str = ", ".join(domain.get("key_topics", []))
+
+    _difficulty_guidance = ""
+    if difficulty_hint == 1:
+        _difficulty_guidance = "\nDifficulty target: BEGINNER — use a straightforward scenario testing fundamental concepts with one clearly correct answer."
+    elif difficulty_hint == 3:
+        _difficulty_guidance = "\nDifficulty target: ADVANCED — use a complex, ambiguous scenario requiring integration of multiple CISSP domains. All distractors must be plausible."
+    elif difficulty_hint == 2:
+        _difficulty_guidance = "\nDifficulty target: INTERMEDIATE — use a realistic workplace scenario requiring security judgment, not just recall."
+
     prompt = f"""You are an expert ISC2 CISSP exam question writer.
 
 Write ONE scenario-based practice question for CISSP Domain {domain_num}: {domain["name"]} ({domain["weight"]}% of exam).
-Key topics for this domain: {topics_str}
+Key topics for this domain: {topics_str}{_difficulty_guidance}
 
 Requirements:
 1. Write a realistic 3–5 sentence workplace scenario for a senior security professional or manager.
@@ -3730,6 +3822,584 @@ def cissp_skip_question(domain_num):
         (attempt_id, analyst_id),
     )
     return jsonify({"ok": True})
+
+
+# ── CISSP Practice Mode ──────────────────────────────────────────────────────
+
+@app.route("/cissp/practice")
+@analyst_required
+def cissp_practice():
+    """Mixed-domain question drill — random weighted domain per question."""
+    analyst_id = session["user_id"]
+    player = get_player_profile(analyst_id)
+    # Aggregate stats across all domains for the practice hub card
+    all_progress = {
+        r["domain_num"]: r for r in db_fetchall(
+            f"SELECT domain_num, attempts, correct FROM cissp_progress WHERE analyst_id = {PH}",
+            (analyst_id,),
+        )
+    }
+    total_att = sum(r["attempts"] or 0 for r in all_progress.values())
+    total_cor = sum(r["correct"]  or 0 for r in all_progress.values())
+    return render_template(
+        "cissp_practice.html",
+        cissp_domains=CISSP_DOMAINS,
+        player=player,
+        total_att=total_att,
+        total_cor=total_cor,
+    )
+
+
+@app.route("/cissp/practice/question", methods=["POST"])
+@analyst_required
+def cissp_practice_question():
+    """AJAX — generate a question from a weighted-random CISSP domain."""
+    import random as _rnd
+    analyst_id = session["user_id"]
+    # Weighted random selection mirrors the real exam distribution
+    domains  = list(CISSP_DOMAINS.keys())
+    weights  = [CISSP_DOMAINS[d]["weight"] for d in domains]
+    dom_num  = _rnd.choices(domains, weights=weights, k=1)[0]
+    domain   = CISSP_DOMAINS[dom_num]
+
+    q = _generate_cissp_question(dom_num)
+    if not q:
+        return jsonify({"error": "Question generation failed — is Ollama running?"}), 503
+
+    import json as _json
+    db_run(
+        f"INSERT INTO cissp_attempts "
+        f"(analyst_id, domain_num, scenario, question_text, options_json, "
+        f" correct_answer, explanation, mindset, difficulty) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id, dom_num,
+            q["scenario"], q["question"],
+            _json.dumps(q["options"]),
+            q["correct"], q["explanation"],
+            q["mindset"], q["difficulty"],
+        ),
+    )
+    attempt_id = db_fetchone(
+        f"SELECT MAX(id) AS aid FROM cissp_attempts WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, dom_num),
+    )["aid"]
+
+    return jsonify({
+        "attempt_id": attempt_id,
+        "domain_num": dom_num,
+        "domain_name": domain["name"],
+        "domain_color": domain["color"],
+        "scenario":   q["scenario"],
+        "question":   q["question"],
+        "options":    q["options"],
+        "mindset":    q["mindset"],
+        "difficulty": q["difficulty"],
+    })
+
+
+# ── CISSP Flashcards ─────────────────────────────────────────────────────────
+
+@app.route("/cissp/flashcards")
+@analyst_required
+def cissp_flashcards():
+    """Spaced-repetition flashcard hub — shows due cards per domain."""
+    import json as _json
+    analyst_id = session["user_id"]
+    today      = datetime.utcnow().strftime("%Y-%m-%d")
+    player     = get_player_profile(analyst_id)
+
+    # Count due cards per domain (next_review <= today OR never reviewed)
+    due_by_domain = {}
+    total_by_domain = {}
+    for d in CISSP_DOMAINS:
+        due_row = db_fetchone(
+            f"SELECT COUNT(*) AS cnt FROM cissp_flashcards "
+            f"WHERE analyst_id = {PH} AND domain_num = {PH} "
+            f"AND (next_review IS NULL OR next_review <= {PH})",
+            (analyst_id, d, today),
+        )
+        tot_row = db_fetchone(
+            f"SELECT COUNT(*) AS cnt FROM cissp_flashcards "
+            f"WHERE analyst_id = {PH} AND domain_num = {PH}",
+            (analyst_id, d),
+        )
+        due_by_domain[d]   = due_row["cnt"]   if due_row  else 0
+        total_by_domain[d] = tot_row["cnt"]   if tot_row  else 0
+
+    return render_template(
+        "cissp_flashcards.html",
+        cissp_domains=CISSP_DOMAINS,
+        player=player,
+        due_by_domain=due_by_domain,
+        total_by_domain=total_by_domain,
+    )
+
+
+@app.route("/cissp/flashcards/generate", methods=["POST"])
+@analyst_required
+def cissp_flashcards_generate():
+    """AJAX — ask Ollama to generate a batch of flashcards for a domain."""
+    import json as _json
+    import urllib.request as _urlreq
+    analyst_id = session["user_id"]
+    data       = request.get_json(force=True, silent=True) or {}
+    domain_num = int(data.get("domain_num", 0))
+    if domain_num not in CISSP_DOMAINS:
+        return jsonify({"error": "Invalid domain"}), 400
+
+    domain     = CISSP_DOMAINS[domain_num]
+    topics_str = ", ".join(domain.get("key_topics", []))
+
+    prompt = f"""You are an expert ISC2 CISSP instructor creating flashcards for Domain {domain_num}: {domain["name"]}.
+Key topics: {topics_str}
+
+Generate exactly 8 flashcard pairs. Each "front" is a key term or concept. Each "back" is a precise 1–2 sentence definition that a CISSP exam candidate needs to know.
+
+Respond ONLY with valid JSON — no markdown, no code fences:
+{{"cards":[{{"front":"<term>","back":"<definition>"}},{{"front":"<term>","back":"<definition>"}}]}}"""
+
+    ollama_base  = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    ollama_model = os.environ.get("OLLAMA_MODEL",    "llama3.1:8b")
+    try:
+        payload = _json.dumps({
+            "model": ollama_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1200,
+            "temperature": 0.6,
+        }).encode()
+        req = _urlreq.Request(
+            f"{ollama_base}/chat/completions",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with _urlreq.urlopen(req, timeout=90) as resp:
+            raw  = _json.loads(resp.read())
+            text = raw["choices"][0]["message"]["content"].strip()
+            text = re.sub(r"^```[a-z]*\n?", "", text).rstrip("`").strip()
+            result = _json.loads(text)
+            cards  = result.get("cards", [])
+    except Exception as exc:
+        security_log.warning(f"FLASHCARD_GEN_FAILED domain={domain_num} error={exc}")
+        return jsonify({"error": "Ollama generation failed"}), 503
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    inserted = 0
+    for c in cards:
+        front = str(c.get("front", "")).strip()
+        back  = str(c.get("back",  "")).strip()
+        if not front or not back:
+            continue
+        db_run(
+            f"INSERT INTO cissp_flashcards (analyst_id, domain_num, front, back, next_review) "
+            f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+            (analyst_id, domain_num, front, back, today),
+        )
+        inserted += 1
+
+    return jsonify({"ok": True, "inserted": inserted, "domain_num": domain_num})
+
+
+@app.route("/cissp/flashcards/<int:card_id>/next", methods=["GET"])
+@analyst_required
+def cissp_flashcard_next(card_id):
+    """AJAX — fetch the next due card for a given domain (or a specific card)."""
+    analyst_id = session["user_id"]
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    data  = request.args
+    domain_num = int(data.get("domain", 0))
+
+    if domain_num and domain_num in CISSP_DOMAINS:
+        card = db_fetchone(
+            f"SELECT * FROM cissp_flashcards "
+            f"WHERE analyst_id = {PH} AND domain_num = {PH} "
+            f"AND (next_review IS NULL OR next_review <= {PH}) "
+            f"ORDER BY next_review ASC, id ASC LIMIT 1",
+            (analyst_id, domain_num, today),
+        )
+    else:
+        card = db_fetchone(
+            f"SELECT * FROM cissp_flashcards WHERE id = {PH} AND analyst_id = {PH}",
+            (card_id, analyst_id),
+        )
+    if not card:
+        return jsonify({"done": True})
+    return jsonify({"done": False, "card": dict(card)})
+
+
+@app.route("/cissp/flashcards/<int:card_id>/review", methods=["POST"])
+@analyst_required
+def cissp_flashcard_review(card_id):
+    """AJAX — record a flashcard review using simplified SM-2 SRS scheduling."""
+    analyst_id = session["user_id"]
+    data       = request.get_json(force=True, silent=True) or {}
+    rating     = str(data.get("rating", "okay")).lower()  # hard / okay / easy
+
+    card = db_fetchone(
+        f"SELECT * FROM cissp_flashcards WHERE id = {PH} AND analyst_id = {PH}",
+        (card_id, analyst_id),
+    )
+    if not card:
+        return jsonify({"error": "Card not found"}), 404
+
+    ease     = float(card["ease_factor"]  or 2.5)
+    interval = float(card["interval_days"] or 1.0)
+    correct  = 0
+
+    if rating == "hard":
+        interval = 1.0          # review tomorrow
+    elif rating == "okay":
+        interval = max(1.0, interval * ease * 0.6)
+        correct  = 1
+    else:                        # easy
+        interval = max(1.0, interval * ease)
+        ease     = min(3.0, ease + 0.1)
+        correct  = 1
+
+    next_review = (datetime.utcnow() + timedelta(days=int(interval))).strftime("%Y-%m-%d")
+    db_run(
+        f"UPDATE cissp_flashcards "
+        f"SET ease_factor = {PH}, interval_days = {PH}, next_review = {PH}, "
+        f"times_seen = times_seen + 1, times_correct = times_correct + {PH} "
+        f"WHERE id = {PH}",
+        (ease, interval, next_review, correct, card_id),
+    )
+
+    # Award tiny XP for each card reviewed (keeps streak going on study days)
+    if correct:
+        award_xp(analyst_id, 1, reason="Flashcard review (correct)", source="flashcard")
+
+    return jsonify({"ok": True, "next_review": next_review, "interval_days": round(interval, 1)})
+
+
+# ── CISSP CAT Exam ───────────────────────────────────────────────────────────
+
+_CAT_MIN_QUESTIONS = 75
+_CAT_MAX_QUESTIONS = 100
+_CAT_TIME_LIMIT_S  = 10800   # 3 hours
+
+def _cat_ability_adjust(ability, correct):
+    """Update ability estimate after one item. Bounded [0, 1]."""
+    if correct:
+        return min(1.0, ability + 0.08 * (1.0 - ability * 0.5))
+    else:
+        return max(0.0, ability - 0.08 * (1.0 + (1.0 - ability) * 0.5 - 1.0))
+
+def _cat_score(ability):
+    """Map 0–1 ability to 0–1000 score. Pass threshold = 700 ≈ ability 0.647."""
+    return min(1000, max(0, round(150 + ability * 850)))
+
+def _cat_difficulty_for_ability(ability):
+    """Select question difficulty to target the candidate's estimated ability."""
+    if ability < 0.33:
+        return 1
+    elif ability < 0.67:
+        return 2
+    else:
+        return 3
+
+def _cat_domain_pick():
+    """Weighted-random CISSP domain mirroring real exam distribution."""
+    import random as _rnd
+    domains = list(CISSP_DOMAINS.keys())
+    weights = [CISSP_DOMAINS[d]["weight"] for d in domains]
+    return _rnd.choices(domains, weights=weights, k=1)[0]
+
+
+@app.route("/cissp/exam")
+@analyst_required
+def cissp_exam():
+    """CAT exam hub — shows active session or past history."""
+    analyst_id = session["user_id"]
+    player     = get_player_profile(analyst_id)
+
+    active = db_fetchone(
+        f"SELECT * FROM cissp_exam_sessions "
+        f"WHERE analyst_id = {PH} AND status = 'active' ORDER BY id DESC LIMIT 1",
+        (analyst_id,),
+    )
+    history = db_fetchall(
+        f"SELECT * FROM cissp_exam_sessions "
+        f"WHERE analyst_id = {PH} AND status = 'completed' ORDER BY id DESC LIMIT 10",
+        (analyst_id,),
+    )
+    return render_template(
+        "cissp_exam.html",
+        player=player,
+        active=active,
+        history=history,
+        cissp_domains=CISSP_DOMAINS,
+        min_questions=_CAT_MIN_QUESTIONS,
+        max_questions=_CAT_MAX_QUESTIONS,
+        time_limit_s=_CAT_TIME_LIMIT_S,
+    )
+
+
+@app.route("/cissp/exam/start", methods=["POST"])
+@analyst_required
+def cissp_exam_start():
+    """Start a new CAT exam session (abandons any existing active session)."""
+    analyst_id = session["user_id"]
+    now_str    = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Abandon any stale active sessions
+    db_run(
+        f"UPDATE cissp_exam_sessions SET status = 'abandoned' "
+        f"WHERE analyst_id = {PH} AND status = 'active'",
+        (analyst_id,),
+    )
+    db_run(
+        f"INSERT INTO cissp_exam_sessions (analyst_id, started_at, current_ability) "
+        f"VALUES ({PH},{PH},0.5)",
+        (analyst_id, now_str),
+    )
+    sess_row = db_fetchone(
+        f"SELECT MAX(id) AS sid FROM cissp_exam_sessions WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    return redirect(url_for("cissp_exam_session", session_id=sess_row["sid"]))
+
+
+@app.route("/cissp/exam/<int:session_id>")
+@analyst_required
+def cissp_exam_session(session_id):
+    """CAT exam interface — renders the timed question shell."""
+    analyst_id = session["user_id"]
+    exam = db_fetchone(
+        f"SELECT * FROM cissp_exam_sessions WHERE id = {PH} AND analyst_id = {PH}",
+        (session_id, analyst_id),
+    )
+    if not exam:
+        abort(404)
+    if exam["status"] == "completed":
+        return redirect(url_for("cissp_exam_result", session_id=session_id))
+
+    # Check time limit
+    started = datetime.strptime(exam["started_at"], "%Y-%m-%d %H:%M:%S")
+    elapsed = (datetime.utcnow() - started).total_seconds()
+    if elapsed >= _CAT_TIME_LIMIT_S:
+        _cat_finalize(session_id, analyst_id, timed_out=True)
+        return redirect(url_for("cissp_exam_result", session_id=session_id))
+
+    player = get_player_profile(analyst_id)
+    remaining_s = max(0, int(_CAT_TIME_LIMIT_S - elapsed))
+    return render_template(
+        "cissp_exam_session.html",
+        exam=exam,
+        player=player,
+        remaining_s=remaining_s,
+        min_questions=_CAT_MIN_QUESTIONS,
+        max_questions=_CAT_MAX_QUESTIONS,
+        cissp_domains=CISSP_DOMAINS,
+    )
+
+
+@app.route("/cissp/exam/<int:session_id>/question", methods=["POST"])
+@analyst_required
+def cissp_exam_question(session_id):
+    """AJAX — serve the next adaptive question for this CAT session."""
+    import json as _json
+    analyst_id = session["user_id"]
+    exam = db_fetchone(
+        f"SELECT * FROM cissp_exam_sessions WHERE id = {PH} AND analyst_id = {PH} AND status = 'active'",
+        (session_id, analyst_id),
+    )
+    if not exam:
+        return jsonify({"error": "Session not found or already complete"}), 404
+
+    # Time check
+    started = datetime.strptime(exam["started_at"], "%Y-%m-%d %H:%M:%S")
+    if (datetime.utcnow() - started).total_seconds() >= _CAT_TIME_LIMIT_S:
+        _cat_finalize(session_id, analyst_id, timed_out=True)
+        return jsonify({"timed_out": True, "session_id": session_id})
+
+    questions_done = exam["questions_answered"] or 0
+    if questions_done >= _CAT_MAX_QUESTIONS:
+        _cat_finalize(session_id, analyst_id)
+        return jsonify({"complete": True, "session_id": session_id})
+
+    ability    = float(exam["current_ability"] or 0.5)
+    difficulty = _cat_difficulty_for_ability(ability)
+    domain_num = _cat_domain_pick()
+
+    q = _generate_cissp_question(domain_num, difficulty_hint=difficulty)
+    if not q:
+        return jsonify({"error": "Question generation failed — is Ollama running?"}), 503
+
+    db_run(
+        f"INSERT INTO cissp_exam_questions "
+        f"(session_id, analyst_id, domain_num, difficulty, question_text, options_json, "
+        f" correct_answer, explanation, ability_before) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+        (
+            session_id, analyst_id, domain_num, difficulty,
+            q["question"], _json.dumps(q["options"]),
+            q["correct"], q["explanation"], ability,
+        ),
+    )
+    eq_id = db_fetchone(
+        f"SELECT MAX(id) AS eid FROM cissp_exam_questions "
+        f"WHERE session_id = {PH} AND analyst_id = {PH}",
+        (session_id, analyst_id),
+    )["eid"]
+
+    diff_labels = {1: "Beginner", 2: "Intermediate", 3: "Advanced"}
+    return jsonify({
+        "eq_id":       eq_id,
+        "domain_num":  domain_num,
+        "domain_name": CISSP_DOMAINS[domain_num]["name"],
+        "question_num": questions_done + 1,
+        "difficulty":  difficulty,
+        "diff_label":  diff_labels.get(difficulty, "Intermediate"),
+        "scenario":    q["scenario"],
+        "question":    q["question"],
+        "options":     q["options"],
+        "mindset":     q["mindset"],
+        "remaining_q": _CAT_MAX_QUESTIONS - questions_done - 1,
+    })
+
+
+@app.route("/cissp/exam/<int:session_id>/answer", methods=["POST"])
+@analyst_required
+def cissp_exam_answer(session_id):
+    """AJAX — score a CAT exam answer, update ability, check for exam completion."""
+    import json as _json
+    analyst_id  = session["user_id"]
+    data        = request.get_json(force=True, silent=True) or {}
+    eq_id       = data.get("eq_id")
+    user_answer = str(data.get("answer", "")).upper().strip()
+
+    if not eq_id or user_answer not in ("A", "B", "C", "D"):
+        return jsonify({"error": "Invalid request"}), 400
+
+    eq = db_fetchone(
+        f"SELECT * FROM cissp_exam_questions "
+        f"WHERE id = {PH} AND session_id = {PH} AND analyst_id = {PH}",
+        (eq_id, session_id, analyst_id),
+    )
+    if not eq or eq["user_answer"] is not None:
+        return jsonify({"error": "Question not found or already answered"}), 400
+
+    exam = db_fetchone(
+        f"SELECT * FROM cissp_exam_sessions WHERE id = {PH} AND analyst_id = {PH} AND status = 'active'",
+        (session_id, analyst_id),
+    )
+    if not exam:
+        return jsonify({"error": "Session not active"}), 400
+
+    is_correct   = int(user_answer == eq["correct_answer"])
+    ability_prev = float(exam["current_ability"] or 0.5)
+    ability_new  = _cat_ability_adjust(ability_prev, is_correct)
+    q_done       = (exam["questions_answered"] or 0) + 1
+    correct_cnt  = (exam["correct_count"]      or 0) + is_correct
+
+    db_run(
+        f"UPDATE cissp_exam_questions "
+        f"SET user_answer = {PH}, is_correct = {PH}, ability_after = {PH} WHERE id = {PH}",
+        (user_answer, is_correct, ability_new, eq_id),
+    )
+    db_run(
+        f"UPDATE cissp_exam_sessions "
+        f"SET questions_answered = {PH}, correct_count = {PH}, current_ability = {PH} "
+        f"WHERE id = {PH}",
+        (q_done, correct_cnt, ability_new, session_id),
+    )
+
+    # Check natural termination: CAT stops after min questions if confidence is high
+    exam_complete = False
+    if q_done >= _CAT_MAX_QUESTIONS:
+        _cat_finalize(session_id, analyst_id)
+        exam_complete = True
+    elif q_done >= _CAT_MIN_QUESTIONS:
+        # Early stop if last 10 answers show stable ability (all correct or all wrong)
+        recent = db_fetchall(
+            f"SELECT is_correct FROM cissp_exam_questions "
+            f"WHERE session_id = {PH} AND user_answer IS NOT NULL ORDER BY id DESC LIMIT 10",
+            (session_id,),
+        )
+        if len(recent) == 10 and (all(r["is_correct"] == 1 for r in recent) or all(r["is_correct"] == 0 for r in recent)):
+            _cat_finalize(session_id, analyst_id)
+            exam_complete = True
+
+    return jsonify({
+        "correct":       bool(is_correct),
+        "correct_answer": eq["correct_answer"],
+        "explanation":   eq["explanation"],
+        "ability":       round(ability_new, 3),
+        "questions_done": q_done,
+        "exam_complete": exam_complete,
+        "session_id":    session_id,
+    })
+
+
+def _cat_finalize(session_id, analyst_id, timed_out=False):
+    """Close a CAT exam session: compute final score, award XP."""
+    exam = db_fetchone(
+        f"SELECT * FROM cissp_exam_sessions WHERE id = {PH} AND analyst_id = {PH}",
+        (session_id, analyst_id),
+    )
+    if not exam or exam["status"] != "active":
+        return
+    ability     = float(exam["current_ability"] or 0.5)
+    final_score = _cat_score(ability)
+    now_str     = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    status      = "completed"
+    db_run(
+        f"UPDATE cissp_exam_sessions "
+        f"SET completed_at = {PH}, final_score = {PH}, status = {PH} WHERE id = {PH}",
+        (now_str, final_score, status, session_id),
+    )
+    # Award XP proportional to score
+    xp_amount = max(20, round(final_score / 20))   # 700 pass → 35 XP; 1000 perfect → 50 XP
+    award_xp(analyst_id, xp_amount,
+             reason=f"CAT Exam completed — score {final_score}/1000{'  (timed out)' if timed_out else ''}",
+             source="cat_exam")
+
+
+@app.route("/cissp/exam/<int:session_id>/result")
+@analyst_required
+def cissp_exam_result(session_id):
+    """CAT exam result page — full score breakdown with per-domain analysis."""
+    import json as _json
+    analyst_id = session["user_id"]
+    exam = db_fetchone(
+        f"SELECT * FROM cissp_exam_sessions WHERE id = {PH} AND analyst_id = {PH}",
+        (session_id, analyst_id),
+    )
+    if not exam:
+        abort(404)
+    if exam["status"] == "active":
+        return redirect(url_for("cissp_exam_session", session_id=session_id))
+
+    questions = db_fetchall(
+        f"SELECT * FROM cissp_exam_questions WHERE session_id = {PH} ORDER BY id ASC",
+        (session_id,),
+    )
+    # Per-domain breakdown
+    domain_breakdown = {}
+    for q in questions:
+        d = q["domain_num"]
+        if d not in domain_breakdown:
+            domain_breakdown[d] = {"attempted": 0, "correct": 0, "name": CISSP_DOMAINS.get(d, {}).get("name", f"D{d}")}
+        domain_breakdown[d]["attempted"] += 1
+        domain_breakdown[d]["correct"]   += (q["is_correct"] or 0)
+    for d, stats in domain_breakdown.items():
+        stats["pct"] = round(stats["correct"] / stats["attempted"] * 100) if stats["attempted"] else 0
+
+    player = get_player_profile(analyst_id)
+    ability = float(exam["current_ability"] or 0.5)
+    score   = exam["final_score"] or _cat_score(ability)
+    return render_template(
+        "cissp_exam_result.html",
+        exam=exam,
+        questions=questions,
+        domain_breakdown=domain_breakdown,
+        cissp_domains=CISSP_DOMAINS,
+        player=player,
+        score=score,
+        passed=(score >= 700),
+        ability=round(ability, 3),
+    )
 
 
 # --- ROUTE 8c: Breach Intel — Dismiss / Archive / Unarchive (analyst only) ---

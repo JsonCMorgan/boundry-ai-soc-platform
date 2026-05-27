@@ -4653,6 +4653,122 @@ def resolve_finding(finding_id):
     return jsonify({"ok": True, "xp": xp_result})
 
 
+@app.route("/scan/findings/<int:finding_id>/remediation-plan", methods=["GET"])
+@analyst_required
+def finding_remediation_plan(finding_id):
+    """
+    AJAX — return the full remediation plan for a finding so the UI can
+    display a pre-action disclosure modal before the analyst clicks anything.
+    """
+    from system_scanner import get_remediation_plan
+    finding = db_fetchone(
+        f"SELECT id, finding_id, title, severity, description, recommendation "
+        f"FROM system_findings WHERE id = {PH}",
+        (finding_id,),
+    )
+    if not finding:
+        return jsonify({"error": "Finding not found"}), 404
+
+    plan = get_remediation_plan(finding["finding_id"])
+    return jsonify({
+        "db_id":        finding["id"],
+        "finding_id":   finding["finding_id"],
+        "title":        finding["title"],
+        "severity":     finding["severity"],
+        "description":  finding["description"],
+        "recommendation": finding["recommendation"],
+        **plan,
+    })
+
+
+@app.route("/scan/findings/<int:finding_id>/remediate", methods=["POST"])
+@analyst_required
+def remediate_finding(finding_id):
+    """
+    AJAX — execute the auto-remediation PowerShell command for a finding,
+    run verification, and mark as resolved only if verification passes.
+    """
+    from system_scanner import get_remediation_plan, verify_finding_fixed, _run_ps
+    analyst_id = session["user_id"]
+
+    finding = db_fetchone(
+        f"SELECT id, finding_id, title FROM system_findings "
+        f"WHERE id = {PH} AND resolved = 0",
+        (finding_id,),
+    )
+    if not finding:
+        return jsonify({"error": "Finding not found or already resolved"}), 404
+
+    plan = get_remediation_plan(finding["finding_id"])
+    if not plan.get("can_auto") or not plan.get("auto_command"):
+        return jsonify({"error": "Auto-remediation not available for this finding type"}), 400
+
+    # Run the remediation command
+    cmd_output = _run_ps(plan["auto_command"], timeout=60).strip()
+
+    # Detect common elevation failure patterns
+    denied = any(kw in cmd_output.lower() for kw in (
+        "access is denied", "not authorized", "administrator", "elevated",
+        "cannot bind", "permission",
+    ))
+    if denied:
+        return jsonify({
+            "ok":       False,
+            "verified": False,
+            "error":    (
+                "Permission denied — this command requires Flask to run as Administrator. "
+                "Right-click your launch script and choose 'Run as administrator', then try again."
+            ),
+            "output":   cmd_output,
+        })
+
+    # Run the verification check
+    is_fixed, verify_output = verify_finding_fixed(finding["finding_id"])
+
+    if is_fixed:
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        db_run(
+            f"UPDATE system_findings SET resolved = 1, resolved_at = {PH} WHERE id = {PH}",
+            (now_str, finding_id),
+        )
+        db_run(
+            f"UPDATE player_profile SET total_findings_resolved = total_findings_resolved + 1 "
+            f"WHERE analyst_id = {PH}",
+            (analyst_id,),
+        )
+        xp_result = award_xp(
+            analyst_id, XP_REWARDS["finding_resolved"],
+            f"Auto-remediated & verified: {finding['title'][:60]}", "scanner",
+        )
+        security_log.info(
+            f"FINDING_AUTO_REMEDIATED finding_id={finding['finding_id']} "
+            f"analyst={analyst_id} verified=True"
+        )
+        return jsonify({
+            "ok":            True,
+            "verified":      True,
+            "xp":            xp_result,
+            "output":        cmd_output,
+            "verify_output": verify_output,
+        })
+    else:
+        # Command ran but state didn't change — don't mark resolved
+        security_log.warning(
+            f"FINDING_REMEDIATE_UNVERIFIED finding_id={finding['finding_id']} "
+            f"verify_output={verify_output!r}"
+        )
+        return jsonify({
+            "ok":            True,
+            "verified":      False,
+            "message":       (
+                "The command ran, but verification didn't confirm the fix. "
+                "The finding stays open. Check the output below and apply the manual steps."
+            ),
+            "output":        cmd_output,
+            "verify_output": verify_output,
+        })
+
+
 # --- Startup ---
 # init_db() must run at module level so gunicorn (production) initialises
 # the database on import, not just when running via `python app.py`.

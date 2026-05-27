@@ -497,6 +497,284 @@ def _scan_ports(ip, ports=None, timeout=1.0):
     return open_ports
 
 
+def get_remediation_plan(finding_id):
+    """
+    Return a structured remediation plan for a given finding_id string.
+
+    Returned dict keys:
+      can_auto        bool    — True if PowerShell auto-remediation is available
+      auto_label      str     — Button label (e.g. "Block Port 445 at Firewall")
+      action_summary  str     — One sentence: what the auto-fix command does
+      warning         str|None— Orange caveat the analyst must read (restart needed, etc.)
+      manual_steps    list    — Numbered steps for manual remediation
+      auto_command    str|None— PowerShell command to execute
+      verify_command  str|None— PowerShell command to confirm fix
+      verify_pass_value str|None — Expected substring in verify output (None = any output = pass)
+    """
+    fid = finding_id.lower()
+
+    # ── Firewall profile off ─────────────────────────────────────────────────
+    if fid.startswith("firewall_off_"):
+        profile = finding_id[len("firewall_off_"):].capitalize()
+        return {
+            "can_auto":        True,
+            "auto_label":      f"Enable {profile} Firewall",
+            "action_summary":  f"Runs: Set-NetFirewallProfile -Profile {profile} -Enabled True",
+            "warning":         None,
+            "manual_steps": [
+                "Open Windows Security (Win+I → Privacy & Security → Windows Security)",
+                "Click 'Firewall & network protection'",
+                f"Click '{profile} network'",
+                "Turn on Microsoft Defender Firewall",
+            ],
+            "auto_command":      f"Set-NetFirewallProfile -Profile {profile} -Enabled True",
+            "verify_command":    f"(Get-NetFirewallProfile -Profile {profile}).Enabled",
+            "verify_pass_value": "True",
+        }
+
+    # ── UAC disabled ─────────────────────────────────────────────────────────
+    if fid == "uac_disabled":
+        return {
+            "can_auto":       True,
+            "auto_label":     "Enable UAC via Registry",
+            "action_summary": r"Sets HKLM\...\EnableLUA = 1 (same as dragging UAC slider to Notify).",
+            "warning":        "A system RESTART is required after enabling UAC for the change to take effect.",
+            "manual_steps": [
+                "Press Win+R → type 'UserAccountControlSettings' → Enter",
+                "Drag the slider to 'Notify me only when apps try to make changes'",
+                "Click OK and restart your machine",
+            ],
+            "auto_command":
+                r"Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' "
+                r"-Name EnableLUA -Value 1",
+            "verify_command":
+                r"(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' "
+                r"-Name EnableLUA).EnableLUA",
+            "verify_pass_value": "1",
+        }
+
+    # ── Defender real-time off ────────────────────────────────────────────────
+    if fid == "defender_realtime_off":
+        return {
+            "can_auto":       True,
+            "auto_label":     "Re-enable Real-Time Protection",
+            "action_summary": "Runs: Set-MpPreference -DisableRealtimeMonitoring $false",
+            "warning":        None,
+            "manual_steps": [
+                "Open Windows Security → 'Virus & threat protection'",
+                "Click 'Manage settings' under Virus & threat protection settings",
+                "Toggle 'Real-time protection' ON",
+            ],
+            "auto_command":      "Set-MpPreference -DisableRealtimeMonitoring $false",
+            "verify_command":    "(Get-MpComputerStatus).RealTimeProtectionEnabled",
+            "verify_pass_value": "True",
+        }
+
+    # ── Defender signatures stale ─────────────────────────────────────────────
+    if fid == "defender_sigs_stale":
+        return {
+            "can_auto":       True,
+            "auto_label":     "Update Signatures Now",
+            "action_summary": "Runs: Update-MpSignature — forces an immediate definition update.",
+            "warning":        None,
+            "manual_steps": [
+                "Open Windows Security → Virus & threat protection",
+                "Click 'Check for updates' under Virus & threat protection updates",
+            ],
+            "auto_command":      "Update-MpSignature",
+            "verify_command":    "(Get-MpComputerStatus).AntivirusSignatureAge",
+            "verify_pass_value": None,   # Any successful output = pass
+        }
+
+    # ── Open local port — add firewall block rule ────────────────────────────
+    if fid.startswith("open_port_"):
+        try:
+            port = int(fid[len("open_port_"):])
+        except ValueError:
+            port = 0
+        svc = RISKY_PORTS.get(port, (str(port), "LOW", ""))[0]
+        rule_name = f"BoundryAI Block {svc} Port {port}"
+        return {
+            "can_auto":       True,
+            "auto_label":     f"Add Firewall Block Rule (Port {port})",
+            "action_summary": (
+                f"Adds a Windows Firewall inbound BLOCK rule for TCP {port}. "
+                f"The {svc} service will still be running — only inbound connections are blocked."
+            ),
+            "warning": (
+                f"This blocks INBOUND connections on port {port} via the firewall. "
+                f"It does NOT stop the {svc} service itself. "
+                "To fully close this attack surface, also stop/disable the owning service."
+            ),
+            "manual_steps": [
+                f"Add a firewall block (PowerShell as admin):",
+                f"  New-NetFirewallRule -DisplayName '{rule_name}' "
+                f"-Direction Inbound -LocalPort {port} -Protocol TCP -Action Block",
+                "",
+                "Then optionally stop the owning service:",
+                f"  Get-NetTCPConnection -LocalPort {port} | Select OwningProcess",
+                "  Use the PID to identify and stop/disable the service",
+            ],
+            "auto_command":
+                f"New-NetFirewallRule -DisplayName '{rule_name}' "
+                f"-Direction Inbound -LocalPort {port} -Protocol TCP -Action Block "
+                f"-ErrorAction SilentlyContinue",
+            "verify_command":
+                f"(Get-NetFirewallRule -DisplayName '{rule_name}' "
+                f"-ErrorAction SilentlyContinue).Enabled",
+            "verify_pass_value": "True",
+        }
+
+    # ── Guest account enabled ─────────────────────────────────────────────────
+    if fid == "guest_account_enabled":
+        return {
+            "can_auto":       True,
+            "auto_label":     "Disable Guest Account",
+            "action_summary": "Runs: Disable-LocalUser -Name Guest",
+            "warning":        None,
+            "manual_steps": [
+                "Win+X → Computer Management → Local Users and Groups → Users",
+                "Right-click 'Guest' → Properties",
+                "Check 'Account is disabled' → OK",
+            ],
+            "auto_command":      "Disable-LocalUser -Name Guest",
+            "verify_command":    "(Get-LocalUser -Name Guest).Enabled",
+            "verify_pass_value": "False",
+        }
+
+    # ── Default admin account active ──────────────────────────────────────────
+    if fid == "default_admin_active":
+        return {
+            "can_auto":       True,
+            "auto_label":     "Disable Built-in Administrator",
+            "action_summary": "Runs: Disable-LocalUser -Name Administrator",
+            "warning":        (
+                "Only do this if you have at least one other administrator account. "
+                "Check first: Get-LocalGroupMember -Group Administrators"
+            ),
+            "manual_steps": [
+                "First verify you have another admin account:",
+                "  Get-LocalGroupMember -Group Administrators",
+                "Then disable: Disable-LocalUser -Name Administrator",
+                "OR rename it: Rename-LocalUser -Name Administrator -NewName <custom_name>",
+            ],
+            "auto_command":      "Disable-LocalUser -Name Administrator",
+            "verify_command":    "(Get-LocalUser -Name Administrator).Enabled",
+            "verify_pass_value": "False",
+        }
+
+    # ── Password never expires ────────────────────────────────────────────────
+    if fid.startswith("pwd_never_expires_"):
+        username = finding_id[len("pwd_never_expires_"):]
+        return {
+            "can_auto":       True,
+            "auto_label":     f"Enable Password Expiry for {username}",
+            "action_summary": f"Runs: Set-LocalUser -Name '{username}' -PasswordNeverExpires $false",
+            "warning":        None,
+            "manual_steps": [
+                "Computer Management → Local Users and Groups → Users",
+                f"Right-click '{username}' → Properties",
+                "Uncheck 'Password never expires' → OK",
+            ],
+            "auto_command":      f"Set-LocalUser -Name '{username}' -PasswordNeverExpires $false",
+            "verify_command":    f"(Get-LocalUser -Name '{username}').PasswordNeverExpires",
+            "verify_pass_value": "False",
+        }
+
+    # ── Non-default SMB share active ──────────────────────────────────────────
+    if fid.startswith("smb_share_"):
+        share_name = finding_id[len("smb_share_"):]
+        return {
+            "can_auto":       True,
+            "auto_label":     f"Remove Share '{share_name}'",
+            "action_summary": f"Runs: Remove-SmbShare -Name '{share_name}' -Force",
+            "warning":        (
+                f"Permanently removes \\\\localhost\\{share_name}. "
+                "Anyone currently connected will lose access immediately."
+            ),
+            "manual_steps": [
+                "Computer Management → Shared Folders → Shares",
+                f"Right-click '{share_name}' → Stop Sharing",
+            ],
+            "auto_command":      f"Remove-SmbShare -Name '{share_name}' -Force",
+            "verify_command":    f"@(Get-SmbShare | Where-Object {{$_.Name -eq '{share_name}'}}).Count",
+            "verify_pass_value": "0",
+        }
+
+    # ── Pending Windows updates — manual only ─────────────────────────────────
+    if fid == "pending_windows_updates":
+        return {
+            "can_auto":       False,
+            "auto_label":     None,
+            "action_summary": "Windows updates cannot be auto-installed silently — manual install required.",
+            "warning":        None,
+            "manual_steps": [
+                "Press Win+I → Windows Update",
+                "Click 'Check for updates'",
+                "Install all Critical and Important updates",
+                "Restart if prompted",
+                "Run the Machine Scan again to verify this finding is gone",
+            ],
+            "auto_command":      None,
+            "verify_command":    (
+                "(New-Object -ComObject Microsoft.Update.Session)"
+                ".CreateUpdateSearcher().Search('IsInstalled=0 and Type=\\'Software\\'').Updates.Count"
+            ),
+            "verify_pass_value": "0",
+        }
+
+    # ── Network findings — remote device, manual only ────────────────────────
+    if fid.startswith("net_"):
+        return {
+            "can_auto":       False,
+            "auto_label":     None,
+            "action_summary": "Network device — must be remediated directly on the target device.",
+            "warning":        None,
+            "manual_steps": [
+                "Identify the device (check router admin panel for device list)",
+                "Log into the device directly",
+                "Disable or restrict the reported service",
+                "Run Network Scan again to verify",
+            ],
+            "auto_command":      None,
+            "verify_command":    None,
+            "verify_pass_value": None,
+        }
+
+    # ── Default fallback ──────────────────────────────────────────────────────
+    return {
+        "can_auto":       False,
+        "auto_label":     None,
+        "action_summary": "Manual remediation required — follow the recommendation below.",
+        "warning":        None,
+        "manual_steps":   ["Follow the recommendation shown in the finding details."],
+        "auto_command":   None,
+        "verify_command": None,
+        "verify_pass_value": None,
+    }
+
+
+def verify_finding_fixed(finding_id):
+    """
+    Re-run the verification check for a finding_id.
+    Returns (is_fixed: bool, output: str).
+    """
+    plan    = get_remediation_plan(finding_id)
+    cmd     = plan.get("verify_command")
+    if not cmd:
+        return (True, "No verification available.")
+
+    output   = _run_ps(cmd, timeout=20).strip()
+    expected = plan.get("verify_pass_value")
+
+    if expected is None:
+        is_fixed = bool(output) and "error" not in output.lower()
+    else:
+        is_fixed = expected.lower() in output.lower()
+
+    return (is_fixed, output)
+
+
 def run_network_scan():
     """
     Discover live devices on the local /24 network and scan top ports.

@@ -30,6 +30,7 @@
         <div class="success">{{ success }} <a href="/login">Go to login →</a></div>
     {% else %}
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label>Username</label>
             <input type="text" name="username" required autofocus>
 

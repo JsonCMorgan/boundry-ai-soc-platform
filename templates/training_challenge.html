@@ -261,6 +261,7 @@
             </div>
 
             <form method="POST" action="/training/challenge/{{ attempt.id }}/submit" id="challenge-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <!-- Hidden field assembled by JS from checkboxes -->
                 <input type="hidden" name="answer_techniques" id="answer_techniques">

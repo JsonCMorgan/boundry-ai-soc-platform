@@ -165,6 +165,7 @@
             <span class="status-badge status-{{ status }}">{{ status|upper }}</span>
             {% if status != 'closed' %}
             <form method="POST" action="/reports/{{ report_id }}/triage" style="display:inline; margin-left:8px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if status == 'new' %}
                     <button class="triage-btn" name="status" value="reviewing">Mark Reviewing</button>
                 {% endif %}
@@ -184,6 +185,7 @@
             <h3>&#x1F50D; Step 1 — Your Investigation Notes</h3>
             <p style="font-size:0.82em; color:#666; margin: -4px 0 10px;">Write your analysis before reading the AI report below. What happened? Which MITRE technique? Did the attack succeed? What are the IOCs?</p>
             <form method="POST" action="/reports/{{ report_id }}/notes">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <textarea name="notes" placeholder="1. What happened&#10;2. MITRE technique&#10;3. Did the attack succeed?&#10;4. IOCs (IP, username, payload)&#10;5. Your recommendation">{{ analyst_notes }}</textarea>
                 <br>
                 <button type="submit" class="btn-save-notes">Save Notes</button>

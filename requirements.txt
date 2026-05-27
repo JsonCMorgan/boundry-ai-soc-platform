@@ -20,6 +20,9 @@ packaging==26.0
 typing_extensions==4.15.0
 typing-inspection==0.4.2
 
+# CSRF protection
+Flask-WTF
+
 # Report rendering
 Markdown==3.10.2
 

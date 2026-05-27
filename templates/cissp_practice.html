@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>CISSP Practice — Boundry.AI</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -195,6 +196,14 @@
 
 <script src="/static/game.js"></script>
 <script>
+// ── CSRF helper for AJAX state-changers ──
+var _csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+function csrfFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({'X-CSRFToken': _csrfToken}, opts.headers || {});
+  return fetch(url, opts);
+}
+
 var SESSION = { attempted: 0, correct: 0 };
 var CURRENT = {};
 var DIFF_LABELS = { 1: "Beginner", 2: "Intermediate", 3: "Advanced" };
@@ -218,7 +227,7 @@ function loadQuestion() {
   document.getElementById('btn-next').style.display = 'none';
   document.getElementById('q-feedback').classList.remove('show');
 
-  fetch('/cissp/practice/question', { method: 'POST',
+  csrfFetch('/cissp/practice/question', { method: 'POST',
     headers: { 'Content-Type': 'application/json' }, body: '{}' })
   .then(r => r.json())
   .then(data => {
@@ -276,7 +285,7 @@ function submitAnswer(choice) {
     if (btn) btn.disabled = true;
   });
 
-  fetch('/cissp/domain/' + CURRENT.domain_num + '/answer', {
+  csrfFetch('/cissp/domain/' + CURRENT.domain_num + '/answer', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ attempt_id: CURRENT.attempt_id, answer: choice }),

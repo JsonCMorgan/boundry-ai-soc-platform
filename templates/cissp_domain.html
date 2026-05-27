@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Boundry.AI — CISSP D{{ domain_num }}: {{ domain.name }}</title>
     <style>
         * { box-sizing: border-box; }
@@ -365,6 +366,14 @@
 </div>
 
 <script>
+    // ── CSRF helper for AJAX state-changers ──
+    var _csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    function csrfFetch(url, opts) {
+        opts = opts || {};
+        opts.headers = Object.assign({'X-CSRFToken': _csrfToken}, opts.headers || {});
+        return fetch(url, opts);
+    }
+
     var DOMAIN_NUM   = {{ domain_num }};
     var currentAttemptId = null;
     var answered = false;
@@ -404,7 +413,7 @@
         document.getElementById('q-header').style.display = 'none';
         answered = false;
         currentAttemptId = null;
-        fetch('/cissp/domain/' + DOMAIN_NUM + '/question', {method: 'POST'})
+        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/question', {method: 'POST'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.error) {
@@ -454,7 +463,7 @@
         document.getElementById('state-actions').style.display = 'none';
         document.getElementById('btn-skip').style.display = 'none';
 
-        fetch('/cissp/domain/' + DOMAIN_NUM + '/answer', {
+        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/answer', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({attempt_id: currentAttemptId, answer: letter}),
@@ -490,7 +499,7 @@
 
     function skipQuestion() {
         if (answered || !currentAttemptId) return;
-        fetch('/cissp/domain/' + DOMAIN_NUM + '/skip', {
+        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/skip', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({attempt_id: currentAttemptId}),

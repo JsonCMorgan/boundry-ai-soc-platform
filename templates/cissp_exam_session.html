@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>CISSP CAT Exam — In Progress — Boundry.AI</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -152,6 +153,14 @@
 
 <script src="/static/game.js"></script>
 <script>
+// ── CSRF helper for AJAX state-changers ──
+var _csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+function csrfFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({'X-CSRFToken': _csrfToken}, opts.headers || {});
+  return fetch(url, opts);
+}
+
 var SESSION_ID = {{ exam.id }};
 var CURRENT_EQ = null;
 var REMAINING_S = {{ remaining_s }};
@@ -193,7 +202,7 @@ function loadNextQuestion() {
   document.getElementById('btn-next').style.display = 'none';
   document.getElementById('q-feedback').classList.remove('show');
 
-  fetch('/cissp/exam/' + SESSION_ID + '/question', { method: 'POST',
+  csrfFetch('/cissp/exam/' + SESSION_ID + '/question', { method: 'POST',
     headers: {'Content-Type':'application/json'}, body: '{}' })
   .then(r => r.json())
   .then(data => {
@@ -251,7 +260,7 @@ function submitAnswer(choice) {
     if (b) b.disabled = true;
   });
 
-  fetch('/cissp/exam/' + SESSION_ID + '/answer', {
+  csrfFetch('/cissp/exam/' + SESSION_ID + '/answer', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ eq_id: CURRENT_EQ.eq_id, answer: choice }),

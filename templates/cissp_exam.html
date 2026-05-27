@@ -142,6 +142,7 @@
 
   <form method="POST" action="/cissp/exam/start"
         onsubmit="return {% if active %}confirm('Abandon current exam and start new one?'){% else %}true{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn-start-exam">
       {% if active %}⚠️ Abandon & Start New Exam{% else %}🚀 Start CAT Exam{% endif %}
     </button>

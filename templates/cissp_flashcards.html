@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>CISSP Flashcards — Boundry.AI</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -156,6 +157,14 @@
 
 <script src="/static/game.js"></script>
 <script>
+// ── CSRF helper for AJAX state-changers ──
+var _csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+function csrfFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({'X-CSRFToken': _csrfToken}, opts.headers || {});
+  return fetch(url, opts);
+}
+
 var ACTIVE_DOMAIN = null;
 var ACTIVE_CARD   = null;
 var SESSION_REVIEWED = 0;
@@ -165,7 +174,7 @@ function generateCards(domainNum, color) {
   btn.textContent = '⏳ Generating…';
   btn.classList.add('loading');
 
-  fetch('/cissp/flashcards/generate', {
+  csrfFetch('/cissp/flashcards/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ domain_num: domainNum }),
@@ -279,7 +288,7 @@ function rateCard(rating) {
   var buttons = document.querySelectorAll('.rating-btn');
   buttons.forEach(b => b.disabled = true);
 
-  fetch('/cissp/flashcards/' + ACTIVE_CARD.id + '/review', {
+  csrfFetch('/cissp/flashcards/' + ACTIVE_CARD.id + '/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rating: rating }),

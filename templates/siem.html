@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Boundry.AI — SIEM</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; padding: 0; }
+
+        /* ── Topbar ── */
+        .topbar { background: #12151f; border-bottom: 2px solid #00d4ff33; padding: 14px 32px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 18px #00d4ff11; }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00d4ff;
+            letter-spacing: 0.04em; text-shadow: 0 0 12px #00d4ff66; }
+        .topbar-sub  { font-size: 0.78em; color: #446; margin-top: 2px; }
+        .topbar-user { font-size: 0.85em; color: #666; }
+        .topbar-user strong { color: #aaa; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 18px;
+            font-size: 0.85em; transition: color 0.15s; }
+        .topbar nav a:hover  { color: #00d4ff; }
+        .topbar nav a.active { color: #00d4ff; font-weight: bold; }
+        .xp-bar-wrap  { display:flex; align-items:center; gap:8px; }
+        .xp-bar-outer { width:80px; height:6px; background:#1a1a1a;
+            border-radius:4px; overflow:hidden; border:1px solid #333; }
+        .xp-bar-inner { height:100%; background:linear-gradient(90deg,#00d4ff,#0088ff);
+            border-radius:4px; transition:width 0.6s ease; }
+        .xp-count { font-size:0.75em; color:#446; }
+
+        /* ── Stat bar ── */
+        .statbar { background: #0e1119; border-bottom: 1px solid #1e2235;
+            display: flex; padding: 0 32px; flex-wrap: wrap; }
+        .stat { padding: 16px 28px 16px 0; border-right: 1px solid #1e2235; margin-right: 28px; }
+        .stat:last-child { border-right: none; }
+        .stat-value { font-size: 1.9em; font-weight: bold; line-height: 1; }
+        .stat-value.red    { color:#ff4444; text-shadow:0 0 10px #ff444444; }
+        .stat-value.orange { color:#ff8c00; text-shadow:0 0 10px #ff8c0044; }
+        .stat-value.cyan   { color:#00d4ff; text-shadow:0 0 10px #00d4ff44; }
+        .stat-value.green  { color:#00b432; text-shadow:0 0 10px #00b43244; }
+        .stat-label { font-size:0.72em; color:#555; text-transform:uppercase;
+            letter-spacing:0.05em; margin-top:4px; }
+
+        /* ── Source filter pills ── */
+        .source-pills { display:flex; gap:8px; align-items:center;
+            padding:10px 32px; background:#0e1119; border-bottom:1px solid #1e2235; flex-wrap:wrap; }
+        .source-pill { font-size:0.75em; padding:4px 12px; border-radius:12px;
+            border:1px solid #1e2235; color:#888; cursor:pointer; transition:all 0.15s; }
+        .source-pill:hover, .source-pill.active { color:#fff; }
+        .source-pill[data-source="all"].active,
+        .source-pill[data-source="all"]:hover    { background:#00d4ff22; color:#00d4ff; border-color:#00d4ff44; }
+        .source-pill[data-source="windows_event"].active,
+        .source-pill[data-source="windows_event"]:hover { background:#9944ee22; color:#cc88ff; border-color:#9944ee44; }
+        .source-pill[data-source="firewall"].active,
+        .source-pill[data-source="firewall"]:hover { background:#ff6a0022; color:#ff8c44; border-color:#ff6a0044; }
+        .source-pill[data-source="flask_app"].active,
+        .source-pill[data-source="flask_app"]:hover { background:#00b43222; color:#44ff88; border-color:#00b43244; }
+        .source-pill[data-source="syslog"].active,
+        .source-pill[data-source="syslog"]:hover { background:#ffcc0022; color:#ffdd55; border-color:#ffcc0044; }
+
+        /* ── Timeline panel ── */
+        .timeline-panel { background:#12151f; border-bottom:1px solid #1e2235; padding:0; }
+        .timeline-header { background:#161923; padding:10px 24px;
+            display:flex; justify-content:space-between; align-items:center;
+            border-bottom:1px solid #1e2235; }
+        .timeline-title { font-size:0.78em; text-transform:uppercase; letter-spacing:0.07em;
+            color:#00d4ff; }
+        .timeline-body  { padding:16px 24px 12px; position:relative; }
+        .timeline-toggle { display:flex; gap:4px; }
+        .tgl-btn { background:none; border:1px solid #1e2235; color:#555;
+            padding:3px 12px; border-radius:3px; cursor:pointer; font-size:0.75em;
+            transition:all 0.15s; }
+        .tgl-btn.active { border-color:#00d4ff66; color:#00d4ff; background:#00d4ff11; }
+        .tgl-btn:hover  { border-color:#00d4ff44; color:#00d4ff; }
+        .chart-wrap { position:relative; height:160px; }
+        .chart-collapse-btn { background:none; border:none; color:#333; cursor:pointer;
+            font-size:0.78em; padding:0 8px; transition:color 0.15s; }
+        .chart-collapse-btn:hover { color:#00d4ff; }
+
+        /* ── Main layout ── */
+        .main { max-width:1300px; margin:0 auto; padding:20px 24px; }
+        .grid { display:grid; grid-template-columns:1fr 320px; gap:20px; }
+
+        /* ── Panel ── */
+        .panel { background:#12151f; border:1px solid #1e2235; border-radius:6px;
+            overflow:hidden; margin-bottom:20px; }
+        .panel-header { background:#161923; padding:10px 16px;
+            font-size:0.78em; text-transform:uppercase; letter-spacing:0.07em;
+            color:#888; border-bottom:1px solid #1e2235;
+            display:flex; justify-content:space-between; align-items:center; }
+        .panel-title { color:#00d4ff; }
+
+        /* ── Mode tabs ── */
+        .mode-tabs { display:flex; gap:0; border-bottom:1px solid #1e2235; }
+        .mode-tab  { padding:8px 18px; font-size:0.8em; cursor:pointer;
+            border-right:1px solid #1e2235; color:#555; background:#0e1119;
+            transition:all 0.15s; user-select:none; }
+        .mode-tab:hover  { color:#ccc; background:#12151f; }
+        .mode-tab.active { color:#00d4ff; background:#12151f; border-bottom:2px solid #00d4ff;
+            margin-bottom:-1px; font-weight:600; }
+
+        /* ── Search controls ── */
+        .search-bar { padding:12px 16px; background:#0e1119; border-bottom:1px solid #1e2235;
+            display:none; flex-direction:column; gap:10px; }
+        .search-bar.visible { display:flex; }
+        .search-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .search-input { flex:1; min-width:220px; background:#12151f; border:1px solid #1e2235;
+            color:#d4d4d4; padding:7px 12px; border-radius:4px; font-size:0.85em;
+            outline:none; transition:border-color 0.15s; }
+        .search-input:focus { border-color:#00d4ff66; }
+        .search-input::placeholder { color:#333; }
+        .filter-label { font-size:0.72em; color:#446; text-transform:uppercase;
+            letter-spacing:0.05em; white-space:nowrap; }
+        .filter-select { background:#12151f; border:1px solid #1e2235; color:#aaa;
+            padding:6px 10px; border-radius:4px; font-size:0.8em; outline:none; cursor:pointer; }
+        .filter-select:focus { border-color:#00d4ff66; }
+        input[type="date"].filter-select { color-scheme:dark; }
+        .btn-search { background:#00d4ff22; border:1px solid #00d4ff66; color:#00d4ff;
+            padding:7px 18px; border-radius:4px; cursor:pointer; font-size:0.82em;
+            font-weight:600; transition:all 0.15s; white-space:nowrap; }
+        .btn-search:hover { background:#00d4ff33; }
+        .btn-clear  { background:none; border:1px solid #1e2235; color:#555;
+            padding:7px 12px; border-radius:4px; cursor:pointer; font-size:0.82em;
+            transition:all 0.15s; }
+        .btn-clear:hover { border-color:#ff444466; color:#ff6666; }
+        .btn-csv    { background:none; border:1px solid #1e2235; color:#446;
+            padding:7px 12px; border-radius:4px; cursor:pointer; font-size:0.78em;
+            transition:all 0.15s; }
+        .btn-csv:hover { border-color:#00b43266; color:#00b432; }
+        .search-results-meta { font-size:0.78em; color:#446; padding:0 4px; }
+
+        /* ── Severity checkboxes ── */
+        .sev-checks { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+        .sev-check  { display:flex; align-items:center; gap:4px; cursor:pointer;
+            font-size:0.78em; }
+        .sev-check input { accent-color:#00d4ff; cursor:pointer; }
+
+        /* ── Event table ── */
+        .event-table { width:100%; border-collapse:collapse; font-size:0.82em; }
+        .event-table th { background:#0e1119; color:#555; font-size:0.75em;
+            text-transform:uppercase; letter-spacing:0.05em;
+            padding:8px 12px; border-bottom:1px solid #1e2235; text-align:left; white-space:nowrap; }
+        .event-table td { padding:8px 12px; border-bottom:1px solid #0f1118; vertical-align:top; }
+        .event-row { transition:background 0.1s; }
+        .event-row:hover { background:#161923; }
+        .event-row.sev-CRITICAL { border-left:3px solid #ff4444; }
+        .event-row.sev-HIGH     { border-left:3px solid #ff8c00; }
+        .event-row.sev-MEDIUM   { border-left:3px solid #ffcc00; }
+        .event-row.sev-LOW      { border-left:3px solid #9944ee; }
+        .event-row.sev-INFO     { border-left:3px solid #222; }
+
+        .sev { display:inline-block; padding:2px 8px; border-radius:3px;
+            font-size:0.78em; font-weight:700; letter-spacing:0.03em; }
+        .sev-CRITICAL { background:#ff444422; color:#ff6666; border:1px solid #ff444444; }
+        .sev-HIGH     { background:#ff8c0022; color:#ff9933; border:1px solid #ff8c0044; }
+        .sev-MEDIUM   { background:#ffcc0022; color:#ffcc44; border:1px solid #ffcc0044; }
+        .sev-LOW      { background:#9944ee22; color:#bb77ff; border:1px solid #9944ee44; }
+        .sev-INFO     { background:#33333322; color:#666;    border:1px solid #33333344; }
+
+        .src { display:inline-block; padding:2px 7px; border-radius:3px; font-size:0.72em; white-space:nowrap; }
+        .src-windows_event { background:#9944ee22; color:#cc88ff; border:1px solid #9944ee33; }
+        .src-firewall      { background:#ff6a0022; color:#ff8c44; border:1px solid #ff6a0033; }
+        .src-flask_app     { background:#00b43222; color:#44ff88; border:1px solid #00b43233; }
+        .src-syslog        { background:#ffcc0022; color:#ffdd55; border:1px solid #ffcc0033; }
+
+        .ts   { color:#446; font-size:0.78em; white-space:nowrap; }
+        .desc { color:#aaa; max-width:280px; word-break:break-word; }
+        .ip   { color:#00d4ff; font-family:monospace; font-size:0.9em; }
+        .user { color:#88aaff; font-family:monospace; font-size:0.9em; }
+
+        .btn-dismiss { background:none; border:1px solid #1e2235; color:#333;
+            padding:2px 7px; border-radius:3px; cursor:pointer; font-size:0.75em;
+            transition:all 0.15s; }
+        .btn-dismiss:hover { border-color:#ff444466; color:#ff6666; }
+
+        /* ── Sidebar panels ── */
+        .rule-row  { padding:10px 14px; border-bottom:1px solid #1a1d2a;
+            display:flex; gap:10px; align-items:flex-start; }
+        .rule-row:last-child { border-bottom:none; }
+        .rule-name { font-size:0.84em; font-weight:600; color:#ccc; }
+        .rule-meta { font-size:0.72em; color:#555; margin-top:2px; }
+        .rule-toggle { background:none; border:1px solid #1e2235; padding:3px 10px;
+            border-radius:3px; cursor:pointer; font-size:0.75em; white-space:nowrap;
+            transition:all 0.15s; flex-shrink:0; }
+        .rule-toggle.enabled  { border-color:#00b43266; color:#00b432; }
+        .rule-toggle.disabled { border-color:#ff444466; color:#ff6666; }
+
+        .finding-row  { padding:10px 14px; border-bottom:1px solid #1a1d2a; }
+        .finding-row:last-child { border-bottom:none; }
+        .finding-title { font-size:0.84em; font-weight:600; color:#ccc; margin:4px 0; }
+        .finding-desc  { font-size:0.75em; color:#555; }
+        .btn-resolve { background:none; border:1px solid #00b43266; color:#00b432;
+            padding:3px 10px; border-radius:3px; cursor:pointer; font-size:0.75em;
+            margin-top:6px; transition:all 0.15s; }
+        .btn-resolve:hover { background:#00b43222; }
+
+        .empty { padding:32px; text-align:center; color:#333; font-size:0.9em; }
+        .toolbar { display:flex; gap:8px; align-items:center; }
+        .btn-sm  { background:#161923; border:1px solid #1e2235; color:#888;
+            padding:4px 12px; border-radius:3px; cursor:pointer; font-size:0.78em;
+            transition:all 0.15s; }
+        .btn-sm:hover       { border-color:#00d4ff44; color:#00d4ff; }
+        .btn-sm.danger:hover{ border-color:#ff444466; color:#ff6666; }
+
+        .new-badge { display:inline-block; background:#ff4444; color:#fff;
+            font-size:0.68em; padding:1px 5px; border-radius:8px;
+            margin-left:4px; font-weight:700; vertical-align:middle; cursor:pointer; }
+
+        .live-dot { display:inline-block; width:7px; height:7px; background:#00d4ff;
+            border-radius:50%; animation:pulse 2s infinite; margin-right:5px; }
+        @keyframes pulse {
+            0%,100%{ opacity:1; box-shadow:0 0 4px #00d4ff; }
+            50%    { opacity:0.4; box-shadow:0 0 10px #00d4ff; }
+        }
+        .live-dot.paused { background:#555; animation:none; }
+
+        .info-box { background:#0e1119; border:1px solid #1e2235; border-radius:4px;
+            padding:10px 14px; font-size:0.78em; color:#555; margin:12px 14px; }
+        .info-box code { color:#00d4ff; background:#00d4ff11; padding:1px 5px; border-radius:2px; }
+
+        /* ── Rule builder modal ── */
+        .modal-overlay { position:fixed; inset:0; background:#000000bb;
+            z-index:200; display:none; align-items:center; justify-content:center; }
+        .modal-overlay.open { display:flex; }
+        .modal-box { background:#12151f; border:1px solid #00d4ff44; border-radius:8px;
+            padding:24px; width:480px; max-width:95vw; box-shadow:0 8px 40px #000a;
+            animation:modal-in 0.15s ease; }
+        @keyframes modal-in { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:none} }
+        .modal-title { font-size:0.95em; font-weight:700; color:#00d4ff;
+            margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; }
+        .modal-close { background:none; border:none; color:#445; cursor:pointer;
+            font-size:1.2em; padding:0 4px; transition:color 0.15s; }
+        .modal-close:hover { color:#ff4444; }
+        .form-row { margin-bottom:12px; }
+        .form-label { display:block; font-size:0.72em; color:#556;
+            text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; }
+        .form-input { width:100%; background:#0e1119; border:1px solid #1e2235;
+            color:#d4d4d4; padding:7px 10px; border-radius:4px; font-size:0.85em;
+            outline:none; transition:border-color 0.15s; }
+        .form-input:focus { border-color:#00d4ff66; }
+        .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+        .btn-create { background:#00d4ff22; border:1px solid #00d4ff66; color:#00d4ff;
+            padding:8px 20px; border-radius:4px; cursor:pointer; font-size:0.85em;
+            font-weight:700; transition:all 0.15s; width:100%; margin-top:4px; }
+        .btn-create:hover { background:#00d4ff33; }
+        .btn-create:disabled { opacity:0.4; cursor:not-allowed; }
+
+        /* ── AI triage card ── */
+        .triage-card { background:#0a0e18; border:1px solid #00d4ff22;
+            border-radius:4px; padding:10px 12px; margin-top:8px; font-size:0.78em; }
+        .triage-label { font-size:0.7em; color:#00d4ff; text-transform:uppercase;
+            letter-spacing:0.07em; margin-bottom:6px; display:flex;
+            justify-content:space-between; align-items:center; }
+        .triage-body { color:#888; line-height:1.55; white-space:pre-wrap; }
+        .triage-body strong { color:#aaa; }
+        .triage-pending { color:#446; font-style:italic; }
+        .btn-retriage { background:none; border:1px solid #00d4ff33; color:#445;
+            padding:2px 8px; border-radius:3px; cursor:pointer; font-size:0.72em;
+            transition:all 0.15s; }
+        .btn-retriage:hover { border-color:#00d4ff66; color:#00d4ff; }
+        .btn-retriage:disabled { opacity:0.4; cursor:not-allowed; }
+
+        /* ── Rule delete ── */
+        .btn-rule-del { background:none; border:none; color:#222; cursor:pointer;
+            font-size:0.85em; padding:2px 5px; transition:color 0.15s; flex-shrink:0; }
+        .btn-rule-del:hover { color:#ff4444; }
+
+        #toast { position:fixed; bottom:24px; right:24px; background:#161923;
+            border:1px solid #00d4ff44; border-radius:6px; padding:12px 20px;
+            color:#00d4ff; font-size:0.85em; z-index:9999;
+            display:none; box-shadow:0 4px 20px #00d4ff22; }
+
+        /* ── Search highlight ── */
+        mark { background:#00d4ff33; color:#00d4ff; border-radius:2px; padding:0 2px; }
+
+        /* ── No-results ── */
+        .search-zero { padding:40px 16px; text-align:center; color:#333; }
+        .search-zero .q { color:#00d4ff; }
+    </style>
+</head>
+<body>
+
+<!-- ── Topbar ── -->
+<div class="topbar">
+    <div>
+        <div class="topbar-brand">🛡 Boundry.AI</div>
+        <div class="topbar-sub">SIEM — Security Information &amp; Event Management</div>
+    </div>
+    <div class="xp-bar-wrap">
+        <span style="font-size:0.78em;color:#446;">{{ player.level_icon }} Lv.{{ player.level }}</span>
+        <div class="xp-bar-outer"><div class="xp-bar-inner" style="width:{{ player.level_pct }}%;"></div></div>
+        <span class="xp-count">{{ player.xp }} XP</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+        <div class="topbar-user">Analyst: <strong>{{ session['username'] }}</strong></div>
+        <nav>
+            <a href="/control-room">🖥 Control Room</a>
+            <a href="/siem" class="active">📡 SIEM</a>
+            <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
+            <a href="/cissp" style="color:#9944ee;">📘 CISSP</a>
+            <a href="/profile" style="color:#ffd700;">⚔️ Profile</a>
+            <a href="/logout">Logout</a>
+        </nav>
+    </div>
+</div>
+
+<!-- ── Stat bar ── -->
+<div class="statbar">
+    <div class="stat">
+        <div class="stat-value cyan" id="stat-today">{{ stats.total_today }}</div>
+        <div class="stat-label">Events Today</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value red" id="stat-critical">{{ stats.critical }}</div>
+        <div class="stat-label">Critical (1h)</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value orange" id="stat-high">{{ stats.high }}</div>
+        <div class="stat-label">High (1h)</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value green" id="stat-findings">{{ siem_findings|length }}</div>
+        <div class="stat-label">Open Findings</div>
+    </div>
+    <div class="stat" style="border-right:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:0.78em;">
+            <span style="color:#cc88ff;">⊞ Windows</span><span style="color:#cc88ff;font-weight:700;">{{ stats.sources.windows_event }}</span>
+            <span style="color:#ff8c44;">🔥 Firewall</span><span style="color:#ff8c44;font-weight:700;">{{ stats.sources.firewall }}</span>
+            <span style="color:#44ff88;">🌐 Flask</span>  <span style="color:#44ff88;font-weight:700;">{{ stats.sources.flask_app }}</span>
+            <span style="color:#ffdd55;">📶 Syslog</span> <span style="color:#ffdd55;font-weight:700;">{{ stats.sources.syslog }}</span>
+        </div>
+        <div class="stat-label">Sources</div>
+    </div>
+</div>
+
+<!-- ── Source filter pills ── -->
+<div class="source-pills">
+    <span style="font-size:0.72em;color:#444;text-transform:uppercase;letter-spacing:0.08em;">Filter:</span>
+    <span class="source-pill active" data-source="all">All Sources</span>
+    <span class="source-pill" data-source="windows_event">⊞ Windows Events</span>
+    <span class="source-pill" data-source="firewall">🔥 Firewall</span>
+    <span class="source-pill" data-source="flask_app">🌐 Flask App</span>
+    <span class="source-pill" data-source="syslog">📶 Syslog</span>
+    <span style="margin-left:auto;font-size:0.72em;color:#333;">
+        <span class="live-dot" id="live-dot"></span>
+        <span id="live-label">Live · auto-refreshes every 15s</span>
+    </span>
+</div>
+
+<!-- ── Timeline chart ── -->
+<div class="timeline-panel" id="timeline-panel">
+    <div class="timeline-header">
+        <span class="timeline-title">📊 Event Timeline</span>
+        <div style="display:flex;gap:12px;align-items:center;">
+            <div class="timeline-toggle">
+                <button class="tgl-btn active" data-window="24h" onclick="setTimelineWindow(this,'24h')">24h</button>
+                <button class="tgl-btn"        data-window="7d"  onclick="setTimelineWindow(this,'7d')">7d</button>
+                <button class="tgl-btn"        data-window="30d" onclick="setTimelineWindow(this,'30d')">30d</button>
+            </div>
+            <button class="chart-collapse-btn" id="chart-toggle-btn" onclick="toggleChart()">▲ Hide</button>
+        </div>
+    </div>
+    <div class="timeline-body" id="chart-body">
+        <div class="chart-wrap"><canvas id="timelineChart"></canvas></div>
+    </div>
+</div>
+
+<!-- ── Main content ── -->
+<div class="main">
+    <div class="grid">
+
+        <!-- ── Left: Event stream / Search ── -->
+        <div>
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">
+                        <span class="live-dot" id="stream-dot"></span>
+                        Event Stream
+                        <span class="new-badge" id="new-badge" style="display:none;">0 new</span>
+                    </span>
+                    <div class="toolbar">
+                        <button class="btn-sm" id="btn-refresh" onclick="loadEvents(true)">⟳ Refresh</button>
+                        <button class="btn-sm danger" onclick="dismissAllVisible()">✕ Clear Visible</button>
+                    </div>
+                </div>
+
+                <!-- Mode tabs -->
+                <div class="mode-tabs">
+                    <div class="mode-tab active" id="tab-live"   onclick="setMode('live')">📡 Live Stream</div>
+                    <div class="mode-tab"        id="tab-search" onclick="setMode('search')">🔍 Search</div>
+                </div>
+
+                <!-- Search controls (hidden in live mode) -->
+                <div class="search-bar" id="search-bar">
+                    <div class="search-row">
+                        <input type="text" class="search-input" id="search-q"
+                               placeholder="Search descriptions, IPs, users, event types…"
+                               onkeydown="if(event.key==='Enter') runSearch()">
+                        <button class="btn-search" onclick="runSearch()">🔍 Search</button>
+                        <button class="btn-clear"  onclick="clearSearch()">✕ Clear</button>
+                        <button class="btn-csv"    onclick="exportCSV()" title="Export results as CSV">⬇ CSV</button>
+                        <span class="search-results-meta" id="search-meta"></span>
+                    </div>
+                    <div class="search-row">
+                        <span class="filter-label">Severity:</span>
+                        <div class="sev-checks" id="sev-checks">
+                            <label class="sev-check"><input type="checkbox" value="CRITICAL" checked> <span class="sev sev-CRITICAL">CRITICAL</span></label>
+                            <label class="sev-check"><input type="checkbox" value="HIGH"     checked> <span class="sev sev-HIGH">HIGH</span></label>
+                            <label class="sev-check"><input type="checkbox" value="MEDIUM"   checked> <span class="sev sev-MEDIUM">MEDIUM</span></label>
+                            <label class="sev-check"><input type="checkbox" value="LOW"      checked> <span class="sev sev-LOW">LOW</span></label>
+                            <label class="sev-check"><input type="checkbox" value="INFO"     checked> <span class="sev sev-INFO">INFO</span></label>
+                        </div>
+                        <span class="filter-label" style="margin-left:12px;">Source:</span>
+                        <select class="filter-select" id="search-source">
+                            <option value="">All Sources</option>
+                            <option value="windows_event">Windows Events</option>
+                            <option value="firewall">Firewall</option>
+                            <option value="flask_app">Flask App</option>
+                            <option value="syslog">Syslog</option>
+                        </select>
+                        <span class="filter-label" style="margin-left:12px;">From:</span>
+                        <input type="date" class="filter-select" id="search-from">
+                        <span class="filter-label">To:</span>
+                        <input type="date" class="filter-select" id="search-to">
+                    </div>
+                </div>
+
+                <!-- Event table -->
+                <table class="event-table" id="event-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Sev</th>
+                            <th>Source</th>
+                            <th>Type</th>
+                            <th>Host / IP</th>
+                            <th>User</th>
+                            <th>Description</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="event-tbody">
+                        {% for ev in events %}
+                        <tr class="event-row sev-{{ ev.severity }}" data-id="{{ ev.id }}" data-source="{{ ev.source }}">
+                            <td class="ts">{{ ev.timestamp[:16] if ev.timestamp else '—' }}</td>
+                            <td><span class="sev sev-{{ ev.severity }}">{{ ev.severity }}</span></td>
+                            <td><span class="src src-{{ ev.source }}">{{ ev.source.replace('_',' ') }}</span></td>
+                            <td style="font-family:monospace;font-size:0.82em;color:#888;">{{ ev.event_type }}</td>
+                            <td>
+                                {% if ev.src_ip %}<div class="ip">{{ ev.src_ip }}</div>{% endif %}
+                                {% if ev.host and ev.host != ev.src_ip %}<div style="color:#446;font-size:0.78em;">{{ ev.host[:30] }}</div>{% endif %}
+                            </td>
+                            <td class="user">{{ ev.user_account[:20] if ev.user_account else '—' }}</td>
+                            <td class="desc">{{ ev.description[:110] if ev.description else '—' }}</td>
+                            <td><button class="btn-dismiss" onclick="dismissEvent({{ ev.id }},this)">✕</button></td>
+                        </tr>
+                        {% else %}
+                        <tr id="placeholder-row"><td colspan="8" class="empty">
+                            No events yet — collectors are running and will populate this as logs arrive.
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── Right sidebar ── -->
+        <div>
+
+            <!-- SIEM Findings -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">🚨 Correlation Findings</span>
+                    <span style="font-size:0.85em;color:#ff6a00;font-weight:700;" id="findings-count">
+                        {{ siem_findings|length }}{% if siem_findings|length > 0 %} open{% endif %}
+                    </span>
+                </div>
+                <div id="findings-list">
+                    {% if siem_findings %}
+                        {% for f in siem_findings %}
+                        <div class="finding-row" id="finding-{{ f.id }}">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <span class="sev sev-{{ f.severity }}">{{ f.severity }}</span>
+                                <div class="finding-title" style="flex:1;">{{ f.title }}</div>
+                            </div>
+                            <div class="finding-desc">{{ f.description[:100] }}…</div>
+
+                            <!-- AI Triage card -->
+                            <div class="triage-card" id="triage-{{ f.id }}">
+                                <div class="triage-label">
+                                    <span>🤖 AI Triage</span>
+                                    <button class="btn-retriage" onclick="retriage({{ f.id }},this)"
+                                            title="Re-run AI triage">⟳ Re-triage</button>
+                                </div>
+                                {% if f.ai_triage %}
+                                <div class="triage-body">{{ f.ai_triage }}</div>
+                                {% else %}
+                                <div class="triage-body triage-pending" id="triage-body-{{ f.id }}">
+                                    Generating triage note… (Ollama may take 15-30s)
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <button class="btn-resolve" onclick="resolveFinding({{ f.id }},this)">✓ Resolve (+25 XP)</button>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty" id="findings-empty">No open correlation findings</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Correlation Rules -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">⚡ Correlation Rules</span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:0.78em;color:#445;" id="rules-active-count">
+                            {{ rules|selectattr('enabled')|list|length }}/{{ rules|length }} active
+                        </span>
+                        <button class="btn-sm" style="padding:2px 9px;font-size:0.72em;"
+                                onclick="openRuleModal()">+ Add Rule</button>
+                    </div>
+                </div>
+                <div id="rules-list">
+                {% for rule in rules %}
+                <div class="rule-row" id="rule-{{ rule.id }}">
+                    <div style="flex:1;">
+                        <div class="rule-name">
+                            <span class="sev sev-{{ rule.severity }}" style="font-size:0.72em;">{{ rule.severity }}</span>
+                            {{ rule.name }}
+                        </div>
+                        <div class="rule-meta">
+                            {{ rule.threshold }}+ <code style="color:#555;">{{ rule.event_type }}</code>
+                            in {{ rule.window_seconds }}s · by {{ rule.group_field }}
+                        </div>
+                    </div>
+                    <button class="rule-toggle {{ 'enabled' if rule.enabled else 'disabled' }}"
+                            onclick="toggleRule({{ rule.id }},this)">
+                        {{ 'ON' if rule.enabled else 'OFF' }}
+                    </button>
+                    <button class="btn-rule-del" onclick="deleteRule({{ rule.id }},this)"
+                            title="Delete rule">✕</button>
+                </div>
+                {% endfor %}
+                </div>
+            </div>
+
+            <!-- Syslog info -->
+            {% if syslog_port %}
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">📶 Syslog Ingestion</span>
+                    <span style="color:#00b432;font-size:0.8em;">● Active</span>
+                </div>
+                <div class="info-box">
+                    Point devices to:<br><br>
+                    <code>{{ request.host.split(':')[0] }}:{{ syslog_port }}</code> (UDP)<br><br>
+                    <span style="color:#333;">RFC 3164 · Cisco, pfSense, UniFi, etc.</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Splunk HEC forwarder status -->
+            <div class="panel" id="splunk-panel">
+                <div class="panel-header">
+                    <span class="panel-title">🔴 Splunk Forwarder</span>
+                    <span id="splunk-dot" style="font-size:0.8em;color:#556677;">● Checking…</span>
+                </div>
+                <div id="splunk-body" style="padding:10px 14px;font-size:0.78em;">
+                    <div id="splunk-status-line" style="color:#556677;margin-bottom:6px;">Loading…</div>
+                    <div id="splunk-stats" style="color:#334455;font-size:0.75em;"></div>
+                    <div id="splunk-token-row" style="margin-top:8px;display:none;">
+                        <input id="splunk-token-input" type="password"
+                               placeholder="Paste HEC token to activate"
+                               style="width:100%;background:#060c14;border:1px solid #1e3045;color:#cdd6e0;
+                                      border-radius:4px;padding:4px 8px;font-size:0.85em;font-family:monospace;">
+                        <button onclick="saveToken()"
+                                style="margin-top:5px;width:100%;background:#1a3050;border:1px solid #00d4ff33;
+                                       color:#00d4ff;border-radius:4px;padding:4px;cursor:pointer;font-size:0.82em;">
+                            ⚡ Activate Forwarder
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NordVPN status widget -->
+            <div class="panel" id="vpn-panel">
+                <div class="panel-header">
+                    <span class="panel-title" id="vpn-title">🔒 NordVPN</span>
+                    <span id="vpn-dot" style="font-size:0.8em;color:#556677;">● Checking…</span>
+                </div>
+                <div id="vpn-body" style="padding:10px 14px;font-size:0.78em;">
+                    <div id="vpn-state-line" style="color:#556677;margin-bottom:5px;">Loading…</div>
+                    <div id="vpn-ip-line" style="color:#334455;font-size:0.75em;margin-bottom:4px;"></div>
+                    <div id="vpn-settings-line" style="color:#334455;font-size:0.72em;"></div>
+                    <div id="vpn-checked-line" style="color:#223344;font-size:0.7em;margin-top:4px;"></div>
+                </div>
+            </div>
+
+            <!-- Terminal quick-ref -->
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">🖥 Terminal</span></div>
+                <div style="padding:12px 14px;font-size:0.78em;color:#555;">
+                    <div style="margin-bottom:5px;"><code style="color:#00d4ff;">bai scan</code> — machine audit → SIEM</div>
+                    <div style="margin-bottom:5px;"><code style="color:#00d4ff;">bai scan -n</code> — network scan</div>
+                    <div><code style="color:#00d4ff;">bai findings</code> — list open findings</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ── Rule Builder Modal ── -->
+<div class="modal-overlay" id="rule-modal" onclick="if(event.target===this)closeRuleModal()">
+    <div class="modal-box">
+        <div class="modal-title">
+            ⚡ New Correlation Rule
+            <button class="modal-close" onclick="closeRuleModal()">✕</button>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label">Rule Name *</label>
+            <input class="form-input" id="rb-name" placeholder="e.g. SSH Brute Force" maxlength="100">
+        </div>
+        <div class="form-row">
+            <label class="form-label">Description</label>
+            <input class="form-input" id="rb-desc" placeholder="What this rule detects" maxlength="500">
+        </div>
+        <div class="form-row-2">
+            <div>
+                <label class="form-label">Event Type *</label>
+                <select class="form-input" id="rb-etype">
+                    <option value="logon_failed">logon_failed</option>
+                    <option value="logon_success">logon_success</option>
+                    <option value="firewall_block">firewall_block</option>
+                    <option value="special_privilege_logon">special_privilege_logon</option>
+                    <option value="account_locked_out">account_locked_out</option>
+                    <option value="account_created">account_created</option>
+                    <option value="service_installed">service_installed</option>
+                    <option value="scheduled_task_created">scheduled_task_created</option>
+                    <option value="audit_log_cleared">audit_log_cleared</option>
+                    <option value="process_created">process_created</option>
+                    <option value="group_member_added">group_member_added</option>
+                    <option value="audit_policy_changed">audit_policy_changed</option>
+                    <option value="syslog_message">syslog_message</option>
+                    <option value="api_unauthorized">api_unauthorized</option>
+                    <option value="scan_initiated">scan_initiated</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Group By</label>
+                <select class="form-input" id="rb-gfield">
+                    <option value="src_ip">src_ip</option>
+                    <option value="user_account">user_account</option>
+                    <option value="host">host</option>
+                    <option value="dst_ip">dst_ip</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row-2">
+            <div>
+                <label class="form-label">Threshold (count)</label>
+                <input class="form-input" id="rb-threshold" type="number" value="5" min="1" max="1000">
+            </div>
+            <div>
+                <label class="form-label">Window (seconds)</label>
+                <input class="form-input" id="rb-window" type="number" value="60" min="30" max="86400">
+            </div>
+        </div>
+        <div class="form-row">
+            <label class="form-label">Severity</label>
+            <select class="form-input" id="rb-severity">
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="HIGH" selected>HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="LOW">LOW</option>
+            </select>
+        </div>
+
+        <div style="font-size:0.72em;color:#445;margin-bottom:12px;">
+            Rule fires when <span style="color:#00d4ff;" id="rb-preview">5+ logon_failed in 60s grouped by src_ip</span>
+            → creates a <span style="color:#ff9933;">{{ '{' }}severity{{ '}' }}</span> finding + AI triage note
+        </div>
+
+        <button class="btn-create" id="rb-submit" onclick="submitRule()">⚡ Create Rule</button>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  CSRF HELPER
+// ═══════════════════════════════════════════════════════════════════
+// Reads the per-session CSRF token rendered in the <meta> tag above and
+// injects it as `X-CSRFToken` on every csrfFetch() call. Plain fetch() is
+// safe for GETs (Flask-WTF only protects state-changing methods).
+var _csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+function csrfFetch(url, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({'X-CSRFToken': _csrfToken}, opts.headers || {});
+    return fetch(url, opts);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════
+let activeSource  = 'all';
+let maxSeenId     = {{ events[0].id if events else 0 }};
+let newCount      = 0;
+let pollTimer     = null;
+let currentMode   = 'live';   // 'live' | 'search'
+let chartVisible  = true;
+let timelineChart = null;
+let lastWindow    = '24h';
+let searchResults = [];       // cached for CSV export
+
+// ═══════════════════════════════════════════════════════════════════
+//  TIMELINE CHART
+// ═══════════════════════════════════════════════════════════════════
+const SEV_COLORS = {
+    CRITICAL: { bg:'rgba(255,68,68,0.7)',  border:'#ff4444' },
+    HIGH:     { bg:'rgba(255,140,0,0.7)',  border:'#ff8c00' },
+    MEDIUM:   { bg:'rgba(255,204,0,0.7)',  border:'#ffcc00' },
+    LOW:      { bg:'rgba(153,68,238,0.7)', border:'#9944ee' },
+    INFO:     { bg:'rgba(40,50,70,0.7)',   border:'#334455' },
+};
+
+function initTimeline() {
+    const ctx = document.getElementById('timelineChart').getContext('2d');
+    timelineChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color:'#555', font:{ size:11 }, boxWidth:12, padding:16 }
+                },
+                tooltip: {
+                    backgroundColor:'#161923',
+                    borderColor:'#1e2235',
+                    borderWidth:1,
+                    titleColor:'#aaa',
+                    bodyColor:'#888',
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    ticks: { color:'#446', font:{ size:10 }, maxRotation:0 },
+                    grid:  { color:'#1e2235' },
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { color:'#446', font:{ size:10 }, stepSize:1 },
+                    grid:  { color:'#1e2235' },
+                }
+            }
+        }
+    });
+    loadTimeline('24h');
+}
+
+function loadTimeline(tw) {
+    fetch(`/api/siem/timeline?window=${tw}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!timelineChart) return;
+            // Format labels for readability
+            const labels = data.labels.map(l => {
+                if (tw === '24h') return l.slice(11, 16);  // HH:MM
+                return l.slice(5);                          // MM-DD
+            });
+            timelineChart.data.labels = labels;
+            timelineChart.data.datasets = data.datasets.map(ds => ({
+                label: ds.label,
+                data:  ds.data,
+                backgroundColor: SEV_COLORS[ds.label]?.bg     || 'rgba(100,100,100,0.5)',
+                borderColor:     SEV_COLORS[ds.label]?.border || '#555',
+                borderWidth: 1,
+            })).filter(ds => ds.data.some(v => v > 0));  // hide zero series
+            timelineChart.update('none');
+        })
+        .catch(() => {});
+}
+
+function setTimelineWindow(btn, tw) {
+    document.querySelectorAll('.tgl-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    lastWindow = tw;
+    loadTimeline(tw);
+}
+
+function toggleChart() {
+    chartVisible = !chartVisible;
+    const body = document.getElementById('chart-body');
+    const btn  = document.getElementById('chart-toggle-btn');
+    body.style.display = chartVisible ? '' : 'none';
+    btn.textContent    = chartVisible ? '▲ Hide' : '▼ Show';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  MODE SWITCHING  (Live ↔ Search)
+// ═══════════════════════════════════════════════════════════════════
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('tab-live').classList.toggle('active',   mode === 'live');
+    document.getElementById('tab-search').classList.toggle('active', mode === 'search');
+    document.getElementById('search-bar').classList.toggle('visible', mode === 'search');
+
+    const dot   = document.getElementById('stream-dot');
+    const label = document.getElementById('live-label');
+
+    if (mode === 'live') {
+        dot.classList.remove('paused');
+        label.textContent = 'Live · auto-refreshes every 15s';
+        document.getElementById('live-dot').classList.remove('paused');
+        clearSearch();
+        startPolling();
+    } else {
+        dot.classList.add('paused');
+        label.textContent = 'Search mode · live refresh paused';
+        document.getElementById('live-dot').classList.add('paused');
+        clearInterval(pollTimer);
+        document.getElementById('search-q').focus();
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SOURCE FILTER  (live mode only)
+// ═══════════════════════════════════════════════════════════════════
+document.querySelectorAll('.source-pill').forEach(pill => {
+    pill.addEventListener('click', function() {
+        document.querySelectorAll('.source-pill').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        activeSource = this.dataset.source;
+        if (currentMode === 'live') applySourceFilter();
+    });
+});
+
+function applySourceFilter() {
+    document.querySelectorAll('#event-tbody .event-row').forEach(row => {
+        row.style.display = (activeSource === 'all' || row.dataset.source === activeSource) ? '' : 'none';
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LIVE EVENT POLLING
+// ═══════════════════════════════════════════════════════════════════
+function loadEvents(force = false) {
+    if (currentMode !== 'live') return;
+    let url = `/api/siem/events?limit=50&after=${maxSeenId}`;
+    if (activeSource !== 'all') url += `&source=${activeSource}`;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.events || data.events.length === 0) return;
+            const tbody = document.getElementById('event-tbody');
+
+            // Remove placeholder if present
+            const ph = document.getElementById('placeholder-row');
+            if (ph) ph.remove();
+
+            data.events.forEach(ev => {
+                if (document.querySelector(`tr[data-id="${ev.id}"]`)) return;
+                tbody.insertBefore(buildRow(ev), tbody.firstChild);
+                newCount++;
+            });
+
+            if (data.max_id > maxSeenId) maxSeenId = data.max_id;
+            if (newCount > 0 && !force) {
+                const b = document.getElementById('new-badge');
+                b.textContent  = newCount + ' new';
+                b.style.display = 'inline-block';
+            }
+            applySourceFilter();
+            refreshStats();
+        }).catch(() => {});
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════════════════════════════
+function runSearch() {
+    const q    = document.getElementById('search-q').value.trim();
+    const sevs = [...document.querySelectorAll('#sev-checks input:checked')].map(i => i.value);
+    const src  = document.getElementById('search-source').value;
+    const from = document.getElementById('search-from').value;
+    const to   = document.getElementById('search-to').value;
+
+    if (!q && sevs.length === 5 && !src && !from && !to) {
+        showToast('Enter a search term or apply a filter');
+        return;
+    }
+
+    let url = `/api/siem/search?limit=200`;
+    if (q)            url += `&q=${encodeURIComponent(q)}`;
+    if (sevs.length < 5) url += `&severity=${sevs.join(',')}`;
+    if (src)          url += `&source=${src}`;
+    if (from)         url += `&from=${from}`;
+    if (to)           url += `&to=${to}`;
+
+    document.getElementById('search-meta').textContent = 'Searching…';
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            searchResults = data.events || [];
+            renderSearchResults(searchResults, data.total, q);
+            document.getElementById('search-meta').textContent =
+                `${data.total.toLocaleString()} result${data.total !== 1 ? 's' : ''}` +
+                (data.total > 200 ? ' (showing first 200)' : '');
+            // Refresh timeline too so chart reflects any filter
+            loadTimeline(lastWindow);
+        })
+        .catch(() => {
+            document.getElementById('search-meta').textContent = 'Search failed';
+        });
+}
+
+function renderSearchResults(events, total, query) {
+    const tbody = document.getElementById('event-tbody');
+    tbody.innerHTML = '';
+
+    if (events.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8;
+        const zero = document.createElement('div');
+        zero.className = 'search-zero';
+        zero.appendChild(document.createTextNode('No results for '));
+        const qSpan = document.createElement('span');
+        qSpan.className   = 'q';
+        qSpan.textContent = `"${query}"`;
+        zero.appendChild(qSpan);
+        zero.appendChild(document.createElement('br'));
+        const hint = document.createElement('span');
+        hint.style.fontSize = '0.85em';
+        hint.style.color    = '#2a2a3a';
+        hint.textContent    = 'Try a broader term or adjust your filters';
+        zero.appendChild(hint);
+        td.appendChild(zero);
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    events.forEach(ev => {
+        const tr = buildRow(ev, query);
+        tbody.appendChild(tr);
+    });
+}
+
+function clearSearch() {
+    document.getElementById('search-q').value     = '';
+    document.getElementById('search-source').value = '';
+    document.getElementById('search-from').value  = '';
+    document.getElementById('search-to').value    = '';
+    document.getElementById('search-meta').textContent = '';
+    document.querySelectorAll('#sev-checks input').forEach(i => i.checked = true);
+    searchResults = [];
+
+    if (currentMode === 'live') {
+        // Restore live stream rows
+        const tbody = document.getElementById('event-tbody');
+        tbody.innerHTML = '';
+        // Re-fetch last 50
+        fetch(`/api/siem/events?limit=50`)
+            .then(r => r.json())
+            .then(data => {
+                const ph = document.getElementById('placeholder-row');
+                if (ph) ph.remove();
+                (data.events || []).forEach(ev => {
+                    tbody.appendChild(buildRow(ev));
+                });
+                applySourceFilter();
+            }).catch(() => {});
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CSV EXPORT
+// ═══════════════════════════════════════════════════════════════════
+function exportCSV() {
+    if (searchResults.length === 0) { showToast('Run a search first'); return; }
+    const cols = ['id','timestamp','source','event_type','severity','host','user_account','src_ip','dst_ip','description'];
+    const header = cols.join(',');
+    const rows = searchResults.map(ev =>
+        cols.map(c => `"${String(ev[c] || '').replace(/"/g,'""')}"`).join(',')
+    );
+    const csv  = [header, ...rows].join('\r\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = `siem-search-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    showToast(`Exported ${searchResults.length} rows`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ROW BUILDER  (shared by live + search)
+//
+//  XSS HARDENING: every untrusted field (event_type, src_ip, host,
+//  description, user_account, source) flows through textContent — never
+//  innerHTML. An attacker who plants <img src=x onerror=...> in a
+//  Windows Event Log / syslog / firewall log description must render
+//  as literal text, not execute.
+// ═══════════════════════════════════════════════════════════════════
+function buildRow(ev, highlightQ) {
+    const sev    = ev.severity || 'INFO';
+    const srcCls = (ev.source || '').replace(/[^a-z_]/g,'');
+    const ts     = (ev.timestamp || '').substring(0,16);
+    const srcLbl = (ev.source || '').replace(/_/g,' ');
+    const user   = ev.user_account ? String(ev.user_account).substring(0,20) : '—';
+    const desc   = String(ev.description || '').substring(0,120);
+
+    const tr = document.createElement('tr');
+    tr.className      = `event-row sev-${sev}`;
+    tr.dataset.id     = ev.id;
+    tr.dataset.source = ev.source || '';
+
+    const tdTs = document.createElement('td');
+    tdTs.className   = 'ts';
+    tdTs.textContent = ts;
+    tr.appendChild(tdTs);
+
+    const tdSev = document.createElement('td');
+    const sevSpan = document.createElement('span');
+    sevSpan.className   = `sev sev-${sev}`;
+    sevSpan.textContent = sev;
+    tdSev.appendChild(sevSpan);
+    tr.appendChild(tdSev);
+
+    const tdSrc = document.createElement('td');
+    const srcSpan = document.createElement('span');
+    srcSpan.className   = `src src-${srcCls}`;
+    srcSpan.textContent = srcLbl;
+    tdSrc.appendChild(srcSpan);
+    tr.appendChild(tdSrc);
+
+    const tdType = document.createElement('td');
+    tdType.style.fontFamily = 'monospace';
+    tdType.style.fontSize   = '0.82em';
+    tdType.style.color      = '#888';
+    tdType.textContent      = ev.event_type || '';
+    tr.appendChild(tdType);
+
+    const tdIp = document.createElement('td');
+    if (ev.src_ip) {
+        const ipDiv = document.createElement('div');
+        ipDiv.className   = 'ip';
+        ipDiv.textContent = ev.src_ip;
+        tdIp.appendChild(ipDiv);
+    }
+    if (ev.host && ev.host !== ev.src_ip) {
+        const hostDiv = document.createElement('div');
+        hostDiv.style.color    = '#446';
+        hostDiv.style.fontSize = '0.78em';
+        hostDiv.textContent    = String(ev.host).substring(0,30);
+        tdIp.appendChild(hostDiv);
+    }
+    tr.appendChild(tdIp);
+
+    const tdUser = document.createElement('td');
+    tdUser.className   = 'user';
+    tdUser.textContent = user;
+    tr.appendChild(tdUser);
+
+    const tdDesc = document.createElement('td');
+    tdDesc.className = 'desc';
+    if (highlightQ && highlightQ.length > 1) {
+        appendHighlighted(tdDesc, desc, highlightQ);
+    } else {
+        tdDesc.textContent = desc;
+    }
+    tr.appendChild(tdDesc);
+
+    const tdBtn = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.type        = 'button';
+    btn.className   = 'btn-dismiss';
+    btn.textContent = '✕';
+    btn.addEventListener('click', () => dismissEvent(ev.id, btn));
+    tdBtn.appendChild(btn);
+    tr.appendChild(tdBtn);
+
+    return tr;
+}
+
+// Build text nodes + <mark> elements for search highlighting.
+// Every segment is appended via textContent so highlighting can never be
+// used as an HTML-injection vector.
+function appendHighlighted(parent, text, query) {
+    if (!query) { parent.textContent = text; return; }
+    const re = new RegExp(escRe(query), 'gi');
+    let last = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+        if (m.index > last) {
+            parent.appendChild(document.createTextNode(text.substring(last, m.index)));
+        }
+        const mark = document.createElement('mark');
+        mark.textContent = m[0];
+        parent.appendChild(mark);
+        last = m.index + m[0].length;
+        if (m[0].length === 0) re.lastIndex++;  // guard against zero-length match loop
+    }
+    if (last < text.length) {
+        parent.appendChild(document.createTextNode(text.substring(last)));
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DISMISS / RESOLVE
+// ═══════════════════════════════════════════════════════════════════
+function dismissEvent(id, btn) {
+    csrfFetch(`/api/siem/events/${id}/dismiss`, { method:'POST' })
+        .then(() => {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            if (row) { row.style.opacity='0'; row.style.transition='opacity 0.3s';
+                setTimeout(() => row.remove(), 300); }
+        });
+}
+
+function dismissAllVisible() {
+    if (!confirm('Dismiss all visible events?')) return;
+    const rows = [...document.querySelectorAll('#event-tbody .event-row')]
+        .filter(r => r.style.display !== 'none');
+    let i = 0;
+    function next() {
+        if (i >= rows.length) { showToast(`Cleared ${rows.length} events`); return; }
+        const row = rows[i++];
+        csrfFetch(`/api/siem/events/${row.dataset.id}/dismiss`, { method:'POST' })
+            .then(() => { row.style.opacity='0'; setTimeout(() => row.remove(), 150); next(); });
+    }
+    next();
+}
+
+function resolveFinding(id, btn) {
+    btn.disabled = true; btn.textContent = 'Resolving…';
+    csrfFetch(`/scan/findings/${id}/resolve`, { method:'POST' })
+        .then(r => r.json())
+        .then(d => {
+            const row = document.getElementById(`finding-${id}`);
+            if (row) { row.style.opacity='0'; setTimeout(() => row.remove(), 300); }
+            if (d.xp?.awarded) showToast(`+${d.xp.awarded} XP — finding resolved`);
+            refreshStats();
+        })
+        .catch(() => { btn.disabled=false; btn.textContent='✓ Resolve (+25 XP)'; });
+}
+
+function toggleRule(id, btn) {
+    csrfFetch(`/api/siem/rules/${id}/toggle`, { method:'POST' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                btn.textContent  = d.enabled ? 'ON' : 'OFF';
+                btn.className    = `rule-toggle ${d.enabled ? 'enabled' : 'disabled'}`;
+                showToast(`Rule ${d.enabled ? 'enabled' : 'disabled'}`);
+            }
+        });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATS REFRESH
+// ═══════════════════════════════════════════════════════════════════
+function refreshStats() {
+    fetch('/api/siem/stats').then(r => r.json()).then(d => {
+        document.getElementById('stat-today').textContent    = d.total_today    || 0;
+        document.getElementById('stat-critical').textContent = d.critical_hour  || 0;
+        document.getElementById('stat-high').textContent     = d.high_hour      || 0;
+        document.getElementById('stat-findings').textContent = d.open_findings  || 0;
+    }).catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display = 'block';
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.style.display = 'none', 3000);
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+}
+
+document.getElementById('new-badge').addEventListener('click', function() {
+    newCount = 0; this.style.display = 'none';
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  POLLING + VISIBILITY
+// ═══════════════════════════════════════════════════════════════════
+function startPolling() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(loadEvents, 15000);
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearInterval(pollTimer);
+    else { loadEvents(); startPolling(); loadTimeline(lastWindow); }
+});
+
+// Also fix onclick handlers to use renamed function
+// (handled inline in HTML already — no change needed there)
+
+// ═══════════════════════════════════════════════════════════════════
+//  RULE BUILDER MODAL
+// ═══════════════════════════════════════════════════════════════════
+function openRuleModal() {
+    document.getElementById('rule-modal').classList.add('open');
+    document.getElementById('rb-name').focus();
+    updatePreview();
+}
+function closeRuleModal() {
+    document.getElementById('rule-modal').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRuleModal(); });
+
+// Live preview text
+['rb-etype','rb-gfield','rb-threshold','rb-window'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+});
+function updatePreview() {
+    const t = document.getElementById('rb-threshold').value || '?';
+    const e = document.getElementById('rb-etype').value;
+    const w = document.getElementById('rb-window').value || '?';
+    const g = document.getElementById('rb-gfield').value;
+    document.getElementById('rb-preview').textContent =
+        `${t}+ ${e} in ${w}s grouped by ${g}`;
+}
+
+function submitRule() {
+    const btn  = document.getElementById('rb-submit');
+    const name = document.getElementById('rb-name').value.trim();
+    const etype = document.getElementById('rb-etype').value;
+    if (!name) { showToast('Rule name is required'); return; }
+
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    csrfFetch('/api/siem/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name,
+            description: document.getElementById('rb-desc').value.trim(),
+            event_type:  etype,
+            group_field: document.getElementById('rb-gfield').value,
+            threshold:   parseInt(document.getElementById('rb-threshold').value) || 5,
+            window_seconds: parseInt(document.getElementById('rb-window').value) || 60,
+            severity:    document.getElementById('rb-severity').value,
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) {
+            addRuleRow(d.rule);
+            closeRuleModal();
+            showToast(`Rule "${d.rule.name}" created`);
+            // Reset form
+            document.getElementById('rb-name').value = '';
+            document.getElementById('rb-desc').value = '';
+            btn.disabled = false; btn.textContent = '⚡ Create Rule';
+        } else {
+            showToast(d.error || 'Failed to create rule');
+            btn.disabled = false; btn.textContent = '⚡ Create Rule';
+        }
+    })
+    .catch(() => { showToast('Network error'); btn.disabled = false; btn.textContent = '⚡ Create Rule'; });
+}
+
+function addRuleRow(rule) {
+    const list = document.getElementById('rules-list');
+    const div  = document.createElement('div');
+    div.className = 'rule-row';
+    div.id = `rule-${rule.id}`;
+
+    const inner = document.createElement('div');
+    inner.style.flex = '1';
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'rule-name';
+    const sevSpan = document.createElement('span');
+    sevSpan.className     = `sev sev-${rule.severity}`;
+    sevSpan.style.fontSize = '0.72em';
+    sevSpan.textContent   = rule.severity || '';
+    nameRow.appendChild(sevSpan);
+    nameRow.appendChild(document.createTextNode(' ' + (rule.name || '')));
+    inner.appendChild(nameRow);
+
+    const metaRow = document.createElement('div');
+    metaRow.className = 'rule-meta';
+    metaRow.appendChild(document.createTextNode(`${rule.threshold}+ `));
+    const code = document.createElement('code');
+    code.style.color  = '#555';
+    code.textContent  = rule.event_type || '';
+    metaRow.appendChild(code);
+    metaRow.appendChild(document.createTextNode(
+        ` in ${rule.window_seconds}s · by ${rule.group_field || ''}`
+    ));
+    inner.appendChild(metaRow);
+
+    div.appendChild(inner);
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type        = 'button';
+    toggleBtn.className   = 'rule-toggle enabled';
+    toggleBtn.textContent = 'ON';
+    toggleBtn.addEventListener('click', () => toggleRule(rule.id, toggleBtn));
+    div.appendChild(toggleBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.type        = 'button';
+    delBtn.className   = 'btn-rule-del';
+    delBtn.title       = 'Delete rule';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => deleteRule(rule.id, delBtn));
+    div.appendChild(delBtn);
+
+    list.appendChild(div);
+    updateRuleCount();
+}
+
+function deleteRule(id, btn) {
+    if (!confirm('Delete this rule? It will stop detecting new events immediately.')) return;
+    csrfFetch(`/api/siem/rules/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                const row = document.getElementById(`rule-${id}`);
+                if (row) { row.style.opacity='0'; row.style.transition='opacity 0.3s';
+                    setTimeout(() => { row.remove(); updateRuleCount(); }, 300); }
+                showToast('Rule deleted');
+            } else {
+                showToast(d.error || 'Delete failed');
+            }
+        });
+}
+
+function updateRuleCount() {
+    const total   = document.querySelectorAll('#rules-list .rule-row').length;
+    const enabled = document.querySelectorAll('#rules-list .rule-toggle.enabled').length;
+    const el = document.getElementById('rules-active-count');
+    if (el) el.textContent = `${enabled}/${total} active`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  AI TRIAGE
+// ═══════════════════════════════════════════════════════════════════
+function retriage(findingId, btn) {
+    btn.disabled = true; btn.textContent = '⟳ Running…';
+    const bodyEl = document.getElementById(`triage-body-${findingId}`);
+    if (bodyEl) { bodyEl.className = 'triage-body triage-pending'; bodyEl.textContent = 'Asking Ollama… (15-30s)'; }
+
+    csrfFetch(`/api/siem/findings/${findingId}/triage`, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            btn.disabled = false; btn.textContent = '⟳ Re-triage';
+            if (d.ok) {
+                const card = document.getElementById(`triage-${findingId}`);
+                if (card) {
+                    const body = card.querySelector('.triage-body');
+                    if (body) { body.className = 'triage-body'; body.textContent = d.triage; }
+                }
+                showToast('AI triage updated');
+            } else {
+                if (bodyEl) bodyEl.textContent = d.error || 'Triage failed';
+                showToast(d.error || 'Triage failed');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false; btn.textContent = '⟳ Re-triage';
+            showToast('Network error during triage');
+        });
+}
+
+// Poll for triage notes on pending findings (checks every 10s for up to 2 min)
+function pollPendingTriage() {
+    const pending = [...document.querySelectorAll('[id^="triage-body-"]')]
+        .filter(el => el.classList.contains('triage-pending'));
+    if (pending.length === 0) return;
+
+    pending.forEach(el => {
+        const findingId = el.id.replace('triage-body-', '');
+        // Fetch the finding's current triage state
+        fetch(`/api/siem/search?q=&limit=1`)  // dummy — we use a direct check
+            .catch(() => {});
+        // Instead, re-triage silently if still pending after 30s
+    });
+}
+
+// Auto-trigger triage for any findings that don't have a note yet (Ollama might have been busy)
+document.querySelectorAll('[id^="triage-body-"]').forEach(el => {
+    if (el.classList.contains('triage-pending')) {
+        const findingId = el.id.replace('triage-body-', '');
+        // Wait 5s then auto-trigger (Ollama may still be warming up)
+        setTimeout(() => {
+            const btn = document.querySelector(`#triage-${findingId} .btn-retriage`);
+            if (btn && el.classList.contains('triage-pending')) {
+                retriage(parseInt(findingId), btn);
+            }
+        }, 5000);
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  SPLUNK FORWARDER STATUS
+// ═══════════════════════════════════════════════════════════════════
+async function refreshSplunkStatus() {
+    try {
+        const r = await fetch('/api/splunk/status');
+        const d = await r.json();
+
+        const dot    = document.getElementById('splunk-dot');
+        const line   = document.getElementById('splunk-status-line');
+        const stats  = document.getElementById('splunk-stats');
+        const header = document.querySelector('#splunk-panel .panel-title');
+        const tkRow  = document.getElementById('splunk-token-row');
+
+        if (!d.enabled) {
+            dot.textContent   = '● Disabled';
+            dot.style.color   = '#556677';
+            header.textContent = '⬜ Splunk Forwarder';
+            line.textContent  = 'Set SPLUNK_HEC_TOKEN env var or paste token below to activate.';
+            line.style.color  = '#556677';
+            stats.textContent = '';
+            tkRow.style.display = 'block';
+            return;
+        }
+
+        tkRow.style.display = 'none';
+
+        if (d.connected) {
+            dot.textContent    = '● Connected';
+            dot.style.color    = '#00ff88';
+            header.textContent = '🟢 Splunk Forwarder';
+            line.textContent   = '';
+            line.appendChild(document.createTextNode('Sending to '));
+            const codeUrl = document.createElement('code');
+            codeUrl.style.color  = '#00d4ff';
+            codeUrl.textContent  = d.hec_url || '';
+            line.appendChild(codeUrl);
+            line.style.color   = '#00ff88';
+            const lastSuccess = d.last_success ? String(d.last_success).substring(0,19) : 'never';
+            stats.textContent  =
+                `${Number(d.events_forwarded || 0).toLocaleString()} events forwarded · Last: ${lastSuccess}`;
+        } else {
+            const err = d.last_error || 'Splunk unreachable — is it installed and running?';
+            dot.textContent    = '● Waiting for Splunk';
+            dot.style.color    = '#ffcc00';
+            header.textContent = '🟡 Splunk Forwarder';
+            line.textContent   = '';
+            line.appendChild(document.createTextNode('Token set · Waiting for Splunk at '));
+            const codeUrl = document.createElement('code');
+            codeUrl.style.color  = '#00d4ff';
+            codeUrl.textContent  = d.hec_url || '';
+            line.appendChild(codeUrl);
+            line.style.color   = '#ffcc00';
+            stats.textContent  = '';
+            const errSpan = document.createElement('span');
+            errSpan.style.color    = '#556677';
+            errSpan.style.fontSize = '0.9em';
+            errSpan.textContent    = String(err).substring(0,80);
+            stats.appendChild(errSpan);
+        }
+    } catch (e) {
+        // silent fail — SIEM dashboard shouldn't break over this
+    }
+}
+
+async function saveToken() {
+    const tok = document.getElementById('splunk-token-input').value.trim();
+    if (!tok) return;
+    try {
+        const r = await csrfFetch('/api/splunk/token', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({token: tok}),
+        });
+        const d = await r.json();
+        if (d.ok) {
+            document.getElementById('splunk-token-input').value = '';
+            setTimeout(refreshSplunkStatus, 1500);
+        }
+    } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  NORDVPN STATUS WIDGET
+// ═══════════════════════════════════════════════════════════════════
+async function refreshVpnStatus() {
+    try {
+        const r = await fetch('/api/vpn/status');
+        const d = await r.json();
+
+        const dot      = document.getElementById('vpn-dot');
+        const title    = document.getElementById('vpn-title');
+        const stateLine= document.getElementById('vpn-state-line');
+        const ipLine   = document.getElementById('vpn-ip-line');
+        const settLine = document.getElementById('vpn-settings-line');
+        const chkLine  = document.getElementById('vpn-checked-line');
+
+        if (!d.available) {
+            dot.textContent   = '● N/A';
+            dot.style.color   = '#556677';
+            stateLine.textContent = 'NordVPN not detected on this machine.';
+            stateLine.style.color = '#556677';
+            return;
+        }
+
+        if (d.connected) {
+            dot.textContent   = '● Protected';
+            dot.style.color   = '#00ff88';
+            title.textContent = '🟢 NordVPN';
+            stateLine.textContent = '';
+            const sStrong = document.createElement('strong');
+            sStrong.style.color  = '#00ff88';
+            sStrong.textContent  = 'CONNECTED';
+            stateLine.appendChild(sStrong);
+            stateLine.appendChild(document.createTextNode(' · ' + (d.vpn_state || '')));
+            stateLine.style.color = '#00ff88';
+
+            ipLine.textContent = '';
+            if (d.vpn_ip) {
+                ipLine.appendChild(document.createTextNode('VPN IP: '));
+                const ipCode = document.createElement('code');
+                ipCode.style.color  = '#00d4ff';
+                ipCode.textContent  = d.vpn_ip;
+                ipLine.appendChild(ipCode);
+            }
+        } else {
+            dot.textContent   = '● EXPOSED';
+            dot.style.color   = '#ff4444';
+            title.textContent = '🔴 NordVPN';
+            stateLine.textContent = '';
+            const dStrong = document.createElement('strong');
+            dStrong.style.color  = '#ff4444';
+            dStrong.textContent  = 'DISCONNECTED';
+            stateLine.appendChild(dStrong);
+            stateLine.appendChild(document.createTextNode(' · ' + (d.vpn_state || '')));
+            stateLine.style.color = '#ff4444';
+
+            // Static warning — no user data, but kept as DOM nodes for consistency
+            ipLine.textContent = '';
+            const warn = document.createElement('span');
+            warn.style.color   = '#ff4444';
+            warn.textContent   = '⚠ No VPN tunnel active';
+            ipLine.appendChild(warn);
+        }
+
+        // Settings line
+        const ks = d.kill_switch ? '🔒 Kill Switch ON' : '⚠ Kill Switch OFF';
+        const st = d.split_tunnel ? ' · Split Tunnel ON' : '';
+        settLine.textContent = ks + st;
+        settLine.style.color = d.kill_switch ? '#00b432' : '#ff8c00';
+
+        // Last checked
+        if (d.last_checked) {
+            chkLine.textContent = `Last checked: ${d.last_checked.substring(0,19)}`;
+        }
+
+    } catch (e) {
+        // silent
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+initTimeline();
+startPolling();
+refreshSplunkStatus();
+setInterval(refreshSplunkStatus, 30000);
+refreshVpnStatus();
+setInterval(refreshVpnStatus, 30000);
+</script>
+</body>
+</html>

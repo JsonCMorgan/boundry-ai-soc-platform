@@ -21,6 +21,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("SEED_DB", "true")   # populate lab users in the test DB
     app_module.init_db()
     app_module.app.config["TESTING"] = True
+    app_module.app.config["WTF_CSRF_ENABLED"] = False
     return app_module.app.test_client()
 
 

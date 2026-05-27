@@ -579,6 +579,7 @@
         <!-- Mark as Read CTA -->
         <div style="margin: 28px 0 8px;">
             <form method="POST" action="/training/mitre-read/{{ technique.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" style="
                     width: 100%; padding: 14px;
                     background: #0a2a0a; color: #00ff41;

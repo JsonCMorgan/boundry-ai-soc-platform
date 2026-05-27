@@ -1,5 +1,12 @@
 # Secrets - never commit
 .env
+.flask_secret_key
+.terminal_token
+.webui_secret_key
+
+# Generated audit/report files
+COMMIT_PUSH_REPORT.txt
+_git_audit.txt
 
 # Boundry.AI operational files — internal only
 clients.json
@@ -29,3 +36,7 @@ __pycache__/
 
 # Claude session files
 .claude/
+
+# Boundry.AI agent skill progress files (keep README)
+agent_tasks/*.md
+!agent_tasks/README.md

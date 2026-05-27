@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Boundry.AI — Control Room</title>
     <style>
         /* ── Colour tokens ─────────────────────────────────────────────────────
@@ -762,6 +763,125 @@
         .readiness-bar-track { flex: 1; height: 10px; background: #1a1a1a; border-radius: 5px; overflow: hidden; }
         .readiness-bar-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
 
+        /* ── Terminal Activity Feed panel ── */
+        .terminal-panel {
+            grid-column: 1 / -1;
+            background: #12151f;
+            border: 1px solid #1e2235;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 0;
+        }
+        .terminal-toggle {
+            background: #161923;
+            padding: 12px 16px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #00b432;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1a1f2e;
+            transition: color 0.15s;
+        }
+        .terminal-toggle:hover { color: #00ff41; }
+        .terminal-body { padding: 20px; display: none; }
+        .terminal-body.open { display: block; }
+
+        .term-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .term-subtitle {
+            font-size: 0.75em;
+            color: #444;
+        }
+        .btn-term-refresh {
+            font-size: 0.75em;
+            padding: 4px 10px;
+            background: #161923;
+            border: 1px solid #1e2235;
+            color: #00b432;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-term-refresh:hover { background: #1e2235; }
+
+        .term-feed {
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.78em;
+            max-height: 320px;
+            overflow-y: auto;
+            background: #0b0e17;
+            border: 1px solid #1a1f2e;
+            border-radius: 4px;
+            padding: 8px 0;
+        }
+        .term-row {
+            display: flex;
+            align-items: flex-start;
+            padding: 4px 14px;
+            gap: 10px;
+            border-bottom: 1px solid #111420;
+        }
+        .term-row:last-child { border-bottom: none; }
+        .term-row:hover { background: #111420; }
+
+        .term-time {
+            color: #333;
+            min-width: 72px;
+            font-size: 0.9em;
+            flex-shrink: 0;
+        }
+        .term-cat {
+            display: inline-block;
+            font-size: 0.8em;
+            padding: 1px 6px;
+            border-radius: 3px;
+            min-width: 62px;
+            text-align: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .term-cat-security { background: #2a0a0a; color: #ff4444; border: 1px solid #4a1010; }
+        .term-cat-scan     { background: #0a1a2a; color: #4488ff; border: 1px solid #10254a; }
+        .term-cat-network  { background: #0a1a15; color: #00b432; border: 1px solid #103a20; }
+        .term-cat-general  { background: #1a1520; color: #9944ee; border: 1px solid #2a1a3a; }
+
+        .term-cmd {
+            color: #d4d4d4;
+            flex: 1;
+            word-break: break-all;
+        }
+        .term-ctx {
+            color: #2a2f3f;
+            font-size: 0.85em;
+            min-width: 120px;
+            text-align: right;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .term-empty {
+            text-align: center;
+            padding: 32px 16px;
+            color: #333;
+            font-style: italic;
+        }
+        .term-empty code {
+            color: #00b432;
+            background: #0d1117;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
         /* ── System Scanner panel ── */
         .scanner-panel {
             grid-column: 1 / -1;
@@ -944,6 +1064,7 @@
                 <a href="/scorecard">&#x1F4CA; Scorecard</a>
                 <a href="/training" style="color:#00b432; font-weight:bold;">🎓 SOC Training</a>
                 <a href="/cissp" style="color:#9944ee; font-weight:bold;">📘 CISSP</a>
+                <a href="/siem" style="color:#00d4ff; font-weight:bold;">📡 SIEM</a>
                 <a href="/profile" style="color:#ffd700; font-weight:bold;">⚔️ Profile</a>
                 <a href="/reports">Client View</a>
                 <a href="/logout">Logout</a>
@@ -1166,6 +1287,79 @@
                     <span style="font-size:0.88em; font-weight:800; color:{% if readiness_score >= 700 %}#00b432{% elif readiness_score >= 500 %}#ff8c00{% else %}#ff4444{% endif %};">{{ readiness_score }}</span>
                     <span style="font-size:0.72em; color:#333;">/ 1000 · passing = 700</span>
                     <a href="/cissp" style="margin-left:auto; font-size:0.78em; color:#9944ee; text-decoration:none; border:1px solid #441a88; padding:4px 12px; border-radius:3px; background:#120a22;">Open Study Hub →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- NordVPN Status Panel -->
+        <div class="scanner-panel" id="vpn-cr-panel" style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <h3 class="section-title" id="vpn-cr-title" style="margin:0;">🔒 NordVPN Protection</h3>
+                <span id="vpn-cr-dot" style="font-size:0.8em;color:#556677;font-family:monospace;">● Checking…</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="vpn-cr-grid">
+                <div class="finding-card" id="vpn-cr-status-card" style="text-align:center;padding:12px 8px;">
+                    <div style="font-size:0.7em;color:#556677;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Status</div>
+                    <div id="vpn-cr-status" style="font-size:1.1em;font-weight:700;color:#556677;">…</div>
+                </div>
+                <div class="finding-card" style="text-align:center;padding:12px 8px;">
+                    <div style="font-size:0.7em;color:#556677;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">VPN IP</div>
+                    <div id="vpn-cr-ip" style="font-size:0.85em;font-family:monospace;color:#00d4ff;">…</div>
+                </div>
+                <div class="finding-card" style="text-align:center;padding:12px 8px;">
+                    <div style="font-size:0.7em;color:#556677;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Kill Switch</div>
+                    <div id="vpn-cr-ks" style="font-size:0.85em;font-weight:700;color:#556677;">…</div>
+                </div>
+            </div>
+            <div id="vpn-cr-detail" style="margin-top:8px;font-size:0.75em;color:#445;"></div>
+        </div>
+
+        <!-- Terminal Activity Feed Panel -->
+        <div class="terminal-panel">
+            <div class="terminal-toggle" onclick="toggleTerminal()">
+                <span>
+                    💻 Terminal Activity Feed
+                    <span style="font-size:0.85em; color:#444; text-transform:none; letter-spacing:0;">
+                        — commands from the <code style="color:#00b432; background:#0d1117; padding:0 4px; border-radius:3px;">bai</code> PowerShell module
+                    </span>
+                </span>
+                <span id="terminal-arrow">▼</span>
+            </div>
+            <div class="terminal-body" id="terminal-body">
+                <div class="term-header-row">
+                    <span class="term-subtitle">
+                        Last {{ terminal_activity|length }} command(s) · Auto-refreshes every 30s ·
+                        Run <code style="color:#00b432">bai scan</code>, <code style="color:#00b432">bai findings</code>, etc. from PowerShell
+                    </span>
+                    <button class="btn-term-refresh" onclick="refreshTerminalFeed()">↻ Refresh</button>
+                </div>
+
+                <div class="term-feed" id="term-feed">
+                    {% if terminal_activity %}
+                        {% for row in terminal_activity %}
+                        <div class="term-row" data-term-id="{{ row.id }}">
+                            <span class="term-time local-time-term" data-utc="{{ row.created_at }}">{{ row.created_at }}</span>
+                            {% if row.category == 'security' %}
+                                <span class="term-cat term-cat-security">SECURITY</span>
+                            {% elif row.category == 'scan' %}
+                                <span class="term-cat term-cat-scan">SCAN</span>
+                            {% elif row.category == 'network' %}
+                                <span class="term-cat term-cat-network">NETWORK</span>
+                            {% else %}
+                                <span class="term-cat term-cat-general">GENERAL</span>
+                            {% endif %}
+                            <span class="term-cmd">{{ row.command }}</span>
+                            {% if row.context %}
+                            <span class="term-ctx" title="{{ row.context }}">{{ row.context.split('\\')[-1] if '\\' in row.context else row.context }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="term-empty" id="term-empty-msg">
+                            No terminal activity yet.<br>
+                            Open PowerShell and run <code>bai status</code> to get started.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -1702,6 +1896,7 @@
             {% endif %}
 
             <form method="POST" action="/simulate-attack" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <select name="difficulty" style="background:#161923; color:#888; border:1px solid #2a2d3a; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer;">
                     <option value="easy">Easy — obvious single attack</option>
                     <option value="medium" selected>Medium — realistic scenario</option>
@@ -1711,6 +1906,7 @@
             </form>
 
             <form method="POST" action="/simulate-attack" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed #1e2235;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <span style="font-size:0.75em; color:#444; text-transform:uppercase; letter-spacing:0.07em;">&#x1F517; APT Chain:</span>
                 <select name="chain" style="background:#12151f; color:#aa66ff; border:1px solid #441a88; padding:8px 10px; border-radius:4px; font-size:0.82em; cursor:pointer; flex:1; min-width:260px;">
                     <option value="recon_to_takeover">Recon &rarr; Stuffing &rarr; Takeover &rarr; Priv Esc</option>
@@ -1721,9 +1917,11 @@
             </form>
 
             <form method="POST" action="/run-agent" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-run">&#x1F916; Run Agent</button>
             </form>
             <form method="POST" action="/run-breach-intel" style="display:inline; margin-left:8px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-simulate" style="font-size:0.82em; padding:8px 14px;">
                     &#x1F50D; Refresh Threat Intel
                 </button>
@@ -1803,6 +2001,7 @@
                                     </span>
                                     {% if r.status != 'closed' %}
                                     <form method="POST" action="/reports/{{ r.id }}/triage" style="display:inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         {% if r.status == 'new' or not r.status %}
                                             <button class="triage-btn" name="status" value="reviewing">Review</button>
                                         {% endif %}
@@ -1921,6 +2120,18 @@
     </div>
 
     <script>
+        // ── CSRF helper for AJAX state-changers ──
+        // Reads the per-session token from the <meta> tag in <head> and
+        // injects it as `X-CSRFToken` on every csrfFetch() call. Plain
+        // GET fetches keep using fetch() directly — CSRFProtect ignores
+        // safe methods.
+        var _csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+        function csrfFetch(url, opts) {
+            opts = opts || {};
+            opts.headers = Object.assign({'X-CSRFToken': _csrfToken}, opts.headers || {});
+            return fetch(url, opts);
+        }
+
         // ── Timezone conversion ──
         document.querySelectorAll('.local-time').forEach(function (el) {
             var raw = el.getAttribute('data-utc').trim().replace(' ', 'T');
@@ -2024,6 +2235,118 @@
             else { body.classList.add('open'); arrow.textContent = '▲'; }
         }
 
+        // ── Terminal Feed panel toggle + refresh ──
+        function toggleTerminal() {
+            var body  = document.getElementById('terminal-body');
+            var arrow = document.getElementById('terminal-arrow');
+            if (body.classList.contains('open')) {
+                body.classList.remove('open');
+                arrow.textContent = '▼';
+            } else {
+                body.classList.add('open');
+                arrow.textContent = '▲';
+                refreshTerminalFeed();
+            }
+        }
+
+        function _termCatClass(cat) {
+            var MAP = { security: 'term-cat-security', scan: 'term-cat-scan',
+                        network: 'term-cat-network' };
+            return MAP[cat] || 'term-cat-general';
+        }
+        function _termCatLabel(cat) {
+            var MAP = { security: 'SECURITY', scan: 'SCAN', network: 'NETWORK' };
+            return MAP[cat] || 'GENERAL';
+        }
+        function _termFmtTime(utcStr) {
+            if (!utcStr) return '';
+            var s = utcStr.trim().replace(' ', 'T');
+            if (!s.endsWith('Z') && !s.includes('+') && !s.includes('-', 10)) s += 'Z';
+            var d = new Date(s);
+            if (isNaN(d)) return utcStr;
+            return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        function _termCtx(path) {
+            if (!path) return '';
+            var parts = path.replace(/\\/g, '/').split('/');
+            return parts[parts.length - 1] || path;
+        }
+
+        function refreshTerminalFeed() {
+            var btn = document.querySelector('.btn-term-refresh');
+            var subtitle = document.querySelector('.term-subtitle');
+            if (btn) { btn.textContent = '↻ Checking...'; btn.disabled = true; }
+
+            fetch('/api/terminal-activity')
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function(data) {
+                    var feed = document.getElementById('term-feed');
+                    var rows = data.activities || [];
+                    var now  = new Date().toLocaleTimeString(undefined, {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+                    if (rows.length === 0) {
+                        feed.innerHTML =
+                            '<div class="term-empty" id="term-empty-msg">' +
+                            'No terminal activity yet.<br>' +
+                            'Open PowerShell and run <code>bai status</code> to get started.' +
+                            '</div>';
+                    } else {
+                        var html = '';
+                        rows.forEach(function(row) {
+                            var catClass = _termCatClass(row.category);
+                            var catLabel = _termCatLabel(row.category);
+                            var time     = _termFmtTime(row.created_at);
+                            var ctx      = _termCtx(row.context);
+                            html += '<div class="term-row" data-term-id="' + row.id + '">' +
+                                '<span class="term-time">' + esc(time) + '</span>' +
+                                '<span class="term-cat ' + catClass + '">' + catLabel + '</span>' +
+                                '<span class="term-cmd">' + esc(row.command) + '</span>' +
+                                (ctx ? '<span class="term-ctx" title="' + esc(row.context) + '">' + esc(ctx) + '</span>' : '') +
+                                '</div>';
+                        });
+                        feed.innerHTML = html;
+                    }
+
+                    if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
+                    if (subtitle) {
+                        var existing = subtitle.getAttribute('data-orig') || subtitle.textContent;
+                        subtitle.setAttribute('data-orig', existing);
+                        subtitle.textContent = 'Last checked: ' + now + ' · ' + rows.length + ' command(s)';
+                    }
+                })
+                .catch(function(err) {
+                    if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
+                    var feed = document.getElementById('term-feed');
+                    if (feed) {
+                        feed.innerHTML = '<div class="term-empty" style="color:#ff4444;">Refresh failed: ' +
+                            esc(err.message) + '<br><small>Is Flask running? Are you logged in?</small></div>';
+                    }
+                    console.warn('[bai feed]', err);
+                });
+        }
+
+        // Auto-refresh every 30 seconds when panel is open
+        setInterval(function() {
+            if (document.getElementById('terminal-body').classList.contains('open')) {
+                refreshTerminalFeed();
+            }
+        }, 30000);
+
+        // Convert server-rendered timestamps in the terminal feed on page load
+        document.querySelectorAll('.local-time-term').forEach(function(el) {
+            var raw = el.getAttribute('data-utc').trim().replace(' ', 'T');
+            if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('-', 10)) raw += 'Z';
+            var d = new Date(raw);
+            if (!isNaN(d)) {
+                el.textContent = d.toLocaleTimeString(undefined, {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+            }
+        });
+
         // ── Scanner panel toggle ──
         function toggleScanner() {
             var body = document.getElementById('scanner-body');
@@ -2038,7 +2361,7 @@
             var status = document.getElementById('scan-status');
             btn.disabled = true;
             status.textContent = '⟳ Scanning machine… (may take 10–30 seconds)';
-            fetch('/scan/machine', {method: 'POST'})
+            csrfFetch('/scan/machine', {method: 'POST'})
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     btn.disabled = false;
@@ -2059,7 +2382,7 @@
             var status = document.getElementById('scan-status');
             btn.disabled = true;
             status.textContent = '⟳ Scanning local network… (may take 20–60 seconds)';
-            fetch('/scan/network', {method: 'POST'})
+            csrfFetch('/scan/network', {method: 'POST'})
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     btn.disabled = false;
@@ -2078,7 +2401,7 @@
         function resolveFinding(id) {
             var card = document.getElementById('finding-card-' + id);
             if (!card) return;
-            fetch('/scan/findings/' + id + '/resolve', {method: 'POST'})
+            csrfFetch('/scan/findings/' + id + '/resolve', {method: 'POST'})
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     if (d.error) { alert(d.error); return; }
@@ -2094,7 +2417,7 @@
 
         // Mark as read — removes from ticker and feed cards, no page reload
         function dismissIntelItem(id) {
-            fetch('/breach-intel/' + id + '/dismiss', {method: 'POST'})
+            csrfFetch('/breach-intel/' + id + '/dismiss', {method: 'POST'})
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     if (!d.ok) return;
@@ -2113,7 +2436,7 @@
 
         // Archive — saves item; reloads to show it in the archive panel
         function archiveIntelItem(id) {
-            fetch('/breach-intel/' + id + '/archive', {method: 'POST'})
+            csrfFetch('/breach-intel/' + id + '/archive', {method: 'POST'})
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     if (!d.ok) return;
@@ -2129,7 +2452,7 @@
 
         // Restore from archive — reloads to show item back in feed
         function unarchiveIntelItem(id) {
-            fetch('/breach-intel/' + id + '/unarchive', {method: 'POST'})
+            csrfFetch('/breach-intel/' + id + '/unarchive', {method: 'POST'})
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     if (!d.ok) return;
@@ -2140,7 +2463,7 @@
 
         // Dismiss from archive (just remove the card visually — item stays dismissed in DB)
         function deleteArchiveCard(id) {
-            fetch('/breach-intel/' + id + '/dismiss', {method: 'POST'})
+            csrfFetch('/breach-intel/' + id + '/dismiss', {method: 'POST'})
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     if (!d.ok) return;
@@ -2283,7 +2606,7 @@ function runAutoFix() {
   btn.textContent = '⏳ Running…';
   manBtn.disabled = true;
 
-  fetch('/scan/findings/' + REMED_FINDING_ID + '/remediate', { method: 'POST' })
+  csrfFetch('/scan/findings/' + REMED_FINDING_ID + '/remediate', { method: 'POST' })
     .then(function(r) { return r.json(); })
     .then(function(d) {
       showRemedResult(d);
@@ -2305,7 +2628,7 @@ function confirmManualFix() {
   document.getElementById('rm-btn-manual').disabled = true;
   document.getElementById('rm-btn-auto').disabled = true;
 
-  fetch('/scan/findings/' + REMED_FINDING_ID + '/resolve', { method: 'POST' })
+  csrfFetch('/scan/findings/' + REMED_FINDING_ID + '/resolve', { method: 'POST' })
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.error) {
@@ -2382,6 +2705,57 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
                   .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── NordVPN status widget ─────────────────────────────────────────────────
+async function refreshVpnCR() {
+    try {
+        const r = await fetch('/api/vpn/status');
+        const d = await r.json();
+
+        const dot    = document.getElementById('vpn-cr-dot');
+        const title  = document.getElementById('vpn-cr-title');
+        const status = document.getElementById('vpn-cr-status');
+        const ipEl   = document.getElementById('vpn-cr-ip');
+        const ksEl   = document.getElementById('vpn-cr-ks');
+        const detail = document.getElementById('vpn-cr-detail');
+        const card   = document.getElementById('vpn-cr-status-card');
+
+        if (!d.available) {
+            dot.textContent    = '● N/A';
+            status.textContent = 'Not installed';
+            return;
+        }
+
+        if (d.connected) {
+            dot.textContent    = '● PROTECTED';
+            dot.style.color    = '#00ff88';
+            title.textContent  = '🟢 NordVPN Protection';
+            status.textContent = 'CONNECTED';
+            status.style.color = '#00ff88';
+            card.style.borderLeft = '3px solid #00ff88';
+            ipEl.textContent   = d.vpn_ip || '—';
+        } else {
+            dot.textContent    = '● EXPOSED';
+            dot.style.color    = '#ff4444';
+            title.textContent  = '🔴 NordVPN — NOT CONNECTED';
+            status.textContent = 'DISCONNECTED';
+            status.style.color = '#ff4444';
+            card.style.borderLeft = '3px solid #ff4444';
+            ipEl.textContent   = 'No tunnel';
+            ipEl.style.color   = '#ff4444';
+        }
+
+        ksEl.textContent  = d.kill_switch ? 'ACTIVE' : 'OFF';
+        ksEl.style.color  = d.kill_switch ? '#00b432' : '#ff8c00';
+        detail.innerHTML  = d.last_checked
+            ? `Last checked: ${d.last_checked.substring(0,19)} · State: ${d.vpn_state}`
+            : '';
+
+    } catch (e) {}
+}
+
+refreshVpnCR();
+setInterval(refreshVpnCR, 30000);
 </script>
 
 </html>

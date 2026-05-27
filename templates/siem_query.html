@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPL Query — Boundry.AI SIEM</title>
+  <style>
+    /* ── Reset + Base ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0a0e14;
+      --surface:   #0f1923;
+      --card:      #131d28;
+      --border:    #1e3045;
+      --cyan:      #00d4ff;
+      --green:     #00ff88;
+      --yellow:    #ffcc00;
+      --orange:    #ff8c00;
+      --red:       #ff4444;
+      --purple:    #9944ee;
+      --dim:       #556677;
+      --text:      #cdd6e0;
+      --text-dim:  #7a9ab0;
+      --font-mono: "Cascadia Code", "Fira Code", "Consolas", monospace;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ───────────────────────────────────────────────────── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-brand {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .topbar-nav { display: flex; gap: 1rem; align-items: center; }
+    .topbar-nav a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color .15s;
+    }
+    .topbar-nav a:hover { color: var(--cyan); }
+    .topbar-nav a.active { color: var(--cyan); font-weight: 600; }
+    .topbar-spacer { flex: 1; }
+
+    /* ── XP bar (reused from control room) ─────────────────────────── */
+    .xp-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+    .xp-level-badge {
+      background: var(--cyan);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: .7rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .xp-bar-outer {
+      width: 80px;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .xp-bar-inner {
+      height: 100%;
+      background: var(--cyan);
+      border-radius: 3px;
+      transition: width .3s;
+    }
+    .xp-count { color: var(--text-dim); font-size: .75rem; }
+
+    /* ── Page layout ───────────────────────────────────────────────── */
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    /* ── Page header ───────────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .page-title h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+    .page-title p {
+      color: var(--text-dim);
+      font-size: .85rem;
+      margin-top: 3px;
+    }
+    .badge-spl {
+      background: linear-gradient(135deg, #00d4ff22, #00d4ff44);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      letter-spacing: .1em;
+    }
+
+    /* ── Query input panel ─────────────────────────────────────────── */
+    .query-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .query-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: .6rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .query-input-row {
+      display: flex;
+      gap: .75rem;
+      align-items: flex-start;
+    }
+    .query-input-wrap {
+      flex: 1;
+      position: relative;
+    }
+    .query-prompt {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      pointer-events: none;
+      user-select: none;
+    }
+    #spl-input {
+      width: 100%;
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: .95rem;
+      line-height: 1.5;
+      padding: 10px 12px 10px 30px;
+      resize: vertical;
+      min-height: 52px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    #spl-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 2px #00d4ff22;
+    }
+    #spl-input::placeholder { color: var(--dim); }
+
+    .btn-run {
+      background: var(--cyan);
+      color: var(--bg);
+      border: none;
+      border-radius: 6px;
+      font-size: .9rem;
+      font-weight: 700;
+      padding: 10px 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn-run:hover { opacity: .85; }
+    .btn-run:active { transform: scale(.97); }
+    .btn-run:disabled { opacity: .4; cursor: not-allowed; }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 6px;
+      font-size: .85rem;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-clear:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── Example queries ───────────────────────────────────────────── */
+    .examples-label {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin: .75rem 0 .5rem;
+    }
+    .example-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+    }
+    .example-chip {
+      background: #0a1825;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: .75rem;
+      padding: 4px 12px;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .example-chip:hover {
+      background: #0f2035;
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* ── Status / explanation bar ──────────────────────────────────── */
+    .status-bar {
+      background: #0a1420;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .6rem 1rem;
+      margin-bottom: 1rem;
+      display: none;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .status-bar.visible { display: flex; }
+    .status-explanation {
+      color: var(--cyan);
+      font-size: .8rem;
+      flex: 1;
+    }
+    .status-count {
+      color: var(--green);
+      font-size: .8rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status-time {
+      color: var(--dim);
+      font-size: .75rem;
+      white-space: nowrap;
+    }
+
+    /* ── SQL panel ─────────────────────────────────────────────────── */
+    .sql-panel {
+      background: #060b10;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      display: none;
+    }
+    .sql-panel.visible { display: block; }
+    .sql-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .5rem .75rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .sql-header-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .sql-header-toggle {
+      color: var(--dim);
+      font-size: .75rem;
+    }
+    .sql-body {
+      padding: .75rem;
+      display: none;
+    }
+    .sql-body.open { display: block; }
+    .sql-code {
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      color: var(--green);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .sql-copy-btn {
+      margin-top: .5rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 4px;
+      font-size: .7rem;
+      padding: 3px 10px;
+      cursor: pointer;
+    }
+    .sql-copy-btn:hover { border-color: var(--green); color: var(--green); }
+
+    /* ── Error panel ───────────────────────────────────────────────── */
+    .error-panel {
+      background: #1a0808;
+      border: 1px solid #aa2222;
+      border-radius: 6px;
+      padding: .75rem 1rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .error-panel.visible { display: block; }
+    .error-title {
+      color: var(--red);
+      font-weight: 700;
+      font-size: .85rem;
+      margin-bottom: .3rem;
+    }
+    .error-msg {
+      color: #ee8888;
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      white-space: pre-wrap;
+    }
+
+    /* ── Results table ─────────────────────────────────────────────── */
+    .results-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: none;
+    }
+    .results-panel.visible { display: block; }
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      gap: .75rem;
+    }
+    .results-title {
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .results-actions { display: flex; gap: .5rem; }
+    .btn-export {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 4px;
+      font-size: .75rem;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-export:hover { border-color: var(--green); color: var(--green); }
+
+    .results-table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      background: #0a1420;
+      color: var(--cyan);
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: .55rem .75rem;
+      text-align: left;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid #111e2b;
+      transition: background .1s;
+    }
+    tbody tr:hover { background: #0d1a26; }
+    tbody td {
+      padding: .5rem .75rem;
+      font-size: .8rem;
+      vertical-align: top;
+      max-width: 300px;
+    }
+
+    /* Severity stripe on id column */
+    .sev-stripe {
+      display: inline-block;
+      width: 4px;
+      height: 14px;
+      border-radius: 2px;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    .sev-CRITICAL { background: var(--red); }
+    .sev-HIGH     { background: var(--orange); }
+    .sev-MEDIUM   { background: var(--yellow); }
+    .sev-LOW      { background: var(--purple); }
+    .sev-INFO     { background: var(--dim); }
+
+    .sev-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: .7rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .sev-badge.CRITICAL { background:#ff44441a; color:var(--red); border:1px solid #ff444433; }
+    .sev-badge.HIGH     { background:#ff8c001a; color:var(--orange); border:1px solid #ff8c0033; }
+    .sev-badge.MEDIUM   { background:#ffcc001a; color:var(--yellow); border:1px solid #ffcc0033; }
+    .sev-badge.LOW      { background:#9944ee1a; color:var(--purple); border:1px solid #9944ee33; }
+    .sev-badge.INFO     { background:#33445533; color:var(--text-dim); border:1px solid var(--border); }
+
+    .source-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: .7rem;
+      font-weight: 600;
+      background: #0a1825;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+    .count-val {
+      font-family: var(--font-mono);
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+
+    td.col-description {
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    td.col-description.expanded {
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
+    }
+
+    .mono { font-family: var(--font-mono); font-size: .78rem; }
+    .dim-text { color: var(--text-dim); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-dim);
+    }
+    .empty-icon { font-size: 2rem; margin-bottom: .5rem; }
+
+    /* Loading spinner */
+    .spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .running .spinner { display: inline-block; }
+    .running .run-text { display: none; }
+
+    /* ── Reference card ────────────────────────────────────────────── */
+    .ref-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 1.25rem;
+    }
+    .ref-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .ref-card h3 {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: .6rem;
+    }
+    .ref-item {
+      margin-bottom: .4rem;
+      font-size: .78rem;
+    }
+    .ref-cmd {
+      font-family: var(--font-mono);
+      color: var(--green);
+      background: #06100a;
+      border-radius: 3px;
+      padding: 1px 5px;
+    }
+    .ref-desc { color: var(--text-dim); }
+
+    details summary {
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: .8rem;
+      margin-top: 1.25rem;
+      user-select: none;
+    }
+    details summary:hover { color: var(--cyan); }
+    details[open] summary { color: var(--cyan); }
+
+    /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .query-input-row { flex-direction: column; }
+      .btn-run, .btn-clear { width: 100%; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ───────────────────────────────────────────────────────── -->
+<header class="topbar">
+  <a class="topbar-brand" href="/control-room">⚡ BOUNDRY.AI</a>
+  <nav class="topbar-nav">
+    <a href="/control-room">Control Room</a>
+    <a href="/siem">SIEM Live</a>
+    <a href="/siem/query" class="active">SPL Query</a>
+    <a href="/cissp">CISSP</a>
+    <a href="/profile" style="color:#ffd700;">⚔ Profile</a>
+  </nav>
+  <div class="topbar-spacer"></div>
+  {% if profile %}
+  <div class="xp-bar-wrap">
+    <span class="xp-level-badge">Lv {{ profile.level }}</span>
+    <div class="xp-bar-outer">
+      <div class="xp-bar-inner" style="width: {{ [(profile.xp % 500) / 5, 100] | min }}%"></div>
+    </div>
+    <span class="xp-count">{{ profile.xp }} XP</span>
+    {% if profile.streak_days and profile.streak_days > 0 %}<span title="Day streak">🔥 {{ profile.streak_days }}</span>{% endif %}
+  </div>
+  {% endif %}
+</header>
+
+<!-- ── Page ──────────────────────────────────────────────────────────── -->
+<div class="page">
+
+  <div class="page-header">
+    <div class="page-title">
+      <h1>🔎 SPL Query Engine</h1>
+      <p>Search your SIEM with familiar Splunk Processing Language syntax — powered by local SQLite</p>
+    </div>
+    <span class="badge-spl">SPL-LITE v1</span>
+  </div>
+
+  <!-- ── Query panel ─────────────────────────────────────────────────── -->
+  <div class="query-panel">
+    <div class="query-label">
+      📡 SPL Query
+    </div>
+
+    <div class="query-input-row">
+      <div class="query-input-wrap">
+        <span class="query-prompt">›</span>
+        <textarea
+          id="spl-input"
+          rows="2"
+          placeholder="severity=HIGH earliest=-24h | stats count by src_ip | sort -count | head 10"
+          spellcheck="false"
+          autocomplete="off"
+        ></textarea>
+      </div>
+      <button class="btn-run" id="run-btn" onclick="runQuery()">
+        <span class="spinner" id="spinner"></span>
+        <span class="run-text">▶ Run Query</span>
+      </button>
+      <button class="btn-clear" onclick="clearAll()">✕</button>
+    </div>
+
+    <div class="examples-label">Quick examples — click to load:</div>
+    <div class="example-chips">
+      {% for ex in examples %}
+      <span
+        class="example-chip"
+        title="{{ ex.description }}"
+        onclick="loadExample({{ loop.index0 }})"
+      >{{ ex.label }}</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Status bar ──────────────────────────────────────────────────── -->
+  <div class="status-bar" id="status-bar">
+    <span class="status-explanation" id="status-expl"></span>
+    <span class="status-count" id="status-count"></span>
+    <span class="status-time" id="status-time"></span>
+  </div>
+
+  <!-- ── SQL translation ─────────────────────────────────────────────── -->
+  <div class="sql-panel" id="sql-panel">
+    <div class="sql-header" onclick="toggleSql()">
+      <span class="sql-header-label">⚙ Generated SQL</span>
+      <span class="sql-header-toggle" id="sql-toggle">▶ Show</span>
+    </div>
+    <div class="sql-body" id="sql-body">
+      <pre class="sql-code" id="sql-code"></pre>
+      <button class="sql-copy-btn" onclick="copySql()">📋 Copy SQL</button>
+    </div>
+  </div>
+
+  <!-- ── Error panel ─────────────────────────────────────────────────── -->
+  <div class="error-panel" id="error-panel">
+    <div class="error-title">⚠ Query Error</div>
+    <pre class="error-msg" id="error-msg"></pre>
+  </div>
+
+  <!-- ── Results ─────────────────────────────────────────────────────── -->
+  <div class="results-panel" id="results-panel">
+    <div class="results-header">
+      <span class="results-title">📋 Results</span>
+      <div class="results-actions">
+        <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
+      </div>
+    </div>
+    <div class="results-table-wrap">
+      <table id="results-table">
+        <thead id="results-thead"></thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── SPL Reference ───────────────────────────────────────────────── -->
+  <details>
+    <summary>📖 SPL-lite Reference — supported syntax</summary>
+    <div class="ref-grid">
+
+      <div class="ref-card">
+        <h3>🔍 Filters (search part)</h3>
+        <div class="ref-item"><span class="ref-cmd">severity=CRITICAL</span> <span class="ref-desc">exact match</span></div>
+        <div class="ref-item"><span class="ref-cmd">source=windows_event</span></div>
+        <div class="ref-item"><span class="ref-cmd">src_ip=10.0.0.1</span></div>
+        <div class="ref-item"><span class="ref-cmd">dst_ip=8.8.8.8</span></div>
+        <div class="ref-item"><span class="ref-cmd">host=DESKTOP-ABC</span></div>
+        <div class="ref-item"><span class="ref-cmd">user=admin</span></div>
+        <div class="ref-item"><span class="ref-cmd">event_type=logon_failed</span></div>
+        <div class="ref-item"><span class="ref-cmd">description=powershell</span> <span class="ref-desc">substring</span></div>
+        <div class="ref-item"><span class="ref-cmd">brute force</span> <span class="ref-desc">keyword search</span></div>
+      </div>
+
+      <div class="ref-card">
+        <h3>⏱ Time</h3>
+        <div class="ref-item"><span class="ref-cmd">earliest=-1h</span> <span class="ref-desc">last 1 hour</span></div>
+        <div class="ref-item"><span class="ref-cmd">earliest=-24h</span></div>
+        <div class="ref-item"><span class="ref-cmd">earliest=-7d</span></div>
+        <div class="ref-item"><span class="ref-cmd">earliest=-30d</span></div>
+        <div class="ref-item"><span class="ref-cmd">earliest=-60m</span></div>
+        <div class="ref-item"><span class="ref-cmd">earliest=-2w</span> <span class="ref-desc">2 weeks</span></div>
+        <div class="ref-item"><span class="ref-cmd">latest=-1h</span> <span class="ref-desc">upper bound</span></div>
+      </div>
+
+      <div class="ref-card">
+        <h3>📊 Aggregation</h3>
+        <div class="ref-item"><span class="ref-cmd">| stats count by src_ip</span></div>
+        <div class="ref-item"><span class="ref-cmd">| stats count by src_ip, host</span> <span class="ref-desc">multi-field</span></div>
+        <div class="ref-item"><span class="ref-cmd">| sort -count</span> <span class="ref-desc">descending</span></div>
+        <div class="ref-item"><span class="ref-cmd">| sort count</span> <span class="ref-desc">ascending</span></div>
+        <div class="ref-item"><span class="ref-cmd">| sort -created_at</span></div>
+        <div class="ref-item"><span class="ref-cmd">| head 10</span> <span class="ref-desc">limit rows</span></div>
+      </div>
+
+      <div class="ref-card">
+        <h3>📋 Projection</h3>
+        <div class="ref-item"><span class="ref-cmd">| table host src_ip description</span> <span class="ref-desc">select columns</span></div>
+        <div class="ref-item"><span class="ref-cmd">| dedup src_ip</span> <span class="ref-desc">unique values</span></div>
+        <div class="ref-item"><span class="ref-cmd">| where user="admin"</span> <span class="ref-desc">post-pipe filter</span></div>
+      </div>
+
+      <div class="ref-card">
+        <h3>💡 Example Queries</h3>
+        <div class="ref-item" style="font-size:.72rem; font-family:var(--font-mono); color:#99bbcc; line-height:1.6">
+          source=firewall earliest=-24h<br>| stats count by src_ip<br>| sort -count | head 10<br><br>
+          event_type=logon_failed<br>| stats count by user_account<br>| sort -count<br><br>
+          severity=CRITICAL earliest=-1h<br>| table host event_type description
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <h3>⚡ Available Columns</h3>
+        <div class="ref-item dim-text mono">id, created_at, severity</div>
+        <div class="ref-item dim-text mono">source, event_id, event_type</div>
+        <div class="ref-item dim-text mono">host, user_account, src_ip, dst_ip</div>
+        <div class="ref-item dim-text mono">description, raw</div>
+        <div class="ref-item" style="margin-top:.4rem; font-size:.72rem; color:var(--text-dim)">
+          Aliases: <span class="mono">user</span> → user_account,
+          <span class="mono">ip</span> → src_ip,
+          <span class="mono">timestamp</span> → created_at
+        </div>
+      </div>
+
+    </div>
+  </details>
+
+</div><!-- /.page -->
+
+<script>
+/* ── State ────────────────────────────────────────────────────────────── */
+const EXAMPLES = {{ examples | tojson }};
+let lastRows = [];
+let lastColumns = [];
+let lastQuery = "";
+let sqlOpen = false;
+
+/* ── Keyboard shortcut: Ctrl+Enter to run ───────────────────────────── */
+document.getElementById("spl-input").addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    runQuery();
+  }
+});
+
+/* ── Load example ───────────────────────────────────────────────────── */
+function loadExample(idx) {
+  const ex = EXAMPLES[idx];
+  if (!ex) return;
+  document.getElementById("spl-input").value = ex.query;
+  document.getElementById("spl-input").focus();
+}
+
+/* ── Clear ──────────────────────────────────────────────────────────── */
+function clearAll() {
+  document.getElementById("spl-input").value = "";
+  hideAll();
+  document.getElementById("spl-input").focus();
+}
+
+function hideAll() {
+  ["status-bar", "sql-panel", "error-panel", "results-panel"].forEach(id => {
+    document.getElementById(id).classList.remove("visible");
+  });
+}
+
+/* ── Run query ──────────────────────────────────────────────────────── */
+async function runQuery() {
+  const q = document.getElementById("spl-input").value.trim();
+  if (!q) return;
+
+  const runBtn = document.getElementById("run-btn");
+  runBtn.disabled = true;
+  runBtn.classList.add("running");
+  hideAll();
+  lastQuery = q;
+  const t0 = performance.now();
+
+  try {
+    const resp = await fetch("/api/siem/spl?q=" + encodeURIComponent(q));
+    const data = await resp.json();
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+
+    if (!resp.ok || data.error) {
+      showError(data.error || "Unknown error");
+      return;
+    }
+
+    // Status bar
+    const sb = document.getElementById("status-bar");
+    document.getElementById("status-expl").textContent = data.explanation;
+    document.getElementById("status-count").textContent = `${data.count} row${data.count !== 1 ? "s" : ""}`;
+    document.getElementById("status-time").textContent = `${elapsed}s`;
+    sb.classList.add("visible");
+
+    // SQL panel
+    document.getElementById("sql-code").textContent = data.sql;
+    document.getElementById("sql-panel").classList.add("visible");
+
+    // Results
+    lastRows = data.rows;
+    lastColumns = data.columns;
+    renderTable(data.columns, data.rows);
+
+  } catch (err) {
+    showError(String(err));
+  } finally {
+    runBtn.disabled = false;
+    runBtn.classList.remove("running");
+  }
+}
+
+/* ── Render table ───────────────────────────────────────────────────── */
+const SEV_COLORS = {
+  CRITICAL: "#ff4444", HIGH: "#ff8c00", MEDIUM: "#ffcc00", LOW: "#9944ee", INFO: "#334455"
+};
+
+function renderTable(columns, rows) {
+  const panel = document.getElementById("results-panel");
+  const thead = document.getElementById("results-thead");
+  const tbody = document.getElementById("results-tbody");
+
+  // XSS HARDENING: every untrusted SIEM column value (description, host,
+  // src_ip, source, etc.) is bound via textContent — never templated into
+  // innerHTML. SPL results often surface raw log payloads where a hostile
+  // log source may have planted <script>/<img onerror=…> markup; the table
+  // must render them as literal text, not execute them.
+  thead.textContent = "";
+  tbody.textContent = "";
+
+  // Header row — column names are server-side allow-listed (spl_engine._safe_col)
+  // but we still bind via textContent for defence in depth.
+  const headerTr = document.createElement("tr");
+  for (const c of columns) {
+    const th = document.createElement("th");
+    th.textContent = String(c).replace(/_/g, " ").toUpperCase();
+    headerTr.appendChild(th);
+  }
+  thead.appendChild(headerTr);
+
+  // Empty state
+  if (!rows.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = columns.length;
+    td.style.textAlign = "center";
+    td.style.color    = "#556677";
+    td.style.padding  = "2rem";
+    td.textContent    = "No results found";
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    panel.classList.add("visible");
+    return;
+  }
+
+  const hasSeverity = columns.includes("severity");
+
+  for (const row of rows) {
+    const sev      = row.severity || "";
+    const sevColor = SEV_COLORS[sev] || "transparent";
+    const tr       = document.createElement("tr");
+
+    for (const col of columns) {
+      let val = row[col];
+      if (val === null || val === undefined) val = "";
+
+      const td = document.createElement("td");
+
+      if (col === "severity") {
+        const badge = document.createElement("span");
+        badge.className   = `sev-badge ${String(val).replace(/[^A-Z]/gi,"")}`;
+        badge.textContent = String(val);
+        td.appendChild(badge);
+      } else if (col === "source") {
+        const badge = document.createElement("span");
+        badge.className   = "source-badge";
+        badge.textContent = String(val);
+        td.appendChild(badge);
+      } else if (col === "count") {
+        const c = document.createElement("span");
+        c.className   = "count-val";
+        c.textContent = String(val);
+        td.appendChild(c);
+      } else if (col === "created_at" || col === "timestamp") {
+        const s  = String(val);
+        const dt = s ? s.replace("T", " ").substring(0, 19) : "";
+        td.className   = "mono dim-text";
+        td.textContent = dt;
+      } else if (col === "id" && hasSeverity) {
+        td.className = "mono";
+        const stripe = document.createElement("span");
+        // Strip anything but A-Z so the CSS class stays in our allow-list
+        stripe.className = `sev-stripe sev-${String(sev).replace(/[^A-Z]/gi,"")}`;
+        stripe.style.background = sevColor;
+        td.appendChild(stripe);
+        td.appendChild(document.createTextNode(String(val)));
+      } else if (col === "description") {
+        td.className   = "col-description";
+        td.title       = String(val);   // textual attribute — DOM API escapes for us
+        td.textContent = String(val);
+        td.addEventListener("click", () => td.classList.toggle("expanded"));
+      } else if (col === "src_ip" || col === "dst_ip" || col === "host") {
+        td.className   = "mono";
+        td.textContent = String(val);
+      } else {
+        td.textContent = String(val);
+      }
+
+      tr.appendChild(td);
+    }
+
+    tbody.appendChild(tr);
+  }
+
+  panel.classList.add("visible");
+}
+
+/* ── SQL toggle ─────────────────────────────────────────────────────── */
+function toggleSql() {
+  sqlOpen = !sqlOpen;
+  document.getElementById("sql-body").classList.toggle("open", sqlOpen);
+  document.getElementById("sql-toggle").textContent = sqlOpen ? "▼ Hide" : "▶ Show";
+}
+
+function copySql() {
+  const sql = document.getElementById("sql-code").textContent;
+  navigator.clipboard.writeText(sql).catch(() => {});
+}
+
+/* ── Error display ──────────────────────────────────────────────────── */
+function showError(msg) {
+  document.getElementById("error-msg").textContent = msg;
+  document.getElementById("error-panel").classList.add("visible");
+}
+
+/* ── CSV export ─────────────────────────────────────────────────────── */
+function exportCSV() {
+  if (!lastRows.length || !lastColumns.length) return;
+  const lines = [lastColumns.join(",")];
+  for (const row of lastRows) {
+    const cells = lastColumns.map(c => {
+      const v = String(row[c] ?? "").replace(/"/g, '""');
+      return `"${v}"`;
+    });
+    lines.push(cells.join(","));
+  }
+  const blob = new Blob([lines.join("\n")], {type: "text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `siem_query_${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>

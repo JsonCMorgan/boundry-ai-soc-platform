@@ -1,0 +1,508 @@
+# Boundry.AI — Cursor Master Rules
+# ============================================================
+# This file gives Cursor complete context for the Boundry.AI
+# project: business purpose, every module, all patterns,
+# coding conventions, future plans, and how Jason works.
+# Read this fully before suggesting any code.
+# ============================================================
+
+
+## WHO WE ARE
+
+**Boundry.AI** is a private, offline-first cybersecurity business run by Jason Morgan
+and his partner Peta. All client data stays on-machine — zero cloud processing.
+The AI backend is a local Ollama instance (llama3.1:8b on an AMD RX 7700 XT GPU).
+Anthropic/Claude API is the fallback only.
+
+**Jason** — technical lead. Builds everything in this repo.
+**Peta** — business and marketing lead. Has a separate toolset (C:\Dev\peta-tools\).
+
+**Target market:** SMBs, starting with the cannabis vertical (cannabis businesses can't
+run Google/Meta ads, making AI search visibility and cybersecurity critical for them).
+
+**Stage:** Pre-revenue. Building alongside day jobs. First clients coming soon.
+The goal is a 2-person operation where the tools do 80% of the work.
+
+
+## BUSINESS LINES
+
+1. **Cybersecurity** — The Flask command center (this repo). Continuous monitoring,
+   SIEM, incident response, AI-generated reports. Monthly retainer model.
+2. **GEO/SAO** — Generative Engine Optimization (getting businesses into AI search
+   answers). Peta's domain. Tools in C:\Dev\peta-tools\.
+
+
+## THE MACHINE
+
+- Windows 11, AMD RX 7700 XT (24GB VRAM), 24GB RAM, 2TB SSD
+- Ollama v0.24.0 running llama3.1:8b on GPU (http://localhost:11434)
+- Open WebUI at http://localhost:8080
+- Flask app at http://localhost:5000
+- SQLite for local dev (PostgreSQL via DATABASE_URL for production)
+
+
+## REPOSITORY STRUCTURE
+
+```
+C:\Dev\vulnerable-flask-app\       ← main Boundry.AI command center
+├── app.py                         ← Flask application (5500+ lines, single file)
+├── siem_collector.py              ← SIEM log ingestion (4 background threads)
+├── spl_engine.py                  ← SPL-lite query parser (SPL → SQLite)
+├── splunk_forwarder.py            ← Splunk HEC forwarder (background thread)
+├── vpn_monitor.py                 ← NordVPN status monitor (background thread)
+├── security_agent.py              ← Attack simulation engine (9 threat types)
+├── system_scanner.py              ← Windows 11 security audit + network scanner
+├── alert_monitor.py               ← Email alert daemon (Task Scheduler, every 15 min)
+├── auto_report.py                 ← Daily report generator (Task Scheduler, 8AM)
+├── pdf_generator.py               ← Branded PDF export (fpdf2)
+├── mitre_reference.py             ← MITRE ATT&CK reference data (9 techniques)
+├── app.db                         ← SQLite database (all state lives here)
+├── .terminal_token                ← Auth token for bai PowerShell module
+├── templates\
+│   ├── control_room.html          ← Main analyst dashboard (green theme)
+│   ├── siem.html                  ← SIEM live stream + search + rules (cyan theme)
+│   ├── siem_query.html            ← SPL query interface (cyan theme)
+│   ├── cissp_hub.html             ← CISSP Study Hub (8-domain grid)
+│   ├── cissp_domain.html          ← Per-domain AI question pages
+│   ├── cissp_practice.html        ← Mixed-domain drill
+│   ├── cissp_flashcards.html      ← SRS flashcard deck (SM-2 scheduling)
+│   ├── cissp_exam.html            ← CAT exam hub + history
+│   ├── cissp_exam_session.html    ← Live timed exam (3hr countdown)
+│   ├── cissp_exam_result.html     ← Score report (0-1000, pass=700)
+│   ├── player_profile.html        ← RPG profile (level ladder, badge grid, XP)
+│   ├── training.html              ← 10 training scenarios
+│   ├── training_challenge.html    ← Live scenario interface
+│   ├── training_result.html       ← Scenario result + AI feedback
+│   ├── scorecard.html             ← Analyst scorecard / triage metrics
+│   ├── mitre_detail.html          ← MITRE ATT&CK playbook detail
+│   ├── reports.html               ← Report list
+│   ├── report_detail.html         ← Single report with PDF download
+│   └── ... (login, register, etc.)
+└── static\
+    └── game.js                    ← XP toast notifications + level-up modal
+
+C:\Dev\peta-tools\                 ← Peta's marketing AI tools (separate project)
+├── peta.py                        ← Launcher menu
+├── prospect_research.py           ← Web research + GEO check + outreach email
+├── pitch_generator.py             ← Talking points from GEO audit JSON
+└── content_generator.py           ← LinkedIn/TikTok/Instagram post drafts
+
+C:\Dev\BoundryAI-PowerShell\
+└── BoundryAI.psm1                 ← 'bai' PowerShell module (terminal ↔ dashboard)
+
+C:\Dev\boundry-mcp-server\
+└── server.py                      ← MCP server (7 tools, Claude Desktop integration)
+```
+
+
+## DATABASE — CRITICAL PATTERNS
+
+**ALWAYS use these helpers. Never write raw sqlite3 calls in app.py.**
+
+```python
+db_fetchone(sql, params=())   # → dict | None
+db_fetchall(sql, params=())   # → list[dict]
+db_run(sql, params=())        # → None (INSERT/UPDATE/CREATE)
+```
+
+**SQL placeholder:** Use `PH` variable, never hardcode `?` or `%s`.
+- SQLite (local dev): `PH = "?"`
+- PostgreSQL (production via DATABASE_URL): `PH = "%s"`
+
+**Correct pattern:**
+```python
+db_run(f"INSERT INTO siem_events (source, severity) VALUES ({PH}, {PH})", ("firewall", "HIGH"))
+db_fetchall(f"SELECT * FROM siem_events WHERE severity = {PH}", ("CRITICAL",))
+```
+
+**Timestamp column:** Always `created_at TEXT` (SQLite datetime string).
+Use `datetime('now')` in SQL, never Python's datetime for insertion.
+Use `created_at AS timestamp` in SELECT aliases if templates expect 'timestamp'.
+
+**Primary key pattern:** Use `id_col` variable in CREATE TABLE, not hardcoded `id INTEGER PRIMARY KEY`.
+
+**All DB tables (as of May 2026):**
+```
+users                   — accounts (analyst, demo roles)
+reports                 — AI-generated incident reports
+breach_intel            — live threat intel feed (dismissed, archived cols)
+mitre_techniques        — MITRE ATT&CK reference
+training_scenarios      — 10 scenarios (beginner → APT chain)
+training_results        — scenario attempt history
+analyst_notes           — triage notes
+findings                — manually logged findings
+system_findings         — scanner + SIEM correlation findings (ai_triage col)
+cissp_progress          — per-domain readiness scores
+cissp_attempts          — individual question attempts
+cissp_flashcards        — SRS deck (SM-2: next_review, ease_factor)
+cissp_exam_sessions     — CAT exam sessions
+cissp_exam_questions    — per-question exam records
+player_profile          — RPG profile (xp, level, streak_days, analyst_id)
+xp_log                  — full XP history
+player_achievements     — earned badge records
+terminal_activity       — bai PowerShell command log
+siem_events             — all SIEM ingested events
+siem_rules              — correlation rules
+splunk_forwarder_state  — HEC high-water mark (last_sent_id)
+```
+
+
+## AUTH PATTERNS
+
+**Route protection:** Always use `@analyst_required` decorator for analyst-only pages.
+```python
+@app.route("/my-route")
+@analyst_required
+def my_route():
+    ...
+```
+
+**Terminal API:** Token-auth routes (for `bai` PowerShell module) use `@terminal_auth`.
+
+**Session keys available in analyst context:**
+```python
+session["username"]   # str
+session["role"]       # "analyst"
+session["user_id"]    # int (required by control_room and many routes)
+```
+
+
+## AI BACKEND — CRITICAL RULE
+
+**Ollama is always primary. Anthropic is always fallback. Never reverse this.**
+
+```python
+def _generate_report_with_ai(prompt: str) -> str:
+    # 1. Try Ollama first (local, private, free)
+    # 2. Fall back to Anthropic only if Ollama fails
+    # Never send client data to cloud if local AI is available
+```
+
+**Ollama endpoint:** `http://localhost:11434/v1/chat/completions` (OpenAI-compatible)
+**Model:** `llama3.1:8b`
+**Max tokens:** Keep prompts tight. GPU is fast but context window matters.
+
+
+## SIEM ARCHITECTURE
+
+**siem_collector.py** runs 4 background daemon threads:
+1. `_windows_event_loop()` — PowerShell polls Windows Security+System logs every 60s
+2. `_firewall_log_loop()` — tails `C:\Windows\System32\LogFiles\Firewall\pfirewall.log` every 30s
+3. `_syslog_listener_loop()` — UDP syslog on port 5140 (RFC 3164)
+4. Flask `@after_request` middleware — logs login attempts, scan triggers, attack sims
+
+**Ingesting a new SIEM event (anywhere in the codebase):**
+```python
+siem_collector.ingest_event(
+    source="my_source",      # "windows_event" | "firewall" | "flask_app" | "syslog" | "vpn_monitor" | ...
+    event_id="4625",         # Windows event ID or custom string
+    event_type="logon_failed", # snake_case type string
+    severity="HIGH",         # CRITICAL | HIGH | MEDIUM | LOW | INFO
+    host="localhost",
+    user="username",         # optional
+    src_ip="1.2.3.4",        # optional
+    dst_ip="5.6.7.8",        # optional
+    description="Human readable description",
+    raw={"key": "value"},    # dict — serialised to JSON
+)
+```
+
+**Severity levels (in order):** CRITICAL → HIGH → MEDIUM → LOW → INFO
+
+**Correlation rules** auto-fire from `siem_rules` table when threshold/window breached.
+Each correlation creates a `system_finding` with `scan_type='siem'` and triggers Ollama AI triage.
+
+
+## VPN MONITOR
+
+**vpn_monitor.py** reads NordVPN state from local files — no CLI, no external calls.
+- Primary: NordLynx adapter (Up = connected)
+- Secondary: `C:\ProgramData\NordVPN\connections\vpn_state_heartbeat.db` (VpnState 2 = Connected)
+- Settings: `C:\ProgramData\NordVPN\settings.db` (kill switch, split tunnel)
+- Fires CRITICAL SIEM alert when VPN drops unexpectedly
+- Route: `GET /api/vpn/status`
+- NOTE: NordVPN Windows CLI is GUI-only. Connect/disconnect controls are NOT possible
+  without reverse-engineering the named pipe protocol. Do not attempt to add them.
+
+
+## SPL-LITE ENGINE
+
+**spl_engine.py** translates SPL (Splunk Processing Language) subset to SQLite.
+Always use `parse_spl(query, ph=PH)` — returns `{sql, params, columns, explanation, error}`.
+
+Supported: `field=value`, `earliest/latest`, `| stats count by`, `| sort`, `| head`, `| table`, `| dedup`, `| where`
+NOT supported: `| eval`, `| lookup`, `| regex` (raises helpful ValueError)
+
+Column allow-list is enforced. Never let user input bypass `_safe_col()`.
+
+
+## SPLUNK FORWARDER
+
+**splunk_forwarder.py** — silent no-op when `SPLUNK_HEC_TOKEN` env var is not set.
+Config: `SPLUNK_HEC_URL` (default http://localhost:8088), `SPLUNK_HEC_TOKEN`, `SPLUNK_INDEX`.
+Splunk is NOT currently installed. The forwarder is ready and waiting.
+Do not add dependencies on Splunk being available.
+
+
+## GAMIFICATION / XP SYSTEM
+
+**XP awards** must always go through `award_xp(analyst_id, reason, points)` in app.py.
+Never write directly to `player_profile` or `xp_log` tables.
+
+**XP values (standard):**
+- Correct CISSP answer: +10 XP
+- CISSP attempt: +2 XP
+- System scan: +30 XP
+- Resolve finding: +25 XP
+- Complete scenario: +50 XP (+25 bonus if score ≥ 80%)
+- Correct flashcard review: +1 XP
+
+**Levels:** 12 levels from "Security Apprentice" (Lv1) to "CISSP Certified" (Lv12).
+XP is cumulative. `level = floor(xp / 500) + 1` (capped at 12).
+
+**Achievements:** 20 badges. Check `award_xp()` for the full detection logic.
+Always call `award_xp()` after significant actions — it handles badge detection internally.
+
+
+## UI / VISUAL STANDARDS
+
+**Never deviate from these without being asked.**
+
+```
+Background:    #0a0e14  (near-black)
+Surface:       #0f1923
+Card:          #131d28
+Border:        #1e3045
+Text:          #cdd6e0
+Dim text:      #7a9ab0
+
+Control Room accent:  #00ff88  (green)
+SIEM accent:          #00d4ff  (cyan)
+Profile accent:       #ffd700  (gold)
+
+Severity colours:
+  CRITICAL: #ff4444
+  HIGH:     #ff8c00
+  MEDIUM:   #ffcc00
+  LOW:      #9944ee
+  INFO:     #334455
+
+Font (monospace): "Cascadia Code", "Fira Code", "Consolas", monospace
+```
+
+**Control Room** — green theme, `#00ff88` accent
+**SIEM dashboard + SPL query** — cyan theme, `#00d4ff` accent
+**All dashboards** — dark hacker aesthetic, no light mode, no Bootstrap
+
+**Templates use vanilla JS only.** No jQuery, no React, no Vue.
+AJAX calls use native `fetch()`. Jinja2 server-side rendering for initial load.
+
+
+## BAI POWERSHELL MODULE
+
+`C:\Dev\BoundryAI-PowerShell\BoundryAI.psm1` — the `bai` terminal module.
+Commands: `bai status`, `bai scan`, `bai scan -n`, `bai findings`, `bai fix <id>`,
+          `bai resolve <id>`, `bai xp <reason> [pts]`, `bai help`
+
+**Token auth:** Flask writes `.terminal_token` on startup. `bai` reads this file.
+All `bai` commands authenticate with `X-Boundry-Token` header.
+Terminal API routes are decorated with `@terminal_auth`, not `@analyst_required`.
+
+
+## MCP SERVER
+
+`C:\Dev\boundry-mcp-server\server.py` — 7 tools registered in Claude Desktop.
+Tools: `get_recent_threats`, `get_threat_summary`, `lookup_ip_reputation`,
+       `lookup_file_hash`, `scan_host_exposure`, `get_mitre_technique`, `get_compliance_gaps`
+VirusTotal + Shodan API keys needed (free tier). Not yet configured.
+
+
+## PETA'S TOOLS (C:\Dev\peta-tools\)
+
+Separate project. Do not mix with the Flask app.
+- `prospect_research.py` — researches a company + does GEO audit + writes outreach email
+- `pitch_generator.py` — takes GEO audit JSON, outputs talking points for Peta
+- `content_generator.py` — LinkedIn/TikTok/Instagram posts (4 content pillars)
+- `peta.py` — single launcher menu (`python peta.py`)
+
+These tools run on Ollama (local, free) with Anthropic fallback.
+Content pillars: AI for business, cannabis industry insight, SMB marketing, personal journey.
+
+
+## ⚠️ DO NOT FIX THESE — INTENTIONAL VULNERABILITIES
+
+This app is also a security **training platform**. Several routes are deliberately insecure
+for analyst training. Do not "fix" these unless Jason explicitly asks:
+
+- SQL injection examples in early routes (training material)
+- Weak password storage examples (training)
+- IDOR vulnerabilities in report routes (training)
+- Debug information exposure (training)
+- The file is named `vulnerable-flask-app` intentionally
+
+**How to identify:** Training/demo routes are clearly labelled in comments.
+Real production code (SIEM, scanner, auth, API) is properly secured.
+When in doubt, ask before patching a security issue.
+
+
+## CODING CONVENTIONS
+
+**Python:**
+- Type hints on all new function signatures
+- Docstrings on all new functions (one-liner is fine)
+- f-strings for formatting, not `.format()` or `%`
+- `snake_case` everywhere (variables, functions, routes, DB columns)
+- Route functions named after their purpose: `siem_dashboard()`, `api_siem_events()`
+- API routes prefixed with `/api/` and return `jsonify()`
+- Page routes return `render_template()`
+- Never `import *`
+- Background threads always `daemon=True`
+
+**SQL:**
+- Always parameterised — never string-format user input into SQL
+- Use `{PH}` placeholder, never `?` or `%s` directly
+- New tables always go in `init_db()` with `CREATE TABLE IF NOT EXISTS`
+- New columns added via `ALTER TABLE` migration block in `init_db()`, guarded by try/except
+- Column naming: `snake_case`, timestamps always named `created_at`
+
+**JavaScript:**
+- Vanilla JS only — no frameworks, no CDN libraries except Chart.js for charts
+- `async/await` with `fetch()` for all AJAX
+- Always handle errors silently on dashboard widgets (never let a widget crash the page)
+- `const` by default, `let` when reassignment needed, never `var`
+
+**HTML/CSS:**
+- Inline `<style>` in templates (no separate CSS files)
+- CSS custom properties (`--var`) for all colours
+- No Bootstrap, no Tailwind
+- Responsive via CSS Grid/Flexbox
+
+
+## HOW JASON WORKS — PREFERENCES
+
+1. **Options before building.** For any significant feature, present 2-3 approaches
+   with tradeoffs. Ask which direction before writing code. This is the most important rule.
+
+2. **Privacy is non-negotiable.** If a feature requires sending data off-machine,
+   flag it clearly and offer a local alternative. Never silently add cloud calls.
+
+3. **Ollama first.** Any AI feature uses local Ollama. Only use Anthropic API if
+   Ollama is explicitly insufficient or unavailable.
+
+4. **One file at a time.** app.py is large (5500+ lines). When adding features,
+   keep changes focused. Don't reorganise the whole file unless asked.
+
+5. **No magic numbers.** New constants go at the top of the function or module,
+   with a comment explaining the value.
+
+6. **Test before declaring done.** Always run the feature through the Flask test
+   client or a quick manual test. Don't say it's done until it works.
+
+7. **Update memory when shipping.** After building something, remind Jason to note
+   it in the pre-client checklist or HQ build notes if relevant.
+
+
+## PRE-CLIENT CHECKLIST — WHAT'S STILL NEEDED
+
+These are the known gaps before Boundry.AI takes its first paying client.
+Reference this when Jason asks "what's next" or when starting a client engagement.
+
+**Security (do first):**
+- [ ] Enable NordVPN kill switch (currently OFF — Settings → Kill Switch in NordVPN app)
+- [ ] Set SECRET_KEY env var (currently "dev-only-secret" — sessions are forgeable)
+- [ ] Confirm FLASK_DEBUG=false in production
+- [ ] Review open ports: SMB 445, RPC 135, NetBIOS 139 found on Jason's machine
+- [ ] Review demo account (/demo route) — confirm it can't see real client data
+
+**Environment variables (features currently broken without these):**
+- [ ] GMAIL_APP_PASSWORD — email alerts completely non-functional without this
+- [ ] SPLUNK_HEC_TOKEN — Splunk forwarder waiting; or install Splunk Free first
+- [ ] VirusTotal API key — MCP lookup_file_hash / lookup_ip_reputation broken
+- [ ] Shodan API key — MCP scan_host_exposure broken
+- [ ] SECRET_KEY — production session signing
+
+**Infrastructure:**
+- [ ] Verify Task Scheduler: BoundryAI-AutoReport (8AM) + BoundryAI-AlertMonitor (15min)
+- [ ] Flask crash recovery — no auto-restart if app.py dies
+- [ ] Automated app.db backup (daily copy to second drive)
+- [ ] Test full email alert chain end-to-end
+- [ ] Decide client data isolation: single DB with client_id tags vs. separate DB per client
+
+**Business / legal:**
+- [ ] Client contract / MSA template
+- [ ] Define cybersecurity service tiers (one-time audit vs. monthly retainer pricing)
+- [ ] Privacy policy / data handling statement
+- [ ] Business structure decision (sole proprietor vs. incorporated)
+
+**Certifications:**
+- [ ] CISSP — in progress, use /cissp dashboard daily
+- [ ] Consider CompTIA Security+ as faster interim credential
+
+**Sales:**
+- [ ] Polish demo walkthrough of command center
+- [ ] Prepare 5-minute demo script (Control Room → SIEM → attack sim → report → PDF)
+- [ ] Cannabis vertical outreach via prospect_research.py
+- [ ] Boundry.AI LinkedIn company page
+
+
+## CURRENT PHASE STATUS
+
+- Phase 1 (Terminal): ✅ Complete
+- Phase 2 (Local LLM): ✅ Complete
+- Phase 3 (Cybersecurity Stack): ✅ Complete
+- Phase 4 (Business Automation): ✅ Complete
+- Phase 5 (MCP Integration): ✅ Complete (API keys needed)
+- Phase 6 (CISSP Training + Gamification): ✅ Complete
+- Phase 7 (SIEM): ✅ Complete
+- SPL-lite query engine: ✅ Complete
+- Splunk HEC forwarder: ✅ Built, waiting for Splunk install
+- NordVPN monitor: ✅ Complete
+- Client data isolation: ⬜ Not started (decision needed)
+- WireGuard VPN migration: ⬜ Deferred
+
+
+## QUICK REFERENCE
+
+**Key routes:**
+```
+GET  /control-room          Main analyst dashboard
+GET  /siem                  SIEM live stream
+GET  /siem/query            SPL query interface
+GET  /api/siem/spl?q=...    SPL API
+GET  /api/vpn/status        NordVPN status
+GET  /api/splunk/status     Splunk forwarder status
+POST /api/splunk/token      Hotload HEC token
+GET  /cissp                 CISSP study hub
+GET  /profile               Player profile / XP
+GET  /scan/findings         System scan findings
+POST /scan/machine          Run machine audit
+POST /scan/network          Run network scan
+GET  /reports               Report list
+GET  /reports/<id>/pdf      PDF download
+GET  /demo                  Public demo (no login)
+```
+
+**Key env vars:**
+```
+SECRET_KEY           Flask session signing (required for production)
+GMAIL_APP_PASSWORD   Email alerts (alert_monitor.py)
+SPLUNK_HEC_URL       Splunk HEC endpoint (default: http://localhost:8088)
+SPLUNK_HEC_TOKEN     Splunk HEC token (activates forwarder)
+SPLUNK_INDEX         Splunk index (default: main)
+DATABASE_URL         PostgreSQL (unset = SQLite local dev)
+FLASK_DEBUG          Set to "1" for debug mode (NEVER in production)
+LOG_FILE             Flask security log path (unset = stdout)
+```
+
+**Key file paths:**
+```
+C:\Dev\vulnerable-flask-app\app.db              SQLite database
+C:\Dev\vulnerable-flask-app\docs\reports\        Generated PDF reports
+C:\Dev\vulnerable-flask-app\.terminal_token      bai auth token
+C:\Dev\launch-boundry-ai.bat                     Master launch script
+C:\Dev\BoundryAI-PowerShell\BoundryAI.psm1       bai PowerShell module
+C:\Dev\boundry-mcp-server\server.py              MCP server
+C:\Users\ricka\.config\ohmyposh\boundry.omp.json Oh My Posh theme
+C:\ProgramData\NordVPN\connections\vpn_state_heartbeat.db  VPN state
+C:\ProgramData\NordVPN\settings.db               VPN settings
+```

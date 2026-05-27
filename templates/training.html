@@ -368,6 +368,7 @@
             <a href="/mitre/{{ t.id }}" class="review-link">Review →</a>
         {% else %}
             <form method="POST" action="/training/mitre-read/{{ t.id }}" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn-mark" type="submit">Mark Read</button>
             </form>
         {% endif %}
@@ -423,6 +424,7 @@
             </div>
             {% if mitre_read_count >= 9 %}
             <form method="POST" action="/training/start/{{ sc.key }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit"
                     class="btn-start {% if sc.is_done %}btn-retry-style{% endif %}">
                     {% if sc.is_done %}↺ Run Again{% else %}▶ Start Challenge{% endif %}

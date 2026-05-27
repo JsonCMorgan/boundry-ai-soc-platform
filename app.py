@@ -3643,9 +3643,10 @@ def api_ingest():
         return jsonify(error="Missing X-API-Key header"), 401
 
     user = db_fetchone(f"SELECT id, api_key FROM users WHERE api_key = {PH}", (api_key,))
-    if not user or not hmac.compare_digest(
-        api_key.encode(), (user["api_key"] or "").encode()
-    ):
+    # Always call hmac.compare_digest — never short-circuit on `not user`.
+    # Without this, response timing leaks whether the key exists in the DB.
+    stored_key = (user["api_key"] or "") if user else ""
+    if not hmac.compare_digest(api_key.encode(), stored_key.encode()) or not user:
         return jsonify(error="Invalid API key"), 401
 
     data = request.get_json(silent=True)

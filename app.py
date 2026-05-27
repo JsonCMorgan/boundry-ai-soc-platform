@@ -506,13 +506,25 @@ def init_db():
         CREATE TABLE IF NOT EXISTS breach_intel (
             {id_col},
             {ts_col},
-            title    TEXT NOT NULL DEFAULT '',
-            source   TEXT NOT NULL DEFAULT '',
-            url      TEXT NOT NULL DEFAULT '',
-            summary  TEXT NOT NULL DEFAULT '',
-            severity TEXT NOT NULL DEFAULT 'MEDIUM'
+            title     TEXT    NOT NULL DEFAULT '',
+            source    TEXT    NOT NULL DEFAULT '',
+            url       TEXT    NOT NULL DEFAULT '',
+            summary   TEXT    NOT NULL DEFAULT '',
+            severity  TEXT    NOT NULL DEFAULT 'MEDIUM',
+            dismissed INTEGER NOT NULL DEFAULT 0,
+            archived  INTEGER NOT NULL DEFAULT 0
         )
     """)
+    # Migration: add dismissed and archived columns to existing breach_intel tables
+    if DATABASE_URL:
+        db_run("ALTER TABLE breach_intel ADD COLUMN IF NOT EXISTS dismissed INTEGER NOT NULL DEFAULT 0")
+        db_run("ALTER TABLE breach_intel ADD COLUMN IF NOT EXISTS archived  INTEGER NOT NULL DEFAULT 0")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(breach_intel)")]
+        if "dismissed" not in existing_cols:
+            db_run("ALTER TABLE breach_intel ADD COLUMN dismissed INTEGER NOT NULL DEFAULT 0")
+        if "archived" not in existing_cols:
+            db_run("ALTER TABLE breach_intel ADD COLUMN archived  INTEGER NOT NULL DEFAULT 0")
 
     # Training mode — MITRE reading progress tracker
     db_run(f"""
@@ -552,6 +564,96 @@ def init_db():
             ai_feedback_iocs     TEXT,
             ai_feedback_response TEXT,
             ai_feedback_overall  TEXT
+        )
+    """)
+
+    # CISSP study progress — one row per analyst per domain
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS cissp_progress (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            domain_num   INTEGER NOT NULL,
+            attempts     INTEGER NOT NULL DEFAULT 0,
+            correct      INTEGER NOT NULL DEFAULT 0,
+            last_studied_at TEXT,
+            UNIQUE(analyst_id, domain_num)
+        )
+    """)
+
+    # CISSP question attempts — each AI-generated question + user answer
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS cissp_attempts (
+            {id_col},
+            {ts_col},
+            analyst_id      INTEGER NOT NULL,
+            domain_num      INTEGER NOT NULL,
+            scenario        TEXT    NOT NULL DEFAULT '',
+            question_text   TEXT    NOT NULL DEFAULT '',
+            options_json    TEXT    NOT NULL DEFAULT '{{}}',
+            correct_answer  TEXT    NOT NULL DEFAULT '',
+            user_answer     TEXT,
+            explanation     TEXT    NOT NULL DEFAULT '',
+            mindset         TEXT    NOT NULL DEFAULT 'manager',
+            difficulty      INTEGER NOT NULL DEFAULT 2,
+            is_correct      INTEGER,
+            skipped         INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
+    # RPG player profile — one row per analyst, XP, level, streaks
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS player_profile (
+            {id_col},
+            analyst_id              INTEGER NOT NULL UNIQUE,
+            xp                      INTEGER NOT NULL DEFAULT 0,
+            level                   INTEGER NOT NULL DEFAULT 1,
+            streak_days             INTEGER NOT NULL DEFAULT 0,
+            last_xp_date            TEXT,
+            total_correct_cissp     INTEGER NOT NULL DEFAULT 0,
+            total_scans             INTEGER NOT NULL DEFAULT 0,
+            total_findings_resolved INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
+    # XP transaction log — full history of every XP award
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS xp_log (
+            {id_col},
+            {ts_col},
+            analyst_id INTEGER NOT NULL,
+            amount     INTEGER NOT NULL,
+            reason     TEXT    NOT NULL DEFAULT '',
+            source     TEXT    NOT NULL DEFAULT ''
+        )
+    """)
+
+    # Achievement badges earned
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS player_achievements (
+            {id_col},
+            {ts_col},
+            analyst_id INTEGER NOT NULL,
+            badge_id   TEXT    NOT NULL,
+            UNIQUE(analyst_id, badge_id)
+        )
+    """)
+
+    # System security findings — stored results from real machine/network scans
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS system_findings (
+            {id_col},
+            {ts_col},
+            finding_id     TEXT    NOT NULL,
+            title          TEXT    NOT NULL DEFAULT '',
+            severity       TEXT    NOT NULL DEFAULT 'MEDIUM',
+            cissp_domain   INTEGER NOT NULL DEFAULT 1,
+            category       TEXT    NOT NULL DEFAULT '',
+            description    TEXT    NOT NULL DEFAULT '',
+            recommendation TEXT    NOT NULL DEFAULT '',
+            raw_output     TEXT    NOT NULL DEFAULT '',
+            resolved       INTEGER NOT NULL DEFAULT 0,
+            resolved_at    TEXT,
+            scan_type      TEXT    NOT NULL DEFAULT 'machine'
         )
     """)
 
@@ -986,6 +1088,342 @@ def report_pdf(report_id):
         security_log.error(f"PDF_GENERATION_ERROR report_id={report_id} error={exc}")
         flash(f"PDF generation failed: {exc}", "danger")
         return redirect(url_for("report_detail", report_id=report_id))
+
+
+# ── CISSP Domain catalogue ───────────────────────────────────────────────────
+# 8 ISC(2) CISSP domains with exam weight, colour token, key topics, and an
+# optional "SOC bridge" note showing how existing training already covers the domain.
+CISSP_DOMAINS = {
+    1: {
+        "name": "Security and Risk Management",
+        "weight": 16,
+        "color": "#ff6a00",
+        "key_topics": ["CIA Triad", "Risk Management", "Security Governance", "Compliance & Legal",
+                       "BCP / DRP Planning", "Ethics", "Threat Modelling", "Security Policies"],
+        "soc_bridge": "Your incident triage workflow (severity classification, escalation decisions, writing investigation notes before reading the AI report) is a live practicum in risk management and governance — the core of this domain.",
+    },
+    2: {
+        "name": "Asset Security",
+        "weight": 10,
+        "color": "#9944ee",
+        "key_topics": ["Data Classification", "Asset Lifecycle", "Data Retention & Destruction",
+                       "DLP", "DRM / CASB", "Data Roles (Owner, Custodian, User)", "Privacy"],
+        "soc_bridge": None,
+    },
+    3: {
+        "name": "Security Architecture and Engineering",
+        "weight": 13,
+        "color": "#cc6600",
+        "key_topics": ["Cryptography (RSA, AES, PKI)", "Security Models (Bell-LaPadula, Biba)",
+                       "Zero Trust Architecture", "Security Frameworks", "Physical Security",
+                       "Secure Design Principles", "Virtualisation & Cloud Security"],
+        "soc_bridge": None,
+    },
+    4: {
+        "name": "Communication and Network Security",
+        "weight": 13,
+        "color": "#4488ff",
+        "key_topics": ["OSI / TCP-IP Model", "Firewalls & IDS/IPS", "VPNs & Tunnelling",
+                       "Wireless Security", "Network Attacks", "Secure Protocols (TLS, SSH, HTTPS)",
+                       "Microsegmentation"],
+        "soc_bridge": None,
+    },
+    5: {
+        "name": "Identity and Access Management",
+        "weight": 13,
+        "color": "#ff8833",
+        "key_topics": ["Authentication Factors", "MFA & SSO", "Kerberos & SAML & OAuth",
+                       "RBAC / ABAC / MAC / DAC", "Privileged Access Management",
+                       "Zero Trust IAM", "Federation & Directory Services"],
+        "soc_bridge": "Your brute force, credential stuffing, password spray, and privilege escalation scenarios are live demonstrations of IAM failures. Each one maps to a specific CISSP exam sub-topic in this domain.",
+    },
+    6: {
+        "name": "Security Assessment and Testing",
+        "weight": 12,
+        "color": "#44aaee",
+        "key_topics": ["Vulnerability Scanning vs Pen Testing", "Security Audits", "Code Review",
+                       "Log Analysis & SIEM", "BCP / DRP Testing", "Continuous Monitoring",
+                       "Red vs Blue vs Purple Teams"],
+        "soc_bridge": "Running your attack simulations and reading the AI-generated incident reports is hands-on Security Assessment and Testing. You are doing what Domain 6 tests — you just haven't been calling it that.",
+    },
+    7: {
+        "name": "Security Operations",
+        "weight": 13,
+        "color": "#00b432",
+        "key_topics": ["Incident Response (Preparation → Lessons Learned)", "SIEM & SOC Operations",
+                       "Threat Intelligence", "Digital Forensics & Chain of Custody",
+                       "BCP / DRP Execution", "Logging & Monitoring", "eDiscovery"],
+        "soc_bridge": "This is your strongest domain. Your daily SOC training covers IR workflow, log analysis, IOC identification, threat detection, report triage, and analyst scoring — all core Domain 7 exam topics.",
+    },
+    8: {
+        "name": "Software Development Security",
+        "weight": 10,
+        "color": "#6655aa",
+        "key_topics": ["SDLC Security Phases", "OWASP Top 10", "Secure Coding Practices",
+                       "Code Review Techniques", "SQL Injection & XSS", "DevSecOps",
+                       "API Security", "Threat Modelling in SDLC"],
+        "soc_bridge": "Your SQL injection and XSS attack scenarios directly demonstrate OWASP Top 10 vulnerabilities — the core of what Domain 8 tests on the exam.",
+    },
+}
+
+# --- RPG Level system: 12 levels from Security Apprentice to CISSP Certified ---
+# (level, xp_required, title, icon)
+LEVEL_THRESHOLDS = [
+    (1,     0,     "Security Apprentice",   "🔰"),
+    (2,     100,   "Threat Analyst",        "🔍"),
+    (3,     300,   "Risk Assessor",         "⚖️"),
+    (4,     600,   "Domain Guardian",       "🛡️"),
+    (5,     1000,  "Network Defender",      "🌐"),
+    (6,     1500,  "Identity Warden",       "🔑"),
+    (7,     2200,  "Architecture Engineer", "⚙️"),
+    (8,     3000,  "Security Architect",    "🏗️"),
+    (9,     4000,  "Operations Commander",  "📡"),
+    (10,    5500,  "Risk Manager",          "📊"),
+    (11,    7500,  "Security Executive",    "👔"),
+    (12,    10000, "CISSP Certified",       "🏆"),
+]
+
+# XP earned by various actions
+XP_REWARDS = {
+    "cissp_correct":        10,   # Correct CISSP answer
+    "cissp_attempt":         2,   # Any CISSP answer (wrong still gets 2)
+    "scenario_complete":    50,   # Finish a SOC training scenario
+    "scenario_bonus":       25,   # High-score bonus (≥80 points)
+    "scan_run":             30,   # Run machine or network scan
+    "finding_resolved":     25,   # Mark a real finding as fixed
+    "daily_login":          15,   # First XP action of the day
+    "streak_bonus":          5,   # Per-day streak multiplier (added once/day)
+    "mitre_read":            5,   # Read a MITRE technique page
+}
+
+# Achievement badges — 20 total
+ACHIEVEMENTS = {
+    "first_blood":   {"name": "First Blood",       "icon": "🩸", "desc": "Answer your first CISSP question"},
+    "on_fire":       {"name": "On Fire",            "icon": "🔥", "desc": "Get 5 questions correct in a row"},
+    "week_warrior":  {"name": "Week Warrior",       "icon": "📅", "desc": "Study 7 days in a row"},
+    "domain_1":      {"name": "Risk Manager",       "icon": "⚖️",  "desc": "Complete 10 Domain 1 questions"},
+    "domain_2":      {"name": "Data Guardian",      "icon": "💾",  "desc": "Complete 10 Domain 2 questions"},
+    "domain_3":      {"name": "Crypto Master",      "icon": "🔐",  "desc": "Complete 10 Domain 3 questions"},
+    "domain_4":      {"name": "Net Defender",       "icon": "🌐",  "desc": "Complete 10 Domain 4 questions"},
+    "domain_5":      {"name": "IAM Warden",         "icon": "🔑",  "desc": "Complete 10 Domain 5 questions"},
+    "domain_6":      {"name": "Audit Ace",          "icon": "📋",  "desc": "Complete 10 Domain 6 questions"},
+    "domain_7":      {"name": "SOC Operator",       "icon": "📡",  "desc": "Complete 10 Domain 7 questions"},
+    "domain_8":      {"name": "Code Guardian",      "icon": "💻",  "desc": "Complete 10 Domain 8 questions"},
+    "all_domains":   {"name": "Polymath",           "icon": "🧠",  "desc": "Study all 8 CISSP domains"},
+    "centurion":     {"name": "Centurion",          "icon": "💯",  "desc": "Answer 100 CISSP questions"},
+    "sharp_shooter": {"name": "Sharp Shooter",      "icon": "🎯",  "desc": "Reach 80%+ accuracy (min 20 Qs)"},
+    "scanner":       {"name": "Scanner",            "icon": "🔎",  "desc": "Run your first system scan"},
+    "vuln_hunter":   {"name": "Vuln Hunter",        "icon": "🦠",  "desc": "Find 5 real system vulnerabilities"},
+    "fixer":         {"name": "The Fixer",          "icon": "🔧",  "desc": "Resolve 3 system findings"},
+    "scenario_ace":  {"name": "Scenario Ace",       "icon": "🎮",  "desc": "Complete all 10 SOC scenarios"},
+    "level_5":       {"name": "Mid-game Hero",      "icon": "⚡",  "desc": "Reach Level 5"},
+    "cissp_ready":   {"name": "CISSP Ready",        "icon": "🏆",  "desc": "Reach readiness score 700+"},
+}
+
+
+def _xp_for_level(level_num):
+    """Return (xp_required, xp_for_next) for progress bar math."""
+    current_thresh = next((t for t in LEVEL_THRESHOLDS if t[0] == level_num), LEVEL_THRESHOLDS[0])
+    next_thresh    = next((t for t in LEVEL_THRESHOLDS if t[0] == level_num + 1), None)
+    return current_thresh[1], (next_thresh[1] if next_thresh else current_thresh[1])
+
+
+def get_player_profile(analyst_id):
+    """
+    Return the player's full RPG profile dict, creating the row if it doesn't exist.
+    Adds convenience fields: level_name, level_icon, xp_to_next, xp_in_level, level_pct.
+    """
+    profile = db_fetchone(
+        f"SELECT * FROM player_profile WHERE analyst_id = {PH}", (analyst_id,)
+    )
+    if not profile:
+        db_run(
+            f"INSERT INTO player_profile (analyst_id, xp, level, streak_days, last_xp_date) "
+            f"VALUES ({PH}, 0, 1, 0, NULL)",
+            (analyst_id,),
+        )
+        profile = db_fetchone(
+            f"SELECT * FROM player_profile WHERE analyst_id = {PH}", (analyst_id,)
+        )
+
+    level = profile["level"] or 1
+    level_data   = next((t for t in LEVEL_THRESHOLDS if t[0] == level),     LEVEL_THRESHOLDS[0])
+    next_data    = next((t for t in LEVEL_THRESHOLDS if t[0] == level + 1), None)
+    xp_this_lvl = level_data[1]
+    xp_next_lvl = next_data[1] if next_data else xp_this_lvl + 1
+    xp_total     = profile["xp"] or 0
+    xp_in_level  = xp_total - xp_this_lvl
+    xp_span      = max(1, xp_next_lvl - xp_this_lvl)
+    level_pct    = min(100, round(xp_in_level / xp_span * 100))
+
+    badges = db_fetchall(
+        f"SELECT badge_id FROM player_achievements WHERE analyst_id = {PH}", (analyst_id,)
+    )
+
+    return {
+        **profile,
+        "level_name":  level_data[2],
+        "level_icon":  level_data[3],
+        "xp_to_next":  max(0, xp_next_lvl - xp_total),
+        "xp_in_level": max(0, xp_in_level),
+        "xp_span":     xp_span,
+        "level_pct":   level_pct,
+        "is_max":      next_data is None,
+        "badges":      [b["badge_id"] for b in badges],
+    }
+
+
+def award_xp(analyst_id, amount, reason, source=""):
+    """
+    Award XP to an analyst. Updates player_profile, logs the transaction,
+    checks for level-ups and achievement unlocks.
+    Returns a notification dict for the browser (XP toast + level-up modal).
+    """
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+
+    # Ensure profile exists
+    profile = get_player_profile(analyst_id)
+    old_xp    = profile["xp"]   or 0
+    old_level = profile["level"] or 1
+    new_xp    = old_xp + amount
+
+    # Calculate new level
+    new_level = 1
+    for lvl, threshold, _name, _icon in LEVEL_THRESHOLDS:
+        if new_xp >= threshold:
+            new_level = lvl
+
+    # Update streak
+    streak    = profile["streak_days"] or 0
+    last_date = profile["last_xp_date"]
+    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    if last_date == today:
+        pass            # Same day — streak unchanged
+    elif last_date == yesterday:
+        streak += 1     # Consecutive day
+    else:
+        streak = 1      # Streak reset
+
+    db_run(
+        f"UPDATE player_profile "
+        f"SET xp = {PH}, level = {PH}, streak_days = {PH}, last_xp_date = {PH} "
+        f"WHERE analyst_id = {PH}",
+        (new_xp, new_level, streak, today, analyst_id),
+    )
+
+    # Log the transaction
+    db_run(
+        f"INSERT INTO xp_log (analyst_id, amount, reason, source) VALUES ({PH},{PH},{PH},{PH})",
+        (analyst_id, amount, reason, source),
+    )
+
+    # --- Achievement checks ---
+    existing_badges = {
+        r["badge_id"] for r in db_fetchall(
+            f"SELECT badge_id FROM player_achievements WHERE analyst_id = {PH}", (analyst_id,)
+        )
+    }
+    new_achievements = []
+
+    def _maybe_unlock(badge_id):
+        if badge_id in existing_badges or badge_id not in ACHIEVEMENTS:
+            return
+        db_run(
+            f"INSERT INTO player_achievements (analyst_id, badge_id) VALUES ({PH},{PH})",
+            (analyst_id, badge_id),
+        )
+        new_achievements.append({"badge_id": badge_id, **ACHIEVEMENTS[badge_id]})
+        existing_badges.add(badge_id)
+
+    # CISSP question totals
+    total_row = db_fetchone(
+        f"SELECT COUNT(*) AS cnt FROM cissp_attempts "
+        f"WHERE analyst_id = {PH} AND is_correct IS NOT NULL AND skipped = 0",
+        (analyst_id,),
+    )
+    total_q = total_row["cnt"] if total_row else 0
+
+    if total_q >= 1:   _maybe_unlock("first_blood")
+    if total_q >= 100: _maybe_unlock("centurion")
+
+    # Per-domain 10-question badges
+    for d in range(1, 9):
+        dom_row = db_fetchone(
+            f"SELECT COUNT(*) AS cnt FROM cissp_attempts "
+            f"WHERE analyst_id = {PH} AND domain_num = {PH} "
+            f"AND is_correct IS NOT NULL AND skipped = 0",
+            (analyst_id, d),
+        )
+        if dom_row and dom_row["cnt"] >= 10:
+            _maybe_unlock(f"domain_{d}")
+
+    # All 8 domains studied
+    dom_started = db_fetchone(
+        f"SELECT COUNT(DISTINCT domain_num) AS cnt FROM cissp_progress "
+        f"WHERE analyst_id = {PH} AND attempts >= 1",
+        (analyst_id,),
+    )
+    if dom_started and dom_started["cnt"] == 8:
+        _maybe_unlock("all_domains")
+
+    # Sharp Shooter — 80%+ accuracy at 20+ questions
+    if total_q >= 20:
+        correct_row = db_fetchone(
+            f"SELECT COUNT(*) AS cnt FROM cissp_attempts "
+            f"WHERE analyst_id = {PH} AND is_correct = 1 AND skipped = 0",
+            (analyst_id,),
+        )
+        if correct_row and correct_row["cnt"] / total_q >= 0.80:
+            _maybe_unlock("sharp_shooter")
+
+    # Streak badges
+    if streak >= 7:   _maybe_unlock("week_warrior")
+
+    # Level badge
+    if new_level >= 5: _maybe_unlock("level_5")
+
+    # CISSP readiness 700+
+    readiness = _cissp_readiness_score(analyst_id)
+    if readiness >= 700: _maybe_unlock("cissp_ready")
+
+    # Scanner / Vuln Hunter / Fixer from player_profile counters
+    fresh_profile = db_fetchone(
+        f"SELECT total_scans, total_findings_resolved FROM player_profile WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    if fresh_profile:
+        if (fresh_profile["total_scans"] or 0) >= 1:
+            _maybe_unlock("scanner")
+        if (fresh_profile["total_findings_resolved"] or 0) >= 3:
+            _maybe_unlock("fixer")
+
+    findings_row = db_fetchone(f"SELECT COUNT(*) AS cnt FROM system_findings", ())
+    if findings_row and (findings_row["cnt"] or 0) >= 5:
+        _maybe_unlock("vuln_hunter")
+
+    # Scenario Ace — all 10 SOC scenarios completed
+    scen_row = db_fetchone(
+        f"SELECT COUNT(DISTINCT scenario_name) AS cnt FROM training_attempts "
+        f"WHERE analyst_id = {PH} AND score_total IS NOT NULL",
+        (analyst_id,),
+    )
+    if scen_row and scen_row["cnt"] >= 10:
+        _maybe_unlock("scenario_ace")
+
+    level_up = new_level > old_level
+    new_level_data = next((t for t in LEVEL_THRESHOLDS if t[0] == new_level), LEVEL_THRESHOLDS[0])
+
+    return {
+        "xp_gained":        amount,
+        "new_total":        new_xp,
+        "old_level":        old_level,
+        "new_level":        new_level,
+        "level_name":       new_level_data[2],
+        "level_icon":       new_level_data[3],
+        "level_up":         level_up,
+        "new_achievements": new_achievements,
+        "streak":           streak,
+    }
 
 
 # --- Training Mode scenario catalogue ---
@@ -1535,12 +1973,39 @@ def control_room():
     total_threats = sum(r["threat_count"] for r in all_reports)
     total_events  = sum(r["event_count"]  for r in all_reports)
 
-    # Breach intel — last 30 items for the ticker + panel, newest first
+    # Breach intel — last 30 non-dismissed items for the ticker + panel, newest first
     breach_items = db_fetchall(
         "SELECT id, created_at, title, source, url, summary, severity "
-        "FROM breach_intel ORDER BY id DESC LIMIT 30"
+        "FROM breach_intel WHERE dismissed = 0 ORDER BY id DESC LIMIT 30"
     )
-    last_intel_update = breach_items[0]["created_at"] if breach_items else None
+    # Archived items — always shown in the archive panel regardless of dismissed flag
+    archived_items = db_fetchall(
+        "SELECT id, created_at, title, source, url, summary, severity "
+        "FROM breach_intel WHERE archived = 1 ORDER BY id DESC LIMIT 50"
+    )
+    last_intel_update = breach_items[0]["created_at"] if breach_items else (
+        archived_items[0]["created_at"] if archived_items else None
+    )
+
+    # CISSP domain progress for the Control Room CISSP panel
+    analyst_id     = session["user_id"]
+    cissp_progress_rows = db_fetchall(
+        f"SELECT domain_num, attempts, correct FROM cissp_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    cissp_progress = {r["domain_num"]: r for r in cissp_progress_rows}
+    readiness_score = _cissp_readiness_score(analyst_id)
+
+    # Real system findings — unresolved, newest first
+    open_findings = db_fetchall(
+        "SELECT id, finding_id, title, severity, cissp_domain, category, description, "
+        "recommendation, scan_type, created_at FROM system_findings "
+        "WHERE resolved = 0 ORDER BY id DESC LIMIT 50"
+    )
+    resolved_findings_count = (db_fetchone("SELECT COUNT(*) AS cnt FROM system_findings WHERE resolved = 1") or {}).get("cnt", 0)
+    total_findings_count    = (db_fetchone("SELECT COUNT(*) AS cnt FROM system_findings") or {}).get("cnt", 0)
+
+    player = get_player_profile(analyst_id)
 
     return render_template(
         "control_room.html",
@@ -1553,7 +2018,15 @@ def control_room():
         total_threats=total_threats,
         total_events=total_events,
         breach_items=breach_items,
+        archived_items=archived_items,
         last_intel_update=last_intel_update,
+        cissp_domains=CISSP_DOMAINS,
+        cissp_progress=cissp_progress,
+        readiness_score=readiness_score,
+        open_findings=open_findings,
+        resolved_findings_count=resolved_findings_count,
+        total_findings_count=total_findings_count,
+        player=player,
     )
 
 
@@ -2937,6 +3410,577 @@ def scorecard():
         discipline_rows=discipline_rows,
         reports_with_notes=reports_with_notes,
     )
+
+
+# ── CISSP study helpers ──────────────────────────────────────────────────────
+
+def _generate_cissp_question(domain_num):
+    """
+    Use Ollama to generate a scenario-based CISSP practice question for the given domain.
+    Returns a validated dict or None if generation fails.
+    The correct answer is NOT returned to the browser — it stays server-side in the DB.
+    """
+    import json as _j
+    import urllib.request as _urlreq
+
+    domain = CISSP_DOMAINS.get(domain_num, {})
+    if not domain:
+        return None
+
+    topics_str = ", ".join(domain.get("key_topics", []))
+    prompt = f"""You are an expert ISC2 CISSP exam question writer.
+
+Write ONE scenario-based practice question for CISSP Domain {domain_num}: {domain["name"]} ({domain["weight"]}% of exam).
+Key topics for this domain: {topics_str}
+
+Requirements:
+1. Write a realistic 3–5 sentence workplace scenario for a senior security professional or manager.
+2. Create exactly 4 answer options (A, B, C, D) — three plausible but wrong, one clearly the BEST from a security management perspective.
+3. Apply core CISSP principles: least privilege, defence in depth, people → process → technology order, risk before controls, governance over tools, manager ensures the PROCESS is followed.
+4. Frame the question as "What should you do FIRST?" or "What is the BEST course of action?" — CISSP always tests priority.
+5. Classify the mindset this question tests: "manager" (governance/risk/policy decision) or "technical" (specific technical knowledge) or "both".
+
+Respond ONLY with valid JSON — absolutely no other text, no markdown, no code fences:
+{{"scenario":"<3-5 sentence realistic scenario>","question":"<question asking FIRST or BEST action>","options":{{"A":"<option>","B":"<option>","C":"<option>","D":"<option>"}},"correct":"<A|B|C|D>","explanation":"<2-3 sentences: why the correct answer is best AND why the others are wrong>","mindset":"<manager|technical|both>","difficulty":<1|2|3>}}"""
+
+    ollama_base  = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    ollama_model = os.environ.get("OLLAMA_MODEL",    "llama3.1:8b")
+    try:
+        payload = _j.dumps({
+            "model":       ollama_model,
+            "messages":    [{"role": "user", "content": prompt}],
+            "max_tokens":  900,
+            "temperature": 0.75,
+        }).encode()
+        req = _urlreq.Request(
+            f"{ollama_base}/chat/completions",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with _urlreq.urlopen(req, timeout=90) as resp:
+            raw  = _j.loads(resp.read())
+            text = raw["choices"][0]["message"]["content"].strip()
+            text = re.sub(r"^```[a-z]*\n?", "", text).rstrip("`").strip()
+            q    = _j.loads(text)
+            # Validate required structure
+            required = ["scenario", "question", "options", "correct", "explanation", "mindset", "difficulty"]
+            if not all(k in q for k in required):
+                security_log.warning(f"CISSP_Q_MISSING_FIELDS domain={domain_num} keys={list(q.keys())}")
+                return None
+            if set(q["options"].keys()) != {"A", "B", "C", "D"}:
+                return None
+            if q["correct"] not in ("A", "B", "C", "D"):
+                return None
+            if q["mindset"] not in ("manager", "technical", "both"):
+                q["mindset"] = "manager"
+            q["difficulty"] = max(1, min(3, int(q.get("difficulty", 2))))
+            return q
+    except Exception as exc:
+        security_log.warning(f"CISSP_Q_GENERATION_FAILED domain={domain_num} error={exc}")
+        return None
+
+
+def _cissp_readiness_score(analyst_id):
+    """
+    Calculate a 0–1000 readiness score weighted by each domain's CISSP exam %.
+    Only domains with ≥5 attempts contribute. Returns 0 if no data yet.
+    """
+    rows = db_fetchall(
+        f"SELECT domain_num, attempts, correct FROM cissp_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    weighted_sum  = 0.0
+    active_weight = 0
+    for row in rows:
+        d   = row["domain_num"]
+        att = row["attempts"] or 0
+        cor = row["correct"]  or 0
+        if att < 5:
+            continue
+        domain_weight = CISSP_DOMAINS.get(d, {}).get("weight", 13)
+        weighted_sum  += (cor / att) * domain_weight
+        active_weight += domain_weight
+    if active_weight == 0:
+        return 0
+    return round((weighted_sum / active_weight) * 1000)
+
+
+# ── CISSP Routes ─────────────────────────────────────────────────────────────
+
+@app.route("/cissp")
+@analyst_required
+def cissp_hub():
+    """CISSP Study Hub — 8-domain progress overview, readiness score, daily goal."""
+    analyst_id = session["user_id"]
+
+    progress_rows = db_fetchall(
+        f"SELECT domain_num, attempts, correct, last_studied_at FROM cissp_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    progress = {r["domain_num"]: r for r in progress_rows}
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    today_row = db_fetchone(
+        f"SELECT COUNT(*) AS cnt FROM cissp_attempts "
+        f"WHERE analyst_id = {PH} AND skipped = 0 AND is_correct IS NOT NULL "
+        f"AND created_at LIKE {PH}",
+        (analyst_id, f"{today}%"),
+    )
+    today_count = today_row["cnt"] if today_row else 0
+
+    total_row = db_fetchone(
+        f"SELECT COUNT(*) AS cnt FROM cissp_attempts "
+        f"WHERE analyst_id = {PH} AND is_correct IS NOT NULL AND skipped = 0",
+        (analyst_id,),
+    )
+    total_answered = total_row["cnt"] if total_row else 0
+
+    readiness_score = _cissp_readiness_score(analyst_id)
+    domains_studied  = sum(1 for p in progress_rows if (p["attempts"] or 0) >= 1)
+    player           = get_player_profile(analyst_id)
+
+    return render_template(
+        "cissp_hub.html",
+        cissp_domains=CISSP_DOMAINS,
+        progress=progress,
+        today_count=today_count,
+        total_answered=total_answered,
+        readiness_score=readiness_score,
+        domains_studied=domains_studied,
+        daily_goal=15,
+        player=player,
+    )
+
+
+@app.route("/cissp/domain/<int:domain_num>")
+@analyst_required
+def cissp_domain(domain_num):
+    """Domain-specific study page — shows progress, generates questions via AJAX."""
+    import json as _json
+    if domain_num not in CISSP_DOMAINS:
+        abort(404)
+
+    analyst_id = session["user_id"]
+    domain     = CISSP_DOMAINS[domain_num]
+
+    progress = db_fetchone(
+        f"SELECT attempts, correct, last_studied_at FROM cissp_progress "
+        f"WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, domain_num),
+    )
+    if not progress:
+        progress = {"attempts": 0, "correct": 0, "last_studied_at": None}
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    session_attempts = db_fetchall(
+        f"SELECT id, scenario, question_text, options_json, correct_answer, user_answer, "
+        f"explanation, mindset, difficulty, is_correct, skipped "
+        f"FROM cissp_attempts "
+        f"WHERE analyst_id = {PH} AND domain_num = {PH} AND created_at LIKE {PH} "
+        f"AND skipped = 0 AND is_correct IS NOT NULL "
+        f"ORDER BY id DESC LIMIT 10",
+        (analyst_id, domain_num, f"{today}%"),
+    )
+    parsed = []
+    for a in session_attempts:
+        a = dict(a)
+        try:
+            a["options"] = _json.loads(a["options_json"])
+        except Exception:
+            a["options"] = {}
+        parsed.append(a)
+
+    player = get_player_profile(analyst_id)
+    return render_template(
+        "cissp_domain.html",
+        domain=domain,
+        domain_num=domain_num,
+        progress=progress,
+        session_attempts=parsed,
+        cissp_domains=CISSP_DOMAINS,
+        player=player,
+    )
+
+
+@app.route("/cissp/domain/<int:domain_num>/question", methods=["POST"])
+@analyst_required
+def cissp_get_question(domain_num):
+    """
+    AJAX — generate a fresh AI-powered CISSP question.
+    Correct answer is stored in DB but NOT returned to the browser.
+    """
+    import json as _json
+    if domain_num not in CISSP_DOMAINS:
+        return jsonify({"error": "Invalid domain"}), 404
+
+    analyst_id = session["user_id"]
+    q          = _generate_cissp_question(domain_num)
+    if not q:
+        return jsonify({"error": "Question generation failed. Is Ollama running at http://localhost:11434?"}), 503
+
+    db_run(
+        f"INSERT INTO cissp_attempts "
+        f"(analyst_id, domain_num, scenario, question_text, options_json, "
+        f" correct_answer, explanation, mindset, difficulty) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id, domain_num,
+            q["scenario"], q["question"],
+            _json.dumps(q["options"]),
+            q["correct"], q["explanation"],
+            q["mindset"], q["difficulty"],
+        ),
+    )
+    attempt_id = db_fetchone(
+        f"SELECT MAX(id) AS aid FROM cissp_attempts WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, domain_num),
+    )["aid"]
+
+    return jsonify({
+        "attempt_id": attempt_id,
+        "scenario":   q["scenario"],
+        "question":   q["question"],
+        "options":    q["options"],
+        "mindset":    q["mindset"],
+        "difficulty": q["difficulty"],
+    })
+
+
+@app.route("/cissp/domain/<int:domain_num>/answer", methods=["POST"])
+@analyst_required
+def cissp_submit_answer(domain_num):
+    """AJAX — score a submitted answer and return feedback."""
+    import json as _json
+    analyst_id  = session["user_id"]
+    data        = request.get_json(force=True, silent=True) or {}
+    attempt_id  = data.get("attempt_id")
+    user_answer = str(data.get("answer", "")).upper().strip()
+
+    if not attempt_id or user_answer not in ("A", "B", "C", "D"):
+        return jsonify({"error": "Invalid request"}), 400
+
+    attempt = db_fetchone(
+        f"SELECT * FROM cissp_attempts WHERE id = {PH} AND analyst_id = {PH} AND domain_num = {PH}",
+        (attempt_id, analyst_id, domain_num),
+    )
+    if not attempt:
+        return jsonify({"error": "Attempt not found"}), 404
+    if attempt["user_answer"] is not None:
+        return jsonify({"error": "Already answered"}), 400
+
+    correct    = attempt["correct_answer"]
+    is_correct = int(user_answer == correct)
+    now_str    = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    db_run(
+        f"UPDATE cissp_attempts SET user_answer = {PH}, is_correct = {PH} WHERE id = {PH}",
+        (user_answer, is_correct, attempt_id),
+    )
+
+    existing_progress = db_fetchone(
+        f"SELECT id FROM cissp_progress WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, domain_num),
+    )
+    if existing_progress:
+        db_run(
+            f"UPDATE cissp_progress SET attempts = attempts + 1, correct = correct + {PH}, "
+            f"last_studied_at = {PH} WHERE analyst_id = {PH} AND domain_num = {PH}",
+            (is_correct, now_str, analyst_id, domain_num),
+        )
+    else:
+        db_run(
+            f"INSERT INTO cissp_progress (analyst_id, domain_num, attempts, correct, last_studied_at) "
+            f"VALUES ({PH},{PH},1,{PH},{PH})",
+            (analyst_id, domain_num, is_correct, now_str),
+        )
+
+    try:
+        options = _json.loads(attempt["options_json"])
+    except Exception:
+        options = {}
+
+    # Award XP — correct gets 10, any attempt gets 2
+    xp_amount = XP_REWARDS["cissp_correct"] if is_correct else XP_REWARDS["cissp_attempt"]
+    xp_result = award_xp(
+        analyst_id, xp_amount,
+        reason=f"CISSP D{domain_num} {'correct' if is_correct else 'attempt'}",
+        source="cissp",
+    )
+
+    return jsonify({
+        "correct":              bool(is_correct),
+        "correct_answer":       correct,
+        "correct_answer_text":  options.get(correct, ""),
+        "explanation":          attempt["explanation"],
+        "xp":                   xp_result,
+    })
+
+
+@app.route("/cissp/domain/<int:domain_num>/skip", methods=["POST"])
+@analyst_required
+def cissp_skip_question(domain_num):
+    """AJAX — skip a question (no progress penalty, generates a fresh one)."""
+    analyst_id = session["user_id"]
+    data       = request.get_json(force=True, silent=True) or {}
+    attempt_id = data.get("attempt_id")
+    if not attempt_id:
+        return jsonify({"error": "Missing attempt_id"}), 400
+    db_run(
+        f"UPDATE cissp_attempts SET skipped = 1 WHERE id = {PH} AND analyst_id = {PH}",
+        (attempt_id, analyst_id),
+    )
+    return jsonify({"ok": True})
+
+
+# --- ROUTE 8c: Breach Intel — Dismiss / Archive / Unarchive (analyst only) ---
+
+@app.route("/breach-intel/<int:item_id>/dismiss", methods=["POST"])
+@analyst_required
+def breach_intel_dismiss(item_id):
+    """Mark an intel item as dismissed so it no longer appears in the feed/ticker."""
+    db_run(f"UPDATE breach_intel SET dismissed = 1 WHERE id = {PH}", (item_id,))
+    return jsonify({"ok": True})
+
+
+@app.route("/breach-intel/<int:item_id>/archive", methods=["POST"])
+@analyst_required
+def breach_intel_archive(item_id):
+    """Move an intel item to the archive (dismissed from feed, saved for reference)."""
+    db_run(f"UPDATE breach_intel SET archived = 1, dismissed = 1 WHERE id = {PH}", (item_id,))
+    return jsonify({"ok": True})
+
+
+@app.route("/breach-intel/<int:item_id>/unarchive", methods=["POST"])
+@analyst_required
+def breach_intel_unarchive(item_id):
+    """Restore an archived item back to the active feed."""
+    db_run(f"UPDATE breach_intel SET archived = 0, dismissed = 0 WHERE id = {PH}", (item_id,))
+    return jsonify({"ok": True})
+
+
+# --- ROUTE: Player Profile ---
+
+@app.route("/profile")
+@analyst_required
+def player_profile_page():
+    """RPG profile page — XP history, level, badges, stats."""
+    analyst_id = session["user_id"]
+    player     = get_player_profile(analyst_id)
+
+    # XP log — last 30 transactions
+    xp_history = db_fetchall(
+        f"SELECT amount, reason, source, created_at FROM xp_log "
+        f"WHERE analyst_id = {PH} ORDER BY id DESC LIMIT 30",
+        (analyst_id,),
+    )
+
+    # Full achievement grid: earned + locked
+    earned_ids = set(player["badges"])
+    all_badges = [
+        {
+            "badge_id": bid,
+            "earned":   bid in earned_ids,
+            **data,
+        }
+        for bid, data in ACHIEVEMENTS.items()
+    ]
+
+    # Per-domain CISSP stats
+    domain_stats = {}
+    for d in range(1, 9):
+        row = db_fetchone(
+            f"SELECT attempts, correct FROM cissp_progress "
+            f"WHERE analyst_id = {PH} AND domain_num = {PH}",
+            (analyst_id, d),
+        )
+        domain_stats[d] = row if row else {"attempts": 0, "correct": 0}
+
+    readiness_score = _cissp_readiness_score(analyst_id)
+
+    return render_template(
+        "player_profile.html",
+        player=player,
+        xp_history=xp_history,
+        all_badges=all_badges,
+        domain_stats=domain_stats,
+        cissp_domains=CISSP_DOMAINS,
+        readiness_score=readiness_score,
+        level_thresholds=LEVEL_THRESHOLDS,
+    )
+
+
+# --- ROUTE: Player XP state (AJAX — used by topbar) ---
+
+@app.route("/player/xp")
+@analyst_required
+def player_xp_state():
+    """Return current XP, level, and streak for the topbar XP bar."""
+    analyst_id = session["user_id"]
+    player     = get_player_profile(analyst_id)
+    return jsonify({
+        "xp":          player["xp"],
+        "level":       player["level"],
+        "level_name":  player["level_name"],
+        "level_icon":  player["level_icon"],
+        "level_pct":   player["level_pct"],
+        "xp_to_next":  player["xp_to_next"],
+        "streak":      player["streak_days"],
+    })
+
+
+# --- ROUTE: System Scanner ---
+
+@app.route("/scan/machine", methods=["POST"])
+@analyst_required
+def scan_machine():
+    """
+    Run a real Windows 11 security audit on the local machine.
+    Calls system_scanner.py to enumerate firewall, users, open ports,
+    Defender, UAC, updates, shared folders. Stores findings in DB.
+    Awards XP for running the scan.
+    """
+    import json as _json
+    try:
+        from system_scanner import run_machine_audit
+        findings = run_machine_audit()
+    except Exception as exc:
+        security_log.warning(f"SCAN_MACHINE_FAILED error={exc}")
+        return jsonify({"error": f"Scan failed: {exc}"}), 500
+
+    analyst_id = session["user_id"]
+    saved = 0
+    for f in findings:
+        # Check if this finding_id already exists unresolved
+        existing = db_fetchone(
+            f"SELECT id FROM system_findings WHERE finding_id = {PH} AND resolved = 0",
+            (f["finding_id"],),
+        )
+        if not existing:
+            db_run(
+                f"INSERT INTO system_findings "
+                f"(finding_id, title, severity, cissp_domain, category, description, recommendation, raw_output, scan_type) "
+                f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+                (
+                    f["finding_id"], f["title"], f["severity"], f["cissp_domain"],
+                    f.get("category", ""), f["description"], f["recommendation"],
+                    f.get("raw_output", ""), "machine",
+                ),
+            )
+            saved += 1
+
+    # Increment scan counter on player profile
+    db_run(
+        f"UPDATE player_profile SET total_scans = total_scans + 1 WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+
+    xp_result = award_xp(analyst_id, XP_REWARDS["scan_run"], "Machine security scan", "scanner")
+
+    return jsonify({
+        "ok":          True,
+        "findings":    len(findings),
+        "new_saved":   saved,
+        "xp":          xp_result,
+    })
+
+
+@app.route("/scan/network", methods=["POST"])
+@analyst_required
+def scan_network():
+    """
+    Discover devices on the local network and scan top ports.
+    Stores findings for any risky open services found.
+    Awards XP for running the scan.
+    """
+    import json as _json
+    try:
+        from system_scanner import run_network_scan
+        findings = run_network_scan()
+    except Exception as exc:
+        security_log.warning(f"SCAN_NETWORK_FAILED error={exc}")
+        return jsonify({"error": f"Scan failed: {exc}"}), 500
+
+    analyst_id = session["user_id"]
+    saved = 0
+    for f in findings:
+        existing = db_fetchone(
+            f"SELECT id FROM system_findings WHERE finding_id = {PH} AND resolved = 0",
+            (f["finding_id"],),
+        )
+        if not existing:
+            db_run(
+                f"INSERT INTO system_findings "
+                f"(finding_id, title, severity, cissp_domain, category, description, recommendation, raw_output, scan_type) "
+                f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+                (
+                    f["finding_id"], f["title"], f["severity"], f["cissp_domain"],
+                    f.get("category", ""), f["description"], f["recommendation"],
+                    f.get("raw_output", ""), "network",
+                ),
+            )
+            saved += 1
+
+    db_run(
+        f"UPDATE player_profile SET total_scans = total_scans + 1 WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+
+    xp_result = award_xp(analyst_id, XP_REWARDS["scan_run"], "Network scan", "scanner")
+
+    return jsonify({
+        "ok":          True,
+        "findings":    len(findings),
+        "new_saved":   saved,
+        "xp":          xp_result,
+    })
+
+
+@app.route("/scan/findings")
+@analyst_required
+def scan_findings():
+    """AJAX — return all open system findings as JSON."""
+    findings = db_fetchall(
+        "SELECT id, finding_id, title, severity, cissp_domain, category, "
+        "description, recommendation, scan_type, created_at "
+        "FROM system_findings WHERE resolved = 0 ORDER BY id DESC"
+    )
+    return jsonify(findings)
+
+
+@app.route("/scan/findings/<int:finding_id>/resolve", methods=["POST"])
+@analyst_required
+def resolve_finding(finding_id):
+    """
+    Mark a system finding as resolved.
+    Awards XP and checks for Fixer achievement.
+    """
+    analyst_id = session["user_id"]
+    now_str    = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    finding = db_fetchone(
+        f"SELECT id, title, cissp_domain FROM system_findings "
+        f"WHERE id = {PH} AND resolved = 0",
+        (finding_id,),
+    )
+    if not finding:
+        return jsonify({"error": "Finding not found or already resolved"}), 404
+
+    db_run(
+        f"UPDATE system_findings SET resolved = 1, resolved_at = {PH} WHERE id = {PH}",
+        (now_str, finding_id),
+    )
+    db_run(
+        f"UPDATE player_profile SET total_findings_resolved = total_findings_resolved + 1 "
+        f"WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["finding_resolved"],
+        f"Resolved: {finding['title'][:60]}", "scanner",
+    )
+
+    return jsonify({"ok": True, "xp": xp_result})
 
 
 # --- Startup ---

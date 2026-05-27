@@ -337,6 +337,77 @@
         }
         .triage-btn:hover { background: #1e2235; color: white; }
 
+        /* ── Ticker dismiss button ── */
+        .ticker-pair { display: inline; }
+        .ticker-dismiss {
+            display: inline-block;
+            margin-left: 6px;
+            color: #333;
+            cursor: pointer;
+            font-size: 0.85em;
+            line-height: 1;
+            vertical-align: middle;
+            transition: color 0.15s;
+            border: none;
+            background: transparent;
+            padding: 0 2px;
+        }
+        .ticker-pair:hover .ticker-dismiss { color: #888; }
+        .ticker-dismiss:hover { color: #ff6a00 !important; }
+
+        /* ── Breach card action bar ── */
+        .breach-card-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #1e2235;
+        }
+        .intel-btn {
+            font-size: 0.72em;
+            padding: 3px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            border: 1px solid #2a2d3a;
+            background: #161923;
+            color: #666;
+            transition: background 0.15s, color 0.15s;
+            font-weight: bold;
+            letter-spacing: 0.03em;
+        }
+        .intel-btn:hover { background: #1e2235; color: #aaa; }
+        .intel-btn-archive { border-color: #441a88; color: #9944ee; background: #120a22; }
+        .intel-btn-archive:hover { background: #1a0e33; color: #bb66ff; }
+        .intel-btn-restore { border-color: #1a4a1a; color: #00b432; background: #0a1a0a; }
+        .intel-btn-restore:hover { background: #0e2010; color: #00ff41; }
+
+        /* ── Archive panel ── */
+        .archive-panel {
+            grid-column: 1 / -1;
+            background: #12151f;
+            border: 1px solid #1e2235;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .archive-toggle {
+            background: #161923;
+            padding: 12px 16px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #888;
+            border-bottom: 1px solid #1e2235;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s;
+        }
+        .archive-toggle:hover { color: #ccc; }
+        .archive-body { padding: 20px; display: none; }
+        .archive-body.open { display: block; }
+
         /* ── Breach intel ticker ── */
         .ticker-bar {
             background: #0a0c14;
@@ -624,17 +695,181 @@
         .btn-reset-checklist:hover { color: #aaa; border-color: #555; }
         .shift-progress { font-size: 0.78em; color: #444; }
         .shift-progress span { color: #ff6a00; font-weight: bold; }
+
+        /* ── CISSP Domain panel ── */
+        .cissp-panel {
+            grid-column: 1 / -1;
+            background: #12151f;
+            border: 1px solid #1e2235;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .cissp-toggle {
+            background: #161923;
+            padding: 12px 16px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #888;
+            border-bottom: 1px solid #1e2235;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s;
+        }
+        .cissp-toggle:hover { color: #ccc; }
+        .cissp-body { padding: 20px; display: none; }
+        .cissp-body.open { display: block; }
+        .cissp-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .cissp-domain-card {
+            background: #0b0e17;
+            border: 1px solid #1e2235;
+            border-radius: 6px;
+            padding: 14px;
+            border-top: 3px solid var(--dcolor, #444);
+            transition: box-shadow 0.2s;
+        }
+        .cissp-domain-card:hover { box-shadow: 0 0 12px var(--dcolor, #444)33; }
+        .cissp-d-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .cissp-d-num {
+            font-size: 0.7em; font-weight: 800; padding: 2px 7px; border-radius: 10px;
+            background: #161923; color: var(--dcolor, #888); border: 1px solid #2a2d3a;
+            white-space: nowrap;
+        }
+        .cissp-d-name { font-size: 0.82em; color: #ccc; font-weight: 700; line-height: 1.25; }
+        .cissp-d-weight { font-size: 0.68em; color: #555; margin-bottom: 6px; }
+        .cissp-d-bar-wrap { height: 4px; background: #1e2235; border-radius: 2px; overflow: hidden; margin: 6px 0; }
+        .cissp-d-bar { height: 100%; border-radius: 2px; background: var(--dcolor, #444); transition: width 0.5s ease; }
+        .cissp-d-stats { font-size: 0.72em; color: #555; display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .cissp-d-study {
+            display: inline-block; font-size: 0.72em; color: var(--dcolor, #888);
+            border: 1px solid var(--dcolor, #444); border-radius: 3px;
+            padding: 3px 10px; text-decoration: none; font-weight: 700;
+            transition: background 0.15s;
+        }
+        .cissp-d-study:hover { background: #161923; }
+        .cissp-readiness-bar-wrap {
+            background: #0b0e17; border: 1px solid #1e2235; border-radius: 5px;
+            padding: 12px 16px; display: flex; align-items: center; gap: 16px;
+        }
+        .readiness-bar-track { flex: 1; height: 10px; background: #1a1a1a; border-radius: 5px; overflow: hidden; }
+        .readiness-bar-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+
+        /* ── System Scanner panel ── */
+        .scanner-panel {
+            grid-column: 1 / -1;
+            background: #12151f;
+            border: 1px solid #1e2235;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .scanner-toggle {
+            background: #161923;
+            padding: 12px 16px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #888;
+            border-bottom: 1px solid #1e2235;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s;
+        }
+        .scanner-toggle:hover { color: #ccc; }
+        .scanner-body { padding: 20px; display: none; }
+        .scanner-body.open { display: block; }
+        .scanner-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+        .btn-scan {
+            background: #0a1a1a; color: #4488ff;
+            border: 1px solid #224488; padding: 9px 20px;
+            border-radius: 4px; font-size: 0.88em; cursor: pointer;
+            font-weight: bold; transition: background 0.15s;
+        }
+        .btn-scan:hover { background: #0e2030; color: #6699ff; }
+        .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; }
+        .scan-status { font-size: 0.82em; color: #555; font-style: italic; }
+
+        /* Finding severity colours */
+        .sev-CRITICAL { --sev-color: #ff2222; background: #2a0000; color: #ff4444; border: 1px solid #880000; }
+        .sev-HIGH     { --sev-color: #ff6a00; background: #2a1400; color: #ff6a00; border: 1px solid #883300; }
+        .sev-MEDIUM   { --sev-color: #cc8800; background: #1a1000; color: #cc8800; border: 1px solid #664400; }
+        .sev-LOW      { --sev-color: #00b432; background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
+        .sev-INFO     { --sev-color: #4488ff; background: #0a1020; color: #4488ff; border: 1px solid #224488; }
+
+        .findings-list { display: flex; flex-direction: column; gap: 10px; }
+        .finding-card {
+            background: #0b0e17;
+            border: 1px solid #1e2235;
+            border-radius: 5px;
+            padding: 14px 16px;
+            border-left: 3px solid var(--sev-color, #444);
+            display: flex; gap: 14px; align-items: flex-start;
+        }
+        .finding-main { flex: 1; }
+        .finding-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .finding-sev-badge {
+            font-size: 0.68em; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 0.05em; padding: 2px 7px; border-radius: 3px;
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .finding-title { font-size: 0.88em; color: #ddd; font-weight: 700; }
+        .finding-desc { font-size: 0.8em; color: #777; line-height: 1.5; margin-bottom: 6px; }
+        .finding-rec {
+            font-size: 0.78em; color: #555; line-height: 1.5;
+            background: #0d1020; padding: 6px 10px; border-radius: 3px;
+            border-left: 2px solid #224488; white-space: pre-wrap; font-family: monospace;
+        }
+        .finding-meta { font-size: 0.7em; color: #333; margin-top: 6px;
+                        display: flex; gap: 12px; }
+        .cissp-domain-tag {
+            font-size: 0.7em; padding: 2px 6px; border-radius: 3px;
+            background: #161923; color: #9944ee; border: 1px solid #441a88;
+            white-space: nowrap;
+        }
+        .btn-resolve {
+            background: #0a1a0a; color: #00b432;
+            border: 1px solid #1a4a1a; padding: 5px 12px;
+            border-radius: 3px; font-size: 0.75em; cursor: pointer;
+            font-weight: bold; white-space: nowrap; flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        .btn-resolve:hover { background: #0e2010; }
     </style>
 </head>
 <body>
 
     <div class="topbar">
         <span class="topbar-brand">&#x1F6E1; Boundry.AI — Control Room</span>
-        <div style="display:flex; align-items:center; gap:24px;">
+        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+            <!-- XP Bar -->
+            {% if player %}
+            <div class="xp-bar-wrap" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;">
+                {% if player.streak_days and player.streak_days >= 2 %}
+                <span class="xp-streak-badge" style="color:#ff8c00;font-weight:700;font-size:12px;" title="{{ player.streak_days }}-day streak">🔥{{ player.streak_days }}d</span>
+                {% endif %}
+                <a href="/profile" style="background:#1a2a1a;border:1px solid #00b432;border-radius:4px;padding:2px 8px;font-weight:700;color:#00b432;font-size:12px;text-decoration:none;white-space:nowrap;" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+                <div style="width:100px;height:7px;background:#1a1a1a;border-radius:4px;overflow:hidden;border:1px solid #333;">
+                    <div id="xp-bar-fill" style="height:100%;background:linear-gradient(90deg,#00b432,#44ff66);border-radius:4px;width:{{ player.level_pct }}%;transition:width 0.6s ease;"></div>
+                </div>
+                <span id="xp-bar-label" style="font-size:11px;color:#555;white-space:nowrap;">{{ "{:,}".format(player.xp) }} XP</span>
+            </div>
+            {% endif %}
             <span class="topbar-user">Analyst: <strong>{{ session['username'] }}</strong></span>
             <nav>
                 <a href="/scorecard">&#x1F4CA; Scorecard</a>
-                <a href="/training" style="color:#00b432; font-weight:bold;">🎓 Training</a>
+                <a href="/training" style="color:#00b432; font-weight:bold;">🎓 SOC Training</a>
+                <a href="/cissp" style="color:#9944ee; font-weight:bold;">📘 CISSP</a>
+                <a href="/profile" style="color:#ffd700; font-weight:bold;">⚔️ Profile</a>
                 <a href="/reports">Client View</a>
                 <a href="/logout">Logout</a>
             </nav>
@@ -648,15 +883,18 @@
         {% if breach_items %}
         <div class="ticker-track" id="ticker-track">
             {% for item in breach_items %}
-            <span class="ticker-item">
-                <span class="ticker-sev-{{ item.severity }}">
-                    {% if item.severity == 'HIGH' %}🔴{% elif item.severity == 'MEDIUM' %}🟡{% else %}🟢{% endif %}
-                    [{{ item.severity }}]
+            <span class="ticker-pair" data-item-id="{{ item.id }}">
+                <span class="ticker-item">
+                    <span class="ticker-sev-{{ item.severity }}">
+                        {% if item.severity == 'HIGH' %}🔴{% elif item.severity == 'MEDIUM' %}🟡{% else %}🟢{% endif %}
+                        [{{ item.severity }}]
+                    </span>
+                    <span style="color:#555; margin: 0 5px;">{{ item.source }}:</span>
+                    <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+                    <button class="ticker-dismiss" onclick="dismissIntelItem({{ item.id }})" title="Remove from feed">✕</button>
                 </span>
-                <span style="color:#555; margin: 0 5px;">{{ item.source }}:</span>
-                <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+                <span class="ticker-dot">⬥</span>
             </span>
-            <span class="ticker-dot">⬥</span>
             {% endfor %}
         </div>
         {% else %}
@@ -712,7 +950,7 @@
                 {% if breach_items %}
                 <div class="breach-cards">
                     {% for item in breach_items %}
-                    <div class="breach-card sev-{{ item.severity }}">
+                    <div class="breach-card sev-{{ item.severity }}" id="breach-card-{{ item.id }}">
                         <div class="breach-card-header">
                             <span class="breach-sev-badge sev-{{ item.severity }}">{{ item.severity }}</span>
                             <span class="breach-title">
@@ -730,12 +968,202 @@
                             <span>{{ item.source }}</span>
                             <span class="local-time" data-utc="{{ item.created_at }}">{{ item.created_at }}</span>
                         </div>
+                        <div class="breach-card-actions">
+                            <button class="intel-btn" onclick="dismissIntelItem({{ item.id }})">✓ Mark Read</button>
+                            <button class="intel-btn intel-btn-archive" onclick="archiveIntelItem({{ item.id }})">📌 Archive</button>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
                 <div style="color:#333; font-style:italic; text-align:center; padding:28px;">
                     No threat intel yet. Click <strong style="color:#666;">Refresh Threat Intel</strong> to pull the latest breach reports.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Archive Panel -->
+        <div class="archive-panel">
+            <div class="archive-toggle" onclick="toggleArchive()">
+                <span>
+                    📁 Archived Intel
+                    {% if archived_items %}
+                        <span style="font-size:0.85em; color:#444; text-transform:none; letter-spacing:0;">
+                            — {{ archived_items|length }} saved item(s)
+                        </span>
+                    {% endif %}
+                </span>
+                <span id="archive-arrow">▼</span>
+            </div>
+            <div class="archive-body" id="archive-body">
+                {% if archived_items %}
+                <div class="breach-cards">
+                    {% for item in archived_items %}
+                    <div class="breach-card sev-{{ item.severity }}" id="archive-card-{{ item.id }}">
+                        <div class="breach-card-header">
+                            <span class="breach-sev-badge sev-{{ item.severity }}">{{ item.severity }}</span>
+                            <span class="breach-title">
+                                {% if item.url %}
+                                <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+                                {% else %}
+                                {{ item.title }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if item.summary %}
+                        <div class="breach-summary">{{ item.summary }}</div>
+                        {% endif %}
+                        <div class="breach-meta">
+                            <span>{{ item.source }}</span>
+                            <span class="local-time" data-utc="{{ item.created_at }}">{{ item.created_at }}</span>
+                        </div>
+                        <div class="breach-card-actions">
+                            <button class="intel-btn intel-btn-restore" onclick="unarchiveIntelItem({{ item.id }})">↩ Restore to Feed</button>
+                            <button class="intel-btn" onclick="deleteArchiveCard({{ item.id }})" style="color:#444; border-color:#222;">🗑 Dismiss</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="color:#333; font-style:italic; text-align:center; padding:28px;">
+                    No archived items yet. Click <strong style="color:#666;">📌 Archive</strong> on any intel card to save it here.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- CISSP Domain Mastery Panel -->
+        <div class="cissp-panel">
+            <div class="cissp-toggle" onclick="toggleCISSP()">
+                <span>
+                    📘 CISSP Domain Mastery
+                    <span style="font-size:0.85em; color:#444; text-transform:none; letter-spacing:0;">
+                        — Readiness:
+                        <span style="color:{% if readiness_score >= 700 %}#00b432{% elif readiness_score >= 500 %}#ff8c00{% else %}#ff4444{% endif %}; font-weight:800;">
+                            {{ readiness_score }} / 1000
+                        </span>
+                    </span>
+                </span>
+                <span id="cissp-arrow">▼</span>
+            </div>
+            <div class="cissp-body" id="cissp-body">
+                <!-- 8-domain grid -->
+                <div class="cissp-grid">
+                    {% for d, info in cissp_domains.items() %}
+                    {% set prog = cissp_progress.get(d, {"attempts": 0, "correct": 0}) %}
+                    {% set att = prog.attempts or 0 %}
+                    {% set cor = prog.correct or 0 %}
+                    {% set pct = ((cor / att * 100) | int) if att > 0 else 0 %}
+                    {% set bar_w = [pct, 100] | min %}
+                    <div class="cissp-domain-card" style="--dcolor: {{ info.color }};">
+                        <div class="cissp-d-header">
+                            <span class="cissp-d-num">D{{ d }}</span>
+                            <span class="cissp-d-name">{{ info.name }}</span>
+                        </div>
+                        <div class="cissp-d-weight">{{ info.weight }}% of exam</div>
+                        <div class="cissp-d-bar-wrap">
+                            <div class="cissp-d-bar" style="width: {{ bar_w }}%;"></div>
+                        </div>
+                        <div class="cissp-d-stats">
+                            <span>{{ att }} attempted</span>
+                            <span>{% if att > 0 %}{{ pct }}% accuracy{% else %}Not started{% endif %}</span>
+                        </div>
+                        {% if info.soc_bridge %}
+                        <div style="font-size:0.68em; color:#9944ee; margin-bottom:6px; background:#120a22; border-radius:3px; padding:3px 6px; border:1px solid #2a1a44;">
+                            🔗 SOC Bridge
+                        </div>
+                        {% endif %}
+                        <a href="/cissp/domain/{{ d }}" class="cissp-d-study">Study →</a>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Readiness bar -->
+                <div class="cissp-readiness-bar-wrap">
+                    <span style="font-size:0.78em; color:#555; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Exam Readiness</span>
+                    <div class="readiness-bar-track">
+                        <div class="readiness-bar-fill" style="
+                            width: {{ [readiness_score / 10, 100] | min }}%;
+                            background: {% if readiness_score >= 700 %}linear-gradient(90deg,#00b432,#44ff66){% elif readiness_score >= 500 %}linear-gradient(90deg,#cc8800,#ffaa00){% else %}linear-gradient(90deg,#aa2200,#ff4400){% endif %};
+                        "></div>
+                    </div>
+                    <span style="font-size:0.88em; font-weight:800; color:{% if readiness_score >= 700 %}#00b432{% elif readiness_score >= 500 %}#ff8c00{% else %}#ff4444{% endif %};">{{ readiness_score }}</span>
+                    <span style="font-size:0.72em; color:#333;">/ 1000 · passing = 700</span>
+                    <a href="/cissp" style="margin-left:auto; font-size:0.78em; color:#9944ee; text-decoration:none; border:1px solid #441a88; padding:4px 12px; border-radius:3px; background:#120a22;">Open Study Hub →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Scanner Panel -->
+        <div class="scanner-panel">
+            <div class="scanner-toggle" onclick="toggleScanner()">
+                <span>
+                    🔎 Real System Scanner
+                    {% if open_findings %}
+                    <span style="font-size:0.85em; color:#444; text-transform:none; letter-spacing:0;">
+                        — <span style="color:#ff6a00; font-weight:800;">{{ open_findings|length }} open finding(s)</span>
+                        · {{ resolved_findings_count }} resolved
+                    </span>
+                    {% else %}
+                    <span style="font-size:0.85em; color:#444; text-transform:none; letter-spacing:0;">— Scan your machine &amp; network to earn XP</span>
+                    {% endif %}
+                </span>
+                <span id="scanner-arrow">▼</span>
+            </div>
+            <div class="scanner-body" id="scanner-body">
+                <div class="scanner-controls">
+                    <button class="btn-scan" id="btn-machine-scan" onclick="runMachineScan()">
+                        🖥️ Scan This Machine
+                    </button>
+                    <button class="btn-scan" id="btn-network-scan" onclick="runNetworkScan()">
+                        🌐 Scan Local Network
+                    </button>
+                    <span id="scan-status" class="scan-status"></span>
+                </div>
+
+                <!-- How it works callout -->
+                <div style="background:#0a1020; border:1px solid #224488; border-radius:5px; padding:12px 16px; margin-bottom:16px; font-size:0.82em; color:#4488ff; line-height:1.6;">
+                    <strong>How it works:</strong> Scans run on YOUR machine (never sent to any cloud).
+                    Machine scan checks firewall, Defender, UAC, Windows Update, user accounts, and listening ports.
+                    Network scan discovers devices on your local /24 and checks for risky open services.
+                    Each finding links to a CISSP domain — fixing it earns XP and teaches the exam concept.
+                </div>
+
+                <!-- Findings list -->
+                {% if open_findings %}
+                <div style="font-size:0.8em; color:#555; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.06em;">
+                    Open Findings ({{ open_findings|length }}) — click Resolve when you've fixed it
+                </div>
+                <div class="findings-list" id="findings-list">
+                    {% for f in open_findings %}
+                    <div class="finding-card sev-{{ f.severity }}" id="finding-card-{{ f.id }}">
+                        <div class="finding-main">
+                            <div class="finding-header">
+                                <span class="finding-sev-badge sev-{{ f.severity }}">{{ f.severity }}</span>
+                                <span class="finding-title">{{ f.title }}</span>
+                                <span class="cissp-domain-tag">D{{ f.cissp_domain }}: {{ cissp_domains.get(f.cissp_domain, {}).get("name", "") | truncate(25, True, "…") }}</span>
+                            </div>
+                            <div class="finding-desc">{{ f.description }}</div>
+                            {% if f.recommendation %}
+                            <div class="finding-rec">{{ f.recommendation }}</div>
+                            {% endif %}
+                            <div class="finding-meta">
+                                <span>{{ f.scan_type | upper }} scan</span>
+                                <span>{{ f.created_at[:16] if f.created_at else '' }}</span>
+                            </div>
+                        </div>
+                        <button class="btn-resolve" onclick="resolveFinding({{ f.id }})">
+                            ✓ Resolve<br>+25 XP
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div id="findings-list">
+                    <div style="color:#333; font-style:italic; text-align:center; padding:28px;">
+                        No open findings yet — run a scan to check your machine security.
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -917,6 +1345,218 @@
                 <p style="font-size:0.75em; color:#333; margin: 16px 0 0; text-align:right;">
                     Reference: <a href="https://attack.mitre.org" target="_blank" style="color:#444;">attack.mitre.org</a>
                 </p>
+
+                <!-- ── Rapid Triage Differentiation Guide ── -->
+                <div style="margin-top:28px; border-top:1px solid #1e2235; padding-top:24px;">
+                    <div style="font-size:0.72em; text-transform:uppercase; letter-spacing:0.1em; color:#444; margin-bottom:20px;">
+                        ⚡ Rapid TTP Disambiguation — Differential Signal Analysis
+                        <span style="font-size:0.9em; color:#333; text-transform:none; letter-spacing:0; margin-left:8px;">
+                            Similar detection signals, different techniques — here's how to tell them apart at first glance
+                        </span>
+                    </div>
+
+                    <!-- Attack Family 1: Credential-Based Attacks -->
+                    <div style="margin-bottom:28px;">
+                        <div style="font-size:0.78em; font-weight:bold; color:#ff6a00; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                            <span style="background:#2a1400; border:1px solid #883300; padding:2px 8px; border-radius:3px;">Attack Family 1</span>
+                            Credential-Based Attacks — all produce LOGIN events
+                        </div>
+                        <div style="background:#0b0e17; border:1px solid #1e2235; border-radius:6px; overflow:hidden;">
+                            <!-- Decision tree header -->
+                            <div style="background:#161923; padding:10px 16px; font-size:0.75em; color:#555; font-family:monospace; border-bottom:1px solid #1e2235;">
+                                You see: <span style="color:#ff6a00;">LOGIN_FAILED</span> and/or <span style="color:#00b432;">LOGIN_SUCCESS</span> events. First question: <em style="color:#aaa;">What is the IP-to-account ratio?</em>
+                            </div>
+                            <table style="width:100%; border-collapse:collapse; font-size:0.8em;">
+                                <thead>
+                                    <tr>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:14%;">Technique</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:20%;">IP Pattern</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:20%;">Account Pattern</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:25%;">Smoking Gun Signal</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235;">Worst Case</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid #141720;">
+                                        <td style="padding:10px 14px; font-family:monospace; color:#ff6a00; font-size:0.85em; font-weight:bold;">T1110<br><span style="color:#555; font-size:0.9em;">Brute Force</span></td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#9944ee; font-family:monospace; font-size:0.9em;">1 IP</span> → 1 account</td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#ff6a00; font-weight:bold;">High failures</span> on same username (5+)</td>
+                                        <td style="padding:10px 14px; color:#888; font-size:0.85em;">Many <code style="background:#161923;padding:1px 4px;border-radius:2px;color:#ff8855;">LOGIN_FAILED</code> → same user, same IP. Attempt count rising over time.</td>
+                                        <td style="padding:10px 14px; color:#ff4444; font-size:0.85em; font-weight:bold;">LOGIN_SUCCESS from that same IP after failure storm = account compromised</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid #141720; background:#0d1020;">
+                                        <td style="padding:10px 14px; font-family:monospace; color:#ff8833; font-size:0.85em; font-weight:bold;">T1110.003<br><span style="color:#555; font-size:0.9em;">Password Spray</span></td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#9944ee; font-family:monospace; font-size:0.9em;">1 IP</span> → many accounts</td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#cc8800; font-weight:bold;">Low failures</span> per account (1–2 each)</td>
+                                        <td style="padding:10px 14px; color:#888; font-size:0.85em;"><code style="background:#161923;padding:1px 4px;border-radius:2px;color:#ff8855;">extra</code> field on LOGIN_FAILED shows <code style="background:#161923;padding:1px 4px;border-radius:2px;color:#cc8800;">sprayed_password=X</code> — same password tried across all accounts</td>
+                                        <td style="padding:10px 14px; color:#ff8833; font-size:0.85em; font-weight:bold;">One LOGIN_SUCCESS after low-failure spray = the sprayed password worked on at least one account</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid #141720;">
+                                        <td style="padding:10px 14px; font-family:monospace; color:#ff9944; font-size:0.85em; font-weight:bold;">T1110.004<br><span style="color:#555; font-size:0.9em;">Credential Stuffing</span></td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#9944ee; font-family:monospace; font-size:0.9em;">1 IP</span> → many accounts</td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#cc8800; font-weight:bold;">Low failures</span> per account — <em>no shared password marker</em></td>
+                                        <td style="padding:10px 14px; color:#888; font-size:0.85em;">Same as spray pattern but <strong style="color:#aaa;">NO</strong> <code style="background:#161923;padding:1px 4px;border-radius:2px;color:#ff8855;">sprayed_password</code> field. Each account gets a unique credential → suggests a <strong>breach dump</strong>.</td>
+                                        <td style="padding:10px 14px; color:#ff8833; font-size:0.85em; font-weight:bold;">LOGIN_SUCCESS mid-spray = one real breached credential matched a live account</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid #141720; background:#0d1020;">
+                                        <td style="padding:10px 14px; font-family:monospace; color:#aa66ff; font-size:0.85em; font-weight:bold;">T1589.001<br><span style="color:#555; font-size:0.9em;">Account Enum</span></td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#9944ee; font-family:monospace; font-size:0.9em;">1 IP</span> → rapid probing</td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#aa66ff; font-weight:bold;">Rapid username probes</span>, very low failure depth</td>
+                                        <td style="padding:10px 14px; color:#888; font-size:0.85em;"><code style="background:#161923;padding:1px 4px;border-radius:2px;color:#7755cc;">ACCOUNT_ENUM</code> events with 6+ different usernames from same IP, very fast cadence. Pre-attack reconnaissance — the shopping list phase.</td>
+                                        <td style="padding:10px 14px; color:#aa66ff; font-size:0.85em; font-weight:bold;">Often precedes brute force or stuffing on the confirmed usernames — watch for followup LOGIN_FAILED burst</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 14px; font-family:monospace; color:#00b432; font-size:0.85em; font-weight:bold;">T1078<br><span style="color:#555; font-size:0.9em;">Valid Accounts</span></td>
+                                        <td style="padding:10px 14px; color:#bbb;">Any IP</td>
+                                        <td style="padding:10px 14px; color:#bbb;"><span style="color:#00b432; font-weight:bold;">Zero failures</span> — credentials already known</td>
+                                        <td style="padding:10px 14px; color:#888; font-size:0.85em;"><code style="background:#161923;padding:1px 4px;border-radius:2px;color:#00b432;">LOGIN_SUCCESS</code> with <code style="background:#161923;padding:1px 4px;border-radius:2px;color:#ff8855;">new_ip=true</code> or <code style="background:#161923;padding:1px 4px;border-radius:2px;color:#ff8855;">unusual_hour=true</code>. No failure precursor. Credentials were stolen (phishing/breach), not guessed.</td>
+                                        <td style="padding:10px 14px; color:#ff4444; font-size:0.85em; font-weight:bold;">Hardest to detect — looks like a legitimate login. Follow-up PRIV_ESC_ATTEMPT from same session confirms ATO (Account Takeover)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <!-- Cheat sheet callout -->
+                            <div style="padding:12px 16px; background:#0a0c14; border-top:1px solid #1e2235; font-size:0.78em; color:#555; line-height:1.7; font-family:monospace;">
+                                <span style="color:#ff6a00; font-weight:bold;">QUICK CALL:</span>
+                                <span style="color:#777;">
+                                    Many fails, 1 account → <span style="color:#ff6a00;">Brute</span> &nbsp;|&nbsp;
+                                    Few fails, many accounts + spray marker → <span style="color:#ff8833;">Spray</span> &nbsp;|&nbsp;
+                                    Few fails, many accounts, no marker → <span style="color:#ff9944;">Stuffing</span> &nbsp;|&nbsp;
+                                    Rapid probes, no cred attempts → <span style="color:#aa66ff;">Enum (Recon)</span> &nbsp;|&nbsp;
+                                    Success, no failures, weird context → <span style="color:#00b432;">ATO (T1078)</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attack Family 2: Web Injection Attacks -->
+                    <div style="margin-bottom:28px;">
+                        <div style="font-size:0.78em; font-weight:bold; color:#9944ee; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                            <span style="background:#1a0a2a; border:1px solid #441a88; padding:2px 8px; border-radius:3px;">Attack Family 2</span>
+                            Web Injection Attacks — all produce suspicious HTTP payload events
+                        </div>
+                        <div style="background:#0b0e17; border:1px solid #1e2235; border-radius:6px; overflow:hidden;">
+                            <div style="background:#161923; padding:10px 16px; font-size:0.75em; color:#555; font-family:monospace; border-bottom:1px solid #1e2235;">
+                                You see: <span style="color:#9944ee;">SEARCH</span> / <span style="color:#ff9944;">XSS_ATTEMPT</span> / <span style="color:#cc9900;">DIRECTORY_TRAVERSAL</span> events with a suspicious payload. First question: <em style="color:#aaa;">What language is in the payload?</em>
+                            </div>
+                            <table style="width:100%; border-collapse:collapse; font-size:0.8em;">
+                                <thead>
+                                    <tr>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:14%;">Technique</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:22%;">Payload Language</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:22%;">Example IOC</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:22%;">Target (What They Want)</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235;">Blast Radius if Successful</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid #141720;">
+                                        <td style="padding:10px 14px; font-family:monospace; color:#ff8833; font-size:0.85em; font-weight:bold;">T1190<br><span style="color:#555; font-size:0.9em;">SQL Injection</span></td>
+                                        <td style="padding:10px 14px; color:#ff8855; font-family:monospace; font-size:0.85em;"><strong>SQL syntax</strong><br>SELECT, UNION,<br>OR 1=1, DROP, --</td>
+                                        <td style="padding:10px 14px; font-family:monospace; color:#888; font-size:0.82em;"><code style="background:#161923;padding:1px 4px;border-radius:2px;">' OR '1'='1</code><br><code style="background:#161923;padding:1px 4px;border-radius:2px;">UNION SELECT username,password</code></td>
+                                        <td style="padding:10px 14px; color:#bbb; font-size:0.85em;"><strong style="color:#ff8833;">The database</strong> — credential extraction, data dump, auth bypass, or destructive payload (DROP TABLE)</td>
+                                        <td style="padding:10px 14px; color:#ff4444; font-size:0.85em;">Full DB compromise. All credentials, PII, financial data exposed. Complete data confidentiality breach.</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid #141720; background:#0d1020;">
+                                        <td style="padding:10px 14px; font-family:monospace; color:#9944ee; font-size:0.85em; font-weight:bold;">T1059.007<br><span style="color:#555; font-size:0.9em;">XSS</span></td>
+                                        <td style="padding:10px 14px; color:#bb88ff; font-family:monospace; font-size:0.85em;"><strong>HTML / JavaScript</strong><br>&lt;script&gt;, onerror=,<br>javascript:, &lt;svg&gt;</td>
+                                        <td style="padding:10px 14px; font-family:monospace; color:#888; font-size:0.82em;"><code style="background:#161923;padding:1px 4px;border-radius:2px;">&lt;script&gt;alert(1)&lt;/script&gt;</code><br><code style="background:#161923;padding:1px 4px;border-radius:2px;">&lt;img onerror=fetch(...)&gt;</code></td>
+                                        <td style="padding:10px 14px; color:#bbb; font-size:0.85em;"><strong style="color:#9944ee;">Other users' browsers</strong> — session cookie theft, credential harvesting, malicious redirects, defacement</td>
+                                        <td style="padding:10px 14px; color:#ff8833; font-size:0.85em;">Stored XSS = every user who loads the page is compromised. Session hijacking at scale.</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 14px; font-family:monospace; color:#cc9900; font-size:0.85em; font-weight:bold;">T1083<br><span style="color:#555; font-size:0.9em;">Dir Traversal</span></td>
+                                        <td style="padding:10px 14px; color:#cc9900; font-family:monospace; font-size:0.85em;"><strong>File path syntax</strong><br>../, %2e%2e%2f,<br>/etc/passwd, \windows\</td>
+                                        <td style="padding:10px 14px; font-family:monospace; color:#888; font-size:0.82em;"><code style="background:#161923;padding:1px 4px;border-radius:2px;">../../etc/passwd</code><br><code style="background:#161923;padding:1px 4px;border-radius:2px;">%2e%2e%2fsystem32</code></td>
+                                        <td style="padding:10px 14px; color:#bbb; font-size:0.85em;"><strong style="color:#cc9900;">The server filesystem</strong> — reading config files, credentials, private keys, source code outside the web root</td>
+                                        <td style="padding:10px 14px; color:#cc8800; font-size:0.85em;">Server credentials and private keys exposed. Could enable full server takeover if /etc/shadow or .env files are reached.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div style="padding:12px 16px; background:#0a0c14; border-top:1px solid #1e2235; font-size:0.78em; color:#555; line-height:1.7; font-family:monospace;">
+                                <span style="color:#9944ee; font-weight:bold;">QUICK CALL:</span>
+                                <span style="color:#777;">
+                                    SQL keywords in payload → <span style="color:#ff8833;">SQLi (targets DB)</span> &nbsp;|&nbsp;
+                                    HTML/JS tags in payload → <span style="color:#9944ee;">XSS (targets other users)</span> &nbsp;|&nbsp;
+                                    Path sequences (../) → <span style="color:#cc9900;">Traversal (targets filesystem)</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attack Family 3: Post-Authentication Privilege Abuse -->
+                    <div style="margin-bottom:16px;">
+                        <div style="font-size:0.78em; font-weight:bold; color:#4488ff; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                            <span style="background:#0a1020; border:1px solid #224488; padding:2px 8px; border-radius:3px;">Attack Family 3</span>
+                            Post-Authentication Privilege Abuse — both require a prior LOGIN_SUCCESS
+                        </div>
+                        <div style="background:#0b0e17; border:1px solid #1e2235; border-radius:6px; overflow:hidden;">
+                            <div style="background:#161923; padding:10px 16px; font-size:0.75em; color:#555; font-family:monospace; border-bottom:1px solid #1e2235;">
+                                You see: <span style="color:#00b432;">LOGIN_SUCCESS</span> followed by suspicious activity. First question: <em style="color:#aaa;">Was the login itself suspicious, or is it what they did AFTER?</em>
+                            </div>
+                            <table style="width:100%; border-collapse:collapse; font-size:0.8em;">
+                                <thead>
+                                    <tr>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:14%;">Technique</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:22%;">The Login Event</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:22%;">Post-Login Activity</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235; width:22%;">Smoking Gun</th>
+                                        <th style="padding:10px 14px; text-align:left; background:#12151f; color:#555; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1e2235;">CISSP Principle Violated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid #141720;">
+                                        <td style="padding:10px 14px; font-family:monospace; color:#ff6600; font-size:0.85em; font-weight:bold;">T1548<br><span style="color:#555; font-size:0.9em;">Priv Esc</span></td>
+                                        <td style="padding:10px 14px; color:#bbb; font-size:0.85em;"><span style="color:#00b432;">Normal login</span> — nothing anomalous about the login itself. Standard IP, standard hour.</td>
+                                        <td style="padding:10px 14px; color:#bbb; font-size:0.85em;"><span style="color:#ff6600; font-weight:bold;">Suspicious routes accessed</span> after login: <code style="background:#161923;padding:1px 4px;border-radius:2px;font-size:0.9em;">/admin</code>, <code style="background:#161923;padding:1px 4px;border-radius:2px;font-size:0.9em;">/.env</code>, <code style="background:#161923;padding:1px 4px;border-radius:2px;font-size:0.9em;">/api/admin</code></td>
+                                        <td style="padding:10px 14px; color:#888; font-size:0.85em;"><code style="background:#161923;padding:1px 4px;border-radius:2px;color:#ff8855;">PRIV_ESC_ATTEMPT</code> events. The indicator is the <em>route pattern</em>, not the login context.</td>
+                                        <td style="padding:10px 14px; color:#ff6600; font-size:0.85em;">Least Privilege (IAM). Authenticated user probing beyond their authorised scope.</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 14px; font-family:monospace; color:#00b432; font-size:0.85em; font-weight:bold;">T1078<br><span style="color:#555; font-size:0.9em;">Valid Accounts</span></td>
+                                        <td style="padding:10px 14px; color:#bbb; font-size:0.85em;"><span style="color:#ff4444; font-weight:bold;">The login IS the anomaly</span> — <code style="background:#161923;padding:1px 4px;border-radius:2px;font-size:0.9em;">new_ip=true</code> or <code style="background:#161923;padding:1px 4px;border-radius:2px;font-size:0.9em;">unusual_hour=true</code> in the <code>extra</code> field</td>
+                                        <td style="padding:10px 14px; color:#bbb; font-size:0.85em;">May appear normal — no PRIV_ESC events. The threat actor behaves legitimately to avoid detection.</td>
+                                        <td style="padding:10px 14px; color:#888; font-size:0.85em;">Contextual anomaly on the <code style="background:#161923;padding:1px 4px;border-radius:2px;color:#00b432;">LOGIN_SUCCESS</code> itself. No failure precursor. Zero brute force indicator.</td>
+                                        <td style="padding:10px 14px; color:#00b432; font-size:0.85em;">Authentication integrity (D5 IAM). Credential compromise via out-of-band vector (phishing, breach).</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div style="padding:12px 16px; background:#0a0c14; border-top:1px solid #1e2235; font-size:0.78em; color:#555; line-height:1.7; font-family:monospace;">
+                                <span style="color:#4488ff; font-weight:bold;">QUICK CALL:</span>
+                                <span style="color:#777;">
+                                    Weird login context (new IP / odd hour) → <span style="color:#00b432;">T1078 ATO</span> — investigate the login event itself &nbsp;|&nbsp;
+                                    Normal login + suspicious route probing → <span style="color:#ff6600;">T1548 Priv Esc</span> — investigate what they accessed after
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- The overlap that trips everyone up -->
+                    <div style="background:#0d0a14; border:1px solid #441a88; border-radius:6px; padding:16px 18px;">
+                        <div style="font-size:0.75em; text-transform:uppercase; letter-spacing:0.07em; color:#9944ee; font-weight:bold; margin-bottom:10px;">
+                            🧠 The Overlap That Trips Analysts — Spray vs. Stuffing
+                        </div>
+                        <div style="font-size:0.82em; color:#999; line-height:1.7;">
+                            <strong style="color:#ddd;">T1110.003 (Spray) and T1110.004 (Stuffing) look identical</strong> at the IP/account level: same IP, low failure count per account, many accounts targeted. The single differentiator is the <strong style="color:#cc8800;">sprayed_password</strong> field in the event's <code style="background:#1a1a1a; padding:1px 5px; border-radius:2px; color:#ff8855;">extra</code> column:
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+                            <div style="background:#1a1000; border:1px solid #664400; border-radius:4px; padding:10px 14px;">
+                                <div style="font-size:0.72em; color:#cc8800; text-transform:uppercase; letter-spacing:0.05em; font-weight:bold; margin-bottom:6px;">T1110.003 — Password Spray</div>
+                                <div style="font-family:monospace; font-size:0.82em; color:#ff8855;">extra: "sprayed_password=Summer2024!"</div>
+                                <div style="font-size:0.78em; color:#666; margin-top:6px;">One password used against all accounts. Attacker picked a likely common password from a wordlist. <strong style="color:#aaa;">Low-skill, high-volume</strong>.</div>
+                            </div>
+                            <div style="background:#1a1400; border:1px solid #884400; border-radius:4px; padding:10px 14px;">
+                                <div style="font-size:0.72em; color:#ff9944; text-transform:uppercase; letter-spacing:0.05em; font-weight:bold; margin-bottom:6px;">T1110.004 — Credential Stuffing</div>
+                                <div style="font-family:monospace; font-size:0.82em; color:#ff8855;">extra: "reason=invalid_credentials"</div>
+                                <div style="font-size:0.78em; color:#666; margin-top:6px;">No shared password. Each account gets its own credential pair from a breach dump. <strong style="color:#aaa;">Higher-skill, targeted</strong> — attacker already has a list from a previous breach.</div>
+                            </div>
+                        </div>
+                        <div style="font-size:0.78em; color:#555; margin-top:10px; font-style:italic; line-height:1.5;">
+                            CISSP exam perspective: Both violate D5 (IAM authentication controls) but Stuffing indicates a pre-existing data breach (D7: Incident Response trigger), while Spray indicates a weak password policy (D5: access control failure).
+                        </div>
+                    </div>
+
+                </div><!-- end differentiation guide -->
+
             </div>
         </div>
 
@@ -1287,13 +1927,158 @@
             else { body.classList.add('open'); arrow.textContent = '▲'; }
         }
 
+        function toggleArchive() {
+            var body = document.getElementById('archive-body');
+            var arrow = document.getElementById('archive-arrow');
+            if (body.classList.contains('open')) { body.classList.remove('open'); arrow.textContent = '▼'; }
+            else { body.classList.add('open'); arrow.textContent = '▲'; }
+        }
+
         function toggleMitre() {
             var body = document.getElementById('mitre-body');
             var arrow = document.getElementById('mitre-arrow');
             if (body.classList.contains('open')) { body.classList.remove('open'); arrow.textContent = '▼'; }
             else { body.classList.add('open'); arrow.textContent = '▲'; }
         }
-    </script>
 
+        // ── CISSP panel toggle ──
+        function toggleCISSP() {
+            var body = document.getElementById('cissp-body');
+            var arrow = document.getElementById('cissp-arrow');
+            if (body.classList.contains('open')) { body.classList.remove('open'); arrow.textContent = '▼'; }
+            else { body.classList.add('open'); arrow.textContent = '▲'; }
+        }
+
+        // ── Scanner panel toggle ──
+        function toggleScanner() {
+            var body = document.getElementById('scanner-body');
+            var arrow = document.getElementById('scanner-arrow');
+            if (body.classList.contains('open')) { body.classList.remove('open'); arrow.textContent = '▼'; }
+            else { body.classList.add('open'); arrow.textContent = '▲'; }
+        }
+
+        // ── Run machine scan ──
+        function runMachineScan() {
+            var btn = document.getElementById('btn-machine-scan');
+            var status = document.getElementById('scan-status');
+            btn.disabled = true;
+            status.textContent = '⟳ Scanning machine… (may take 10–30 seconds)';
+            fetch('/scan/machine', {method: 'POST'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    btn.disabled = false;
+                    if (d.error) {
+                        status.textContent = '✗ ' + d.error;
+                        return;
+                    }
+                    status.textContent = '✓ Found ' + d.findings + ' checks · ' + d.new_saved + ' new finding(s) saved.';
+                    if (d.xp) handleXpResult(d.xp);
+                    if (d.new_saved > 0) setTimeout(function() { location.reload(); }, 2000);
+                })
+                .catch(function(e) { btn.disabled = false; status.textContent = '✗ Scan failed — is Flask running?'; });
+        }
+
+        // ── Run network scan ──
+        function runNetworkScan() {
+            var btn = document.getElementById('btn-network-scan');
+            var status = document.getElementById('scan-status');
+            btn.disabled = true;
+            status.textContent = '⟳ Scanning local network… (may take 20–60 seconds)';
+            fetch('/scan/network', {method: 'POST'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    btn.disabled = false;
+                    if (d.error) {
+                        status.textContent = '✗ ' + d.error;
+                        return;
+                    }
+                    status.textContent = '✓ Discovered ' + d.findings + ' devices/services · ' + d.new_saved + ' new finding(s) saved.';
+                    if (d.xp) handleXpResult(d.xp);
+                    if (d.new_saved > 0) setTimeout(function() { location.reload(); }, 2000);
+                })
+                .catch(function(e) { btn.disabled = false; status.textContent = '✗ Scan failed.'; });
+        }
+
+        // ── Resolve a finding ──
+        function resolveFinding(id) {
+            var card = document.getElementById('finding-card-' + id);
+            if (!card) return;
+            fetch('/scan/findings/' + id + '/resolve', {method: 'POST'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.error) { alert(d.error); return; }
+                    card.style.transition = 'opacity 0.3s';
+                    card.style.opacity = '0';
+                    setTimeout(function() { card.remove(); }, 300);
+                    if (d.xp) handleXpResult(d.xp);
+                })
+                .catch(function() {});
+        }
+
+        // ── Intel item actions ──
+
+        // Mark as read — removes from ticker and feed cards, no page reload
+        function dismissIntelItem(id) {
+            fetch('/breach-intel/' + id + '/dismiss', {method: 'POST'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.ok) return;
+                    // Remove all ticker copies (original + JS duplicate)
+                    document.querySelectorAll('[data-item-id="' + id + '"]').forEach(function(el) { el.remove(); });
+                    // Remove the feed card
+                    var card = document.getElementById('breach-card-' + id);
+                    if (card) {
+                        card.style.transition = 'opacity 0.2s';
+                        card.style.opacity = '0';
+                        setTimeout(function() { card.remove(); }, 200);
+                    }
+                })
+                .catch(function() {});
+        }
+
+        // Archive — saves item; reloads to show it in the archive panel
+        function archiveIntelItem(id) {
+            fetch('/breach-intel/' + id + '/archive', {method: 'POST'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.ok) return;
+                    // Remove from ticker and feed immediately
+                    document.querySelectorAll('[data-item-id="' + id + '"]').forEach(function(el) { el.remove(); });
+                    var card = document.getElementById('breach-card-' + id);
+                    if (card) card.remove();
+                    // Reload to populate the archive panel
+                    location.reload();
+                })
+                .catch(function() {});
+        }
+
+        // Restore from archive — reloads to show item back in feed
+        function unarchiveIntelItem(id) {
+            fetch('/breach-intel/' + id + '/unarchive', {method: 'POST'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.ok) return;
+                    location.reload();
+                })
+                .catch(function() {});
+        }
+
+        // Dismiss from archive (just remove the card visually — item stays dismissed in DB)
+        function deleteArchiveCard(id) {
+            fetch('/breach-intel/' + id + '/dismiss', {method: 'POST'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.ok) return;
+                    var card = document.getElementById('archive-card-' + id);
+                    if (card) {
+                        card.style.transition = 'opacity 0.2s';
+                        card.style.opacity = '0';
+                        setTimeout(function() { card.remove(); }, 200);
+                    }
+                })
+                .catch(function() {});
+        }
+    </script>
+    <script src="/static/game.js"></script>
 </body>
 </html>

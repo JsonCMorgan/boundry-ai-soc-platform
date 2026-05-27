@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boundry.AI — CISSP D{{ domain_num }}: {{ domain.name }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; padding: 0; }
+
+        /* ── Top bar ── */
+        .topbar {
+            background: #12151f; border-bottom: 2px solid {{ domain.color }}33;
+            padding: 14px 32px; display: flex; align-items: center;
+            justify-content: space-between; position: sticky; top: 0; z-index: 50;
+        }
+        .topbar-brand { font-size: 1em; font-weight: bold; color: {{ domain.color }}; letter-spacing: 0.03em; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 20px; font-size: 0.85em; transition: color 0.15s; }
+        .topbar nav a:hover { color: #00b432; }
+
+        /* ── Main layout ── */
+        .main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Domain header ── */
+        .domain-header {
+            background: #12151f; border: 1px solid #1e2235;
+            border-top: 4px solid {{ domain.color }};
+            border-radius: 6px; padding: 22px 24px; margin-bottom: 24px;
+        }
+        .domain-header-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+        .domain-num-badge {
+            font-size: 0.8em; font-weight: bold; font-family: monospace;
+            background: #161923; color: {{ domain.color }};
+            border: 1px solid {{ domain.color }}44; padding: 3px 10px; border-radius: 3px;
+        }
+        .domain-name-large { font-size: 1.3em; font-weight: bold; color: #eee; }
+        .domain-weight-badge {
+            font-size: 0.8em; color: {{ domain.color }}; font-weight: bold;
+            background: #0b0e17; border: 1px solid #1e2235; padding: 3px 10px; border-radius: 10px;
+        }
+        .domain-topics { display: flex; flex-wrap: wrap; gap: 6px; }
+        .topic-tag {
+            font-size: 0.72em; background: #161923; color: #888;
+            border: 1px solid #2a2d3a; padding: 2px 8px; border-radius: 10px;
+        }
+        .topic-tag:hover { color: #ccc; border-color: #444; }
+
+        /* ── Progress bar ── */
+        .progress-bar-wrap {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 16px 20px; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+        }
+        .progress-stat { text-align: center; min-width: 70px; }
+        .progress-stat-val { font-size: 1.5em; font-weight: bold; color: {{ domain.color }}; }
+        .progress-stat-lbl { font-size: 0.7em; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+        .progress-bar-outer { flex: 1; background: #0b0e17; border: 1px solid #1e2235; border-radius: 4px; height: 10px; overflow: hidden; min-width: 100px; }
+        .progress-bar-inner { height: 100%; border-radius: 4px; background: {{ domain.color }}; transition: width 0.5s; box-shadow: 0 0 8px {{ domain.color }}66; }
+
+        /* ── SOC bridge ── */
+        .soc-bridge {
+            background: #120a22; border: 1px solid #441a88; border-left: 3px solid #9944ee;
+            border-radius: 5px; padding: 12px 16px; margin-bottom: 24px;
+            font-size: 0.82em; color: #9977cc; line-height: 1.6;
+        }
+        .soc-bridge strong { color: #bb88ff; }
+
+        /* ── Question card ── */
+        .question-card {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            margin-bottom: 24px; overflow: hidden;
+        }
+        .question-card-header {
+            background: #161923; padding: 12px 18px;
+            display: flex; align-items: center; gap: 10px;
+            border-bottom: 1px solid #1e2235;
+        }
+        .mindset-badge {
+            font-size: 0.72em; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 0.05em; padding: 2px 10px; border-radius: 10px;
+        }
+        .mindset-manager  { background: #2a1400; color: #ff8833; border: 1px solid #884400; }
+        .mindset-technical{ background: #0a1422; color: #4488ff; border: 1px solid #224488; }
+        .mindset-both     { background: #120a22; color: #9944ee; border: 1px solid #441a88; }
+        .difficulty-dots { display: flex; gap: 3px; margin-left: auto; }
+        .d-dot { width: 8px; height: 8px; border-radius: 50%; background: #222; border: 1px solid #2a2d3a; }
+        .d-dot.filled { background: {{ domain.color }}; border-color: {{ domain.color }}; }
+
+        .question-body { padding: 22px 22px 16px; }
+        .scenario-text { font-size: 0.9em; color: #bbb; line-height: 1.7; margin-bottom: 18px; padding: 14px 16px; background: #0b0e17; border: 1px solid #1e2235; border-radius: 4px; border-left: 3px solid {{ domain.color }}44; }
+        .question-text { font-size: 0.95em; color: #ddd; font-weight: bold; margin-bottom: 18px; }
+
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+        @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
+        .option-btn {
+            background: #0b0e17; border: 1px solid #2a2d3a; border-radius: 5px;
+            padding: 12px 14px; text-align: left; cursor: pointer;
+            font-size: 0.88em; color: #aaa; transition: all 0.15s;
+            display: flex; gap: 10px; align-items: flex-start;
+        }
+        .option-btn:hover:not(:disabled) { background: #161923; border-color: {{ domain.color }}66; color: #ddd; }
+        .option-btn:disabled { cursor: default; }
+        .option-btn.selected { border-color: {{ domain.color }}; background: #161923; color: #eee; }
+        .option-btn.correct  { border-color: #00b432; background: #0a1a0a; color: #00ff41; }
+        .option-btn.wrong    { border-color: #ff6a00; background: #1a0a00; color: #ff9944; }
+        .option-label { font-weight: bold; color: {{ domain.color }}; min-width: 16px; font-family: monospace; }
+        .option-btn.correct .option-label  { color: #00b432; }
+        .option-btn.wrong   .option-label  { color: #ff6a00; }
+
+        .question-actions { display: flex; gap: 10px; align-items: center; padding: 0 22px 18px; }
+        .btn-skip {
+            background: transparent; color: #444; border: 1px solid #222;
+            padding: 6px 14px; border-radius: 4px; font-size: 0.78em; cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .btn-skip:hover { color: #888; border-color: #555; }
+
+        /* ── Generating spinner ── */
+        .generating-state { padding: 48px 24px; text-align: center; }
+        .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid #1e2235; border-top-color: {{ domain.color }}; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .generating-label { font-size: 0.85em; color: #555; }
+        .generating-sublabel { font-size: 0.75em; color: #333; margin-top: 4px; }
+
+        /* ── Generate button state ── */
+        .generate-state { padding: 40px 24px; text-align: center; }
+        .btn-generate {
+            background: {{ domain.color }}; color: #000; border: none;
+            padding: 12px 28px; border-radius: 5px; font-size: 0.95em; font-weight: bold;
+            cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.02em;
+        }
+        .btn-generate:hover { opacity: 0.85; }
+        .btn-generate:disabled { opacity: 0.4; cursor: default; }
+
+        /* ── Error state ── */
+        .error-state { padding: 24px; }
+        .error-box {
+            background: #1a0a00; border: 1px solid #883300; border-left: 4px solid #ff6a00;
+            border-radius: 4px; padding: 14px 16px; font-size: 0.85em; color: #ff9944;
+        }
+        .error-box strong { color: #ffaa66; }
+
+        /* ── Feedback panel ── */
+        .feedback-panel { padding: 18px 22px; border-top: 1px solid #1e2235; }
+        .feedback-correct { background: #0a1a0a; border-left: 4px solid #00b432; border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; }
+        .feedback-wrong   { background: #1a0a00; border-left: 4px solid #ff6a00; border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; }
+        .feedback-result  { font-size: 0.9em; font-weight: bold; margin-bottom: 6px; }
+        .feedback-correct .feedback-result { color: #00b432; }
+        .feedback-wrong   .feedback-result { color: #ff6a00; }
+        .feedback-explanation { font-size: 0.85em; color: #999; line-height: 1.6; }
+        .feedback-explanation strong { color: #ccc; }
+        .btn-next {
+            background: {{ domain.color }}; color: #000; border: none;
+            padding: 10px 24px; border-radius: 4px; font-size: 0.9em; font-weight: bold;
+            cursor: pointer; transition: opacity 0.15s; margin-top: 12px;
+        }
+        .btn-next:hover { opacity: 0.85; }
+
+        /* ── Session history ── */
+        .history-panel { background: #12151f; border: 1px solid #1e2235; border-radius: 6px; overflow: hidden; }
+        .history-header {
+            background: #161923; padding: 12px 18px; font-size: 0.78em;
+            text-transform: uppercase; letter-spacing: 0.07em; color: #555;
+            border-bottom: 1px solid #1e2235; display: flex; justify-content: space-between;
+        }
+        .history-table { width: 100%; border-collapse: collapse; }
+        .history-table th {
+            background: #161923; color: #444; font-size: 0.7em; text-transform: uppercase;
+            letter-spacing: 0.05em; padding: 8px 14px; text-align: left;
+            border-bottom: 1px solid #1e2235;
+        }
+        .history-table td { padding: 9px 14px; border-bottom: 1px solid #141720; font-size: 0.82em; color: #aaa; }
+        .history-table tr:last-child td { border-bottom: none; }
+        .history-table tr:hover td { background: #14172a; }
+        .result-correct { color: #00b432; font-weight: bold; }
+        .result-wrong   { color: #ff6a00; font-weight: bold; }
+        .hist-scenario  { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #666; }
+        .empty-history  { text-align: center; padding: 24px; color: #333; font-style: italic; }
+        .mindset-small {
+            font-size: 0.7em; padding: 1px 6px; border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <a href="/cissp" style="color:#555; text-decoration:none; font-size:0.85em;">← CISSP Hub</a>
+        <span style="color:#2a2d3a;">|</span>
+        <span class="topbar-brand">D{{ domain_num }}: {{ domain.name }}</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        {% if player %}
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;">
+            {% if player.streak_days and player.streak_days >= 2 %}
+            <span style="color:#ff8c00;font-weight:700;font-size:12px;">🔥{{ player.streak_days }}d</span>
+            {% endif %}
+            <a href="/profile" style="background:#1a2a1a;border:1px solid {{ domain.color }};border-radius:4px;padding:2px 8px;font-weight:700;color:{{ domain.color }};font-size:12px;text-decoration:none;white-space:nowrap;" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+            <div style="width:90px;height:7px;background:#1a1a1a;border-radius:4px;overflow:hidden;border:1px solid #333;">
+                <div id="xp-bar-fill" style="height:100%;background:linear-gradient(90deg,{{ domain.color }},#88ffaa);border-radius:4px;width:{{ player.level_pct }}%;transition:width 0.6s;"></div>
+            </div>
+            <span id="xp-bar-label" style="font-size:11px;color:#555;white-space:nowrap;">{{ "{:,}".format(player.xp) }} XP</span>
+        </div>
+        {% endif %}
+        <span style="font-size:0.85em; color:#666;">Analyst: <strong style="color:#aaa;">{{ session['username'] }}</strong></span>
+        <nav>
+            <a href="/control-room">⚙ Control Room</a>
+            <a href="/cissp">📘 CISSP Hub</a>
+            <a href="/profile" style="color:#ffd700;">⚔️ Profile</a>
+            <a href="/logout">Logout</a>
+        </nav>
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- Domain header -->
+    <div class="domain-header">
+        <div class="domain-header-top">
+            <span class="domain-num-badge">Domain {{ domain_num }}</span>
+            <span class="domain-name-large">{{ domain.name }}</span>
+            <span class="domain-weight-badge">{{ domain.weight }}% of CISSP exam</span>
+        </div>
+        <div class="domain-topics">
+            {% for topic in domain.key_topics %}
+            <span class="topic-tag">{{ topic }}</span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Progress -->
+    {% set att = (progress.get('attempts', 0) or 0) %}
+    {% set cor = (progress.get('correct', 0)  or 0) %}
+    {% set pct = ((cor / att * 100)|int) if att > 0 else 0 %}
+    <div class="progress-bar-wrap">
+        <div class="progress-stat">
+            <div class="progress-stat-val">{{ att }}</div>
+            <div class="progress-stat-lbl">Attempted</div>
+        </div>
+        <div class="progress-stat">
+            <div class="progress-stat-val">{{ cor }}</div>
+            <div class="progress-stat-lbl">Correct</div>
+        </div>
+        <div class="progress-stat">
+            <div class="progress-stat-val">{% if att > 0 %}{{ pct }}%{% else %}—{% endif %}</div>
+            <div class="progress-stat-lbl">Accuracy</div>
+        </div>
+        <div class="progress-bar-outer">
+            <div class="progress-bar-inner" style="width:{{ pct }}%;"></div>
+        </div>
+        <div style="font-size:0.75em; color:#555;">
+            {% if pct >= 70 and att >= 5 %}🟢 Mastering{% elif att >= 1 %}🟡 In Progress{% else %}⚪ Not started{% endif %}
+        </div>
+    </div>
+
+    <!-- SOC bridge -->
+    {% if domain.soc_bridge %}
+    <div class="soc-bridge">
+        🔗 <strong>Your SOC Training Covers This Domain:</strong> {{ domain.soc_bridge }}
+    </div>
+    {% endif %}
+
+    <!-- Question card -->
+    <div class="question-card" id="question-card">
+
+        <!-- Header shows mindset + difficulty — rendered by JS after question loads -->
+        <div class="question-card-header" id="q-header" style="display:none;">
+            <span id="mindset-badge" class="mindset-badge mindset-manager">🧠 Manager Mindset</span>
+            <div class="difficulty-dots" id="difficulty-dots">
+                <span class="d-dot" id="d1"></span>
+                <span class="d-dot" id="d2"></span>
+                <span class="d-dot" id="d3"></span>
+            </div>
+        </div>
+
+        <!-- States -->
+        <div id="state-generate" class="generate-state">
+            <p style="font-size:0.85em; color:#555; margin-bottom:18px;">
+                Questions are generated live by your local Ollama model — fresh each time, never repeated.
+            </p>
+            <button class="btn-generate" id="btn-generate" onclick="loadQuestion()">
+                ⚡ Generate Question
+            </button>
+        </div>
+
+        <div id="state-generating" class="generating-state" style="display:none;">
+            <div class="spinner"></div>
+            <div class="generating-label">Generating your question…</div>
+            <div class="generating-sublabel">Ollama is thinking — typically 5–15 seconds</div>
+        </div>
+
+        <div id="state-question" class="question-body" style="display:none;">
+            <div class="scenario-text" id="q-scenario"></div>
+            <div class="question-text" id="q-question"></div>
+            <div class="options-grid" id="q-options"></div>
+        </div>
+
+        <div id="state-actions" style="display:none;" class="question-actions">
+            <button class="btn-skip" id="btn-skip" onclick="skipQuestion()">↩ Skip this question</button>
+        </div>
+
+        <div id="state-feedback" class="feedback-panel" style="display:none;"></div>
+
+        <div id="state-error" class="error-state" style="display:none;">
+            <div class="error-box" id="error-msg">
+                <strong>⚠ Question generation failed.</strong><br>
+                Make sure Ollama is running: <code>ollama serve</code> — then try again.
+            </div>
+            <button class="btn-generate" style="margin-top:14px;" onclick="loadQuestion()">↺ Try Again</button>
+        </div>
+    </div>
+
+    <!-- Session history -->
+    <div class="history-panel">
+        <div class="history-header">
+            <span>Today's Questions — Domain {{ domain_num }}</span>
+            <span id="session-count" style="color:#555;">{{ session_attempts|length }} answered</span>
+        </div>
+        <div id="history-body">
+        {% if session_attempts %}
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Your Answer</th>
+                    <th>Correct</th>
+                    <th>Result</th>
+                    <th>Mindset</th>
+                </tr>
+            </thead>
+            <tbody id="history-rows">
+                {% for a in session_attempts %}
+                <tr>
+                    <td class="hist-scenario" title="{{ a.scenario }}">{{ a.scenario[:80] }}…</td>
+                    <td><strong style="color:{{ domain.color }};">{{ a.user_answer }}</strong></td>
+                    <td><strong>{{ a.correct_answer }}</strong></td>
+                    <td>
+                        {% if a.is_correct %}
+                        <span class="result-correct">✓ Correct</span>
+                        {% else %}
+                        <span class="result-wrong">✗ Wrong</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if a.mindset == 'manager' %}
+                        <span class="mindset-small mindset-manager">Manager</span>
+                        {% elif a.mindset == 'technical' %}
+                        <span class="mindset-small mindset-technical">Technical</span>
+                        {% else %}
+                        <span class="mindset-small mindset-both">Both</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-history" id="empty-history">No questions answered today in this domain yet.</div>
+        {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<script>
+    var DOMAIN_NUM   = {{ domain_num }};
+    var currentAttemptId = null;
+    var answered = false;
+
+    function setState(name) {
+        var states = ['state-generate', 'state-generating', 'state-question', 'state-actions', 'state-feedback', 'state-error'];
+        states.forEach(function(id) { document.getElementById(id).style.display = 'none'; });
+        document.getElementById('state-' + name).style.display = '';
+        if (name === 'question') {
+            document.getElementById('state-actions').style.display = '';
+        }
+        // Show/hide header
+        var showHeader = (name === 'question');
+        document.getElementById('q-header').style.display = showHeader ? '' : 'none';
+    }
+
+    function setMindsetBadge(mindset) {
+        var badge = document.getElementById('mindset-badge');
+        badge.className = 'mindset-badge mindset-' + mindset;
+        var labels = {
+            'manager':   '🧠 Manager Mindset',
+            'technical': '🔧 Technical Knowledge',
+            'both':      '⚡ Manager + Technical',
+        };
+        badge.textContent = labels[mindset] || '🧠 Manager Mindset';
+    }
+
+    function setDifficulty(level) {
+        for (var i = 1; i <= 3; i++) {
+            var dot = document.getElementById('d' + i);
+            if (i <= level) dot.classList.add('filled'); else dot.classList.remove('filled');
+        }
+    }
+
+    function loadQuestion() {
+        setState('generating');
+        document.getElementById('q-header').style.display = 'none';
+        answered = false;
+        currentAttemptId = null;
+        fetch('/cissp/domain/' + DOMAIN_NUM + '/question', {method: 'POST'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.error) {
+                    document.getElementById('error-msg').innerHTML =
+                        '<strong>⚠ ' + d.error + '</strong>';
+                    setState('error');
+                    return;
+                }
+                currentAttemptId = d.attempt_id;
+                document.getElementById('q-scenario').textContent = d.scenario;
+                document.getElementById('q-question').textContent  = d.question;
+                // Build options
+                var optGrid = document.getElementById('q-options');
+                optGrid.innerHTML = '';
+                var letters = ['A', 'B', 'C', 'D'];
+                letters.forEach(function(letter) {
+                    var btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.id = 'opt-' + letter;
+                    btn.innerHTML = '<span class="option-label">' + letter + '</span><span>' + (d.options[letter] || '') + '</span>';
+                    btn.onclick = function() { submitAnswer(letter); };
+                    optGrid.appendChild(btn);
+                });
+                setMindsetBadge(d.mindset);
+                setDifficulty(d.difficulty);
+                setState('question');
+            })
+            .catch(function(err) {
+                document.getElementById('error-msg').innerHTML =
+                    '<strong>⚠ Request failed.</strong><br>Check that Ollama is running, then try again.';
+                setState('error');
+            });
+    }
+
+    function submitAnswer(letter) {
+        if (answered || !currentAttemptId) return;
+        answered = true;
+        // Disable all buttons
+        ['A','B','C','D'].forEach(function(l) {
+            var btn = document.getElementById('opt-' + l);
+            if (btn) btn.disabled = true;
+        });
+        // Highlight selected
+        var selBtn = document.getElementById('opt-' + letter);
+        if (selBtn) selBtn.classList.add('selected');
+        // Hide skip button
+        document.getElementById('state-actions').style.display = 'none';
+        document.getElementById('btn-skip').style.display = 'none';
+
+        fetch('/cissp/domain/' + DOMAIN_NUM + '/answer', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({attempt_id: currentAttemptId, answer: letter}),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            // Style the buttons
+            var correctBtn = document.getElementById('opt-' + d.correct_answer);
+            if (correctBtn) correctBtn.classList.add('correct');
+            if (!d.correct) {
+                if (selBtn) selBtn.classList.remove('selected');
+                if (selBtn) selBtn.classList.add('wrong');
+            }
+            // XP result — toast + level-up modal
+            if (d.xp && typeof handleXpResult === 'function') {
+                handleXpResult(d.xp);
+            }
+            // Show feedback
+            var xpLabel = d.xp ? ' <span style="color:#00b432;font-size:0.85em;font-weight:700;">+' + d.xp.xp_gained + ' XP</span>' : '';
+            var fbHtml = d.correct
+                ? '<div class="feedback-correct"><div class="feedback-result">✓ Correct!' + xpLabel + '</div><div class="feedback-explanation">' + escHtml(d.explanation) + '</div></div>'
+                : '<div class="feedback-wrong"><div class="feedback-result">✗ Incorrect — Correct answer was <strong>' + d.correct_answer + '</strong>: ' + escHtml(d.correct_answer_text) + xpLabel + '</div><div class="feedback-explanation">' + escHtml(d.explanation) + '</div></div>';
+            fbHtml += '<button class="btn-next" onclick="loadQuestion()">Next Question →</button>';
+            var fb = document.getElementById('state-feedback');
+            fb.innerHTML = fbHtml;
+            fb.style.display = '';
+            // Update session count
+            updateHistoryCount();
+            // Add row to history table
+            addHistoryRow(d, letter);
+        });
+    }
+
+    function skipQuestion() {
+        if (answered || !currentAttemptId) return;
+        fetch('/cissp/domain/' + DOMAIN_NUM + '/skip', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({attempt_id: currentAttemptId}),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function() { loadQuestion(); });
+    }
+
+    function addHistoryRow(d, userAnswer) {
+        // Remove empty-history message if present
+        var empty = document.getElementById('empty-history');
+        if (empty) empty.remove();
+        // Ensure table exists
+        var histBody = document.getElementById('history-body');
+        var tbl = histBody.querySelector('table');
+        if (!tbl) {
+            tbl = document.createElement('table');
+            tbl.className = 'history-table';
+            tbl.innerHTML = '<thead><tr><th>Scenario</th><th>Your Answer</th><th>Correct</th><th>Result</th><th>Mindset</th></tr></thead><tbody id="history-rows"></tbody>';
+            histBody.appendChild(tbl);
+        }
+        var tbody = document.getElementById('history-rows') || tbl.querySelector('tbody');
+        var scenario = document.getElementById('q-scenario').textContent;
+        var mindset  = document.getElementById('mindset-badge').dataset.mindset || '';
+        var mindsetLabel = {manager:'Manager', technical:'Technical', both:'Both'}[mindset] || mindset;
+        var mindsetClass = 'mindset-' + mindset;
+        var row = document.createElement('tr');
+        row.innerHTML =
+            '<td class="hist-scenario" title="' + escAttr(scenario) + '">' + escHtml(scenario.substring(0,80)) + '…</td>' +
+            '<td><strong style="color:var(--d-color,#888);">' + escHtml(userAnswer) + '</strong></td>' +
+            '<td><strong>' + escHtml(d.correct_answer) + '</strong></td>' +
+            '<td>' + (d.correct ? '<span class="result-correct">✓ Correct</span>' : '<span class="result-wrong">✗ Wrong</span>') + '</td>' +
+            '<td><span class="mindset-small ' + mindsetClass + '">' + escHtml(mindsetLabel) + '</span></td>';
+        tbody.insertBefore(row, tbody.firstChild);
+    }
+
+    function updateHistoryCount() {
+        var rows = document.querySelectorAll('#history-rows tr');
+        var el   = document.getElementById('session-count');
+        if (el) el.textContent = (rows.length + {{ session_attempts|length }}) + ' answered';
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escAttr(s) { return escHtml(s); }
+
+    // Store mindset on badge element for history row use
+    var origSetMindset = setMindsetBadge;
+    setMindsetBadge = function(mindset) {
+        origSetMindset(mindset);
+        document.getElementById('mindset-badge').dataset.mindset = mindset;
+    };
+</script>
+<script src="/static/game.js"></script>
+</body>
+</html>

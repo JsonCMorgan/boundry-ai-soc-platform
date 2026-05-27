@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyst Profile — Boundry.AI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0f0a; color: #d0d0d0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* Topbar */
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+            background: #0d1a0d; border-bottom: 1px solid #1a3a1a; flex-wrap: wrap; }
+  .topbar .logo { font-family: 'Courier New', monospace; font-weight: 800; font-size: 16px;
+                  color: #00b432; letter-spacing: 2px; }
+  .topbar a { color: #aaa; text-decoration: none; font-size: 13px; padding: 4px 8px;
+              border-radius: 4px; transition: color 0.2s; }
+  .topbar a:hover { color: #00b432; }
+  .topbar a.active { color: #00b432; font-weight: 700; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+
+  /* XP Bar */
+  .xp-bar-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #aaa; }
+  .xp-level-badge { background: #1a2a1a; border: 1px solid #00b432; border-radius: 4px;
+                    padding: 2px 8px; font-weight: 700; color: #00b432; font-size: 12px;
+                    text-decoration: none; white-space: nowrap; }
+  .xp-bar-track { width: 120px; height: 8px; background: #1a1a1a; border-radius: 4px;
+                  overflow: hidden; border: 1px solid #333; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #00b432, #44ff66);
+                 border-radius: 4px; transition: width 0.6s ease; }
+  .xp-bar-label { font-size: 11px; color: #666; white-space: nowrap; }
+  .xp-streak-badge { font-size: 12px; color: #ff8c00; font-weight: 700; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+
+  /* Hero card */
+  .profile-hero {
+    background: linear-gradient(135deg, #0d1a0d 0%, #1a1a2e 100%);
+    border: 1px solid #1a3a1a; border-radius: 12px; padding: 32px;
+    display: flex; align-items: center; gap: 32px; margin-bottom: 28px;
+    position: relative; overflow: hidden;
+  }
+  .profile-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 80% 50%, rgba(153,68,238,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-icon { font-size: 72px; line-height: 1; flex-shrink: 0; }
+  .hero-info h1 { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+  .hero-info .hero-level { font-size: 14px; color: #00b432; font-weight: 700; letter-spacing: 1px; }
+  .hero-info .hero-title { font-size: 18px; color: #aaa; margin: 4px 0 16px; }
+  .hero-xp-bar-wrap { margin-top: 8px; }
+  .hero-xp-track { width: 300px; max-width: 100%; height: 12px; background: #111; border-radius: 6px;
+                   overflow: hidden; border: 1px solid #333; margin-bottom: 4px; }
+  .hero-xp-fill { height: 100%; background: linear-gradient(90deg, #00b432, #44ff66);
+                  border-radius: 6px; transition: width 0.8s ease; }
+  .hero-xp-text { font-size: 12px; color: #666; }
+  .hero-stats { margin-left: auto; display: flex; flex-direction: column; gap: 12px;
+                flex-shrink: 0; text-align: right; }
+  .hero-stat { font-size: 12px; color: #888; }
+  .hero-stat span { display: block; font-size: 22px; font-weight: 800; color: #00b432; }
+  .streak-fire { color: #ff8c00; }
+
+  h2.section-title {
+    font-size: 14px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+    color: #555; border-bottom: 1px solid #1a2a1a; padding-bottom: 8px; margin-bottom: 16px;
+  }
+
+  /* Level ladder */
+  .level-ladder { display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; }
+  .level-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+               border-radius: 6px; background: #0d150d; border: 1px solid #111; }
+  .level-row.current { border-color: #00b432; background: #0d1f0d; }
+  .level-row.achieved { opacity: 0.6; }
+  .level-row.locked { opacity: 0.35; }
+  .level-num { font-size: 13px; font-weight: 800; color: #555; width: 32px; text-align: center; }
+  .level-row.current .level-num { color: #00b432; }
+  .level-icon-lg { font-size: 20px; width: 28px; text-align: center; }
+  .level-name-lg { font-size: 14px; font-weight: 600; color: #aaa; flex: 1; }
+  .level-row.current .level-name-lg { color: #fff; }
+  .level-xp-req { font-size: 12px; color: #555; margin-left: auto; }
+  .level-you { font-size: 11px; color: #00b432; font-weight: 800; letter-spacing: 1px; background: #003300; padding: 2px 6px; border-radius: 4px; }
+
+  /* Badges grid */
+  .badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                 gap: 12px; margin-bottom: 28px; }
+  .badge-card { background: #0d150d; border: 1px solid #1a2a1a; border-radius: 8px;
+                padding: 14px; text-align: center; transition: border-color 0.2s; }
+  .badge-card.earned { border-color: #9944ee; background: #110d1a; }
+  .badge-card.locked { opacity: 0.35; }
+  .badge-icon-lg { font-size: 28px; margin-bottom: 6px; }
+  .badge-name { font-size: 12px; font-weight: 700; color: #aaa; margin-bottom: 3px; }
+  .badge-card.earned .badge-name { color: #cc88ff; }
+  .badge-desc { font-size: 11px; color: #555; line-height: 1.3; }
+  .badge-card.earned .badge-desc { color: #888; }
+
+  /* CISSP domain table */
+  .domain-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 13px; }
+  .domain-table th { text-align: left; padding: 8px 12px; border-bottom: 1px solid #1a2a1a;
+                     font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #555; }
+  .domain-table td { padding: 8px 12px; border-bottom: 1px solid #111; }
+  .domain-table tr:hover td { background: #0d150d; }
+  .domain-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
+  .accuracy-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .accuracy-bar { height: 6px; border-radius: 3px; background: #111; flex: 1; max-width: 80px; overflow: hidden; }
+  .accuracy-fill { height: 100%; border-radius: 3px; background: #00b432; }
+  .pct-label { font-size: 11px; color: #777; min-width: 32px; }
+
+  /* XP History */
+  .xp-history-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 28px; }
+  .xp-history-table th { text-align: left; padding: 8px 12px; border-bottom: 1px solid #1a2a1a;
+                          font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #555; }
+  .xp-history-table td { padding: 7px 12px; border-bottom: 1px solid #0d150d; }
+  .xp-history-table tr:hover td { background: #0d150d; }
+  .xp-positive { color: #00b432; font-weight: 700; }
+  .xp-negative { color: #ff4444; }
+  .source-tag { font-size: 11px; background: #1a1a1a; border-radius: 3px; padding: 1px 5px; color: #666; }
+
+  @media (max-width: 700px) {
+    .profile-hero { flex-direction: column; text-align: center; }
+    .hero-stats { margin-left: 0; text-align: center; flex-direction: row; flex-wrap: wrap; justify-content: center; }
+    .hero-xp-track { width: 100%; }
+    .topbar { gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <span class="logo">BOUNDRY.AI</span>
+  <a href="/control-room">Control Room</a>
+  <a href="/training">SOC Training</a>
+  <a href="/cissp">📘 CISSP</a>
+  <a href="/profile" class="active">⚔️ Profile</a>
+  <div class="topbar-right">
+    {% if player %}
+    <div class="xp-bar-wrap">
+      {% if player.streak_days and player.streak_days >= 2 %}
+      <span class="xp-streak-badge" title="{{ player.streak_days }}-day streak">🔥{{ player.streak_days }}d</span>
+      {% endif %}
+      <a href="/profile" class="xp-level-badge" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+      <div class="xp-bar-track"><div class="xp-bar-fill" id="xp-bar-fill" style="width:{{ player.level_pct }}%"></div></div>
+      <span class="xp-bar-label" id="xp-bar-label">{{ "{:,}".format(player.xp) }} XP · {{ player.xp_to_next }} to next</span>
+    </div>
+    {% endif %}
+    <a href="/logout" style="color:#555;">Logout</a>
+  </div>
+</div>
+
+<main>
+
+  <!-- Profile Hero -->
+  <div class="profile-hero">
+    <div class="hero-icon">{{ player.level_icon }}</div>
+    <div class="hero-info">
+      <div class="hero-level">LEVEL {{ player.level }}</div>
+      <h1>{{ player.level_name }}</h1>
+      <div class="hero-title">Analyst · Boundry.AI</div>
+      <div class="hero-xp-bar-wrap">
+        <div class="hero-xp-track">
+          <div class="hero-xp-fill" style="width:{{ player.level_pct }}%"></div>
+        </div>
+        <div class="hero-xp-text">
+          {{ "{:,}".format(player.xp) }} XP total ·
+          {% if player.is_max %}MAX LEVEL{% else %}{{ "{:,}".format(player.xp_to_next) }} XP to Level {{ player.level + 1 }}{% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat streak-fire">
+        <span>🔥{{ player.streak_days or 0 }}</span>
+        Day Streak
+      </div>
+      <div class="hero-stat">
+        <span>{{ "{:,}".format(player.xp) }}</span>
+        Total XP
+      </div>
+      <div class="hero-stat">
+        <span>{{ player.badges | length }}</span>
+        Badges
+      </div>
+      <div class="hero-stat">
+        <span style="color:{% if readiness_score >= 700 %}#00b432{% elif readiness_score >= 500 %}#ff8c00{% else %}#ff4444{% endif %}">
+          {{ readiness_score }}
+        </span>
+        Readiness
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 28px;">
+
+    <!-- Level Ladder -->
+    <div>
+      <h2 class="section-title">Level Ladder</h2>
+      <div class="level-ladder">
+        {% for lvl, xp_req, lname, licon in level_thresholds %}
+        {% set is_current = (lvl == player.level) %}
+        {% set is_achieved = (player.xp >= xp_req) %}
+        <div class="level-row {% if is_current %}current{% elif is_achieved %}achieved{% else %}locked{% endif %}">
+          <div class="level-num">{{ lvl }}</div>
+          <div class="level-icon-lg">{{ licon }}</div>
+          <div class="level-name-lg">{{ lname }}</div>
+          {% if is_current %}
+          <span class="level-you">YOU ARE HERE</span>
+          {% else %}
+          <div class="level-xp-req">{{ "{:,}".format(xp_req) }} XP</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- CISSP Domain Stats -->
+    <div>
+      <h2 class="section-title">CISSP Domain Progress</h2>
+      <table class="domain-table">
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>Attempted</th>
+            <th>Accuracy</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d, info in cissp_domains.items() %}
+          {% set stats = domain_stats.get(d, {"attempts": 0, "correct": 0}) %}
+          {% set att = stats.attempts or 0 %}
+          {% set cor = stats.correct  or 0 %}
+          {% set pct = ((cor / att * 100) | int) if att > 0 else 0 %}
+          <tr>
+            <td>
+              <span class="domain-dot" style="background:{{ info.color }}"></span>
+              D{{ d }}: {{ info.name[:28] }}{% if info.name | length > 28 %}…{% endif %}
+            </td>
+            <td>{{ att }}</td>
+            <td>
+              {% if att > 0 %}
+              <div class="accuracy-bar-wrap">
+                <div class="accuracy-bar">
+                  <div class="accuracy-fill" style="width:{{ pct }}%; background:{% if pct >= 70 %}#00b432{% elif pct >= 50 %}#ff8c00{% else %}#ff4444{% endif %}"></div>
+                </div>
+                <span class="pct-label">{{ pct }}%</span>
+              </div>
+              {% else %}
+              <span style="color:#333; font-size:11px;">Not started</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Achievement Badges -->
+  <h2 class="section-title">Achievements ({{ player.badges | length }} / {{ all_badges | length }})</h2>
+  <div class="badges-grid">
+    {% for badge in all_badges %}
+    <div class="badge-card {% if badge.earned %}earned{% else %}locked{% endif %}">
+      <div class="badge-icon-lg">{{ badge.icon }}</div>
+      <div class="badge-name">{{ badge.name }}</div>
+      <div class="badge-desc">{{ badge.desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- XP History -->
+  <h2 class="section-title">Recent XP Transactions</h2>
+  {% if xp_history %}
+  <table class="xp-history-table">
+    <thead>
+      <tr>
+        <th>XP</th>
+        <th>Reason</th>
+        <th>Source</th>
+        <th>When</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in xp_history %}
+      <tr>
+        <td class="xp-positive">+{{ row.amount }}</td>
+        <td>{{ row.reason }}</td>
+        <td><span class="source-tag">{{ row.source or '—' }}</span></td>
+        <td style="color:#555; font-size:12px;">{{ row.created_at[:16] if row.created_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#555; font-size:13px; padding: 16px 0;">No XP earned yet — answer a CISSP question to get started!</p>
+  {% endif %}
+
+</main>
+
+<script src="/static/game.js"></script>
+</body>
+</html>

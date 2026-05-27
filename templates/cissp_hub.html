@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boundry.AI — CISSP Study Hub</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; padding: 0; }
+
+        /* ── Top bar ── */
+        .topbar {
+            background: #12151f; border-bottom: 2px solid #00b43233;
+            padding: 14px 32px; display: flex; align-items: center;
+            justify-content: space-between; position: sticky; top: 0; z-index: 50;
+            box-shadow: 0 2px 18px #00b43211;
+        }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00b432; letter-spacing: 0.04em; text-shadow: 0 0 12px #00b43266; }
+        .topbar-sub   { font-size: 0.78em; color: #444; margin-left: 10px; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 20px; font-size: 0.85em; transition: color 0.15s; }
+        .topbar nav a:hover { color: #00b432; }
+        .topbar nav a.active { color: #00b432; font-weight: bold; }
+
+        /* ── Stat bar ── */
+        .statbar { background: #0e1119; border-bottom: 1px solid #1e2235; display: flex; padding: 0 32px; }
+        .stat { padding: 18px 28px 18px 0; border-right: 1px solid #1e2235; margin-right: 28px; }
+        .stat:last-child { border-right: none; }
+        .stat-value { font-size: 2em; font-weight: bold; color: #ff6a00; line-height: 1; text-shadow: 0 0 10px #ff6a0044; }
+        .stat-value.green  { color: #00b432; text-shadow: 0 0 10px #00b43244; }
+        .stat-value.purple { color: #9944ee; text-shadow: 0 0 10px #9944ee44; }
+        .stat-value.blue   { color: #4488ff; text-shadow: 0 0 10px #4488ff44; }
+        .stat-label { font-size: 0.75em; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+
+        /* ── Main ── */
+        .main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Info banner ── */
+        .exam-banner {
+            background: #12151f; border: 1px solid #1e2235; border-left: 4px solid #9944ee;
+            border-radius: 6px; padding: 16px 20px; margin-bottom: 28px;
+            display: flex; gap: 32px; flex-wrap: wrap; align-items: center;
+        }
+        .exam-stat { text-align: center; }
+        .exam-stat-val { font-size: 1.3em; font-weight: bold; color: #9944ee; }
+        .exam-stat-lbl { font-size: 0.7em; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+        .exam-banner-note { flex: 1; font-size: 0.82em; color: #666; line-height: 1.6; border-left: 1px solid #1e2235; padding-left: 20px; }
+        .exam-banner-note strong { color: #aaa; }
+
+        /* ── Readiness score ── */
+        .readiness-panel {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 24px 28px; margin-bottom: 28px;
+            display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+        }
+        .readiness-score-wrap { text-align: center; min-width: 120px; }
+        .readiness-score {
+            font-size: 3.5em; font-weight: bold; line-height: 1;
+            text-shadow: 0 0 20px currentColor;
+        }
+        .readiness-label { font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+        .r-none     { color: #444; }
+        .r-low      { color: #ff6a00; }
+        .r-mid      { color: #cc8800; }
+        .r-good     { color: #88cc00; }
+        .r-ready    { color: #00b432; }
+        .readiness-detail { flex: 1; }
+        .readiness-detail h3 { margin: 0 0 6px; font-size: 0.9em; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+        .readiness-bar-outer { background: #0b0e17; border: 1px solid #1e2235; border-radius: 4px; height: 10px; margin-top: 4px; overflow: hidden; }
+        .readiness-bar-inner { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+        .readiness-note { font-size: 0.78em; color: #555; margin-top: 8px; }
+
+        /* ── Daily goal ── */
+        .daily-panel {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 16px 20px; margin-bottom: 28px;
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        .daily-label { font-size: 0.85em; color: #666; flex: 1; }
+        .daily-label strong { color: #aaa; }
+        .daily-progress-outer { background: #0b0e17; border: 1px solid #1e2235; border-radius: 10px; height: 12px; width: 220px; overflow: hidden; }
+        .daily-progress-inner { height: 100%; border-radius: 10px; background: #00b432; transition: width 0.4s; box-shadow: 0 0 8px #00b43266; }
+        .daily-count { font-size: 0.9em; font-weight: bold; color: #00b432; white-space: nowrap; }
+        .daily-complete { color: #00ff41; }
+
+        /* ── Section heading ── */
+        .section-heading {
+            font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.08em;
+            color: #555; margin: 0 0 16px; padding-bottom: 8px;
+            border-bottom: 1px solid #1e2235;
+        }
+
+        /* ── Domain grid ── */
+        .domain-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+        @media (max-width: 900px) { .domain-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 500px) { .domain-grid { grid-template-columns: 1fr; } }
+
+        .domain-card {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 18px; border-top: 3px solid var(--d-color, #444);
+            transition: box-shadow 0.2s, transform 0.1s;
+            text-decoration: none; display: block; color: inherit;
+        }
+        .domain-card:hover { box-shadow: 0 0 18px var(--d-color, #444)33; transform: translateY(-1px); }
+        .domain-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+        .domain-num {
+            font-size: 0.72em; font-weight: bold; font-family: monospace;
+            background: #161923; color: var(--d-color, #666); border: 1px solid #2a2d3a;
+            padding: 2px 8px; border-radius: 3px;
+        }
+        .domain-weight {
+            font-size: 0.72em; color: var(--d-color, #555); font-weight: bold;
+            background: #0b0e17; border: 1px solid #1e2235; padding: 2px 7px; border-radius: 10px;
+        }
+        .domain-name { font-size: 0.88em; font-weight: bold; color: #ddd; line-height: 1.35; margin-bottom: 12px; }
+        .domain-progress-bar-outer { background: #0b0e17; border: 1px solid #1e2235; border-radius: 3px; height: 5px; margin-bottom: 8px; overflow: hidden; }
+        .domain-progress-bar-inner { height: 100%; border-radius: 3px; background: var(--d-color, #444); transition: width 0.5s; }
+        .domain-stats { display: flex; justify-content: space-between; font-size: 0.72em; color: #555; margin-bottom: 12px; }
+        .domain-stats .right { color: var(--d-color, #555); font-weight: bold; }
+        .domain-status {
+            display: inline-block; font-size: 0.68em; text-transform: uppercase;
+            letter-spacing: 0.05em; padding: 2px 8px; border-radius: 3px; font-weight: bold;
+        }
+        .status-not-started { background: #1a1d2a; color: #444; border: 1px solid #2a2d3a; }
+        .status-in-progress  { background: #1a1000; color: #cc8800; border: 1px solid #664400; }
+        .status-mastering    { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
+        .soc-bridge-tag {
+            display: inline-block; font-size: 0.65em; color: #9944ee;
+            background: #120a22; border: 1px solid #441a88;
+            padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle;
+        }
+        .domain-card-footer { margin-top: 12px; text-align: right; }
+        .btn-study {
+            font-size: 0.75em; font-weight: bold; padding: 5px 14px;
+            background: var(--d-color, #444); color: #000; border: none;
+            border-radius: 3px; cursor: pointer; text-decoration: none;
+            display: inline-block; transition: opacity 0.15s;
+        }
+        .btn-study:hover { opacity: 0.85; color: #000; }
+
+        /* ── SOC bridge section ── */
+        .bridge-panel {
+            background: #12151f; border: 1px solid #441a88; border-radius: 6px;
+            padding: 20px; margin-bottom: 28px;
+        }
+        .bridge-panel h3 { margin: 0 0 12px; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.07em; color: #9944ee; }
+        .bridge-items { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        @media (max-width: 700px) { .bridge-items { grid-template-columns: 1fr; } }
+        .bridge-item {
+            background: #0b0e17; border: 1px solid #1e2235; border-left: 3px solid var(--d-color, #441a88);
+            border-radius: 4px; padding: 12px 14px; font-size: 0.82em;
+        }
+        .bridge-item-domain { font-size: 0.72em; font-weight: bold; color: var(--d-color, #9944ee); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+        .bridge-item-text { color: #888; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span class="topbar-brand">🎓 CISSP Study Hub</span>
+        <span class="topbar-sub">ISC(2) Certified Information Systems Security Professional</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        {% if player %}
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;">
+            {% if player.streak_days and player.streak_days >= 2 %}
+            <span style="color:#ff8c00;font-weight:700;font-size:12px;">🔥{{ player.streak_days }}d</span>
+            {% endif %}
+            <a href="/profile" style="background:#1a2a1a;border:1px solid #00b432;border-radius:4px;padding:2px 8px;font-weight:700;color:#00b432;font-size:12px;text-decoration:none;white-space:nowrap;" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+            <div style="width:100px;height:7px;background:#1a1a1a;border-radius:4px;overflow:hidden;border:1px solid #333;">
+                <div id="xp-bar-fill" style="height:100%;background:linear-gradient(90deg,#00b432,#44ff66);border-radius:4px;width:{{ player.level_pct }}%;transition:width 0.6s;"></div>
+            </div>
+            <span id="xp-bar-label" style="font-size:11px;color:#555;white-space:nowrap;">{{ "{:,}".format(player.xp) }} XP</span>
+        </div>
+        {% endif %}
+        <span style="font-size:0.85em; color:#666;">Analyst: <strong style="color:#aaa;">{{ session['username'] }}</strong></span>
+        <nav>
+            <a href="/control-room">⚙ Control Room</a>
+            <a href="/training">🎓 SOC Training</a>
+            <a href="/cissp" class="active">📘 CISSP</a>
+            <a href="/profile" style="color:#ffd700;">⚔️ Profile</a>
+            <a href="/logout">Logout</a>
+        </nav>
+    </div>
+</div>
+
+<div class="statbar">
+    <div class="stat">
+        <div class="stat-value purple">{{ domains_studied }} / 8</div>
+        <div class="stat-label">Domains Started</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value green">{{ today_count }} / {{ daily_goal }}</div>
+        <div class="stat-label">Questions Today</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value blue">{{ total_answered }}</div>
+        <div class="stat-label">Total Answered</div>
+    </div>
+    <div class="stat">
+        {% set score = readiness_score %}
+        {% if score >= 850 %}
+            <div class="stat-value green">{{ score }}</div>
+        {% elif score >= 700 %}
+            <div class="stat-value" style="color:#88cc00;">{{ score }}</div>
+        {% elif score >= 500 %}
+            <div class="stat-value" style="color:#cc8800;">{{ score }}</div>
+        {% elif score > 0 %}
+            <div class="stat-value">{{ score }}</div>
+        {% else %}
+            <div class="stat-value" style="color:#333;">—</div>
+        {% endif %}
+        <div class="stat-label">Readiness / 1000</div>
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- Exam info banner -->
+    <div class="exam-banner">
+        <div class="exam-stat"><div class="exam-stat-val">CAT</div><div class="exam-stat-lbl">Format</div></div>
+        <div class="exam-stat"><div class="exam-stat-val">100–150</div><div class="exam-stat-lbl">Questions</div></div>
+        <div class="exam-stat"><div class="exam-stat-val">3 hrs</div><div class="exam-stat-lbl">Time Limit</div></div>
+        <div class="exam-stat"><div class="exam-stat-val">700</div><div class="exam-stat-lbl">Passing Score</div></div>
+        <div class="exam-stat"><div class="exam-stat-val">8</div><div class="exam-stat-lbl">Domains</div></div>
+        <div class="exam-banner-note">
+            <strong>CISSP uses Computerized Adaptive Testing (CAT).</strong> The exam adapts in real time — correct answers unlock harder questions.
+            A score of <strong>700 / 1000</strong> is required to pass. The exam ends when the algorithm is confident you've passed or failed, or at 150 questions.
+            <br><strong>Key mindset:</strong> Think like a security <em>manager</em>, not a technician. The best answer is always the one that follows process, reduces risk, and aligns security with business goals.
+        </div>
+    </div>
+
+    <!-- Readiness score -->
+    <div class="readiness-panel">
+        <div class="readiness-score-wrap">
+            {% set s = readiness_score %}
+            {% if s >= 850 %}
+                <div class="readiness-score r-ready">{{ s }}</div>
+                <div class="readiness-label r-ready">Exam Ready</div>
+            {% elif s >= 700 %}
+                <div class="readiness-score r-good">{{ s }}</div>
+                <div class="readiness-label r-good">Getting Close</div>
+            {% elif s >= 500 %}
+                <div class="readiness-score r-mid">{{ s }}</div>
+                <div class="readiness-label r-mid">Developing</div>
+            {% elif s > 0 %}
+                <div class="readiness-score r-low">{{ s }}</div>
+                <div class="readiness-label r-low">Early Stage</div>
+            {% else %}
+                <div class="readiness-score r-none">—</div>
+                <div class="readiness-label r-none">Not Started</div>
+            {% endif %}
+        </div>
+        <div class="readiness-detail">
+            <h3>Readiness Breakdown by Domain</h3>
+            {% for d_num, d in cissp_domains.items() %}
+            {% set p = progress.get(d_num, {}) %}
+            {% set att = (p.get('attempts', 0) or 0) %}
+            {% set cor = (p.get('correct', 0) or 0) %}
+            {% set pct = ((cor / att * 100)|int) if att > 0 else 0 %}
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+                <span style="font-size:0.72em; color:#555; width:20px; text-align:right;">D{{ d_num }}</span>
+                <span style="font-size:0.75em; color:#888; width:210px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</span>
+                <div class="readiness-bar-outer" style="flex:1; height:7px;">
+                    <div class="readiness-bar-inner" style="width:{{ pct }}%; background:{{ d.color }};"></div>
+                </div>
+                <span style="font-size:0.72em; color:#666; width:50px; text-align:right;">
+                    {% if att > 0 %}{{ pct }}% ({{ att }}q){% else %}<span style="color:#333">—</span>{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+            <div class="readiness-note">Score is weighted by domain exam % and activates after ≥5 questions per domain. Passing threshold: 700 / 1000.</div>
+        </div>
+    </div>
+
+    <!-- Daily goal -->
+    <div class="daily-panel">
+        <div class="daily-label">
+            <strong>Today's Goal:</strong> {{ daily_goal }} questions
+            {% if today_count >= daily_goal %}
+            — <span class="daily-complete">✅ Goal reached!</span>
+            {% endif %}
+        </div>
+        {% set goal_pct = [((today_count / daily_goal * 100)|int), 100]|min %}
+        <div class="daily-progress-outer">
+            <div class="daily-progress-inner" style="width:{{ goal_pct }}%;"></div>
+        </div>
+        <div class="daily-count {% if today_count >= daily_goal %}daily-complete{% endif %}">
+            {{ today_count }} / {{ daily_goal }} today
+        </div>
+    </div>
+
+    <!-- Domain grid -->
+    <div class="section-heading">📘 The 8 CISSP Domains — Click a Domain to Study</div>
+    <div class="domain-grid">
+        {% for d_num, d in cissp_domains.items() %}
+        {% set p       = progress.get(d_num, {}) %}
+        {% set att     = (p.get('attempts', 0) or 0) %}
+        {% set cor     = (p.get('correct', 0) or 0) %}
+        {% set pct     = ((cor / att * 100)|int) if att > 0 else 0 %}
+        {% set bar_w   = pct if att > 0 else 0 %}
+        {% if att == 0 %}
+            {% set status_cls = 'status-not-started' %}
+            {% set status_lbl = 'Not Started' %}
+        {% elif pct >= 70 %}
+            {% set status_cls = 'status-mastering' %}
+            {% set status_lbl = 'Mastering' %}
+        {% else %}
+            {% set status_cls = 'status-in-progress' %}
+            {% set status_lbl = 'In Progress' %}
+        {% endif %}
+        <a href="/cissp/domain/{{ d_num }}" class="domain-card" style="--d-color: {{ d.color }};">
+            <div class="domain-card-top">
+                <span class="domain-num">D{{ d_num }}</span>
+                <span class="domain-weight">{{ d.weight }}%</span>
+            </div>
+            <div class="domain-name">
+                {{ d.name }}
+                {% if d.soc_bridge %}<span class="soc-bridge-tag">SOC Bridge</span>{% endif %}
+            </div>
+            <div class="domain-progress-bar-outer">
+                <div class="domain-progress-bar-inner" style="width:{{ bar_w }}%;"></div>
+            </div>
+            <div class="domain-stats">
+                <span>{{ att }} question{% if att != 1 %}s{% endif %}</span>
+                <span class="right">{% if att > 0 %}{{ pct }}% correct{% else %}—{% endif %}</span>
+            </div>
+            <span class="domain-status {{ status_cls }}">{{ status_lbl }}</span>
+            <div class="domain-card-footer">
+                <span class="btn-study" style="background:{{ d.color }};">Study →</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- SOC Bridge callouts -->
+    {% set bridge_domains = cissp_domains.items()|selectattr('1.soc_bridge')|list %}
+    {% if bridge_domains %}
+    <div class="bridge-panel">
+        <h3>🔗 SOC Training → CISSP Bridge — Your Existing Training Already Covers These Domains</h3>
+        <div class="bridge-items">
+            {% for d_num, d in bridge_domains %}
+            <div class="bridge-item" style="--d-color: {{ d.color }};">
+                <div class="bridge-item-domain" style="color:{{ d.color }};">D{{ d_num }}: {{ d.name }} ({{ d.weight }}%)</div>
+                <div class="bridge-item-text">{{ d.soc_bridge }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script src="/static/game.js"></script>
+</body>
+</html>

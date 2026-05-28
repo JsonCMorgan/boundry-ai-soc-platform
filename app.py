@@ -89,9 +89,9 @@ app.config["DEBUG"] = _debug
 
 
 def is_client_mode():
-    """Client-facing portal — no training/gamification; demo flows stay enabled.
-    Set BOUNDARY_CLIENT_MODE=1 on Railway for the client portal deployment."""
-    return os.environ.get("BOUNDARY_CLIENT_MODE", "").strip().lower() in ("1", "true", "yes")
+    """Returns True for client and demo roles — hides training/gamification.
+    Checks the session role, not an env var, so each user sees the right view."""
+    return session.get("role") in ("client", "demo")
 
 
 DB_PATH = Path(__file__).parent / "app.db"
@@ -181,11 +181,15 @@ csrf = CSRFProtect(app)
 
 @app.context_processor
 def _inject_globals():
-    """Expose shared template globals (CSRF, client portal mode)."""
-    client = is_client_mode()
+    """Expose shared template globals (CSRF, role-based UI flags)."""
+    role   = session.get("role", "")
+    client = role in ("client", "demo")
     return {
-        "csrf_token": generate_csrf,
-        "client_mode": client,
+        "csrf_token":       generate_csrf,
+        "client_mode":      client,          # True for demo + client (hides training/XP)
+        "is_demo_mode":     role == "demo",  # Full ops view, no training curriculum
+        "is_client_portal": role == "client",# Minimal reports-only view
+        "user_role":        role,            # Raw role string for precise nav guards
         "origin_sim_label": "Demo" if client else "Sim",
     }
 
@@ -604,6 +608,23 @@ def init_db():
                 (analyst_username, hashed.decode()),
             )
 
+    # Auto-seed showcase (demo-role) account — set DEMO_USERNAME + DEMO_PASSWORD on Railway.
+    # This account sees the full ops dashboard (Control Room, SIEM, Reports) but no training.
+    # Used by Jason to give prospects a live look at the platform.
+    showcase_username = os.environ.get("DEMO_USERNAME", "").strip()
+    showcase_password = os.environ.get("DEMO_PASSWORD", "").strip()
+    if showcase_username and showcase_password:
+        existing = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", (showcase_username,))
+        if not existing:
+            hashed = bcrypt.hashpw(showcase_password.encode(), bcrypt.gensalt())
+            db_run(
+                f"INSERT INTO users (username, password, role) VALUES ({PH}, {PH}, 'demo')",
+                (showcase_username, hashed.decode()),
+            )
+        else:
+            # Ensure role stays 'demo' even if DB was wiped and re-seeded differently
+            db_run(f"UPDATE users SET role = 'demo' WHERE username = {PH}", (showcase_username,))
+
     # Triage log — every status change on a report is recorded with a timestamp.
     # Used by the analyst scorecard to compute response times and escalation rates.
     if DATABASE_URL:
@@ -990,14 +1011,26 @@ def analyst_required(f):
     return decorated
 
 
+def dashboard_required(f):
+    """Allow analyst and demo roles — full operational view.
+    Blocks client-portal accounts (reports-only) from the ops dashboard."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "username" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") not in ("analyst", "demo"):
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
+
+
 @app.before_request
 def _client_mode_route_guard():
-    """Hide training/gamification routes when BOUNDARY_CLIENT_MODE is enabled."""
-    if not is_client_mode():
-        return
-    path = request.path
-    if path == "/profile" or path.startswith("/training") or path.startswith("/cissp"):
-        abort(404)
+    """Hard-block training/gamification routes for non-analyst roles."""
+    if session.get("role") in ("client", "demo"):
+        path = request.path
+        if path == "/profile" or path.startswith("/training") or path.startswith("/cissp"):
+            abort(404)
 
 
 # --- ROUTE 0: Demo (public — no login required) ---
@@ -1056,13 +1089,23 @@ def login():
                 except Exception as exc:
                     security_log.warning(f"ANALYST_UPGRADE_FAILED username={username} error={exc}")
 
+            # Auto-upgrade demo/showcase account based on DEMO_USERNAME env var.
+            demo_name = os.environ.get("DEMO_USERNAME", "").strip().lower()
+            if demo_name and username.lower() == demo_name and row.get("role") != "demo":
+                try:
+                    db_run(f"UPDATE users SET role = 'demo' WHERE username = {PH}", (username,))
+                    row["role"] = "demo"
+                except Exception as exc:
+                    security_log.warning(f"DEMO_UPGRADE_FAILED username={username} error={exc}")
+
             session.permanent = True
             session["username"] = username
             session["user_id"]  = row["id"]
             session["role"]     = row.get("role", "client")
             security_log.info(f"LOGIN_SUCCESS username={username} ip={request.remote_addr}")
-            # Analysts go to the Control Room; clients go to the reports dashboard.
-            if session["role"] == "analyst":
+            # Analyst + demo → Control Room (full ops dashboard)
+            # Client → reports portal
+            if session["role"] in ("analyst", "demo"):
                 return redirect(url_for("control_room"))
             return redirect(url_for("reports"))
         else:
@@ -2253,7 +2296,7 @@ def training_result(attempt_id):
 
 # --- ROUTE 4b: Analyst Control Room ---
 @app.route("/control-room")
-@analyst_required
+@dashboard_required
 def control_room():
     """
     Internal analyst dashboard — only accessible to accounts with role='analyst'.
@@ -3660,9 +3703,9 @@ def _run_agent_core(triggered_by="unknown", owner_id=None, force_simulated=False
             "event_count": event_count, "report_id": report_id, "simulated": bool(is_simulated)}
 
 
-# --- ROUTE 4c: Report Triage (analyst only) ---
+# --- ROUTE 4c: Report Triage (analyst + demo) ---
 @app.route("/reports/<int:report_id>/triage", methods=["POST"])
-@analyst_required
+@dashboard_required
 def triage_report(report_id):
     """Update the triage status of a report. Analyst-only."""
     status = request.form.get("status", "new")
@@ -3685,9 +3728,9 @@ def triage_report(report_id):
     return redirect(url_for("report_detail", report_id=report_id))
 
 
-# --- ROUTE 4d: Investigation Notes (analyst only) ---
+# --- ROUTE 4d: Investigation Notes (analyst + demo) ---
 @app.route("/reports/<int:report_id>/notes", methods=["POST"])
-@analyst_required
+@dashboard_required
 def save_notes(report_id):
     """Save analyst investigation notes on a report. Analyst-only."""
     notes = request.form.get("notes", "").strip()
@@ -5615,7 +5658,7 @@ def api_get_terminal_activity():
 # ── SIEM Routes ──────────────────────────────────────────────────────────────
 
 @app.route("/siem")
-@analyst_required
+@dashboard_required
 def siem_dashboard():
     """GET /siem — SIEM live event stream dashboard."""
     analyst_id = session.get("user_id") or _terminal_analyst_id()
@@ -5666,7 +5709,7 @@ def siem_dashboard():
 
 
 @app.route("/api/siem/events")
-@analyst_required
+@dashboard_required
 def api_siem_events():
     """GET /api/siem/events — paginated live feed for AJAX polling."""
     after_id = request.args.get("after", 0,    type=int)
@@ -5700,7 +5743,7 @@ def api_siem_events():
 
 
 @app.route("/api/siem/stats")
-@analyst_required
+@dashboard_required
 def api_siem_stats():
     """GET /api/siem/stats — live counts for dashboard header refresh."""
     def _c(where):
@@ -5718,7 +5761,7 @@ def api_siem_stats():
 
 
 @app.route("/api/siem/events/<int:event_id>/dismiss", methods=["POST"])
-@analyst_required
+@dashboard_required
 def api_siem_dismiss(event_id):
     """POST — dismiss (hide) a SIEM event."""
     db_run(f"UPDATE siem_events SET dismissed = 1 WHERE id = {PH}", (event_id,))
@@ -5726,7 +5769,7 @@ def api_siem_dismiss(event_id):
 
 
 @app.route("/api/siem/events/dismiss-all", methods=["POST"])
-@analyst_required
+@dashboard_required
 def api_siem_dismiss_all():
     """POST — dismiss all events matching optional severity filter."""
     data     = request.get_json(silent=True) or {}
@@ -5742,7 +5785,7 @@ def api_siem_dismiss_all():
 
 
 @app.route("/api/siem/timeline")
-@analyst_required
+@dashboard_required
 def api_siem_timeline():
     """GET /api/siem/timeline — event counts bucketed by time for Chart.js."""
     window = request.args.get("window", "24h")
@@ -5785,7 +5828,7 @@ def api_siem_timeline():
 
 
 @app.route("/api/siem/search")
-@analyst_required
+@dashboard_required
 def api_siem_search():
     """GET /api/siem/search — full-text + filtered event search."""
     q         = request.args.get("q",        "").strip()
@@ -5908,7 +5951,7 @@ def api_siem_delete_rule(rule_id):
 
 
 @app.route("/siem/query")
-@analyst_required
+@dashboard_required
 def siem_query_page():
     """GET — SPL-lite query interface for the SIEM."""
     profile = db_fetchone(
@@ -5923,7 +5966,7 @@ def siem_query_page():
 
 
 @app.route("/api/siem/spl")
-@analyst_required
+@dashboard_required
 def api_siem_spl():
     """
     GET /api/siem/spl?q=<spl_query>
@@ -5996,7 +6039,7 @@ def api_splunk_set_token():
 
 
 @app.route("/api/siem/findings/<int:finding_id>/triage", methods=["POST"])
-@analyst_required
+@dashboard_required
 def api_siem_retriage(finding_id):
     """POST — manually re-trigger Ollama AI triage for a SIEM finding."""
     finding = db_fetchone(

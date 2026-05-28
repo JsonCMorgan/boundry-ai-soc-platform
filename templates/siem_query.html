@@ -51,16 +51,17 @@
       letter-spacing: 0.05em;
       text-decoration: none;
       white-space: nowrap;
+      text-shadow: 0 0 8px #00d4ffcc, 0 0 28px #00d4ff66;
     }
     .topbar-nav { display: flex; gap: 1rem; align-items: center; }
     .topbar-nav a {
       color: var(--text-dim);
       text-decoration: none;
       font-size: 0.85rem;
-      transition: color .15s;
+      transition: color .15s, text-shadow .15s;
     }
-    .topbar-nav a:hover { color: var(--cyan); }
-    .topbar-nav a.active { color: var(--cyan); font-weight: 600; }
+    .topbar-nav a:hover { color: var(--cyan); text-shadow: 0 0 8px #00d4ff99; }
+    .topbar-nav a.active { color: var(--cyan); font-weight: 600; text-shadow: 0 0 8px #00d4ffbb; }
     .topbar-spacer { flex: 1; }
 
     /* ── XP bar (reused from control room) ─────────────────────────── */
@@ -113,6 +114,7 @@
       font-size: 1.4rem;
       font-weight: 700;
       color: var(--cyan);
+      text-shadow: 0 0 8px #00d4ffcc, 0 0 24px #00d4ff55;
     }
     .page-title p {
       color: var(--text-dim);
@@ -265,12 +267,14 @@
       color: var(--cyan);
       font-size: .8rem;
       flex: 1;
+      text-shadow: 0 0 6px #00d4ff88;
     }
     .status-count {
       color: var(--green);
       font-size: .8rem;
       font-weight: 700;
       white-space: nowrap;
+      text-shadow: 0 0 6px #00ff8888;
     }
     .status-time {
       color: var(--dim);
@@ -318,6 +322,7 @@
       color: var(--green);
       white-space: pre-wrap;
       word-break: break-all;
+      text-shadow: 0 0 6px #00ff8866;
     }
     .sql-copy-btn {
       margin-top: .5rem;
@@ -577,7 +582,7 @@
     <a href="/control-room">Control Room</a>
     <a href="/siem">SIEM Live</a>
     <a href="/siem/query" class="active">SPL Query</a>
-    {% if not client_mode %}
+    {% if user_role == 'analyst' %}
     <a href="/cissp">CISSP</a>
     <a href="/profile" style="color:#ffd700;">⚔ Profile</a>
     {% else %}

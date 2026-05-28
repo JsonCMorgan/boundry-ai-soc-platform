@@ -28,14 +28,14 @@
             align-items: center;
             justify-content: space-between;
             position: sticky; top: 0; z-index: 50;
-            box-shadow: 0 2px 18px #00b43211;
+            box-shadow: 0 2px 24px #00b43233, 0 0 48px #00b43211;
         }
         .topbar-brand {
             font-size: 1.1em;
             font-weight: bold;
             color: #00b432;
             letter-spacing: 0.04em;
-            text-shadow: 0 0 12px #00b43266;
+            text-shadow: 0 0 8px #00b432cc, 0 0 28px #00b43266;
         }
         .topbar-user {
             font-size: 0.85em;
@@ -49,7 +49,7 @@
             font-size: 0.85em;
             transition: color 0.15s;
         }
-        .topbar nav a:hover { color: #00b432; }
+        .topbar nav a:hover { color: #00b432; text-shadow: 0 0 8px #00b43299; }
 
         /* ── Stat bar ── */
         .statbar {
@@ -69,7 +69,7 @@
             font-weight: bold;
             color: #ff6a00;
             line-height: 1;
-            text-shadow: 0 0 10px #ff6a0044;
+            text-shadow: 0 0 8px #ff6a00bb, 0 0 24px #ff6a0055;
         }
         .stat-label {
             font-size: 0.75em;
@@ -115,7 +115,7 @@
             padding: 1px 7px;
             border-radius: 10px;
             font-weight: bold;
-            box-shadow: 0 0 8px #ff6a0055;
+            box-shadow: 0 0 12px #ff6a00aa, 0 0 28px #ff6a0044;
         }
 
         /* ── Agent panel ── */
@@ -216,8 +216,8 @@
             padding: 2px 7px; border-radius: 3px; text-transform: uppercase;
             white-space: nowrap;
         }
-        .source-pill-simulated { background: #2a1400; color: #ff9944; border: 1px solid #664400; }
-        .source-pill-live      { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
+        .source-pill-simulated { background: #2a1400; color: #ff9944; border: 1px solid #664400; text-shadow: 0 0 6px #ff994488; }
+        .source-pill-live      { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; text-shadow: 0 0 6px #00b43288; }
 
         /* ── Client list ── */
         .client-row {
@@ -248,8 +248,8 @@
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
-        .role-analyst { background: #1a0a2a; color: #9944ee; border: 1px solid #4a2a7a; }
-        .role-client  { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
+        .role-analyst { background: #1a0a2a; color: #9944ee; border: 1px solid #4a2a7a; text-shadow: 0 0 6px #9944ee88; }
+        .role-client  { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; text-shadow: 0 0 6px #00b43288; }
 
         /* ── Event feed ── */
         .feed-panel { grid-column: 1 / -1; }
@@ -282,13 +282,13 @@
             letter-spacing: 0.03em;
             font-family: monospace;
         }
-        .evt-login-failed  { background: #2a1400; color: #ff6a00; border: 1px solid #883300; }
-        .evt-login-success { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
-        .evt-search        { background: #120a22; color: #9944ee; border: 1px solid #441a88; }
-        .evt-xss           { background: #2a1400; color: #ff9944; border: 1px solid #884400; }
+        .evt-login-failed  { background: #2a1400; color: #ff6a00; border: 1px solid #883300; text-shadow: 0 0 6px #ff6a0099; }
+        .evt-login-success { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; text-shadow: 0 0 6px #00b43299; }
+        .evt-search        { background: #120a22; color: #9944ee; border: 1px solid #441a88; text-shadow: 0 0 6px #9944ee99; }
+        .evt-xss           { background: #2a1400; color: #ff9944; border: 1px solid #884400; text-shadow: 0 0 6px #ff994488; }
         .evt-traversal     { background: #1a1400; color: #cc9900; border: 1px solid #554400; }
-        .evt-priv-esc      { background: #1a0a00; color: #ff6a00; border: 1px solid #773300; }
-        .evt-account-enum  { background: #0a0a22; color: #7755cc; border: 1px solid #332288; }
+        .evt-priv-esc      { background: #1a0a00; color: #ff6a00; border: 1px solid #773300; text-shadow: 0 0 6px #ff6a0088; }
+        .evt-account-enum  { background: #0a0a22; color: #7755cc; border: 1px solid #332288; text-shadow: 0 0 6px #7755cc88; }
         .evt-other         { background: #1a1d2a; color: #666;    border: 1px solid #333; }
         .status-pending    { color: #ff9944; font-size: 0.75em; font-weight: bold; }
         .status-processed  { color: #333;    font-size: 0.75em; }
@@ -327,7 +327,7 @@
         }
         .reports-table tr:last-child td { border-bottom: none; }
         .reports-table tr:hover td { background: #14172a; }
-        .threat-high  { color: #ff6a00; font-weight: bold; text-shadow: 0 0 8px #ff6a0044; }
+        .threat-high  { color: #ff6a00; font-weight: bold; text-shadow: 0 0 6px #ff6a00cc, 0 0 18px #ff6a0055; }
         .threat-none  { color: #444; }
         .view-link {
             color: #00b432;
@@ -335,7 +335,7 @@
             font-size: 0.85em;
             transition: color 0.15s;
         }
-        .view-link:hover { color: #00ff41; text-decoration: underline; }
+        .view-link:hover { color: #00ff41; text-decoration: underline; text-shadow: 0 0 8px #00ff41aa; }
         .empty-row td {
             color: #333;
             font-style: italic;
@@ -344,10 +344,10 @@
         }
 
         /* ── Triage status badges ── */
-        .status-new        { background: #0a0a22; color: #7755cc; border: 1px solid #331a88; }
-        .status-reviewing  { background: #1a1000; color: #cc8800; border: 1px solid #664400; }
-        .status-escalated  { background: #2a1400; color: #ff6a00; border: 1px solid #883300; }
-        .status-closed     { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
+        .status-new        { background: #0a0a22; color: #7755cc; border: 1px solid #331a88; text-shadow: 0 0 6px #7755cc88; }
+        .status-reviewing  { background: #1a1000; color: #cc8800; border: 1px solid #664400; text-shadow: 0 0 6px #cc880088; }
+        .status-escalated  { background: #2a1400; color: #ff6a00; border: 1px solid #883300; text-shadow: 0 0 6px #ff6a0099; }
+        .status-closed     { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; text-shadow: 0 0 6px #00b43299; }
         .status-badge {
             display: inline-block;
             font-size: 0.72em;
@@ -490,9 +490,9 @@
         }
         .ticker-item a { color: inherit; text-decoration: none; }
         .ticker-item a:hover { color: white; text-decoration: underline; }
-        .ticker-sev-HIGH   { color: #ff6a00; font-weight: bold; }
-        .ticker-sev-MEDIUM { color: #cc8800; }
-        .ticker-sev-LOW    { color: #00b432; }
+        .ticker-sev-HIGH   { color: #ff6a00; font-weight: bold; text-shadow: 0 0 6px #ff6a0088; }
+        .ticker-sev-MEDIUM { color: #cc8800; text-shadow: 0 0 6px #cc880077; }
+        .ticker-sev-LOW    { color: #00b432; text-shadow: 0 0 6px #00b43277; }
         .ticker-dot { color: #222; margin-right: 48px; }
 
         /* ── Breach intel panel ── */
@@ -655,7 +655,7 @@
             letter-spacing: 0.03em; opacity: 0.8;
             transition: opacity 0.15s, color 0.15s;
         }
-        .mitre-learn-link:hover { opacity: 1; color: #00ff41; text-decoration: underline; }
+        .mitre-learn-link:hover { opacity: 1; color: #00ff41; text-decoration: underline; text-shadow: 0 0 8px #00ff41aa; }
 
         /* tactic colour tokens — Green/Orange/Purple palette */
         .tac-credential  { --tactic-color: #ff6a00; }   /* orange — credential attacks = threat */
@@ -1091,20 +1091,23 @@
                 <span id="xp-bar-label" style="font-size:11px;color:#555;white-space:nowrap;">{{ "{:,}".format(player.xp) }} XP</span>
             </div>
             {% endif %}
-            <span class="topbar-user">Analyst: <strong>{{ session['username'] }}</strong></span>
+            <span class="topbar-user">
+                {% if user_role == 'analyst' %}Analyst{% elif user_role == 'demo' %}Showcase{% else %}Client{% endif %}:
+                <strong>{{ session['username'] }}</strong>
+            </span>
             <nav>
-                {% if not client_mode %}
+                {% if user_role == 'analyst' %}
                 <a href="/scorecard">&#x1F4CA; Scorecard</a>
                 <a href="/training" style="color:#00b432; font-weight:bold;">🎓 SOC Training</a>
                 <a href="/cissp" style="color:#9944ee; font-weight:bold;">📘 CISSP</a>
                 {% endif %}
                 <a href="/siem" style="color:#00d4ff; font-weight:bold;">📡 SIEM</a>
                 <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
-                {% if client_mode %}
-                <a href="/account">Account</a>
-                {% else %}
+                {% if user_role == 'analyst' %}
                 <a href="/profile" style="color:#ffd700; font-weight:bold;">⚔️ Profile</a>
                 <a href="/reports">Client View</a>
+                {% else %}
+                <a href="/account">Account</a>
                 {% endif %}
                 <a href="/logout">Logout</a>
             </nav>

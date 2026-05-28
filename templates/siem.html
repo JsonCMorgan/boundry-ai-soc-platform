@@ -12,16 +12,16 @@
         /* ── Topbar ── */
         .topbar { background: #12151f; border-bottom: 2px solid #00d4ff33; padding: 14px 32px;
             display: flex; align-items: center; justify-content: space-between;
-            position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 18px #00d4ff11; }
+            position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 24px #00d4ff33, 0 0 48px #00d4ff11; }
         .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00d4ff;
-            letter-spacing: 0.04em; text-shadow: 0 0 12px #00d4ff66; }
+            letter-spacing: 0.04em; text-shadow: 0 0 8px #00d4ffcc, 0 0 28px #00d4ff66; }
         .topbar-sub  { font-size: 0.78em; color: #446; margin-top: 2px; }
         .topbar-user { font-size: 0.85em; color: #666; }
         .topbar-user strong { color: #aaa; }
         .topbar nav a { color: #666; text-decoration: none; margin-left: 18px;
             font-size: 0.85em; transition: color 0.15s; }
-        .topbar nav a:hover  { color: #00d4ff; }
-        .topbar nav a.active { color: #00d4ff; font-weight: bold; }
+        .topbar nav a:hover  { color: #00d4ff; text-shadow: 0 0 8px #00d4ff99; }
+        .topbar nav a.active { color: #00d4ff; font-weight: bold; text-shadow: 0 0 8px #00d4ffbb; }
         .xp-bar-wrap  { display:flex; align-items:center; gap:8px; }
         .xp-bar-outer { width:80px; height:6px; background:#1a1a1a;
             border-radius:4px; overflow:hidden; border:1px solid #333; }
@@ -35,10 +35,10 @@
         .stat { padding: 16px 28px 16px 0; border-right: 1px solid #1e2235; margin-right: 28px; }
         .stat:last-child { border-right: none; }
         .stat-value { font-size: 1.9em; font-weight: bold; line-height: 1; }
-        .stat-value.red    { color:#ff4444; text-shadow:0 0 10px #ff444444; }
-        .stat-value.orange { color:#ff8c00; text-shadow:0 0 10px #ff8c0044; }
-        .stat-value.cyan   { color:#00d4ff; text-shadow:0 0 10px #00d4ff44; }
-        .stat-value.green  { color:#00b432; text-shadow:0 0 10px #00b43244; }
+        .stat-value.red    { color:#ff4444; text-shadow:0 0 8px #ff4444bb, 0 0 24px #ff444455; }
+        .stat-value.orange { color:#ff8c00; text-shadow:0 0 8px #ff8c00bb, 0 0 24px #ff8c0055; }
+        .stat-value.cyan   { color:#00d4ff; text-shadow:0 0 8px #00d4ffbb, 0 0 24px #00d4ff55; }
+        .stat-value.green  { color:#00b432; text-shadow:0 0 8px #00b432bb, 0 0 24px #00b43255; }
         .stat-label { font-size:0.72em; color:#555; text-transform:uppercase;
             letter-spacing:0.05em; margin-top:4px; }
 
@@ -316,12 +316,15 @@
         {% endif %}
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
-        <div class="topbar-user">Analyst: <strong>{{ session['username'] }}</strong></div>
+        <div class="topbar-user">
+            {% if user_role == 'analyst' %}Analyst{% elif user_role == 'demo' %}Showcase{% else %}Client{% endif %}:
+            <strong>{{ session['username'] }}</strong>
+        </div>
         <nav>
             <a href="/control-room">🖥 Control Room</a>
             <a href="/siem" class="active">📡 SIEM</a>
             <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
-            {% if not client_mode %}
+            {% if user_role == 'analyst' %}
             <a href="/cissp" style="color:#9944ee;">📘 CISSP</a>
             <a href="/profile" style="color:#ffd700;">⚔️ Profile</a>
             {% else %}

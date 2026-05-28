@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boundry.AI — Compliance Dashboard</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; padding: 0; }
+
+        /* ── Topbar ── */
+        .topbar { background: #12151f; border-bottom: 2px solid #00b43233; padding: 14px 32px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 18px #00b43211; }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00b432;
+            letter-spacing: 0.04em; text-shadow: 0 0 12px #00b43266; text-decoration: none; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 18px;
+            font-size: 0.85em; transition: color 0.15s; }
+        .topbar nav a:hover { color: #00b432; }
+        .topbar nav a.active { color: #00b432; font-weight: bold; }
+
+        /* ── Layout ── */
+        .main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+        .page-header { margin-bottom: 32px; }
+        .page-header h1 { font-size: 1.6em; color: #00b432; margin: 0 0 6px;
+            text-shadow: 0 0 12px #00b43255; }
+        .page-header p { color: #666; font-size: 0.9em; margin: 0; }
+
+        /* ── Stat bar ── */
+        .statbar { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
+        .stat-card { background: #12151f; border: 1px solid #1e2235; border-radius: 8px;
+            padding: 20px 24px; flex: 1; min-width: 160px; }
+        .stat-value { font-size: 2.2em; font-weight: bold; line-height: 1; }
+        .stat-value.green  { color: #00b432; text-shadow: 0 0 8px #00b43288; }
+        .stat-value.orange { color: #ff6a00; text-shadow: 0 0 8px #ff6a0088; }
+        .stat-value.red    { color: #e74c3c; text-shadow: 0 0 8px #e74c3c88; }
+        .stat-value.blue   { color: #3498db; text-shadow: 0 0 8px #3498db88; }
+        .stat-label { font-size: 0.75em; color: #555; text-transform: uppercase;
+            letter-spacing: 0.06em; margin-top: 6px; }
+
+        /* ── PCI Score ring ── */
+        .score-row { display: flex; gap: 24px; margin-bottom: 32px; flex-wrap: wrap; }
+        .score-card { background: #12151f; border: 1px solid #1e2235; border-radius: 8px;
+            padding: 28px 32px; display: flex; align-items: center; gap: 32px; flex: 1; min-width: 300px; }
+        .score-ring { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+        .score-ring svg { transform: rotate(-90deg); }
+        .score-ring-text { position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; }
+        .score-ring-num { font-size: 1.7em; font-weight: bold; color: #00b432;
+            text-shadow: 0 0 8px #00b43288; line-height: 1; }
+        .score-ring-label { font-size: 0.65em; color: #555; text-transform: uppercase;
+            letter-spacing: 0.06em; margin-top: 2px; }
+        .score-breakdown { flex: 1; }
+        .score-breakdown h2 { font-size: 1.1em; color: #aaa; margin: 0 0 14px; }
+        .breakdown-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .bd-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .bd-dot.pass { background: #00b432; }
+        .bd-dot.warn { background: #f39c12; }
+        .bd-dot.fail { background: #e74c3c; }
+        .bd-dot.unknown { background: #555; }
+        .bd-label { color: #aaa; font-size: 0.88em; flex: 1; }
+        .bd-count { font-weight: bold; color: #fff; font-size: 0.88em; }
+
+        /* ── Section headings ── */
+        .section-header { display: flex; align-items: center; gap: 12px; margin: 36px 0 18px; }
+        .section-header h2 { font-size: 1.1em; color: #00b432; margin: 0; text-transform: uppercase;
+            letter-spacing: 0.06em; }
+        .section-tag { font-size: 0.75em; background: #1a2a1a; border: 1px solid #00b43244;
+            color: #00b432; padding: 3px 10px; border-radius: 12px; }
+        .section-divider { flex: 1; height: 1px; background: #1e2235; }
+
+        /* ── Control cards ── */
+        .controls-grid { display: flex; flex-direction: column; gap: 10px; }
+        .control-card { background: #12151f; border: 1px solid #1e2235; border-radius: 8px;
+            overflow: hidden; }
+        .control-card.fail  { border-left: 3px solid #e74c3c; }
+        .control-card.pass  { border-left: 3px solid #00b432; }
+        .control-card.warn  { border-left: 3px solid #f39c12; }
+        .control-card.unknown { border-left: 3px solid #444; }
+
+        .control-header { display: flex; align-items: center; gap: 14px; padding: 14px 20px;
+            cursor: pointer; user-select: none; }
+        .control-header:hover { background: #0e111a; }
+        .ctrl-badge { font-size: 0.72em; font-weight: bold; padding: 3px 10px;
+            border-radius: 12px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.04em; }
+        .ctrl-badge.pass    { background: #0d2a1a; border: 1px solid #00b43244; color: #00b432; }
+        .ctrl-badge.fail    { background: #2a0d0d; border: 1px solid #e74c3c44; color: #e74c3c; }
+        .ctrl-badge.warn    { background: #2a1f0d; border: 1px solid #f39c1244; color: #f39c12; }
+        .ctrl-badge.unknown { background: #1a1d2e; border: 1px solid #2a2d3e;  color: #666; }
+
+        .ctrl-req { font-size: 0.75em; color: #555; flex-shrink: 0; min-width: 60px; }
+        .ctrl-title { font-size: 0.95em; color: #ccc; flex: 1; }
+        .ctrl-status { font-size: 0.8em; color: #555; flex-shrink: 0; }
+        .ctrl-chevron { color: #444; font-size: 0.8em; flex-shrink: 0; transition: transform 0.2s; }
+        .control-card.open .ctrl-chevron { transform: rotate(90deg); }
+
+        .control-body { display: none; padding: 0 20px 18px 20px; border-top: 1px solid #1e2235; }
+        .control-card.open .control-body { display: block; }
+        .ctrl-desc { color: #888; font-size: 0.85em; margin: 12px 0 10px; line-height: 1.5; }
+
+        /* Failing findings list inside control card */
+        .finding-list { margin-top: 10px; }
+        .finding-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px;
+            background: #0e111a; border-radius: 4px; margin-bottom: 6px; }
+        .sev-pip { font-size: 0.72em; font-weight: bold; padding: 2px 8px; border-radius: 10px;
+            flex-shrink: 0; margin-top: 1px; }
+        .sev-pip.CRITICAL { background: #3a0d0d; color: #ff4444; border: 1px solid #ff444444; }
+        .sev-pip.HIGH     { background: #2a1505; color: #ff6a00; border: 1px solid #ff6a0044; }
+        .sev-pip.MEDIUM   { background: #2a1f05; color: #f39c12; border: 1px solid #f39c1244; }
+        .sev-pip.LOW      { background: #1a1505; color: #aaa;    border: 1px solid #aaa44; }
+        .finding-title { font-size: 0.85em; color: #ccc; }
+
+        /* ── Cannabis controls ── */
+        .cannabis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 14px; }
+        .cannabis-card { background: #12151f; border: 1px solid #1e2235; border-radius: 8px;
+            padding: 18px 20px; }
+        .cannabis-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .cannabis-id { font-size: 0.72em; color: #555; font-family: monospace; }
+        .cannabis-title { font-size: 0.95em; color: #ccc; font-weight: bold; flex: 1; }
+        .risk-badge { font-size: 0.7em; font-weight: bold; padding: 2px 8px; border-radius: 10px;
+            flex-shrink: 0; }
+        .risk-badge.HIGH   { background: #2a1505; color: #ff6a00; border: 1px solid #ff6a0044; }
+        .risk-badge.MEDIUM { background: #2a1f05; color: #f39c12; border: 1px solid #f39c1244; }
+        .cannabis-desc { color: #888; font-size: 0.83em; line-height: 1.5; margin-bottom: 10px; }
+        .cannabis-guidance { color: #555; font-size: 0.78em; line-height: 1.5;
+            border-top: 1px solid #1e2235; padding-top: 10px; }
+        .cannabis-guidance::before { content: "💡 "; }
+
+        /* ── Info box ── */
+        .info-box { background: #0e1a12; border: 1px solid #00b43233; border-radius: 6px;
+            padding: 14px 18px; margin-bottom: 28px; }
+        .info-box p { margin: 0; font-size: 0.85em; color: #888; line-height: 1.6; }
+        .info-box strong { color: #00b432; }
+
+        /* ── Cannabis SIEM warning ── */
+        .alert-banner { background: #2a1505; border: 1px solid #ff6a0044; border-radius: 6px;
+            padding: 14px 18px; margin-bottom: 24px; font-size: 0.85em; color: #ff6a00; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <a class="topbar-brand" href="{{ url_for('control_room') if role == 'analyst' else url_for('reports') }}">🛡 Boundry.AI</a>
+    <nav>
+        {% if role == 'analyst' %}
+        <a href="{{ url_for('control_room') }}">Control Room</a>
+        <a href="{{ url_for('siem') }}">SIEM</a>
+        <a href="{{ url_for('reports') }}">Reports</a>
+        {% else %}
+        <a href="{{ url_for('reports') }}">My Reports</a>
+        <a href="{{ url_for('account') }}">Account</a>
+        {% endif %}
+        <a href="{{ url_for('compliance') }}" class="active">Compliance</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </nav>
+</div>
+
+<div class="main">
+    <div class="page-header">
+        <h1>📋 Compliance Dashboard</h1>
+        <p>PCI DSS 4.0 posture + Cannabis industry compliance — based on your latest security scan data.</p>
+    </div>
+
+    <!-- Stat bar -->
+    <div class="statbar">
+        <div class="stat-card">
+            <div class="stat-value {% if pci_score >= 80 %}green{% elif pci_score >= 50 %}orange{% else %}red{% endif %}">{{ pci_score }}%</div>
+            <div class="stat-label">PCI DSS Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value {% if pci_pass == pci_total %}green{% elif pci_pass > pci_fail %}orange{% else %}red{% endif %}">{{ pci_pass }}/{{ pci_total }}</div>
+            <div class="stat-label">Controls Passing</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value {% if open_findings == 0 %}green{% elif open_findings < 5 %}orange{% else %}red{% endif %}">{{ open_findings }}</div>
+            <div class="stat-label">Open Findings</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value {% if critical_findings == 0 %}green{% else %}red{% endif %}">{{ critical_findings }}</div>
+            <div class="stat-label">Critical / High</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value blue">{{ siem_count }}</div>
+            <div class="stat-label">SIEM Events (24h)</div>
+        </div>
+    </div>
+
+    <!-- Score ring + breakdown -->
+    <div class="score-row">
+        <div class="score-card">
+            <!-- SVG ring -->
+            <div class="score-ring">
+                {% set circumference = 283 %}
+                {% set dash = (pci_score / 100) * circumference %}
+                <svg width="110" height="110" viewBox="0 0 110 110">
+                    <circle cx="55" cy="55" r="45" fill="none" stroke="#1e2235" stroke-width="10"/>
+                    <circle cx="55" cy="55" r="45" fill="none"
+                        stroke="{% if pci_score >= 80 %}#00b432{% elif pci_score >= 50 %}#f39c12{% else %}#e74c3c{% endif %}"
+                        stroke-width="10"
+                        stroke-dasharray="{{ dash }} {{ circumference }}"
+                        stroke-linecap="round"/>
+                </svg>
+                <div class="score-ring-text">
+                    <span class="score-ring-num">{{ pci_score }}</span>
+                    <span class="score-ring-label">/ 100</span>
+                </div>
+            </div>
+            <div class="score-breakdown">
+                <h2>PCI DSS 4.0 Breakdown</h2>
+                <div class="breakdown-row">
+                    <div class="bd-dot pass"></div>
+                    <div class="bd-label">Passing</div>
+                    <div class="bd-count">{{ pci_pass }}</div>
+                </div>
+                <div class="breakdown-row">
+                    <div class="bd-dot warn"></div>
+                    <div class="bd-label">Warning</div>
+                    <div class="bd-count">{{ pci_warn }}</div>
+                </div>
+                <div class="breakdown-row">
+                    <div class="bd-dot fail"></div>
+                    <div class="bd-label">Failing</div>
+                    <div class="bd-count">{{ pci_fail }}</div>
+                </div>
+                <div class="breakdown-row">
+                    <div class="bd-dot unknown"></div>
+                    <div class="bd-label">Manual Review</div>
+                    <div class="bd-count">{{ pci_unk }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="score-card" style="flex-direction:column;align-items:flex-start;gap:10px;justify-content:center;">
+            <h2 style="margin:0;font-size:1.1em;color:#aaa;">What This Score Means</h2>
+            {% if pci_score >= 80 %}
+            <p style="margin:0;color:#888;font-size:0.88em;line-height:1.6;">
+                Your environment has <strong style="color:#00b432;">strong PCI DSS alignment</strong>.
+                Key controls are passing. Remaining items are manual documentation checks — review
+                with your compliance adviser before a formal assessment.
+            </p>
+            {% elif pci_score >= 50 %}
+            <p style="margin:0;color:#888;font-size:0.88em;line-height:1.6;">
+                Your environment has <strong style="color:#f39c12;">moderate PCI DSS alignment</strong>.
+                Some controls are failing — address the red items below before accepting card payments
+                or processing cardholder data.
+            </p>
+            {% else %}
+            <p style="margin:0;color:#888;font-size:0.88em;line-height:1.6;">
+                Your environment has <strong style="color:#e74c3c;">significant PCI DSS gaps</strong>.
+                Multiple controls are failing. Run a system scan and resolve critical findings before
+                handling any cardholder data.
+            </p>
+            {% endif %}
+            <p style="margin:0;color:#555;font-size:0.8em;line-height:1.6;">
+                ⚠️ This is an automated assessment based on your security scan data.
+                It is not a formal PCI DSS audit. Engage a QSA for Level 1 merchant certification.
+            </p>
+            {% if role == 'analyst' %}
+            <a href="{{ url_for('scan_findings') if false else url_for('control_room') }}"
+               style="display:inline-block;margin-top:6px;padding:8px 18px;background:#1a2a1a;
+                      color:#00b432;border:1px solid #00b432;border-radius:4px;
+                      font-size:0.85em;text-decoration:none;">
+                Run System Scan →
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- PCI DSS Controls -->
+    <div class="section-header">
+        <h2>PCI DSS 4.0 Controls</h2>
+        <span class="section-tag">{{ pci_total }} requirements</span>
+        <div class="section-divider"></div>
+    </div>
+
+    <div class="info-box">
+        <p>Controls are evaluated automatically against your open security findings.
+        <strong>Green = no findings mapped to this control.</strong>
+        Click any row to see details and linked findings.
+        "Manual Review" items require documentation or physical inspection — they cannot be auto-assessed.</p>
+    </div>
+
+    <div class="controls-grid">
+        {% for ctrl in pci_controls %}
+        <div class="control-card {{ ctrl.status }}" onclick="toggleCard(this)">
+            <div class="control-header">
+                <span class="ctrl-req">{{ ctrl.req }}</span>
+                <span class="ctrl-title">{{ ctrl.title }}</span>
+                <span class="ctrl-status">{{ ctrl.status_label }}</span>
+                <span class="ctrl-badge {{ ctrl.status }}">
+                    {% if ctrl.status == 'pass' %}✓ Pass
+                    {% elif ctrl.status == 'fail' %}✗ Fail
+                    {% elif ctrl.status == 'warn' %}⚠ Warn
+                    {% else %}? Manual{% endif %}
+                </span>
+                <span class="ctrl-chevron">›</span>
+            </div>
+            <div class="control-body">
+                <p class="ctrl-desc">{{ ctrl.description }}</p>
+
+                {% if ctrl.failing_findings %}
+                <div class="finding-list">
+                    <div style="font-size:0.8em;color:#e74c3c;margin-bottom:8px;">
+                        ⚠️ {{ ctrl.failing_findings|length }} open finding{{ 's' if ctrl.failing_findings|length != 1 else '' }} mapped to this control:
+                    </div>
+                    {% for f in ctrl.failing_findings %}
+                    <div class="finding-item">
+                        <span class="sev-pip {{ f.severity }}">{{ f.severity }}</span>
+                        <span class="finding-title">{{ f.title }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% elif ctrl.status == 'pass' %}
+                <div style="color:#00b432;font-size:0.83em;">✓ No open findings linked to this control.</div>
+                {% elif ctrl.status == 'warn' %}
+                <div style="color:#f39c12;font-size:0.83em;">
+                    ⚠️ No recent security scans found in the last 30 days.
+                    Run a machine or network scan to generate fresh data.
+                </div>
+                {% elif ctrl.status == 'unknown' %}
+                <div style="color:#666;font-size:0.83em;">
+                    This control requires manual documentation review.
+                    Ensure your information security policy is written, approved, and distributed to relevant staff.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Cannabis Compliance -->
+    <div class="section-header">
+        <h2>Cannabis Industry Controls</h2>
+        <span class="section-tag">{{ cannabis_controls|length }} checks</span>
+        <div class="section-divider"></div>
+    </div>
+
+    <div class="alert-banner">
+        ⚠️ Cannabis compliance requirements vary by state and licence type. The checks below are
+        a general framework — verify against your state's specific regulations.
+        This is not legal advice.
+    </div>
+
+    <div class="cannabis-grid">
+        {% for ctrl in cannabis_controls %}
+        <div class="cannabis-card">
+            <div class="cannabis-card-header">
+                <span class="cannabis-id">{{ ctrl.id }}</span>
+                <span class="cannabis-title">{{ ctrl.title }}</span>
+                <span class="risk-badge {{ ctrl.risk }}">{{ ctrl.risk }}</span>
+            </div>
+            <p class="cannabis-desc">{{ ctrl.description }}</p>
+            <div class="cannabis-guidance">{{ ctrl.guidance }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Footer note -->
+    <div style="margin-top:48px;padding:20px;background:#0e111a;border:1px solid #1e2235;
+                border-radius:8px;font-size:0.8em;color:#555;line-height:1.7;">
+        <strong style="color:#aaa;">Disclaimer:</strong> This compliance dashboard is an
+        automated security posture assessment tool, not a formal audit. PCI DSS compliance
+        requires validation by a Qualified Security Assessor (QSA). Cannabis regulatory
+        compliance must be verified against your specific state laws and licence conditions.
+        Boundry.AI is not a legal or compliance adviser.
+    </div>
+</div>
+
+<script>
+function toggleCard(card) {
+    card.classList.toggle('open');
+}
+
+// Auto-open any failing cards on load
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.control-card.fail').forEach(function(card) {
+        card.classList.add('open');
+    });
+});
+</script>
+</body>
+</html>

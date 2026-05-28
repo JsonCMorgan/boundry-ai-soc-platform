@@ -7205,6 +7205,245 @@ def _siem_flask_logger(response):
     return response
 
 
+# ── Compliance Module ─────────────────────────────────────────────────────────
+
+# PCI DSS 4.0 requirement definitions — each maps to scan finding patterns
+_PCI_CONTROLS = [
+    {
+        "id": "1.1", "req": "Req 1", "title": "Network Security Controls",
+        "description": "Firewall or network security controls installed and maintained.",
+        "finding_keywords": ["firewall disabled", "firewall is disabled", "firewall off"],
+        "category": "network",
+    },
+    {
+        "id": "2.1", "req": "Req 2", "title": "Secure Configuration Standards",
+        "description": "Secure configurations applied; unnecessary services/ports removed.",
+        "finding_keywords": ["smb", "netbios", "port 445", "port 139", "port 135", "shared folder"],
+        "category": "config",
+    },
+    {
+        "id": "5.1", "req": "Req 5", "title": "Anti-Malware Protection",
+        "description": "Anti-malware software installed and running on all systems.",
+        "finding_keywords": ["defender", "antivirus", "malware", "defender not running", "defender disabled"],
+        "category": "endpoint",
+    },
+    {
+        "id": "6.1", "req": "Req 6", "title": "Secure Software & Patching",
+        "description": "All system components protected from known vulnerabilities via patches.",
+        "finding_keywords": ["windows update", "update disabled", "patch", "outdated"],
+        "category": "patching",
+    },
+    {
+        "id": "7.1", "req": "Req 7", "title": "Restrict Access to System Components",
+        "description": "Access to system components and cardholder data restricted.",
+        "finding_keywords": ["uac disabled", "uac is disabled", "user account control"],
+        "category": "access",
+    },
+    {
+        "id": "8.1", "req": "Req 8", "title": "Identify and Authenticate Access",
+        "description": "Strong authentication for all users accessing system components.",
+        "finding_keywords": ["password", "account", "authentication", "weak password", "default credential"],
+        "category": "auth",
+    },
+    {
+        "id": "10.1", "req": "Req 10", "title": "Log and Monitor All Access",
+        "description": "All access to system components and cardholder data logged.",
+        "finding_keywords": ["logging disabled", "audit log", "event log disabled"],
+        "category": "logging",
+    },
+    {
+        "id": "11.1", "req": "Req 11", "title": "Test Security Systems Regularly",
+        "description": "Security controls and processes tested regularly.",
+        "finding_keywords": [],  # Checked via scan history instead
+        "category": "testing",
+    },
+    {
+        "id": "12.1", "req": "Req 12", "title": "Organisational Security Policy",
+        "description": "Information security policy supports protection of cardholder data.",
+        "finding_keywords": [],  # Manual / documentation-based
+        "category": "policy",
+    },
+]
+
+# Cannabis-industry-specific compliance controls
+_CANNABIS_CONTROLS = [
+    {
+        "id": "C1", "title": "State Cannabis License",
+        "description": "Active, current state-issued cannabis retail/dispensary license on file.",
+        "guidance": "License must be displayed and renewed before expiry. Copy stored digitally.",
+        "risk": "HIGH",
+    },
+    {
+        "id": "C2", "title": "Seed-to-Sale Tracking (METRC)",
+        "description": "All inventory tracked via state-mandated system (e.g. METRC, BioTrackTHC).",
+        "guidance": "Ensure METRC API credentials are secured and access logs are reviewed monthly.",
+        "risk": "HIGH",
+    },
+    {
+        "id": "C3", "title": "Employee Background Screening",
+        "description": "All employees with access to cash, inventory, or systems pass background checks.",
+        "guidance": "Document background check results; retain for duration of employment + 3 years.",
+        "risk": "MEDIUM",
+    },
+    {
+        "id": "C4", "title": "Surveillance System Coverage",
+        "description": "Cameras cover all areas per state regulations; footage retained 30–90 days.",
+        "guidance": "Check local requirement — most states require 90-day minimum retention.",
+        "risk": "HIGH",
+    },
+    {
+        "id": "C5", "title": "Cash Handling & PCI Compliance",
+        "description": "Any card/payment terminals are PCI DSS compliant; cash procedures documented.",
+        "guidance": "Even cash-only businesses should have documented cash handling SOPs to reduce theft and fraud exposure.",
+        "risk": "HIGH",
+    },
+    {
+        "id": "C6", "title": "Customer Data Protection",
+        "description": "Customer purchase history, ID scans, and loyalty data stored securely.",
+        "guidance": "ID scan data must be encrypted at rest. Retention limited to what is legally required.",
+        "risk": "HIGH",
+    },
+    {
+        "id": "C7", "title": "Banking & MSB Compliance",
+        "description": "If banking: BSA/AML programme in place. If cash-heavy: CTR filings current.",
+        "guidance": "Cannabis businesses handling large cash volumes are Money Services Businesses (MSBs) and must file Currency Transaction Reports for transactions over $10,000.",
+        "risk": "MEDIUM",
+    },
+    {
+        "id": "C8", "title": "Cybersecurity Incident Response Plan",
+        "description": "Documented plan for responding to a data breach or cyberattack.",
+        "guidance": "Plan must include: who to call, how to contain, reporting obligations (state + federal), and client notification procedures.",
+        "risk": "MEDIUM",
+    },
+]
+
+
+def _evaluate_pci_controls(findings):
+    """Map unresolved scan findings to PCI DSS controls.
+
+    Returns a list of controls with added 'status' and 'failing_findings' keys.
+    Status: 'pass' | 'fail' | 'warn' | 'unknown'
+    """
+    # Index findings by lowercased title + description for keyword matching
+    finding_texts = []
+    for f in findings:
+        text = f"{f.get('title', '')} {f.get('description', '')}".lower()
+        finding_texts.append((text, f))
+
+    # Check scan history (for Req 11)
+    scan_history = db_fetchall(
+        "SELECT COUNT(*) as cnt FROM system_findings "
+        "WHERE created_at >= datetime('now', '-30 days')"
+        if not DATABASE_URL else
+        "SELECT COUNT(*) as cnt FROM system_findings "
+        "WHERE created_at >= NOW() - INTERVAL '30 days'"
+    )
+    recent_scans = (scan_history[0].get("cnt") or 0) if scan_history else 0
+
+    results = []
+    for ctrl in _PCI_CONTROLS:
+        ctrl = dict(ctrl)  # copy so we don't mutate the global
+
+        # Req 11 — check scan activity
+        if ctrl["id"] == "11.1":
+            ctrl["status"] = "pass" if recent_scans > 0 else "warn"
+            ctrl["failing_findings"] = []
+            ctrl["status_label"] = "Active" if recent_scans > 0 else "No recent scans"
+            results.append(ctrl)
+            continue
+
+        # Req 12 — always manual
+        if ctrl["id"] == "12.1":
+            ctrl["status"] = "unknown"
+            ctrl["failing_findings"] = []
+            ctrl["status_label"] = "Manual review required"
+            results.append(ctrl)
+            continue
+
+        # Check if any unresolved finding matches this control's keywords
+        failing = []
+        if ctrl["finding_keywords"]:
+            for text, f in finding_texts:
+                if any(kw in text for kw in ctrl["finding_keywords"]):
+                    failing.append(f)
+
+        if not ctrl["finding_keywords"]:
+            ctrl["status"] = "unknown"
+            ctrl["status_label"] = "Manual review required"
+        elif failing:
+            ctrl["status"] = "fail"
+            ctrl["status_label"] = f"{len(failing)} issue{'s' if len(failing) != 1 else ''} found"
+        else:
+            ctrl["status"] = "pass"
+            ctrl["status_label"] = "No issues detected"
+
+        ctrl["failing_findings"] = failing
+        results.append(ctrl)
+
+    return results
+
+
+@app.route("/compliance")
+@login_required
+def compliance():
+    """PCI DSS + Cannabis compliance dashboard.
+
+    Analyst: sees full technical view with scan findings mapped to controls.
+    Client: sees same page — useful for cannabis clients who need to show compliance posture.
+    """
+    role = session.get("role", "")
+
+    # Get unresolved scan findings
+    findings = db_fetchall(
+        "SELECT id, title, description, severity, category, cissp_domain "
+        "FROM system_findings WHERE resolved = 0 ORDER BY severity"
+    )
+
+    # Evaluate PCI DSS controls against findings
+    pci_controls = _evaluate_pci_controls(findings)
+
+    # PCI score: pass=full points, warn=half, fail/unknown=0
+    pci_pass  = sum(1 for c in pci_controls if c["status"] == "pass")
+    pci_warn  = sum(1 for c in pci_controls if c["status"] == "warn")
+    pci_fail  = sum(1 for c in pci_controls if c["status"] == "fail")
+    pci_unk   = sum(1 for c in pci_controls if c["status"] == "unknown")
+    pci_total = len(pci_controls)
+    pci_score = round(((pci_pass + pci_warn * 0.5) / pci_total) * 100) if pci_total else 0
+
+    # Cannabis controls — always manual (status stored per-user if they've reviewed)
+    # For now we pass the definitions; future: store per-client status in DB
+    cannabis_controls = list(_CANNABIS_CONTROLS)
+
+    # SIEM health check — events in last 24h
+    siem_recent = db_fetchall(
+        "SELECT COUNT(*) as cnt FROM siem_events "
+        "WHERE created_at >= datetime('now', '-1 day')"
+        if not DATABASE_URL else
+        "SELECT COUNT(*) as cnt FROM siem_events "
+        "WHERE created_at >= NOW() - INTERVAL '1 day'"
+    )
+    siem_count = (siem_recent[0].get("cnt") or 0) if siem_recent else 0
+
+    # Open CRITICAL/HIGH findings count
+    critical_findings = [f for f in findings if f.get("severity") in ("CRITICAL", "HIGH")]
+
+    return render_template(
+        "compliance.html",
+        pci_controls=pci_controls,
+        cannabis_controls=cannabis_controls,
+        pci_score=pci_score,
+        pci_pass=pci_pass,
+        pci_warn=pci_warn,
+        pci_fail=pci_fail,
+        pci_unk=pci_unk,
+        pci_total=pci_total,
+        open_findings=len(findings),
+        critical_findings=len(critical_findings),
+        siem_count=siem_count,
+        role=role,
+    )
+
+
 # --- Startup ---
 # init_db() must run at module level so gunicorn (production) initialises
 # the database on import, not just when running via `python app.py`.

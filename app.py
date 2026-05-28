@@ -213,8 +213,13 @@ _TOKEN_FILE = Path(__file__).parent / ".terminal_token"
 
 
 def _load_terminal_token() -> str:
-    """Load existing terminal token or generate a new one."""
+    """Load terminal token: env var takes priority (production), then local file (dev)."""
     import secrets as _s
+    # Production (Railway): TERMINAL_TOKEN env var is the source of truth
+    env_tok = os.environ.get("TERMINAL_TOKEN", "").strip()
+    if env_tok:
+        return env_tok
+    # Dev: read from local file, or generate one if missing
     if _TOKEN_FILE.exists():
         tok = _TOKEN_FILE.read_text().strip()
         if tok:

@@ -130,6 +130,30 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-group">
+                <label for="business_name">Business name</label>
+                <input type="text" id="business_name" name="business_name"
+                    value="{{ business_name or '' }}"
+                    placeholder="e.g. Green Leaf Dispensary"
+                    style="width:100%;background:#0b0e17;border:1px solid #2a2d3e;border-radius:4px;
+                           color:#fff;padding:10px 14px;font-size:0.95em;outline:none;">
+            </div>
+
+            <div class="form-group">
+                <label for="industry">Industry</label>
+                <select id="industry" name="industry"
+                    style="width:100%;background:#0b0e17;border:1px solid #2a2d3e;border-radius:4px;
+                           color:#fff;padding:10px 14px;font-size:0.95em;outline:none;cursor:pointer;">
+                    {% for key, label in industry_labels.items() %}
+                    <option value="{{ key }}" {% if user_industry == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <p style="color:#555;font-size:0.78em;margin:6px 0 0;">
+                    Selecting your industry shows the right compliance framework on your
+                    <a href="{{ url_for('compliance') }}" style="color:#00b432;">Compliance dashboard</a>.
+                </p>
+            </div>
+
+            <div class="form-group">
                 <label for="email">Email address</label>
                 <input type="email" id="email" name="email"
                     value="{{ user_email or '' }}"

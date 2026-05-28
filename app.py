@@ -925,6 +925,17 @@ def init_db():
         if "totp_enabled" not in existing_cols:
             db_run("ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0")
 
+    # Migration: industry + business_name on users — drives compliance framework selection
+    if DATABASE_URL:
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS industry      TEXT    NOT NULL DEFAULT 'general'")
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name TEXT    NOT NULL DEFAULT ''")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(users)")]
+        if "industry" not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN industry      TEXT    NOT NULL DEFAULT 'general'")
+        if "business_name" not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN business_name TEXT    NOT NULL DEFAULT ''")
+
     # Asset inventory — client-registered digital assets (websites, servers, services)
     if DATABASE_URL:
         asset_ts = "created_at TIMESTAMP NOT NULL DEFAULT NOW()"
@@ -1696,7 +1707,7 @@ def change_password():
 @app.route("/account", methods=["GET", "POST"])
 @login_required
 def account():
-    """Account settings — email address and notification preferences."""
+    """Account settings — email, notifications, industry, and business name."""
     user_id = session.get("user_id")
     error   = None
     success = None
@@ -1704,19 +1715,27 @@ def account():
     if request.method == "POST":
         new_email      = request.form.get("email", "").strip().lower()
         email_alerts   = 1 if request.form.get("email_alerts") else 0
+        new_industry   = request.form.get("industry", "general").strip()
+        business_name  = request.form.get("business_name", "").strip()[:120]
 
-        # Basic validation — allow empty (opt out), or must look like an email
+        # Validate industry against allowlist
+        if new_industry not in INDUSTRY_LABELS:
+            new_industry = "general"
+
+        # Basic email validation — allow empty (opt out)
         if new_email and ("@" not in new_email or "." not in new_email.split("@")[-1]):
             error = "Please enter a valid email address."
         else:
             db_run(
-                f"UPDATE users SET email = {PH}, email_alerts = {PH} WHERE id = {PH}",
-                (new_email, email_alerts, user_id),
+                f"UPDATE users SET email={PH}, email_alerts={PH}, "
+                f"industry={PH}, business_name={PH} WHERE id={PH}",
+                (new_email, email_alerts, new_industry, business_name, user_id),
             )
             success = "Settings saved."
 
     user = db_fetchone(
-        f"SELECT email, email_alerts, totp_enabled FROM users WHERE id = {PH}", (user_id,)
+        f"SELECT email, email_alerts, totp_enabled, industry, business_name "
+        f"FROM users WHERE id = {PH}", (user_id,)
     )
     asset_count = (db_fetchone(
         f"SELECT COUNT(*) AS cnt FROM assets WHERE owner_id = {PH}", (user_id,)
@@ -1726,6 +1745,9 @@ def account():
         user_email=user["email"] if user else "",
         email_alerts=bool(user["email_alerts"] if user else 1),
         totp_enabled=bool(user["totp_enabled"] if user else 0),
+        user_industry=user["industry"] if user else "general",
+        business_name=user["business_name"] if user else "",
+        industry_labels=INDUSTRY_LABELS,
         asset_count=asset_count,
         error=error,
         success=success,
@@ -7207,6 +7229,20 @@ def _siem_flask_logger(response):
 
 # ── Compliance Module ─────────────────────────────────────────────────────────
 
+# Industry definitions — display label + description shown in account settings
+INDUSTRY_LABELS = {
+    "general":      "General Business",
+    "cannabis":     "Cannabis / Dispensary",
+    "healthcare":   "Healthcare / Medical",
+    "legal":        "Legal / Law Firm",
+    "financial":    "Financial / Accounting",
+    "retail":       "Retail / E-commerce",
+    "hospitality":  "Restaurant / Hospitality",
+    "realestate":   "Real Estate",
+    "construction": "Construction / Trades",
+    "nonprofit":    "Nonprofit / Charity",
+}
+
 # PCI DSS 4.0 requirement definitions — each maps to scan finding patterns
 _PCI_CONTROLS = [
     {
@@ -7265,57 +7301,279 @@ _PCI_CONTROLS = [
     },
 ]
 
-# Cannabis-industry-specific compliance controls
-_CANNABIS_CONTROLS = [
-    {
-        "id": "C1", "title": "State Cannabis License",
-        "description": "Active, current state-issued cannabis retail/dispensary license on file.",
-        "guidance": "License must be displayed and renewed before expiry. Copy stored digitally.",
-        "risk": "HIGH",
-    },
-    {
-        "id": "C2", "title": "Seed-to-Sale Tracking (METRC)",
-        "description": "All inventory tracked via state-mandated system (e.g. METRC, BioTrackTHC).",
-        "guidance": "Ensure METRC API credentials are secured and access logs are reviewed monthly.",
-        "risk": "HIGH",
-    },
-    {
-        "id": "C3", "title": "Employee Background Screening",
-        "description": "All employees with access to cash, inventory, or systems pass background checks.",
-        "guidance": "Document background check results; retain for duration of employment + 3 years.",
-        "risk": "MEDIUM",
-    },
-    {
-        "id": "C4", "title": "Surveillance System Coverage",
-        "description": "Cameras cover all areas per state regulations; footage retained 30–90 days.",
-        "guidance": "Check local requirement — most states require 90-day minimum retention.",
-        "risk": "HIGH",
-    },
-    {
-        "id": "C5", "title": "Cash Handling & PCI Compliance",
-        "description": "Any card/payment terminals are PCI DSS compliant; cash procedures documented.",
-        "guidance": "Even cash-only businesses should have documented cash handling SOPs to reduce theft and fraud exposure.",
-        "risk": "HIGH",
-    },
-    {
-        "id": "C6", "title": "Customer Data Protection",
-        "description": "Customer purchase history, ID scans, and loyalty data stored securely.",
-        "guidance": "ID scan data must be encrypted at rest. Retention limited to what is legally required.",
-        "risk": "HIGH",
-    },
-    {
-        "id": "C7", "title": "Banking & MSB Compliance",
-        "description": "If banking: BSA/AML programme in place. If cash-heavy: CTR filings current.",
-        "guidance": "Cannabis businesses handling large cash volumes are Money Services Businesses (MSBs) and must file Currency Transaction Reports for transactions over $10,000.",
-        "risk": "MEDIUM",
-    },
-    {
-        "id": "C8", "title": "Cybersecurity Incident Response Plan",
-        "description": "Documented plan for responding to a data breach or cyberattack.",
-        "guidance": "Plan must include: who to call, how to contain, reporting obligations (state + federal), and client notification procedures.",
-        "risk": "MEDIUM",
-    },
-]
+# Industry-specific compliance control sets
+_INDUSTRY_CONTROLS = {
+
+    "cannabis": [
+        {"id":"C1","title":"State Cannabis License","risk":"HIGH",
+         "description":"Active, current state-issued cannabis retail/dispensary/cultivation license on file.",
+         "guidance":"License must be displayed and renewed before expiry. Digital copy secured and backed up."},
+        {"id":"C2","title":"Seed-to-Sale Tracking (METRC/BioTrack)","risk":"HIGH",
+         "description":"All inventory tracked in the state-mandated seed-to-sale system.",
+         "guidance":"Secure METRC API credentials; review access logs monthly; restrict staff logins to role-based access."},
+        {"id":"C3","title":"Employee Background Screening","risk":"MEDIUM",
+         "description":"All employees with access to cash, inventory, or systems pass background checks.",
+         "guidance":"Document results; retain for employment duration + 3 years. Check state-specific criminal history restrictions."},
+        {"id":"C4","title":"Surveillance System Coverage","risk":"HIGH",
+         "description":"Camera coverage meets state regulations; footage retained per state minimum (typically 90 days).",
+         "guidance":"Confirm recording retention with your state regulator. DVR/NVR systems must be secured against tampering."},
+        {"id":"C5","title":"Cash Handling & Payment Security","risk":"HIGH",
+         "description":"Cash procedures documented; any card terminals are PCI DSS compliant.",
+         "guidance":"Even cash-only operations should have written cash handling SOPs. Dual-control cash counts reduce theft exposure."},
+        {"id":"C6","title":"Customer Data & ID Scan Protection","risk":"HIGH",
+         "description":"Customer purchase history, ID scans, and loyalty data stored securely and encrypted.",
+         "guidance":"ID scan data encrypted at rest. Retention limited to legal minimum. Never store on unsecured local drives."},
+        {"id":"C7","title":"Banking & MSB Compliance","risk":"MEDIUM",
+         "description":"BSA/AML programme in place; Currency Transaction Reports filed for cash transactions over $10,000.",
+         "guidance":"Cannabis businesses are Money Services Businesses (MSBs) under federal law. CTR filings are mandatory regardless of state status."},
+        {"id":"C8","title":"Incident Response Plan","risk":"MEDIUM",
+         "description":"Written plan for data breach, cyberattack, or regulatory investigation.",
+         "guidance":"Plan must include: who to call, how to contain, state/federal reporting obligations, and customer notification procedures."},
+    ],
+
+    "healthcare": [
+        {"id":"H1","title":"HIPAA Security Rule — ePHI Encryption at Rest","risk":"HIGH",
+         "description":"All electronic Protected Health Information (ePHI) encrypted on disk.",
+         "guidance":"AES-256 minimum. Covers workstations, laptops, USB drives, servers, and cloud storage holding patient data."},
+        {"id":"H2","title":"HIPAA — ePHI Encryption in Transit","risk":"HIGH",
+         "description":"All ePHI transmitted over networks is encrypted (TLS 1.2+).",
+         "guidance":"Includes email (use a HIPAA-compliant email provider), patient portals, EHR systems, and any API integrations."},
+        {"id":"H3","title":"HIPAA — Access Controls & Minimum Necessary","risk":"HIGH",
+         "description":"Staff can only access ePHI required for their role. Access logged and reviewed.",
+         "guidance":"Implement role-based access in your EHR. Terminate access on same day as employee departure."},
+        {"id":"H4","title":"HIPAA — Audit Controls","risk":"HIGH",
+         "description":"Activity logs maintained for all systems handling ePHI. Logs reviewed regularly.",
+         "guidance":"Most EHR systems have built-in audit trails. Ensure logs are exported and retained for 6 years."},
+        {"id":"H5","title":"HIPAA — Workforce Training (Annual)","risk":"MEDIUM",
+         "description":"All workforce members complete annual HIPAA security training.",
+         "guidance":"Document training completion. Online HIPAA training courses count. New hires must complete before accessing ePHI."},
+        {"id":"H6","title":"HIPAA — Business Associate Agreements (BAAs)","risk":"HIGH",
+         "description":"BAAs signed with all vendors that access, process, or store ePHI.",
+         "guidance":"Includes cloud storage, billing services, IT support, EHR vendors. No BAA = HIPAA violation risk."},
+        {"id":"H7","title":"HIPAA — Breach Notification Procedures","risk":"HIGH",
+         "description":"Written breach response plan; patients notified within 60 days of discovery.",
+         "guidance":"HHS must be notified. Breaches affecting 500+ individuals require media notification. Document all breaches even if they don't qualify for notification."},
+        {"id":"H8","title":"HIPAA — Annual Risk Analysis","risk":"HIGH",
+         "description":"Formal risk analysis conducted annually to identify ePHI threats.",
+         "guidance":"This is a required HIPAA Security Rule standard — not optional. Document the analysis and remediation steps."},
+    ],
+
+    "legal": [
+        {"id":"L1","title":"Client Data Segregation","risk":"HIGH",
+         "description":"Client files and communications strictly segregated — no cross-matter data leakage.",
+         "guidance":"Separate folders or matter IDs for each client. Cloud storage must support per-matter access controls."},
+        {"id":"L2","title":"Privileged Communication Security","risk":"HIGH",
+         "description":"Attorney-client privileged communications protected with encryption.",
+         "guidance":"Use encrypted email for privileged matters. Avoid sending sensitive documents via unencrypted email or SMS."},
+        {"id":"L3","title":"Wire Fraud Prevention","risk":"HIGH",
+         "description":"Multi-step verification process for all wire transfer instructions.",
+         "guidance":"NEVER change wire instructions via email alone. Verbal confirmation + callback to a known number is mandatory. Real estate closings are primary target."},
+        {"id":"L4","title":"Bar Association IT Compliance","risk":"MEDIUM",
+         "description":"IT security practices meet applicable bar association technology guidelines.",
+         "guidance":"Most state bars have issued formal cybersecurity guidance. Review your state's professional conduct rules for technology competence obligations."},
+        {"id":"L5","title":"Data Retention & Destruction Policy","risk":"MEDIUM",
+         "description":"Client file retention schedule documented; secure destruction procedures in place.",
+         "guidance":"Most jurisdictions require 7-year minimum retention post-matter. Shred physical files; use certified data destruction for digital media."},
+        {"id":"L6","title":"Secure Remote Access for Counsel","risk":"MEDIUM",
+         "description":"Attorneys accessing client data remotely use VPN or secure remote desktop.",
+         "guidance":"Public Wi-Fi + no VPN = bar complaint risk. Require VPN for all remote work involving client files."},
+        {"id":"L7","title":"Conflict Screening System Security","risk":"MEDIUM",
+         "description":"Conflict of interest database protected against unauthorised access.",
+         "guidance":"Conflict databases contain names of past and prospective clients — a breach could violate confidentiality obligations."},
+        {"id":"L8","title":"Cyber Liability Insurance","risk":"MEDIUM",
+         "description":"Cyber liability insurance policy in place covering data breach and ransomware.",
+         "guidance":"Legal malpractice policies often do not cover cyber incidents. A separate cyber policy is strongly recommended for firms handling sensitive client data."},
+    ],
+
+    "financial": [
+        {"id":"F1","title":"GLBA Safeguards Rule — Customer Financial Data","risk":"HIGH",
+         "description":"Written information security programme protecting customer financial records.",
+         "guidance":"GLBA applies to accountants, mortgage brokers, tax preparers, and insurance agents handling non-public personal financial information."},
+        {"id":"F2","title":"PCI DSS — Payment Processing Security","risk":"HIGH",
+         "description":"Card payment systems meet PCI DSS requirements; terminals up to date.",
+         "guidance":"Even small firms processing cards need to comply. Use a PCI-validated payment processor and never store raw card numbers."},
+        {"id":"F3","title":"BSA/AML Programme","risk":"HIGH",
+         "description":"Bank Secrecy Act / Anti-Money Laundering procedures documented and practised.",
+         "guidance":"Suspicious Activity Reports (SARs) and Currency Transaction Reports (CTRs) filed as required. Customer identification programme in place."},
+        {"id":"F4","title":"Business Email Compromise (BEC) Prevention","risk":"HIGH",
+         "description":"Multi-step verification for wire transfers; staff trained to recognise BEC attacks.",
+         "guidance":"Financial firms are primary BEC targets. Implement DMARC on your domain; require verbal confirmation for any transfer over a defined threshold."},
+        {"id":"F5","title":"Fraud Detection & Transaction Monitoring","risk":"HIGH",
+         "description":"Processes in place to detect unusual account activity or fraudulent transactions.",
+         "guidance":"Review transaction monitoring alerts daily. Anomalous activity should trigger an investigation workflow, not just a flag."},
+        {"id":"F6","title":"Client Data Retention & Destruction","risk":"MEDIUM",
+         "description":"Financial records retained per regulatory requirements; securely destroyed on schedule.",
+         "guidance":"IRS generally requires 7 years for tax records. Ensure digital destruction is certified."},
+        {"id":"F7","title":"Vendor Risk Management","risk":"MEDIUM",
+         "description":"Third-party vendors with access to client financial data are assessed for security.",
+         "guidance":"Request SOC 2 Type II reports from cloud providers and bookkeeping software vendors. Review annually."},
+        {"id":"F8","title":"Incident Response & Regulatory Notification","risk":"HIGH",
+         "description":"Breach response plan includes regulatory notification timeline.",
+         "guidance":"GLBA requires notification to customers and regulators. Some states have additional financial data breach notification laws."},
+    ],
+
+    "retail": [
+        {"id":"R1","title":"PCI DSS — POS Terminal Security","risk":"HIGH",
+         "description":"All point-of-sale terminals meet PCI DSS requirements; hardware inspected regularly.",
+         "guidance":"Check terminals for skimming devices at opening. Update POS software promptly. Use PCI-validated payment processors."},
+        {"id":"R2","title":"Customer Privacy — State/CCPA Compliance","risk":"HIGH",
+         "description":"Customer data handling complies with applicable state privacy laws (CCPA, etc.).",
+         "guidance":"If selling to California residents: post a privacy policy, honour opt-out requests, and don't sell data without consent."},
+        {"id":"R3","title":"Customer Data Inventory","risk":"MEDIUM",
+         "description":"All systems storing customer data documented; data minimisation practised.",
+         "guidance":"Do you know where every customer email, phone number, and purchase history lives? Map it before a breach forces you to."},
+        {"id":"R4","title":"Loyalty Programme Security","risk":"MEDIUM",
+         "description":"Customer loyalty accounts protected with strong authentication.",
+         "guidance":"Loyalty accounts are frequently targeted for point theft. Enforce strong passwords and consider 2FA for high-value accounts."},
+        {"id":"R5","title":"E-commerce Security","risk":"HIGH",
+         "description":"Online store uses TLS, a WAF, and secure payment processing.",
+         "guidance":"Never store card data on your servers. Use a hosted payment page or iframe from your PCI-compliant processor."},
+        {"id":"R6","title":"Employee Access Controls","risk":"MEDIUM",
+         "description":"Staff access to POS, inventory, and customer data limited to job function.",
+         "guidance":"Shared POS logins make fraud investigation impossible. Individual logins with role-based access is best practice."},
+        {"id":"R7","title":"Supplier & Third-Party Security","risk":"MEDIUM",
+         "description":"Vendors with system or data access assessed for security practices.",
+         "guidance":"E-commerce plugins and integrations are a common attack vector. Vet vendors and keep integrations updated."},
+        {"id":"R8","title":"Physical Security","risk":"MEDIUM",
+         "description":"Physical access to stockrooms, back offices, and server equipment controlled.",
+         "guidance":"Back-office workstations should be locked. Network equipment in locked cabinets. CCTV coverage of POS areas recommended."},
+    ],
+
+    "hospitality": [
+        {"id":"HO1","title":"PCI DSS — Payment Terminal Security","risk":"HIGH",
+         "description":"All card payment terminals (restaurant POS, hotel front desk) meet PCI DSS.",
+         "guidance":"Hospitality is a top target for POS malware. Ensure terminals are on isolated network segments, separate from guest Wi-Fi."},
+        {"id":"HO2","title":"Guest/Customer Data Protection","risk":"HIGH",
+         "description":"Reservation data, loyalty data, and personal information stored securely.",
+         "guidance":"Guest PII (names, emails, card details) is high-value. Encrypt databases and restrict staff access to what's needed for their role."},
+        {"id":"HO3","title":"Guest Wi-Fi Network Isolation","risk":"HIGH",
+         "description":"Guest wireless network completely isolated from internal business systems.",
+         "guidance":"Guest Wi-Fi on the same network as your POS is a critical PCI DSS violation. Use a separate VLAN or dedicated router."},
+        {"id":"HO4","title":"POS System & Software Security","risk":"HIGH",
+         "description":"POS software up to date; vendor support current; no end-of-life systems.",
+         "guidance":"End-of-life POS systems (e.g. Windows 7) are PCI DSS non-compliant. Plan upgrades proactively."},
+        {"id":"HO5","title":"Staff Access Controls","risk":"MEDIUM",
+         "description":"Each employee has individual POS login; manager overrides logged.",
+         "guidance":"Shared credentials prevent investigation of till discrepancies. Individual logins with role-based access is required for PCI DSS."},
+        {"id":"HO6","title":"Reservation System Data Security","risk":"MEDIUM",
+         "description":"Online booking system and channel manager secured; data encrypted in transit.",
+         "guidance":"Third-party booking integrations are a common breach vector. Review the security policies of all OTA and channel manager connections."},
+        {"id":"HO7","title":"Delivery Platform Data Security","risk":"MEDIUM",
+         "description":"Third-party delivery platforms (Uber Eats, DoorDash) access controlled.",
+         "guidance":"Limit delivery platform access to order management only. Treat them as untrusted third parties."},
+        {"id":"HO8","title":"Physical & Surveillance Security","risk":"MEDIUM",
+         "description":"CCTV covers cash handling areas; back-office access restricted.",
+         "guidance":"Cash-heavy environments need strong physical security controls. Review camera placement to cover all POS terminals."},
+    ],
+
+    "realestate": [
+        {"id":"RE1","title":"Wire Fraud Prevention — Closing Instructions","risk":"HIGH",
+         "description":"Multi-step verification mandatory for all wire transfer instructions.",
+         "guidance":"Real estate wire fraud is the #1 cybercrime by dollar value. Never change wire instructions via email alone. Verbal callback to a known number required."},
+        {"id":"RE2","title":"Client PII Protection","risk":"HIGH",
+         "description":"Client SSNs, financial statements, and identity documents stored securely.",
+         "guidance":"Encrypt documents at rest and in transit. Transmit sensitive documents via secure file-sharing portals, not unencrypted email."},
+        {"id":"RE3","title":"MLS System Access Controls","risk":"MEDIUM",
+         "description":"MLS/IDX credentials managed securely; access revoked on agent departure.",
+         "guidance":"Shared MLS passwords are a significant breach risk. Use individual logins where available. Change passwords immediately when agents leave."},
+        {"id":"RE4","title":"E-Signature & DocuSign Security","risk":"MEDIUM",
+         "description":"E-signature platforms secured; signer authentication appropriate for document sensitivity.",
+         "guidance":"Use identity verification for high-value transactions. Ensure DocuSign/Dotloop accounts are protected with 2FA."},
+        {"id":"RE5","title":"Business Email Compromise (BEC) Prevention","risk":"HIGH",
+         "description":"DMARC/DKIM configured on business email domain; staff trained on BEC tactics.",
+         "guidance":"BEC attackers spoof your email domain to redirect wire transfers. Implement DMARC with reject policy. Train agents to verify all closing-related emails by phone."},
+        {"id":"RE6","title":"Transaction Data Retention","risk":"MEDIUM",
+         "description":"Transaction records retained per state real estate commission requirements.",
+         "guidance":"Most states require 3–7 years. Ensure secure, backed-up storage of all transaction files and correspondence."},
+        {"id":"RE7","title":"Trust Account / Escrow Security","risk":"HIGH",
+         "description":"Trust account access strictly controlled; dual authorisation for disbursements.",
+         "guidance":"Trust account fraud is a leading cause of real estate licence revocations. Dual control on all escrow disbursements is best practice."},
+        {"id":"RE8","title":"Cyber Liability Insurance","risk":"MEDIUM",
+         "description":"E&O and cyber liability insurance covering wire fraud and data breach.",
+         "guidance":"Standard E&O policies often exclude cyber incidents. Verify your coverage specifically includes wire fraud and data breach events."},
+    ],
+
+    "construction": [
+        {"id":"CN1","title":"Project Data & Blueprint Protection","risk":"HIGH",
+         "description":"Project plans, blueprints, and specifications stored securely with access controls.",
+         "guidance":"Construction documents can contain security-sensitive information about buildings. Restrict access to project files by role and project."},
+        {"id":"CN2","title":"Subcontractor & Vendor Access Controls","risk":"HIGH",
+         "description":"Subcontractors given minimum required access; access revoked on project completion.",
+         "guidance":"Temporary network access for subs is a major attack vector. Use a separate guest network and revoke VPN credentials immediately on project end."},
+        {"id":"CN3","title":"Payroll & Employee PII Protection","risk":"HIGH",
+         "description":"Employee payroll data, SSNs, and banking details encrypted and access-restricted.",
+         "guidance":"Payroll systems are a top target for fraud. Use a reputable payroll provider with 2FA. Verify direct deposit changes by phone callback."},
+        {"id":"CN4","title":"Invoice & Payment Fraud Prevention","risk":"HIGH",
+         "description":"Multi-step verification for vendor banking changes; BEC awareness training.",
+         "guidance":"Construction invoicing fraud is common. Verify any change to a supplier's bank account via phone to a known number before updating records."},
+        {"id":"CN5","title":"Connected Equipment & IoT Security","risk":"MEDIUM",
+         "description":"Smart construction equipment, sensors, and site cameras use strong credentials.",
+         "guidance":"Default passwords on site cameras and IoT sensors are a significant breach risk. Change all default credentials before deployment."},
+        {"id":"CN6","title":"Safety Documentation Systems","risk":"MEDIUM",
+         "description":"Digital safety records, incident reports, and OSHA logs protected against tampering.",
+         "guidance":"OSHA records that are altered or deleted can result in serious penalties. Ensure audit trails on all safety management systems."},
+        {"id":"CN7","title":"Client Contract & Bid Data Security","risk":"MEDIUM",
+         "description":"Bid documents and contract terms stored securely; competitor access prevented.",
+         "guidance":"Bidding data is commercially sensitive. Limit access to estimating team. Encrypt stored bids."},
+        {"id":"CN8","title":"Site Network Security","risk":"MEDIUM",
+         "description":"Site Wi-Fi and temporary networks secured; guest access isolated.",
+         "guidance":"Construction site networks are often poorly secured. Use WPA3 or WPA2-Enterprise. Keep project management systems on a separate segment from general site access."},
+    ],
+
+    "nonprofit": [
+        {"id":"NP1","title":"Donor Data Protection","risk":"HIGH",
+         "description":"Donor names, contact details, and payment information encrypted and access-restricted.",
+         "guidance":"Donor data breaches damage trust irreparably. Encrypt donor databases. Use a PCI-compliant donation platform — never store card numbers internally."},
+        {"id":"NP2","title":"Online Donation Security (PCI DSS)","risk":"HIGH",
+         "description":"Online donation pages use a PCI-compliant processor; no card data stored on your servers.",
+         "guidance":"Use a hosted donation platform (PayPal Giving Fund, Stripe, etc.) that handles PCI compliance. Never build a custom card form without a compliant processor."},
+        {"id":"NP3","title":"Grant Management System Security","risk":"HIGH",
+         "description":"Grant applications, reports, and funder data secured with access controls.",
+         "guidance":"Grant data often contains detailed programme financials. Restrict access to programme staff and finance. Use 2FA on grant portals."},
+        {"id":"NP4","title":"IRS Form 990 & Financial Data","risk":"MEDIUM",
+         "description":"990 and financial statements protected; authorised access only before public filing.",
+         "guidance":"990s are public once filed, but pre-submission drafts and supporting documents should be treated as confidential."},
+        {"id":"NP5","title":"Board & Governance Data Security","risk":"MEDIUM",
+         "description":"Board minutes, strategic plans, and governance documents access-restricted.",
+         "guidance":"Use a board portal (BoardEffect, OnBoard) rather than emailing sensitive board materials. Ensure former board members lose access immediately on departure."},
+        {"id":"NP6","title":"Volunteer & Staff PII Protection","risk":"MEDIUM",
+         "description":"Volunteer applications, background checks, and staff data encrypted and retained per policy.",
+         "guidance":"Nonprofits often underestimate PII obligations for volunteers. Background check data is particularly sensitive and subject to FCRA restrictions."},
+        {"id":"NP7","title":"Third-Party Fundraising Platform Security","risk":"MEDIUM",
+         "description":"Peer-to-peer fundraising, events, and CRM platforms assessed for security.",
+         "guidance":"Review the data sharing terms of all fundraising platforms. Ensure donor data isn't being sold or shared without consent."},
+        {"id":"NP8","title":"Cybersecurity Policy for Board","risk":"LOW",
+         "description":"Board has approved a written cybersecurity policy; annual review scheduled.",
+         "guidance":"Many cyber insurers now require a board-approved cybersecurity policy as a condition of coverage. Template policies are available from NIST and Nonprofit Tech."},
+    ],
+
+    "general": [
+        {"id":"G1","title":"Payment Card Security (PCI DSS)","risk":"HIGH",
+         "description":"Any card payment processing meets PCI DSS requirements.",
+         "guidance":"Use a PCI-validated payment processor. Never store raw card numbers. Ensure payment terminals are on an isolated network segment."},
+        {"id":"G2","title":"Employee Data Protection","risk":"HIGH",
+         "description":"Staff payroll data, SSNs, and banking details encrypted and access-restricted.",
+         "guidance":"Payroll systems are a prime target. Use a reputable HR/payroll platform with 2FA. Verify direct deposit changes by phone."},
+        {"id":"G3","title":"Customer Data Handling","risk":"HIGH",
+         "description":"Customer personal and contact information stored securely; data minimisation practised.",
+         "guidance":"Collect only what you need. Know where every piece of customer data lives. Have a documented privacy policy."},
+        {"id":"G4","title":"Business Email Compromise Prevention","risk":"HIGH",
+         "description":"DMARC configured on email domain; staff trained on BEC and phishing tactics.",
+         "guidance":"BEC is the highest-dollar cybercrime category. Implement DMARC with reject policy on your domain. Train staff to verify wire requests by phone."},
+        {"id":"G5","title":"Vendor & Third-Party Access Controls","risk":"MEDIUM",
+         "description":"Vendors with system or data access operate under written security agreements.",
+         "guidance":"Your vendor's breach becomes your breach. Request security policies from all vendors with data access. Use written data processing agreements."},
+        {"id":"G6","title":"Data Backup & Recovery","risk":"MEDIUM",
+         "description":"Critical business data backed up regularly; backups tested and stored offsite.",
+         "guidance":"3-2-1 rule: 3 copies, 2 media types, 1 offsite. Test your backup restores quarterly — an untested backup is not a backup."},
+        {"id":"G7","title":"Cyber Liability Insurance","risk":"MEDIUM",
+         "description":"Cyber liability insurance policy in place covering data breach, ransomware, and BEC.",
+         "guidance":"General liability policies don't cover cyber incidents. A standalone cyber policy is affordable for small businesses and increasingly required by enterprise clients."},
+        {"id":"G8","title":"Incident Response Plan","risk":"MEDIUM",
+         "description":"Written plan for responding to a cyberattack or data breach.",
+         "guidance":"Your plan should answer: who gets called, what gets shut down, who notifies customers, and what are your legal reporting obligations. Practice it annually."},
+    ],
+}
 
 
 def _evaluate_pci_controls(findings):
@@ -7386,12 +7644,30 @@ def _evaluate_pci_controls(findings):
 @app.route("/compliance")
 @login_required
 def compliance():
-    """PCI DSS + Cannabis compliance dashboard.
+    """PCI DSS + industry-specific compliance dashboard.
 
-    Analyst: sees full technical view with scan findings mapped to controls.
-    Client: sees same page — useful for cannabis clients who need to show compliance posture.
+    Shows the correct framework based on the user's industry setting.
+    Analyst: sees scan findings mapped to PCI DSS controls.
+    Client: sees their industry compliance posture.
     """
-    role = session.get("role", "")
+    role    = session.get("role", "")
+    user_id = session.get("user_id")
+
+    # Load user's industry + business name
+    user_row = db_fetchone(
+        f"SELECT industry, business_name FROM users WHERE id = {PH}", (user_id,)
+    ) or {}
+    industry      = user_row.get("industry") or "general"
+    business_name = user_row.get("business_name") or ""
+
+    # Analyst preview override — lets analyst switch framework without changing their account
+    preview = request.args.get("industry_preview", "").strip()
+    if role == "analyst" and preview in _INDUSTRY_CONTROLS:
+        industry = preview
+
+    # Validate industry key
+    if industry not in _INDUSTRY_CONTROLS:
+        industry = "general"
 
     # Get unresolved scan findings
     findings = db_fetchall(
@@ -7410,9 +7686,9 @@ def compliance():
     pci_total = len(pci_controls)
     pci_score = round(((pci_pass + pci_warn * 0.5) / pci_total) * 100) if pci_total else 0
 
-    # Cannabis controls — always manual (status stored per-user if they've reviewed)
-    # For now we pass the definitions; future: store per-client status in DB
-    cannabis_controls = list(_CANNABIS_CONTROLS)
+    # Industry-specific controls
+    industry_controls    = list(_INDUSTRY_CONTROLS.get(industry, _INDUSTRY_CONTROLS["general"]))
+    industry_label       = INDUSTRY_LABELS.get(industry, "General Business")
 
     # SIEM health check — events in last 24h
     siem_recent = db_fetchall(
@@ -7430,7 +7706,11 @@ def compliance():
     return render_template(
         "compliance.html",
         pci_controls=pci_controls,
-        cannabis_controls=cannabis_controls,
+        industry_controls=industry_controls,
+        industry=industry,
+        industry_label=industry_label,
+        industry_labels=INDUSTRY_LABELS,
+        business_name=business_name,
         pci_score=pci_score,
         pci_pass=pci_pass,
         pci_warn=pci_warn,

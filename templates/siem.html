@@ -383,6 +383,25 @@
     </div>
 </div>
 
+{% if is_demo_mode %}
+<div style="background:linear-gradient(90deg,#0a0e1a,#031a0a);border-bottom:2px solid #00d4ff44;
+            padding:9px 32px;display:flex;align-items:center;gap:14px;font-size:0.82em;color:#00d4ff;">
+    <strong style="color:#ffd700;">🎯 Demo Tour:</strong>
+    <span style="color:#888;">Live threat monitoring —</span>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+        <a href="/reports" style="padding:3px 10px;border-radius:12px;background:#12151f;
+           border:1px solid #2a2d3e;color:#666;text-decoration:none;">① Reports</a>
+        <a href="/compliance" style="padding:3px 10px;border-radius:12px;background:#12151f;
+           border:1px solid #2a2d3e;color:#666;text-decoration:none;">② Compliance</a>
+        <a href="/control-room" style="padding:3px 10px;border-radius:12px;background:#12151f;
+           border:1px solid #2a2d3e;color:#666;text-decoration:none;">③ Control Room</a>
+        <span style="padding:3px 10px;border-radius:12px;background:#031a2a;border:1px solid #00d4ff;
+                     color:#00d4ff;font-weight:bold;">④ SIEM Live Feed ◀</span>
+    </div>
+    <span style="color:#555;margin-left:auto;">💬 <em style="color:#888;">"This updates in real time — every login, scan, and alert hits this screen."</em></span>
+</div>
+{% endif %}
+
 <!-- ── Stat bar ── -->
 <div class="statbar">
     <div class="stat">

@@ -1115,6 +1115,26 @@
         </div>
     </div>
 
+    {% if is_demo_mode %}
+    <!-- Demo tour banner -->
+    <div style="background:linear-gradient(90deg,#0a0e1a,#1a1505);border-bottom:2px solid #f39c1244;
+                padding:9px 32px;display:flex;align-items:center;gap:14px;font-size:0.82em;color:#f39c12;">
+        <strong style="color:#ffd700;">🎯 Demo Tour:</strong>
+        <span style="color:#888;">Analyst's command centre —</span>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <a href="/reports" style="padding:3px 10px;border-radius:12px;background:#12151f;
+               border:1px solid #2a2d3e;color:#666;text-decoration:none;">① Reports</a>
+            <a href="/compliance" style="padding:3px 10px;border-radius:12px;background:#12151f;
+               border:1px solid #2a2d3e;color:#666;text-decoration:none;">② Compliance</a>
+            <span style="padding:3px 10px;border-radius:12px;background:#2a1f05;border:1px solid #f39c12;
+                         color:#f39c12;font-weight:bold;">③ Control Room ◀</span>
+            <a href="/siem" style="padding:3px 10px;border-radius:12px;background:#12151f;
+               border:1px solid #2a2d3e;color:#666;text-decoration:none;">④ SIEM Live Feed</a>
+        </div>
+        <span style="color:#555;margin-left:auto;">💬 <em style="color:#888;">"This is your analyst's dashboard — real-time threats, AI triage, scanner."</em></span>
+    </div>
+    {% endif %}
+
     <!-- Breach intel ticker -->
     <div class="ticker-bar">
         <span class="ticker-label">LIVE</span>

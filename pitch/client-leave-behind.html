@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boundry.AI — Client Overview</title>
+<style>
+
+  /* ── Reset ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Brand tokens ── */
+  :root {
+    --navy:      #080c14;
+    --navy-2:    #0d1220;
+    --navy-3:    #111827;
+    --navy-4:    #1a2235;
+    --cyan:      #00d4ff;
+    --cyan-dim:  #00aacc;
+    --green:     #00c47a;
+    --amber:     #f59e0b;
+    --red:       #ef4444;
+    --text:      #e2e8f0;
+    --text-dim:  #94a3b8;
+    --border:    #1e293b;
+    --font:      "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    background: #1a1a2e;
+    font-family: var(--font);
+    color: var(--text);
+  }
+
+  /* ── Slide container ── */
+  .slide {
+    width: 1280px;
+    height: 720px;
+    margin: 0 auto 4px;
+    position: relative;
+    overflow: hidden;
+    background: var(--navy);
+    display: flex;
+    flex-direction: column;
+    page-break-after: always;
+  }
+
+  /* ── Shared: top accent bar ── */
+  .accent-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--cyan), var(--green), transparent);
+    flex-shrink: 0;
+  }
+
+  /* ── Shared: logo bug ── */
+  .logo-bug {
+    position: absolute;
+    top: 28px;
+    right: 40px;
+    font-size: .75rem;
+    font-weight: 800;
+    letter-spacing: .14em;
+    color: var(--cyan);
+    opacity: .55;
+    text-transform: uppercase;
+  }
+
+  /* ── Shared: slide number ── */
+  .slide-num {
+    position: absolute;
+    bottom: 22px;
+    right: 40px;
+    font-size: .65rem;
+    color: #2a3a50;
+    letter-spacing: .08em;
+  }
+
+  /* ══════════════════════════════════════
+     SLIDE 1 — COVER
+  ══════════════════════════════════════ */
+  .cover {
+    background:
+      radial-gradient(ellipse 60% 80% at 100% 50%, #001a2e 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 0% 100%, #001a0a 0%, transparent 60%),
+      var(--navy);
+    justify-content: center;
+    align-items: flex-start;
+    padding: 0 90px;
+  }
+
+  .cover-inner { max-width: 640px; }
+
+  .cover-eyebrow {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cover-eyebrow::before {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 2px;
+    background: var(--cyan);
+  }
+
+  .cover h1 {
+    font-size: 4.2rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -.02em;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .cover h1 span { color: var(--cyan); }
+
+  .cover-tagline {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+    margin-top: 18px;
+    max-width: 500px;
+  }
+
+  .cover-divider {
+    width: 48px;
+    height: 3px;
+    background: var(--cyan);
+    margin: 28px 0;
+    border-radius: 2px;
+  }
+
+  .cover-sub {
+    font-size: .8rem;
+    color: #3a5a70;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  /* Right graphic */
+  .cover-graphic {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .hex-grid {
+    position: relative;
+    width: 400px;
+    height: 400px;
+    opacity: .18;
+  }
+  .hex-grid::before, .hex-grid::after {
+    content: '';
+    position: absolute;
+    border: 1px solid var(--cyan);
+    border-radius: 50%;
+  }
+  .hex-grid::before { inset: 0; }
+  .hex-grid::after  { inset: 40px; }
+
+  .shield-icon {
+    position: absolute;
+    font-size: 11rem;
+    opacity: .07;
+    right: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    filter: drop-shadow(0 0 60px #00d4ff);
+  }
+
+  /* ══════════════════════════════════════
+     SLIDE 2 — THE PROBLEM
+  ══════════════════════════════════════ */
+  .problem {
+    padding: 54px 90px 40px;
+  }
+
+  .slide-header {
+    margin-bottom: 44px;
+  }
+  .slide-label {
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 10px;
+  }
+  .slide-title {
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    color: #fff;
+  }
+  .slide-title em {
+    font-style: normal;
+    color: var(--cyan);
+  }
+
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 8px;
+  }
+
+  .problem-card {
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .problem-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--red);
+  }
+
+  .problem-stat {
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: var(--red);
+    line-height: 1;
+    margin-bottom: 8px;
+    letter-spacing: -.03em;
+  }
+  .problem-stat-label {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .problem-desc {
+    font-size: .82rem;
+    color: #64748b;
+    line-height: 1.6;
+  }
+
+  .problem-bottom {
+    margin-top: 28px;
+    background: #0d1a0a;
+    border: 1px solid #1a3a1a;
+    border-radius: 8px;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .problem-bottom-icon { font-size: 1.4rem; }
+  .problem-bottom p {
+    font-size: .85rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .problem-bottom strong { color: var(--green); }
+
+  /* ══════════════════════════════════════
+     SLIDE 3 — THE SOLUTION
+  ══════════════════════════════════════ */
+  .solution {
+    padding: 54px 90px 40px;
+  }
+
+  .solution-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    margin-top: 8px;
+    align-items: start;
+  }
+
+  .solution-left p {
+    font-size: .9rem;
+    color: var(--text-dim);
+    line-height: 1.75;
+    margin-bottom: 20px;
+  }
+  .solution-left strong { color: var(--text); }
+
+  .solution-pillars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pillar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+  .pillar-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    width: 36px;
+    text-align: center;
+  }
+  .pillar-text strong {
+    display: block;
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .pillar-text span {
+    font-size: .75rem;
+    color: var(--text-dim);
+  }
+
+  /* ══════════════════════════════════════
+     SLIDE 4 — WHAT YOU GET
+  ══════════════════════════════════════ */
+  .features {
+    padding: 50px 90px 36px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+
+  .feature-card {
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .feature-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+  }
+
+  .feature-icon {
+    font-size: 1.6rem;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .feature-name {
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: .02em;
+  }
+  .feature-desc {
+    font-size: .72rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* ══════════════════════════════════════
+     SLIDE 5 — COMPLIANCE
+  ══════════════════════════════════════ */
+  .compliance {
+    padding: 50px 90px 36px;
+  }
+
+  .compliance-intro {
+    font-size: .88rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    max-width: 700px;
+    margin-bottom: 32px;
+  }
+  .compliance-intro strong { color: var(--text); }
+
+  .compliance-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .compliance-card {
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 14px;
+    text-align: center;
+  }
+  .compliance-card .fw-name {
+    font-size: .7rem;
+    font-weight: 800;
+    color: var(--cyan);
+    letter-spacing: .08em;
+    margin-bottom: 4px;
+  }
+  .compliance-card .fw-industry {
+    font-size: .65rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  .compliance-bar {
+    background: #0a1a0d;
+    border: 1px solid #1a3a20;
+    border-radius: 8px;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .compliance-bar p {
+    font-size: .82rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .compliance-bar strong { color: var(--green); }
+
+  /* ══════════════════════════════════════
+     SLIDE 6 — HOW IT WORKS
+  ══════════════════════════════════════ */
+  .how {
+    padding: 54px 90px 40px;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 12px;
+    position: relative;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 36px;
+    left: 80px;
+    right: 80px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), var(--border), transparent);
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0 20px;
+    padding-top: 0;
+  }
+
+  .step-num {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--navy-4);
+    border: 2px solid var(--cyan);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 0 24px #00d4ff22;
+  }
+
+  .step-title {
+    font-size: .88rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .step-desc {
+    font-size: .75rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .how-bottom {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  .how-stat {
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .how-stat-val {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--cyan);
+    white-space: nowrap;
+  }
+  .how-stat-label {
+    font-size: .75rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* ══════════════════════════════════════
+     SLIDE 7 — WHO WE ARE
+  ══════════════════════════════════════ */
+  .team {
+    padding: 54px 90px 40px;
+    background:
+      radial-gradient(ellipse 50% 70% at 100% 0%, #001a2e 0%, transparent 60%),
+      var(--navy);
+  }
+
+  .team-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-top: 12px;
+  }
+
+  .team-card {
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 30px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .team-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .team-card.jason::before { background: var(--cyan); }
+  .team-card.peta::before  { background: var(--green); }
+
+  .team-role {
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .team-card.jason .team-role { color: var(--cyan); }
+  .team-card.peta  .team-role { color: var(--green); }
+
+  .team-name {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 14px;
+    letter-spacing: -.01em;
+  }
+
+  .team-bio {
+    font-size: .8rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .team-bio strong { color: var(--text); }
+
+  .team-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .team-tag {
+    background: var(--navy-4);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: .65rem;
+    color: var(--text-dim);
+    letter-spacing: .04em;
+  }
+
+  /* ══════════════════════════════════════
+     SLIDE 8 — CTA
+  ══════════════════════════════════════ */
+  .cta {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background:
+      radial-gradient(ellipse 60% 80% at 50% 100%, #001a2e 0%, transparent 70%),
+      var(--navy);
+  }
+
+  .cta-inner { max-width: 720px; }
+
+  .cta-eyebrow {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 20px;
+  }
+
+  .cta h2 {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    color: #fff;
+    margin-bottom: 20px;
+  }
+  .cta h2 em {
+    font-style: normal;
+    color: var(--cyan);
+  }
+
+  .cta-body {
+    font-size: .9rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    margin-bottom: 36px;
+  }
+
+  .cta-contacts {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .cta-contact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .cta-contact-label {
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: #2a4a60;
+  }
+  .cta-contact-val {
+    font-size: .85rem;
+    color: var(--cyan);
+    font-weight: 600;
+  }
+
+  .cta-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--border);
+    align-self: center;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #000; }
+    .slide {
+      margin: 0;
+      page-break-after: always;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SLIDE 1 — COVER
+══════════════════════════════════════ -->
+<div class="slide cover">
+  <div class="accent-bar"></div>
+
+  <div class="shield-icon">🛡</div>
+
+  <div class="cover-inner">
+    <div class="cover-eyebrow">Cybersecurity Services</div>
+    <h1>BOUNDRY<span>.</span>AI</h1>
+    <div class="cover-tagline">
+      Enterprise-grade security monitoring built for the businesses that need it most —
+      and could never afford it before.
+    </div>
+    <div class="cover-divider"></div>
+    <div class="cover-sub">Confidential · Client Overview · 2026</div>
+  </div>
+
+  <div class="slide-num">1 / 8</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SLIDE 2 — THE PROBLEM
+══════════════════════════════════════ -->
+<div class="slide problem">
+  <div class="accent-bar"></div>
+  <div class="logo-bug">Boundry.AI</div>
+
+  <div class="slide-header">
+    <div class="slide-label">The Problem</div>
+    <div class="slide-title">Small businesses are the <em>most targeted</em>,<br>least protected.</div>
+  </div>
+
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="problem-stat">43%</div>
+      <div class="problem-stat-label">of cyberattacks target small businesses</div>
+      <div class="problem-desc">Small businesses are seen as easy targets — fewer defences, less awareness, and less capacity to respond when something goes wrong.</div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-stat">$200K</div>
+      <div class="problem-stat-label">average cost of a breach for an SMB</div>
+      <div class="problem-desc">Most small businesses never recover financially from a serious breach. Ransomware alone can shut operations down completely within 24 hours.</div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-stat">60%</div>
+      <div class="problem-stat-label">close within 6 months of an attack</div>
+      <div class="problem-desc">The aftermath of a breach — recovery costs, regulatory fines, lost client trust — pushes more than half of affected small businesses to close permanently.</div>
+    </div>
+  </div>
+
+  <div class="problem-bottom">
+    <div class="problem-bottom-icon">💡</div>
+    <p>The businesses in the highest-risk regulated industries — cannabis, healthcare, legal, financial — face the steepest consequences and are the least equipped. <strong>That's the gap Boundry.AI was built to close.</strong></p>
+  </div>
+
+  <div class="slide-num">2 / 8</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SLIDE 3 — THE SOLUTION
+══════════════════════════════════════ -->
+<div class="slide solution">
+  <div class="accent-bar"></div>
+  <div class="logo-bug">Boundry.AI</div>
+
+  <div class="slide-header">
+    <div class="slide-label">The Solution</div>
+    <div class="slide-title">Your own security team.<br><em>Without the overhead.</em></div>
+  </div>
+
+  <div class="solution-layout">
+    <div class="solution-left">
+      <p>
+        Boundry.AI gives your business <strong>continuous security monitoring</strong> — the same kind of round-the-clock coverage that large corporations pay enterprise prices for, delivered at a fraction of the cost.
+      </p>
+      <p>
+        You don't need to understand the technology. You need to know your business is protected, your compliance obligations are being met, and someone is watching the door so you don't have to.
+      </p>
+    </div>
+
+    <div class="solution-pillars">
+      <div class="pillar">
+        <div class="pillar-icon">📡</div>
+        <div class="pillar-text">
+          <strong>Live Threat Monitoring</strong>
+          <span>We watch your systems around the clock and alert you the moment something needs attention</span>
+        </div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">📋</div>
+        <div class="pillar-text">
+          <strong>Compliance Reporting</strong>
+          <span>Automatic assessment against your industry's regulatory requirements — always audit-ready</span>
+        </div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">📄</div>
+        <div class="pillar-text">
+          <strong>Plain-Language Reports</strong>
+          <span>Monthly reports written for business owners, not IT departments — clear findings, clear actions</span>
+        </div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">🚨</div>
+        <div class="pillar-text">
+          <strong>Incident Response</strong>
+          <span>When something happens, we're already on it — with a documented response, not a phone call hours later</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-num">3 / 8</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SLIDE 4 — WHAT YOU GET
+══════════════════════════════════════ -->
+<div class="slide features">
+  <div class="accent-bar"></div>
+  <div class="logo-bug">Boundry.AI</div>
+
+  <div class="slide-header">
+    <div class="slide-label">Platform Features</div>
+    <div class="slide-title">Everything in one place.<br><em>Nothing you don't need.</em></div>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🖥</span>
+      <div class="feature-name">Security Control Room</div>
+      <div class="feature-desc">A live dashboard showing your complete security posture — threats, findings, and system health — updated in real time.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📡</span>
+      <div class="feature-name">Live SIEM Feed</div>
+      <div class="feature-desc">Every login attempt, firewall block, and suspicious event is captured, categorised, and surfaced before it becomes a problem.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📋</span>
+      <div class="feature-name">Compliance Dashboard</div>
+      <div class="feature-desc">Automatic scoring against PCI DSS 4.0 and your industry's specific framework — HIPAA, METRC, GLBA, and more.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🛡</span>
+      <div class="feature-name">Findings & Reports</div>
+      <div class="feature-desc">Every threat is documented with severity, context, and recommended action. Monthly PDF reports you can share with stakeholders.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔍</span>
+      <div class="feature-name">Threat Investigation</div>
+      <div class="feature-desc">When an alert fires, we trace it back to source — IP addresses, accounts, timelines — so you know exactly what happened.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📬</span>
+      <div class="feature-name">Instant Alerts</div>
+      <div class="feature-desc">Critical threats trigger an immediate notification to you and your analyst. High-priority findings are in your inbox before your morning coffee.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔒</span>
+      <div class="feature-name">Asset Protection</div>
+      <div class="feature-desc">Full inventory of your connected devices and systems, with continuous monitoring for misconfigurations and exposure.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">👤</span>
+      <div class="feature-name">Client Portal</div>
+      <div class="feature-desc">Your own secure login to view findings, track report status, and see your compliance score — no technical knowledge required.</div>
+    </div>
+  </div>
+
+  <div class="slide-num">4 / 8</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SLIDE 5 — COMPLIANCE
+══════════════════════════════════════ -->
+<div class="slide compliance">
+  <div class="accent-bar"></div>
+  <div class="logo-bug">Boundry.AI</div>
+
+  <div class="slide-header">
+    <div class="slide-label">Compliance</div>
+    <div class="slide-title">Your industry has rules.<br><em>We already know them.</em></div>
+  </div>
+
+  <div class="compliance-intro">
+    Regulations around data security are tightening across every industry — and the fines for non-compliance are no longer reserved for large corporations.
+    Boundry.AI automatically maps your security posture to the framework that applies to <strong>your specific business</strong>, so you're always audit-ready.
+  </div>
+
+  <div class="compliance-grid">
+    <div class="compliance-card">
+      <div class="fw-name">PCI DSS</div>
+      <div class="fw-industry">Payment Card<br>Processing</div>
+    </div>
+    <div class="compliance-card">
+      <div class="fw-name">HIPAA</div>
+      <div class="fw-industry">Healthcare &<br>Medical</div>
+    </div>
+    <div class="compliance-card">
+      <div class="fw-name">METRC</div>
+      <div class="fw-industry">Cannabis<br>Industry</div>
+    </div>
+    <div class="compliance-card">
+      <div class="fw-name">GLBA</div>
+      <div class="fw-industry">Financial<br>Services</div>
+    </div>
+    <div class="compliance-card">
+      <div class="fw-name">SOX</div>
+      <div class="fw-industry">Corporate<br>Governance</div>
+    </div>
+  </div>
+
+  <div class="compliance-bar">
+    <div style="font-size:1.4rem;">✅</div>
+    <p>Also covered: <strong>Legal, Retail, Hospitality, Real Estate, Construction, Non-profit</strong> — if you run a business, your compliance framework is already built in.</p>
+  </div>
+
+  <div class="slide-num">5 / 8</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SLIDE 6 — HOW IT WORKS
+══════════════════════════════════════ -->
+<div class="slide how">
+  <div class="accent-bar"></div>
+  <div class="logo-bug">Boundry.AI</div>
+
+  <div class="slide-header">
+    <div class="slide-label">How It Works</div>
+    <div class="slide-title">Up and running in days,<br><em>not months.</em></div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">🤝</div>
+      <div class="step-title">Onboarding</div>
+      <div class="step-desc">We learn your business — your systems, your industry, your compliance obligations. You get a client profile built around your specific needs.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">🔌</div>
+      <div class="step-title">Connection</div>
+      <div class="step-desc">We connect your systems to the Boundry.AI platform. No expensive hardware — lightweight integration that works with what you already have.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">📡</div>
+      <div class="step-title">Monitoring Begins</div>
+      <div class="step-desc">From day one, your systems are under continuous watch. Threats are detected, triaged, and escalated according to your agreed response plan.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">📊</div>
+      <div class="step-title">Monthly Reporting</div>
+      <div class="step-desc">Every month you receive a plain-language security report — what happened, what we did, what your compliance score looks like, and what's next.</div>
+    </div>
+  </div>
+
+  <div class="how-bottom">
+    <div class="how-stat">
+      <div class="how-stat-val">24/7</div>
+      <div class="how-stat-label">Continuous monitoring,<br>no gaps</div>
+    </div>
+    <div class="how-stat">
+      <div class="how-stat-val">&lt; 15min</div>
+      <div class="how-stat-label">Alert to notification<br>on critical threats</div>
+    </div>
+    <div class="how-stat">
+      <div class="how-stat-val">10+</div>
+      <div class="how-stat-label">Industry compliance<br>frameworks built in</div>
+    </div>
+  </div>
+
+  <div class="slide-num">6 / 8</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SLIDE 7 — WHO WE ARE
+══════════════════════════════════════ -->
+<div class="slide team">
+  <div class="accent-bar"></div>
+  <div class="logo-bug">Boundry.AI</div>
+
+  <div class="slide-header">
+    <div class="slide-label">Who We Are</div>
+    <div class="slide-title">Security you can<br><em>put a name to.</em></div>
+  </div>
+
+  <div class="team-grid">
+    <div class="team-card jason">
+      <div class="team-role">Co-Founder · Security & Technology</div>
+      <div class="team-name">Jason Morgan</div>
+      <div class="team-bio">
+        Almost a decade in physical security gave Jason a foundation that translates directly to cybersecurity — <strong>reading threats, preventing incidents, and protecting the people inside.</strong> He built the Boundry.AI platform from the ground up and is working toward his CISSP certification. His goal is simple: give small businesses the same protection that large corporations take for granted.
+      </div>
+      <div class="team-tags">
+        <span class="team-tag">Security Operations</span>
+        <span class="team-tag">Threat Detection</span>
+        <span class="team-tag">Incident Response</span>
+        <span class="team-tag">CISSP Candidate</span>
+      </div>
+    </div>
+    <div class="team-card peta">
+      <div class="team-role">Co-Founder · Business & Marketing</div>
+      <div class="team-name">Peta</div>
+      <div class="team-bio">
+        Peta brings over a decade of corporate experience including senior purchasing management at Canada's largest cannabis company. <strong>She understands the regulatory pressures, the operational realities, and the relationships</strong> that matter in the industries Boundry.AI serves. She handles client relationships, business development, and everything that keeps the company running.
+      </div>
+      <div class="team-tags">
+        <span class="team-tag">Business Development</span>
+        <span class="team-tag">Cannabis Industry</span>
+        <span class="team-tag">Client Relations</span>
+        <span class="team-tag">Marketing</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-num">7 / 8</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SLIDE 8 — CTA
+══════════════════════════════════════ -->
+<div class="slide cta">
+  <div class="accent-bar"></div>
+  <div class="logo-bug">Boundry.AI</div>
+
+  <div class="cta-inner">
+    <div class="cta-eyebrow">Get Started</div>
+    <h2>Your business deserves<br>a <em>bouncer on the door.</em></h2>
+    <div class="cta-body">
+      Most small businesses don't find out they needed security until after something goes wrong.<br>
+      Let's make sure that day never comes.
+    </div>
+    <div class="cta-contacts">
+      <div class="cta-contact">
+        <div class="cta-contact-label">Security & Technology</div>
+        <div class="cta-contact-val">jason.c.morgan@gmail.com</div>
+      </div>
+      <div class="cta-divider"></div>
+      <div class="cta-contact">
+        <div class="cta-contact-label">Business & Partnerships</div>
+        <div class="cta-contact-val">simplypeta@gmail.com</div>
+      </div>
+      <div class="cta-divider"></div>
+      <div class="cta-contact">
+        <div class="cta-contact-label">Website</div>
+        <div class="cta-contact-val">boundry.ai</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-num">8 / 8</div>
+</div>
+
+</body>
+</html>

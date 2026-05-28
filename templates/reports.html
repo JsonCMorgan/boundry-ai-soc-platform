@@ -362,8 +362,24 @@
         <div class="topbar-nav">
             <a href="/assets">My Assets</a>
             <a href="/compliance">📋 Compliance</a>
+            {% if user_role == 'analyst' %}
+            <a href="/control-room">Control Room</a>
+            {% else %}
             <a href="/account">Account</a>
+            {% endif %}
             <a href="/logout" class="logout">Logout</a>
+            {% if user_role == 'analyst' %}
+            <form action="/set-mode" method="post" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if ops_mode %}
+                <input type="hidden" name="mode" value="study">
+                <button type="submit" style="background:#e8f0fe;border:1px solid #4a90d9;color:#1a5fa8;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⚡ Live Ops</button>
+                {% else %}
+                <input type="hidden" name="mode" value="ops">
+                <button type="submit" style="background:#f3eeff;border:1px solid #9944ee88;color:#6622aa;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">📘 Study</button>
+                {% endif %}
+            </form>
+            {% endif %}
         </div>
     </div>
 

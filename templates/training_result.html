@@ -390,8 +390,8 @@
     </div>
     {% endif %}
 
-    {% if cissp_debrief %}
-    <!-- CISSP Domain Debrief — analyst only, auto-generated from scenario techniques -->
+    {% if cissp_debrief and not ops_mode %}
+    <!-- CISSP Domain Debrief — analyst only, study mode only -->
     <div style="background:#0e0a1a;border:1px solid #9944ee44;border-radius:8px;
                 padding:24px 28px;margin-bottom:24px;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">

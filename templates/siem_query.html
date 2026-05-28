@@ -583,15 +583,17 @@
     <a href="/siem">SIEM Live</a>
     <a href="/siem/query" class="active">SPL Query</a>
     {% if user_role == 'analyst' %}
+    {% if not ops_mode %}
     <a href="/cissp">CISSP</a>
     <a href="/profile" style="color:#ffd700;">⚔ Profile</a>
+    {% endif %}
     {% else %}
     <a href="/account">Account</a>
     {% endif %}
     <a href="/logout">Logout</a>
   </nav>
   <div class="topbar-spacer"></div>
-  {% if profile and not client_mode %}
+  {% if profile and not client_mode and not ops_mode %}
   <div class="xp-bar-wrap">
     <span class="xp-level-badge">Lv {{ profile.level }}</span>
     <div class="xp-bar-outer">
@@ -600,6 +602,18 @@
     <span class="xp-count">{{ profile.xp }} XP</span>
     {% if profile.streak_days and profile.streak_days > 0 %}<span title="Day streak">🔥 {{ profile.streak_days }}</span>{% endif %}
   </div>
+  {% endif %}
+  {% if user_role == 'analyst' %}
+  <form action="/set-mode" method="post" style="margin:0 0 0 .5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if ops_mode %}
+    <input type="hidden" name="mode" value="study">
+    <button type="submit" title="Switch to Study Mode" style="background:#1a2a3a;border:1px solid #00d4ff88;color:#00d4ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⚡ Live Ops</button>
+    {% else %}
+    <input type="hidden" name="mode" value="ops">
+    <button type="submit" title="Switch to Live Ops Mode" style="background:#1a0a2e;border:1px solid #9944ee88;color:#bb77ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">📘 Study</button>
+    {% endif %}
+  </form>
   {% endif %}
 </header>
 
@@ -614,8 +628,8 @@
     <span class="badge-spl">SPL-LITE v1</span>
   </div>
 
-  {% if user_role == 'analyst' %}
-  <!-- ── CISSP Study Note (analyst only) ── -->
+  {% if user_role == 'analyst' and not ops_mode %}
+  <!-- ── CISSP Study Note (analyst only, study mode) ── -->
   <div style="background:#0e0a1a;border:1px solid #9944ee44;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
     <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9944ee;margin-bottom:.5rem;">📘 CISSP Study Note — D6 Security Assessment &amp; Testing (13%)</div>
     <div style="border-left:3px solid #44aaff;padding-left:.75rem;">

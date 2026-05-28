@@ -414,6 +414,8 @@ def _inject_globals():
     """Expose shared template globals (CSRF, role-based UI flags)."""
     role   = session.get("role", "")
     client = role in ("client", "demo")
+    # ops_mode: analyst has toggled to Live Ops view — study scaffolding hidden
+    ops_mode = (role == "analyst") and (session.get("analyst_mode", "study") == "ops")
     return {
         "csrf_token":       generate_csrf,
         "client_mode":      client,          # True for demo + client (hides training/XP)
@@ -421,6 +423,7 @@ def _inject_globals():
         "is_client_portal": role == "client",# Minimal reports-only view
         "user_role":        role,            # Raw role string for precise nav guards
         "origin_sim_label": "Demo" if client else "Sim",
+        "ops_mode":         ops_mode,        # Analyst Live Ops view (no study notes/XP)
     }
 
 # --- Security logging (feeds into Splunk / Railway logs) ---
@@ -1454,6 +1457,18 @@ def logout():
     """Clear the session and redirect to login."""
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/set-mode", methods=["POST"])
+@login_required
+def set_mode():
+    """Toggle analyst between Live Ops mode and Study/Training mode."""
+    if session.get("role") != "analyst":
+        return redirect(request.referrer or url_for("control_room"))
+    mode = request.form.get("mode", "study")
+    if mode in ("ops", "study"):
+        session["analyst_mode"] = mode
+    return redirect(request.referrer or url_for("control_room"))
 
 
 # --- ROUTE 0b2: 2FA Login Verify ---

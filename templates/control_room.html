@@ -1078,8 +1078,8 @@
     <div class="topbar">
         <span class="topbar-brand">&#x1F6E1; Boundry.AI — Control Room</span>
         <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-            <!-- XP Bar -->
-            {% if player and not client_mode %}
+            <!-- XP Bar — hidden in Live Ops mode -->
+            {% if player and not client_mode and not ops_mode %}
             <div class="xp-bar-wrap" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;">
                 {% if player.streak_days and player.streak_days >= 2 %}
                 <span class="xp-streak-badge" style="color:#ff8c00;font-weight:700;font-size:12px;" title="{{ player.streak_days }}-day streak">🔥{{ player.streak_days }}d</span>
@@ -1096,7 +1096,7 @@
                 <strong>{{ session['username'] }}</strong>
             </span>
             <nav>
-                {% if user_role == 'analyst' %}
+                {% if user_role == 'analyst' and not ops_mode %}
                 <a href="/scorecard">&#x1F4CA; Scorecard</a>
                 <a href="/training" style="color:#00b432; font-weight:bold;">🎓 SOC Training</a>
                 <a href="/cissp" style="color:#9944ee; font-weight:bold;">📘 CISSP</a>
@@ -1105,13 +1105,26 @@
                 <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
                 <a href="/compliance" style="color:#f39c12; font-weight:bold;">📋 Compliance</a>
                 {% if user_role == 'analyst' %}
-                <a href="/profile" style="color:#ffd700; font-weight:bold;">⚔️ Profile</a>
-                <a href="/reports">Client View</a>
+                {% if not ops_mode %}<a href="/profile" style="color:#ffd700; font-weight:bold;">⚔️ Profile</a>{% endif %}
+                <a href="/reports">Reports</a>
                 {% else %}
                 <a href="/account">Account</a>
                 {% endif %}
                 <a href="/logout">Logout</a>
             </nav>
+            <!-- Mode toggle -->
+            {% if user_role == 'analyst' %}
+            <form action="/set-mode" method="post" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if ops_mode %}
+                <input type="hidden" name="mode" value="study">
+                <button type="submit" title="Switch to Study Mode" style="background:#1a2a3a;border:1px solid #00d4ff88;color:#00d4ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⚡ Live Ops</button>
+                {% else %}
+                <input type="hidden" name="mode" value="ops">
+                <button type="submit" title="Switch to Live Ops Mode" style="background:#1a0a2e;border:1px solid #9944ee88;color:#bb77ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">📘 Study</button>
+                {% endif %}
+            </form>
+            {% endif %}
         </div>
     </div>
 
@@ -1299,8 +1312,8 @@
             </div>
         </div>
 
-        <!-- CISSP Domain Mastery Panel -->
-        {% if not client_mode %}
+        <!-- CISSP Domain Mastery Panel — hidden in Live Ops mode -->
+        {% if not client_mode and not ops_mode %}
         <div class="cissp-panel">
             <div class="cissp-toggle" onclick="toggleCISSP()">
                 <span>
@@ -1363,7 +1376,7 @@
         </div>
         {% endif %}
 
-        {% if not client_mode %}
+        {% if not client_mode and not ops_mode %}
         <!-- CISSP Daily Study Note — rotates through domains based on day of year -->
         {% set day_num = now.timetuple().tm_yday if now else 1 %}
         {% set domain_keys = cissp_domains.keys() | list %}

@@ -179,6 +179,9 @@
         <a href="{{ url_for('control_room') }}">Control Room</a>
         <a href="{{ url_for('siem') }}">SIEM</a>
         <a href="{{ url_for('reports') }}">Reports</a>
+        {% if not ops_mode %}
+        <a href="/cissp" style="color:#9944ee;">📘 CISSP</a>
+        {% endif %}
         {% else %}
         <a href="{{ url_for('reports') }}">My Reports</a>
         <a href="{{ url_for('account') }}">Account</a>
@@ -186,6 +189,18 @@
         <a href="{{ url_for('compliance') }}" class="active">Compliance</a>
         <a href="{{ url_for('logout') }}">Logout</a>
     </nav>
+    {% if role == 'analyst' %}
+    <form action="/set-mode" method="post" style="margin:0 0 0 8px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if ops_mode %}
+        <input type="hidden" name="mode" value="study">
+        <button type="submit" title="Switch to Study Mode" style="background:#1a2a3a;border:1px solid #00d4ff88;color:#00d4ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⚡ Live Ops</button>
+        {% else %}
+        <input type="hidden" name="mode" value="ops">
+        <button type="submit" title="Switch to Live Ops Mode" style="background:#1a0a2e;border:1px solid #9944ee88;color:#bb77ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">📘 Study</button>
+        {% endif %}
+    </form>
+    {% endif %}
 </div>
 
 <div class="main">
@@ -205,8 +220,8 @@
             </p>
         </div>
 
-        <!-- Quick industry switcher for analysts viewing a client -->
-        {% if role == 'analyst' %}
+        <!-- Quick industry switcher — analyst study mode only -->
+        {% if role == 'analyst' and not ops_mode %}
         <form method="GET" action="{{ url_for('compliance') }}" class="industry-switcher">
             <label>Preview industry:</label>
             <select name="industry_preview" onchange="this.form.submit()">
@@ -442,7 +457,7 @@
                     {% endfor %}
                 </div>
 
-                {% if role == 'analyst' and domain.soc_bridge %}
+                {% if role == 'analyst' and domain.soc_bridge and not ops_mode %}
                 <!-- CISSP study note — analyst only, never shown to clients -->
                 <div style="background:#0e0a1a;border:1px solid #9944ee33;border-radius:6px;
                             padding:10px 14px;margin-bottom:14px;">

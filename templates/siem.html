@@ -356,7 +356,7 @@
         <div class="topbar-sub">SIEM — Security Information &amp; Event Management</div>
     </div>
     <div class="xp-bar-wrap">
-        {% if not client_mode %}
+        {% if not client_mode and not ops_mode %}
         <span style="font-size:0.78em;color:#446;">{{ player.level_icon }} Lv.{{ player.level }}</span>
         <div class="xp-bar-outer"><div class="xp-bar-inner" style="width:{{ player.level_pct }}%;"></div></div>
         <span class="xp-count">{{ player.xp }} XP</span>
@@ -373,13 +373,27 @@
             <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
             <a href="/compliance" style="color:#f39c12;">📋 Compliance</a>
             {% if user_role == 'analyst' %}
+            {% if not ops_mode %}
             <a href="/cissp" style="color:#9944ee;">📘 CISSP</a>
             <a href="/profile" style="color:#ffd700;">⚔️ Profile</a>
+            {% endif %}
             {% else %}
             <a href="/account">Account</a>
             {% endif %}
             <a href="/logout">Logout</a>
         </nav>
+        {% if user_role == 'analyst' %}
+        <form action="/set-mode" method="post" style="margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if ops_mode %}
+            <input type="hidden" name="mode" value="study">
+            <button type="submit" title="Switch to Study Mode" style="background:#1a2a3a;border:1px solid #00d4ff88;color:#00d4ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⚡ Live Ops</button>
+            {% else %}
+            <input type="hidden" name="mode" value="ops">
+            <button type="submit" title="Switch to Live Ops Mode" style="background:#1a0a2e;border:1px solid #9944ee88;color:#bb77ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">📘 Study</button>
+            {% endif %}
+        </form>
+        {% endif %}
     </div>
 </div>
 
@@ -431,8 +445,8 @@
     </div>
 </div>
 
-{% if user_role == 'analyst' %}
-<!-- ── CISSP Study Note (analyst only) ── -->
+{% if user_role == 'analyst' and not ops_mode %}
+<!-- ── CISSP Study Note (analyst only, study mode) ── -->
 <div style="background:#0e0a1a;border:1px solid #9944ee44;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
     <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9944ee;margin-bottom:.6rem;">📘 CISSP Study Note — D6 &amp; D7</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">

@@ -600,12 +600,18 @@ def init_db():
     analyst_username = os.environ.get("ANALYST_USERNAME", "").strip()
     analyst_password = os.environ.get("ANALYST_PASSWORD", "").strip()
     if analyst_username and analyst_password:
+        hashed = bcrypt.hashpw(analyst_password.encode(), bcrypt.gensalt()).decode()
         existing = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", (analyst_username,))
         if not existing:
-            hashed = bcrypt.hashpw(analyst_password.encode(), bcrypt.gensalt())
             db_run(
                 f"INSERT INTO users (username, password, role) VALUES ({PH}, {PH}, 'analyst')",
-                (analyst_username, hashed.decode()),
+                (analyst_username, hashed),
+            )
+        else:
+            # Always sync password + role from env vars — Railway is the source of truth
+            db_run(
+                f"UPDATE users SET password = {PH}, role = 'analyst' WHERE username = {PH}",
+                (hashed, analyst_username),
             )
 
     # Auto-seed showcase (demo-role) account — set DEMO_USERNAME + DEMO_PASSWORD on Railway.
@@ -614,16 +620,19 @@ def init_db():
     showcase_username = os.environ.get("DEMO_USERNAME", "").strip()
     showcase_password = os.environ.get("DEMO_PASSWORD", "").strip()
     if showcase_username and showcase_password:
+        hashed = bcrypt.hashpw(showcase_password.encode(), bcrypt.gensalt()).decode()
         existing = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", (showcase_username,))
         if not existing:
-            hashed = bcrypt.hashpw(showcase_password.encode(), bcrypt.gensalt())
             db_run(
                 f"INSERT INTO users (username, password, role) VALUES ({PH}, {PH}, 'demo')",
-                (showcase_username, hashed.decode()),
+                (showcase_username, hashed),
             )
         else:
-            # Ensure role stays 'demo' even if DB was wiped and re-seeded differently
-            db_run(f"UPDATE users SET role = 'demo' WHERE username = {PH}", (showcase_username,))
+            # Always sync password + role from env vars — Railway is the source of truth
+            db_run(
+                f"UPDATE users SET password = {PH}, role = 'demo' WHERE username = {PH}",
+                (hashed, showcase_username),
+            )
 
     # Triage log — every status change on a report is recorded with a timestamp.
     # Used by the analyst scorecard to compute response times and escalation rates.

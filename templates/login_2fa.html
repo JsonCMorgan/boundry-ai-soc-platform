@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — Two-Factor Authentication</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b0e17;
+            color: #d4d4d4;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .card {
+            background: #12151f;
+            border: 1px solid #1e2235;
+            border-radius: 10px;
+            padding: 44px 40px 36px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 48px #00000055;
+        }
+        .brand {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .brand-name {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #00b432;
+            text-shadow: 0 0 14px #00b43266, 0 0 32px #00b43233;
+            letter-spacing: 0.04em;
+        }
+        .brand-sub {
+            color: #555;
+            font-size: 0.82em;
+            margin-top: 4px;
+        }
+        .icon {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 16px;
+        }
+        h1 {
+            font-size: 1.15em;
+            color: #fff;
+            text-align: center;
+            margin: 0 0 8px;
+        }
+        .hint {
+            color: #666;
+            font-size: 0.85em;
+            text-align: center;
+            margin: 0 0 28px;
+            line-height: 1.5;
+        }
+        label {
+            display: block;
+            color: #aaa;
+            font-size: 0.82em;
+            margin-bottom: 6px;
+            letter-spacing: 0.03em;
+        }
+        .code-input {
+            width: 100%;
+            background: #0b0e17;
+            border: 1px solid #2a2d3e;
+            border-radius: 6px;
+            color: #fff;
+            padding: 14px;
+            font-size: 1.5em;
+            text-align: center;
+            letter-spacing: 0.25em;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .code-input:focus { border-color: #00b432; }
+        .btn {
+            width: 100%;
+            margin-top: 20px;
+            padding: 13px;
+            background: #00b432;
+            color: #000;
+            font-weight: bold;
+            font-size: 0.95em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn:hover { background: #00cc3a; }
+        .error {
+            background: #2a0d0d;
+            border: 1px solid #e74c3c44;
+            color: #e74c3c;
+            border-radius: 4px;
+            padding: 10px 14px;
+            font-size: 0.88em;
+            margin-bottom: 18px;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #444;
+            font-size: 0.83em;
+            text-decoration: none;
+        }
+        .back-link a:hover { color: #00b432; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="brand">
+        <div class="brand-name">🛡 Boundry.AI</div>
+        <div class="brand-sub">Security Operations Platform</div>
+    </div>
+
+    <div class="icon">📱</div>
+    <h1>Two-Factor Authentication</h1>
+    <p class="hint">Enter the 6-digit code from your authenticator app.</p>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login_2fa') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="code">Authentication Code</label>
+        <input
+            class="code-input"
+            type="text"
+            id="code"
+            name="code"
+            placeholder="000000"
+            maxlength="6"
+            inputmode="numeric"
+            pattern="[0-9]{6}"
+            autocomplete="one-time-code"
+            autofocus
+            required
+        >
+        <button type="submit" class="btn">Verify →</button>
+    </form>
+
+    <div class="back-link">
+        <a href="{{ url_for('login') }}">← Back to login</a>
+    </div>
+</div>
+</body>
+</html>

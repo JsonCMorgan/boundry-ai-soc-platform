@@ -196,6 +196,134 @@ def generate_plain_summary(report_id, content, threat_count):
         return ""
 
 
+def send_email(to_address: str, subject: str, html_body: str) -> bool:
+    """Send a transactional email via Resend.
+
+    Returns True on success, False on any error.
+    RESEND_API_KEY must be set as an environment variable (Railway secret).
+    FROM_EMAIL defaults to the Resend onboarding address until a custom domain
+    is verified (set FROM_EMAIL=Boundry.AI <alerts@yourdomain.com>).
+    """
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not api_key:
+        security_log.warning("send_email: RESEND_API_KEY not set — skipping")
+        return False
+    if not to_address or "@" not in to_address:
+        return False
+    try:
+        import resend as _resend
+        _resend.api_key = api_key
+        from_addr = os.environ.get("FROM_EMAIL", "Boundry.AI <onboarding@resend.dev>").strip()
+        _resend.Emails.send({
+            "from": from_addr,
+            "to":   [to_address],
+            "subject": subject,
+            "html": html_body,
+        })
+        return True
+    except Exception as exc:
+        security_log.warning(f"send_email failed to={to_address!r}: {exc}")
+        return False
+
+
+def notify_client_of_report(report_id: int, owner_id: int, threat_count: int) -> None:
+    """Send a CRITICAL alert email to a client when a live report has threats.
+
+    Called immediately after a new live (non-simulated) report is saved.
+    Skipped if the owner has no email set, or has opted out of alerts.
+    """
+    owner = db_fetchone(
+        f"SELECT email, email_alerts, username FROM users WHERE id = {PH}",
+        (owner_id,),
+    )
+    if not owner:
+        return
+    email_addr   = (owner.get("email") or "").strip()
+    email_alerts = owner.get("email_alerts", 1)
+    if not email_addr or not email_alerts:
+        return
+
+    app_url = os.environ.get("APP_URL", "https://web-production-31963.up.railway.app").rstrip("/")
+    report_url = f"{app_url}/reports/{report_id}"
+
+    sev_colour = "#e74c3c"  # red for threats
+    badge_text = f"{threat_count} Threat{'s' if threat_count != 1 else ''} Detected"
+
+    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0b0e17;font-family:Arial,sans-serif;color:#d4d4d4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0b0e17;padding:32px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+             style="background:#12151f;border:1px solid #1e2235;border-radius:8px;overflow:hidden;">
+        <!-- Header -->
+        <tr>
+          <td style="background:#12151f;border-bottom:3px solid {sev_colour};
+                     padding:24px 32px;text-align:center;">
+            <div style="font-size:1.3em;font-weight:bold;color:#00b432;letter-spacing:0.04em;">
+              🛡 Boundry.AI
+            </div>
+            <div style="color:#888;font-size:0.85em;margin-top:4px;">Security Alert</div>
+          </td>
+        </tr>
+        <!-- Badge -->
+        <tr>
+          <td style="padding:28px 32px 8px;text-align:center;">
+            <span style="background:{sev_colour};color:#fff;font-weight:bold;
+                         padding:8px 20px;border-radius:20px;font-size:0.9em;">
+              ⚠️ {badge_text}
+            </span>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:16px 32px 28px;">
+            <p style="color:#aaa;font-size:0.95em;line-height:1.6;">
+              Hi <strong style="color:#fff;">{owner.get('username', 'there')}</strong>,
+            </p>
+            <p style="color:#aaa;font-size:0.95em;line-height:1.6;">
+              Your Boundry.AI security monitoring has detected
+              <strong style="color:{sev_colour};">{badge_text}</strong>
+              in the latest scan of your environment.
+            </p>
+            <p style="color:#aaa;font-size:0.95em;line-height:1.6;">
+              Log in to your portal to see the full report, understand what happened,
+              and find out if any action is needed.
+            </p>
+            <div style="text-align:center;margin:28px 0;">
+              <a href="{report_url}"
+                 style="background:#00b432;color:#000;font-weight:bold;
+                        padding:12px 28px;border-radius:4px;text-decoration:none;
+                        font-size:0.95em;">
+                View My Security Report →
+              </a>
+            </div>
+            <p style="color:#555;font-size:0.8em;text-align:center;margin:0;">
+              You're receiving this because security alerts are enabled on your account.<br>
+              <a href="{app_url}/account" style="color:#00b432;">Manage notification settings</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    sent = send_email(
+        to_address=email_addr,
+        subject=f"⚠️ Security Alert — {badge_text} | Boundry.AI",
+        html_body=html_body,
+    )
+    security_log.info(
+        f"NOTIFY_CLIENT report_id={report_id} owner_id={owner_id} "
+        f"threats={threat_count} sent={sent}"
+    )
+
+
 DB_PATH = Path(__file__).parent / "app.db"
 REPORTS_DIR = Path(__file__).parent / "docs" / "reports"
 
@@ -775,6 +903,45 @@ def init_db():
         if "plain_summary" not in existing_cols:
             db_run("ALTER TABLE reports ADD COLUMN plain_summary TEXT NOT NULL DEFAULT ''")
 
+    # Migration: email + email_alerts on users — for alert notifications and weekly digest.
+    if DATABASE_URL:
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS email        TEXT    NOT NULL DEFAULT ''")
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_alerts INTEGER NOT NULL DEFAULT 1")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(users)")]
+        if "email" not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN email        TEXT    NOT NULL DEFAULT ''")
+        if "email_alerts" not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN email_alerts INTEGER NOT NULL DEFAULT 1")
+
+    # Migration: 2FA (TOTP) columns on users
+    if DATABASE_URL:
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret  TEXT")
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled INTEGER NOT NULL DEFAULT 0")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(users)")]
+        if "totp_secret" not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN totp_secret  TEXT")
+        if "totp_enabled" not in existing_cols:
+            db_run("ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0")
+
+    # Asset inventory — client-registered digital assets (websites, servers, services)
+    if DATABASE_URL:
+        asset_ts = "created_at TIMESTAMP NOT NULL DEFAULT NOW()"
+    else:
+        asset_ts = "created_at TEXT NOT NULL DEFAULT (datetime('now'))"
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS assets (
+            {id_col},
+            {asset_ts},
+            owner_id    INTEGER NOT NULL,
+            name        TEXT    NOT NULL DEFAULT '',
+            asset_type  TEXT    NOT NULL DEFAULT 'website',
+            url_or_ip   TEXT    NOT NULL DEFAULT '',
+            notes       TEXT    NOT NULL DEFAULT ''
+        )
+    """)
+
     # Breach intelligence table — stores AI-curated breach/incident reports from RSS feeds
     db_run(f"""
         CREATE TABLE IF NOT EXISTS breach_intel (
@@ -1223,6 +1390,14 @@ def login():
                 except Exception as exc:
                     security_log.warning(f"DEMO_UPGRADE_FAILED username={username} error={exc}")
 
+            # 2FA check — if enabled, park credentials in session and redirect to verify
+            if row.get("totp_enabled") and row.get("totp_secret"):
+                session["_2fa_pending_user_id"] = row["id"]
+                session["_2fa_pending_username"] = username
+                session["_2fa_pending_role"]     = row.get("role", "client")
+                security_log.info(f"LOGIN_2FA_REQUIRED username={username} ip={request.remote_addr}")
+                return redirect(url_for("login_2fa"))
+
             session.permanent = True
             session["username"] = username
             session["user_id"]  = row["id"]
@@ -1245,6 +1420,207 @@ def logout():
     """Clear the session and redirect to login."""
     session.clear()
     return redirect(url_for("login"))
+
+
+# --- ROUTE 0b2: 2FA Login Verify ---
+@app.route("/login/2fa", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
+def login_2fa():
+    """Second-factor verify step. Only reachable after a correct password check."""
+    # Must have a pending 2FA session
+    if "_2fa_pending_user_id" not in session:
+        return redirect(url_for("login"))
+
+    error = None
+    if request.method == "POST":
+        code = request.form.get("code", "").strip().replace(" ", "")
+        user_id  = session.pop("_2fa_pending_user_id", None)
+        username = session.pop("_2fa_pending_username", None)
+        role     = session.pop("_2fa_pending_role", "client")
+
+        user = db_fetchone(f"SELECT totp_secret FROM users WHERE id = {PH}", (user_id,))
+        valid = False
+        if user and user.get("totp_secret") and code:
+            try:
+                import pyotp as _pyotp
+                totp = _pyotp.TOTP(user["totp_secret"])
+                valid = totp.verify(code, valid_window=1)
+            except Exception:
+                pass
+
+        if valid:
+            session.permanent  = True
+            session["username"] = username
+            session["user_id"]  = user_id
+            session["role"]     = role
+            security_log.info(f"LOGIN_2FA_SUCCESS username={username} ip={request.remote_addr}")
+            if role in ("analyst", "demo"):
+                return redirect(url_for("control_room"))
+            return redirect(url_for("reports"))
+        else:
+            # Put the pending back — let them retry
+            session["_2fa_pending_user_id"]  = user_id
+            session["_2fa_pending_username"] = username
+            session["_2fa_pending_role"]     = role
+            security_log.warning(f"LOGIN_2FA_FAILED username={username} ip={request.remote_addr}")
+            error = "Invalid code — please check your authenticator app and try again."
+
+    return render_template("login_2fa.html", error=error)
+
+
+# --- ROUTE 0b3: 2FA Setup (generate secret + QR) ---
+@app.route("/account/2fa/setup", methods=["GET", "POST"])
+@login_required
+def setup_2fa():
+    """Show QR code for the user to scan with Google Authenticator (or compatible app)."""
+    if session.get("is_demo"):
+        abort(403)
+    user_id  = session["user_id"]
+    username = session["username"]
+
+    # Check if already enabled
+    user = db_fetchone(f"SELECT totp_enabled, totp_secret FROM users WHERE id = {PH}", (user_id,))
+    if user and user.get("totp_enabled"):
+        flash("2FA is already enabled on your account.", "info")
+        return redirect(url_for("account"))
+
+    if request.method == "POST":
+        # Verify user scanned and can produce a valid code before enabling
+        code   = request.form.get("code", "").strip().replace(" ", "")
+        secret = request.form.get("secret", "").strip()
+        error  = None
+
+        if not secret or not code:
+            error = "Please enter the 6-digit code from your authenticator app."
+        else:
+            try:
+                import pyotp as _pyotp
+                totp  = _pyotp.TOTP(secret)
+                valid = totp.verify(code, valid_window=1)
+            except Exception:
+                valid = False
+
+            if valid:
+                db_run(
+                    f"UPDATE users SET totp_secret = {PH}, totp_enabled = 1 WHERE id = {PH}",
+                    (secret, user_id),
+                )
+                security_log.info(f"2FA_ENABLED username={username}")
+                flash("✅ Two-factor authentication is now active on your account.", "success")
+                return redirect(url_for("account"))
+            else:
+                error = "Code didn't match — make sure your phone's clock is correct and try again."
+
+        # Re-show QR with error (reuse same secret they submitted)
+        import pyotp as _pyotp, qrcode as _qrcode, io as _io, base64 as _b64
+        totp_uri = _pyotp.TOTP(secret).provisioning_uri(name=username, issuer_name="Boundry.AI")
+        buf = _io.BytesIO()
+        _qrcode.make(totp_uri).save(buf, format="PNG")
+        qr_b64 = _b64.b64encode(buf.getvalue()).decode()
+        return render_template("setup_2fa.html", secret=secret, qr_b64=qr_b64, error=error)
+
+    # GET — generate a fresh secret
+    import pyotp as _pyotp, qrcode as _qrcode, io as _io, base64 as _b64
+    secret   = _pyotp.random_base32()
+    totp_uri = _pyotp.TOTP(secret).provisioning_uri(name=username, issuer_name="Boundry.AI")
+    buf = _io.BytesIO()
+    _qrcode.make(totp_uri).save(buf, format="PNG")
+    qr_b64 = _b64.b64encode(buf.getvalue()).decode()
+    return render_template("setup_2fa.html", secret=secret, qr_b64=qr_b64, error=None)
+
+
+# --- ROUTE 0b4: Disable 2FA ---
+@app.route("/account/2fa/disable", methods=["POST"])
+@login_required
+def disable_2fa():
+    """Remove 2FA from the account after re-confirming with a valid code."""
+    if session.get("is_demo"):
+        abort(403)
+    user_id  = session["user_id"]
+    username = session["username"]
+    code     = request.form.get("code", "").strip().replace(" ", "")
+
+    user = db_fetchone(f"SELECT totp_secret, totp_enabled FROM users WHERE id = {PH}", (user_id,))
+    if not user or not user.get("totp_enabled"):
+        flash("2FA is not enabled on your account.", "info")
+        return redirect(url_for("account"))
+
+    try:
+        import pyotp as _pyotp
+        valid = _pyotp.TOTP(user["totp_secret"]).verify(code, valid_window=1)
+    except Exception:
+        valid = False
+
+    if valid:
+        db_run(
+            f"UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE id = {PH}",
+            (user_id,),
+        )
+        security_log.info(f"2FA_DISABLED username={username}")
+        flash("2FA has been removed from your account.", "success")
+    else:
+        flash("Incorrect code — 2FA was not disabled.", "error")
+    return redirect(url_for("account"))
+
+
+# --- ROUTE Phase3: Asset Inventory ---
+@app.route("/assets")
+@login_required
+def assets():
+    """Asset inventory — client's registered digital assets."""
+    user_id     = session["user_id"]
+    asset_list  = db_fetchall(
+        f"SELECT * FROM assets WHERE owner_id = {PH} ORDER BY id DESC",
+        (user_id,),
+    )
+    return render_template("assets.html", assets=asset_list)
+
+
+@app.route("/assets/add", methods=["POST"])
+@login_required
+def add_asset():
+    """Add a new asset to the inventory."""
+    if session.get("is_demo"):
+        flash("Asset management is not available in the demo account.", "info")
+        return redirect(url_for("assets"))
+    user_id    = session["user_id"]
+    name       = request.form.get("name", "").strip()[:120]
+    asset_type = request.form.get("asset_type", "website").strip()
+    url_or_ip  = request.form.get("url_or_ip", "").strip()[:255]
+    notes      = request.form.get("notes", "").strip()[:500]
+
+    VALID_TYPES = {"website", "server", "cloud", "email", "pos", "other"}
+    if not name:
+        flash("Asset name is required.", "error")
+        return redirect(url_for("assets"))
+    if asset_type not in VALID_TYPES:
+        asset_type = "other"
+
+    db_run(
+        f"INSERT INTO assets (owner_id, name, asset_type, url_or_ip, notes) "
+        f"VALUES ({PH}, {PH}, {PH}, {PH}, {PH})",
+        (user_id, name, asset_type, url_or_ip, notes),
+    )
+    flash(f"✅ {name} added to your asset inventory.", "success")
+    return redirect(url_for("assets"))
+
+
+@app.route("/assets/<int:asset_id>/delete", methods=["POST"])
+@login_required
+def delete_asset(asset_id):
+    """Delete an asset — only the owner can delete their own assets."""
+    if session.get("is_demo"):
+        flash("Asset management is not available in the demo account.", "info")
+        return redirect(url_for("assets"))
+    user_id = session["user_id"]
+    asset   = db_fetchone(
+        f"SELECT id, owner_id FROM assets WHERE id = {PH}", (asset_id,)
+    )
+    if not asset or asset["owner_id"] != user_id:
+        abort(403)
+    db_run(f"DELETE FROM assets WHERE id = {PH}", (asset_id,))
+    flash("Asset removed.", "success")
+    return redirect(url_for("assets"))
 
 
 # --- ROUTE 0c: Change Password (A07: Auth Failures) ---
@@ -1294,11 +1670,43 @@ def change_password():
     return render_template("change_password.html", error=error, success=success)
 
 
-@app.route("/account")
+@app.route("/account", methods=["GET", "POST"])
 @login_required
 def account():
-    """Minimal account page for client portal mode."""
-    return render_template("account.html")
+    """Account settings — email address and notification preferences."""
+    user_id = session.get("user_id")
+    error   = None
+    success = None
+
+    if request.method == "POST":
+        new_email      = request.form.get("email", "").strip().lower()
+        email_alerts   = 1 if request.form.get("email_alerts") else 0
+
+        # Basic validation — allow empty (opt out), or must look like an email
+        if new_email and ("@" not in new_email or "." not in new_email.split("@")[-1]):
+            error = "Please enter a valid email address."
+        else:
+            db_run(
+                f"UPDATE users SET email = {PH}, email_alerts = {PH} WHERE id = {PH}",
+                (new_email, email_alerts, user_id),
+            )
+            success = "Settings saved."
+
+    user = db_fetchone(
+        f"SELECT email, email_alerts, totp_enabled FROM users WHERE id = {PH}", (user_id,)
+    )
+    asset_count = (db_fetchone(
+        f"SELECT COUNT(*) AS cnt FROM assets WHERE owner_id = {PH}", (user_id,)
+    ) or {}).get("cnt", 0)
+    return render_template(
+        "account.html",
+        user_email=user["email"] if user else "",
+        email_alerts=bool(user["email_alerts"] if user else 1),
+        totp_enabled=bool(user["totp_enabled"] if user else 0),
+        asset_count=asset_count,
+        error=error,
+        success=success,
+    )
 
 
 # --- ROUTE 0b: Register (A03: Injection, A07: Auth Failures) ---
@@ -3830,6 +4238,10 @@ def _run_agent_core(triggered_by="unknown", owner_id=None, force_simulated=False
     row       = db_fetchone("SELECT id FROM reports ORDER BY id DESC LIMIT 1")
     report_id = row["id"] if row else None
 
+    # Email alert — notify client immediately if live report has threats
+    if report_id and owner_id and not is_simulated and threat_count > 0:
+        notify_client_of_report(report_id, owner_id, threat_count)
+
     security_log.info(
         f"AGENT_RUN threats_found={threat_count} report_id={report_id} "
         f"triggered_by={triggered_by}"
@@ -4135,6 +4547,203 @@ def cron_breach_intel():
     saved = _fetch_breach_intel()
     security_log.info(f"CRON_BREACH_INTEL saved={saved}")
     return jsonify(status="ok", new_items_saved=saved)
+
+
+# --- ROUTE 8c: Weekly Digest Cron (no session — CRON_SECRET authenticated) ---
+@app.route("/cron/weekly-digest", methods=["POST"])
+@csrf.exempt
+def cron_weekly_digest():
+    """
+    Send a plain-English weekly security digest to every client who has an
+    email address and has not opted out.
+
+    Summarises the past 7 days: report count, threat count, worst severity,
+    and health score — all in non-technical language.
+
+    Railway cron command (run weekly, e.g. every Monday 09:00):
+        curl -s -X POST https://<your-app>/cron/weekly-digest \\
+             -H "X-Cron-Secret: $CRON_SECRET"
+    """
+    expected = os.environ.get("CRON_SECRET", "")
+    provided = request.headers.get("X-Cron-Secret", "")
+    if not expected or not hmac.compare_digest(
+        (provided or "").encode("utf-8"),
+        (expected or "").encode("utf-8"),
+    ):
+        abort(404)
+
+    clients = db_fetchall(
+        f"SELECT id, username, email, email_alerts FROM users "
+        f"WHERE role = 'client' AND email != '' AND email_alerts = 1"
+    )
+    sent_count = 0
+    app_url = os.environ.get("APP_URL", "https://web-production-31963.up.railway.app").rstrip("/")
+
+    for client in clients:
+        uid   = client["id"]
+        uname = client.get("username", "there")
+        email = client.get("email", "").strip()
+        if not email:
+            continue
+
+        # Gather last 7 days of reports for this client
+        if DATABASE_URL:
+            week_reports = db_fetchall(
+                f"SELECT threat_count, status, simulated FROM reports "
+                f"WHERE owner_id = {PH} AND simulated = 0 "
+                f"AND created_at >= NOW() - INTERVAL '7 days'",
+                (uid,),
+            )
+        else:
+            week_reports = db_fetchall(
+                f"SELECT threat_count, status, simulated FROM reports "
+                f"WHERE owner_id = {PH} AND simulated = 0 "
+                f"AND created_at >= datetime('now', '-7 days')",
+                (uid,),
+            )
+
+        report_count = len(week_reports)
+        total_threats = sum(r.get("threat_count") or 0 for r in week_reports)
+        open_count = sum(
+            1 for r in week_reports
+            if (r.get("status") or "new") not in ("closed",)
+        )
+
+        health = compute_health_score(uid)
+
+        if report_count == 0:
+            status_line = "✅ No security incidents were detected this week — your systems are clear."
+            action_line = "No action is needed."
+        elif total_threats == 0:
+            status_line = f"✅ {report_count} monitoring scan{'s' if report_count != 1 else ''} completed this week — no threats found."
+            action_line = "Your environment looks healthy. No action is needed."
+        else:
+            status_line = (
+                f"⚠️ {total_threats} security threat{'s' if total_threats != 1 else ''} "
+                f"{'were' if total_threats != 1 else 'was'} detected across "
+                f"{report_count} scan{'s' if report_count != 1 else ''} this week."
+            )
+            if open_count:
+                action_line = (
+                    f"{open_count} report{'s' if open_count != 1 else ''} "
+                    f"still {'need' if open_count != 1 else 'needs'} review. "
+                    f"Log in to see what happened and whether you need to act."
+                )
+            else:
+                action_line = "All incidents have been reviewed and closed. No further action needed."
+
+        score_colour = health["color"]
+        html_body = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0b0e17;font-family:Arial,sans-serif;color:#d4d4d4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0b0e17;padding:32px 0;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0"
+             style="background:#12151f;border:1px solid #1e2235;border-radius:8px;overflow:hidden;">
+        <!-- Header -->
+        <tr>
+          <td style="background:#12151f;border-bottom:3px solid #00b432;
+                     padding:24px 32px;text-align:center;">
+            <div style="font-size:1.3em;font-weight:bold;color:#00b432;letter-spacing:0.04em;">
+              🛡 Boundry.AI
+            </div>
+            <div style="color:#888;font-size:0.85em;margin-top:4px;">Your Weekly Security Digest</div>
+          </td>
+        </tr>
+        <!-- Health score -->
+        <tr>
+          <td style="padding:24px 32px 8px;text-align:center;">
+            <div style="display:inline-block;background:#1a1d2e;border:2px solid {score_colour};
+                        border-radius:50%;width:80px;height:80px;line-height:80px;
+                        font-size:1.7em;font-weight:bold;color:{score_colour};">
+              {health['score']}
+            </div>
+            <div style="color:#888;font-size:0.8em;margin-top:8px;">Security Health Score</div>
+          </td>
+        </tr>
+        <!-- Status -->
+        <tr>
+          <td style="padding:16px 32px 8px;">
+            <p style="color:#d4d4d4;font-size:0.97em;line-height:1.65;">
+              Hi <strong style="color:#fff;">{uname}</strong>,
+            </p>
+            <p style="color:#aaa;font-size:0.95em;line-height:1.65;">
+              {status_line}
+            </p>
+            <p style="color:#aaa;font-size:0.95em;line-height:1.65;">
+              {action_line}
+            </p>
+          </td>
+        </tr>
+        <!-- Stats row -->
+        <tr>
+          <td style="padding:8px 32px 16px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="33%" style="text-align:center;padding:12px 8px;
+                    background:#1a1d2e;border-radius:6px;">
+                  <div style="font-size:1.6em;font-weight:bold;color:#00d4ff;">{report_count}</div>
+                  <div style="color:#666;font-size:0.78em;margin-top:2px;">Scans</div>
+                </td>
+                <td width="4%"></td>
+                <td width="33%" style="text-align:center;padding:12px 8px;
+                    background:#1a1d2e;border-radius:6px;">
+                  <div style="font-size:1.6em;font-weight:bold;
+                              color:{'#e74c3c' if total_threats > 0 else '#00b432'};">
+                    {total_threats}
+                  </div>
+                  <div style="color:#666;font-size:0.78em;margin-top:2px;">Threats</div>
+                </td>
+                <td width="4%"></td>
+                <td width="33%" style="text-align:center;padding:12px 8px;
+                    background:#1a1d2e;border-radius:6px;">
+                  <div style="font-size:1.6em;font-weight:bold;color:{score_colour};">
+                    {health['score']}
+                  </div>
+                  <div style="color:#666;font-size:0.78em;margin-top:2px;">Health Score</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- CTA -->
+        <tr>
+          <td style="padding:8px 32px 28px;text-align:center;">
+            <a href="{app_url}/reports"
+               style="background:#00b432;color:#000;font-weight:bold;
+                      padding:12px 28px;border-radius:4px;text-decoration:none;
+                      font-size:0.95em;">
+              View My Reports →
+            </a>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="padding:16px 32px;border-top:1px solid #1e2235;text-align:center;">
+            <p style="color:#555;font-size:0.78em;margin:0;">
+              Weekly digest from Boundry.AI — cybersecurity monitoring for your business.<br>
+              <a href="{app_url}/account" style="color:#00b432;">Manage notification settings</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+        ok = send_email(
+            to_address=email,
+            subject=f"🛡 Your Weekly Security Digest — Boundry.AI",
+            html_body=html_body,
+        )
+        if ok:
+            sent_count += 1
+
+    security_log.info(f"CRON_WEEKLY_DIGEST sent={sent_count} total_clients={len(clients)}")
+    return jsonify(status="ok", digests_sent=sent_count, clients_eligible=len(clients))
 
 
 # --- ROUTE 8b: Manual Breach Intel Refresh (analyst only) ---

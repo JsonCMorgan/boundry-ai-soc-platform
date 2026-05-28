@@ -35,5 +35,12 @@ feedparser==6.0.11
 # IP reputation lookups (AbuseIPDB)
 requests==2.33.1
 
+# Transactional email (alerts + weekly digest)
+resend==2.30.1
+
+# 2FA — TOTP (Google Authenticator compatible)
+pyotp==2.9.0
+qrcode[pil]==8.1
+
 # Production server
 gunicorn==26.0.0

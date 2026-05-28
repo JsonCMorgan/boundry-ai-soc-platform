@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — My Assets</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f7f8fa; color: #222; margin: 0; padding: 0; }
+
+        /* Top bar */
+        .topbar { background: #fff; border-bottom: 1px solid #e8e8e8; padding: 0 40px;
+            display: flex; align-items: center; justify-content: space-between; height: 58px; }
+        .topbar-brand { font-size: 1.15em; font-weight: bold; color: #c0392b;
+            text-decoration: none; letter-spacing: -0.3px; }
+        .topbar-brand span { color: #222; }
+        .topbar-nav { display: flex; align-items: center; gap: 24px; }
+        .topbar-nav a { color: #666; text-decoration: none; font-size: 0.88em; }
+        .topbar-nav a:hover { color: #c0392b; }
+        .topbar-nav a.active { color: #c0392b; font-weight: bold; }
+        .topbar-nav .logout { background: #f0f0f0; padding: 6px 14px; border-radius: 4px; color: #444; }
+        .topbar-nav .logout:hover { background: #e5e5e5; }
+
+        .page { max-width: 860px; margin: 40px auto; padding: 0 24px; }
+        .page-header { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .page-title { font-size: 1.5em; font-weight: bold; color: #222; margin: 0; }
+        .page-sub { color: #888; font-size: 0.88em; margin: 4px 0 0; }
+
+        /* Add form card */
+        .add-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 24px 28px;
+            margin-bottom: 28px;
+        }
+        .add-card h2 { font-size: 1em; color: #444; margin: 0 0 18px; font-weight: bold; }
+        .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .form-row .f-name    { flex: 2; min-width: 180px; }
+        .form-row .f-type    { flex: 1; min-width: 130px; }
+        .form-row .f-url     { flex: 2; min-width: 180px; }
+        .form-row .f-notes   { flex: 3; min-width: 200px; }
+        .form-row .f-submit  { display: flex; align-items: flex-end; }
+
+        .field-wrap label { display: block; font-size: 0.78em; color: #888; margin-bottom: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.03em; }
+        input[type="text"], select, textarea {
+            width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 4px;
+            font-size: 0.9em; color: #222; background: #fff; outline: none;
+            transition: border-color 0.15s;
+        }
+        input[type="text"]:focus, select:focus { border-color: #c0392b; }
+
+        .btn-add {
+            white-space: nowrap;
+            padding: 9px 20px;
+            background: #c0392b;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.88em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-add:hover { background: #a93226; }
+
+        /* Asset table */
+        .assets-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .assets-card table { width: 100%; border-collapse: collapse; }
+        .assets-card thead { background: #f9f9f9; }
+        .assets-card th {
+            text-align: left; padding: 12px 16px;
+            font-size: 0.78em; color: #888;
+            font-weight: bold; text-transform: uppercase; letter-spacing: 0.03em;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .assets-card td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 0.9em;
+            vertical-align: middle;
+        }
+        .assets-card tr:last-child td { border-bottom: none; }
+        .assets-card tr:hover td { background: #fafafa; }
+
+        .asset-name { font-weight: 600; color: #222; }
+        .asset-url { color: #888; font-size: 0.85em; font-family: monospace; }
+        .asset-notes { color: #aaa; font-size: 0.83em; }
+
+        /* Type badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.78em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .badge-website { background: #eaf5fb; color: #2980b9; }
+        .badge-server  { background: #fdf2e9; color: #ca6f1e; }
+        .badge-cloud   { background: #eaf7f3; color: #1e8449; }
+        .badge-email   { background: #f4ecf7; color: #7d3c98; }
+        .badge-pos     { background: #fef9e7; color: #b7950b; }
+        .badge-other   { background: #f2f3f4; color: #707b7c; }
+
+        .btn-del {
+            padding: 5px 12px;
+            background: transparent;
+            border: 1px solid #e74c3c55;
+            color: #e74c3c;
+            border-radius: 4px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-del:hover { background: #fdecea; }
+
+        /* Empty state */
+        .empty { text-align: center; padding: 48px 24px; color: #bbb; }
+        .empty-icon { font-size: 2.5em; margin-bottom: 12px; }
+        .empty-msg { font-size: 0.95em; margin-bottom: 6px; color: #999; }
+        .empty-hint { font-size: 0.83em; color: #ccc; }
+
+        /* Flash messages */
+        .flash-success { background: #eaf7ef; border-left: 4px solid #27ae60;
+            color: #1e8449; padding: 10px 16px; border-radius: 4px;
+            font-size: 0.88em; margin-bottom: 16px; }
+        .flash-error { background: #fdecea; border-left: 4px solid #e74c3c;
+            color: #c0392b; padding: 10px 16px; border-radius: 4px;
+            font-size: 0.88em; margin-bottom: 16px; }
+
+        .type-icons { font-size: 1.1em; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <a class="topbar-brand" href="{{ url_for('reports') }}">Boundry<span>.AI</span></a>
+    <div class="topbar-nav">
+        <a href="{{ url_for('reports') }}">My Reports</a>
+        <a href="{{ url_for('assets') }}" class="active">My Assets</a>
+        <a href="{{ url_for('account') }}">Account</a>
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+</div>
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">My Digital Assets</h1>
+            <p class="page-sub">
+                Register the digital systems Boundry.AI monitors on your behalf.
+                {{ assets|length }} asset{{ 's' if assets|length != 1 else '' }} registered.
+            </p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="flash-{{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+    {% endfor %}
+    {% endwith %}
+
+    <!-- Add asset form -->
+    {% if not session.get('is_demo') %}
+    <div class="add-card">
+        <h2>➕ Add an Asset</h2>
+        <form method="POST" action="{{ url_for('add_asset') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-row">
+                <div class="f-name field-wrap">
+                    <label for="name">Asset name *</label>
+                    <input type="text" id="name" name="name" placeholder="e.g. Company Website" required maxlength="120">
+                </div>
+                <div class="f-type field-wrap">
+                    <label for="asset_type">Type</label>
+                    <select id="asset_type" name="asset_type">
+                        <option value="website">🌐 Website</option>
+                        <option value="server">🖥 Server</option>
+                        <option value="cloud">☁️ Cloud Service</option>
+                        <option value="email">📧 Email System</option>
+                        <option value="pos">💳 POS / Payment</option>
+                        <option value="other">📦 Other</option>
+                    </select>
+                </div>
+                <div class="f-url field-wrap">
+                    <label for="url_or_ip">URL or IP address</label>
+                    <input type="text" id="url_or_ip" name="url_or_ip" placeholder="https://example.com" maxlength="255">
+                </div>
+                <div class="f-notes field-wrap">
+                    <label for="notes">Notes (optional)</label>
+                    <input type="text" id="notes" name="notes" placeholder="e.g. Hosted on Shopify" maxlength="500">
+                </div>
+                <div class="f-submit">
+                    <button type="submit" class="btn-add">Add Asset</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Asset list -->
+    <div class="assets-card">
+        {% if assets %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Asset</th>
+                    <th>Type</th>
+                    <th>URL / IP</th>
+                    <th>Notes</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for a in assets %}
+            <tr>
+                <td class="asset-name">{{ a.name }}</td>
+                <td>
+                    {% set t = a.asset_type %}
+                    {% if t == 'website' %}
+                    <span class="badge badge-website">🌐 Website</span>
+                    {% elif t == 'server' %}
+                    <span class="badge badge-server">🖥 Server</span>
+                    {% elif t == 'cloud' %}
+                    <span class="badge badge-cloud">☁️ Cloud</span>
+                    {% elif t == 'email' %}
+                    <span class="badge badge-email">📧 Email</span>
+                    {% elif t == 'pos' %}
+                    <span class="badge badge-pos">💳 POS</span>
+                    {% else %}
+                    <span class="badge badge-other">📦 Other</span>
+                    {% endif %}
+                </td>
+                <td class="asset-url">{{ a.url_or_ip or '—' }}</td>
+                <td class="asset-notes">{{ a.notes or '—' }}</td>
+                <td>
+                    {% if not session.get('is_demo') %}
+                    <form method="POST" action="{{ url_for('delete_asset', asset_id=a.id) }}"
+                          onsubmit="return confirm('Remove {{ a.name }} from your asset inventory?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-del">Remove</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            <div class="empty-icon">🗂</div>
+            <div class="empty-msg">No assets registered yet.</div>
+            <div class="empty-hint">Add your website, servers, and cloud services above so Boundry.AI knows what to monitor.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>

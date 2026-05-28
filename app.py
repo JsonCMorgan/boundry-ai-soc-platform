@@ -94,6 +94,108 @@ def is_client_mode():
     return session.get("role") in ("client", "demo")
 
 
+def compute_health_score(user_id):
+    """Compute a 0-100 security health score for a client user.
+
+    Starts at 100 and deducts for unresolved threat reports in the last 30 days.
+    Escalated reports carry an additional penalty.
+
+    Returns a dict with keys: score, label, color, css_class, message.
+    """
+    if DATABASE_URL:
+        recent = db_fetchall(
+            f"SELECT threat_count, status FROM reports "
+            f"WHERE owner_id = {PH} AND created_at >= NOW() - INTERVAL '30 days'",
+            (user_id,),
+        )
+    else:
+        recent = db_fetchall(
+            f"SELECT threat_count, status FROM reports "
+            f"WHERE owner_id = {PH} AND created_at >= datetime('now', '-30 days')",
+            (user_id,),
+        )
+
+    score = 100
+
+    if not recent:
+        score = 85  # New client / no data yet — not perfect but not alarming
+    else:
+        for r in recent:
+            tc = r.get("threat_count") or 0
+            st = r.get("status") or "new"
+            if tc == 0:
+                continue
+            if st != "closed":
+                score -= min(tc * 7, 20)   # Unresolved threats: up to -20 per report
+            if st == "escalated":
+                score -= 10                 # Extra penalty for escalated
+
+    score = max(0, min(100, score))
+
+    if score >= 90:
+        label, color, css = "Excellent", "#27ae60", "excellent"
+        msg = "No active threats. Your systems are clean."
+    elif score >= 75:
+        label, color, css = "Good",      "#2ecc71", "good"
+        msg = "Minor issues detected but nothing critical."
+    elif score >= 60:
+        label, color, css = "Fair",      "#f39c12", "fair"
+        msg = "Some unresolved threats need attention."
+    elif score >= 40:
+        label, color, css = "At Risk",   "#e67e22", "at-risk"
+        msg = "Multiple active threats — action recommended."
+    else:
+        label, color, css = "Critical",  "#e74c3c", "critical"
+        msg = "Serious unresolved threats — contact your analyst now."
+
+    return {"score": score, "label": label, "color": color,
+            "css_class": css, "message": msg}
+
+
+def generate_plain_summary(report_id, content, threat_count):
+    """Generate a plain-English 2-3 sentence summary for a report using Claude.
+
+    Cached in the plain_summary column — Claude is only called once per report.
+    Returns the summary string (may be empty string on API failure).
+    """
+    try:
+        import anthropic as _ant
+        _ai = _ant.Anthropic()
+
+        if threat_count == 0:
+            summary = (
+                "Great news — this report came back completely clean. "
+                "No security threats were detected during this monitoring period. "
+                "Your systems are operating normally and your data is safe."
+            )
+        else:
+            resp = _ai.messages.create(
+                model="claude-haiku-4-5",
+                max_tokens=220,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        "You are a cybersecurity analyst at Boundry.AI writing a summary for a "
+                        "non-technical small business owner. Write exactly 2-3 sentences in plain "
+                        "English: what happened, what it means for their business, and whether they "
+                        "need to act right now. No jargon. Be honest but reassuring. "
+                        "Start with what happened.\n\n"
+                        f"Security report:\n{content[:2500]}"
+                    ),
+                }],
+            )
+            summary = resp.content[0].text.strip()
+
+        db_run(
+            f"UPDATE reports SET plain_summary = {PH} WHERE id = {PH}",
+            (summary, report_id),
+        )
+        return summary
+    except Exception as exc:
+        security_log.warning(f"plain_summary generation failed report_id={report_id}: {exc}")
+        return ""
+
+
 DB_PATH = Path(__file__).parent / "app.db"
 REPORTS_DIR = Path(__file__).parent / "docs" / "reports"
 
@@ -663,6 +765,15 @@ def init_db():
         existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
         if "notes_updated_at" not in existing_cols:
             db_run("ALTER TABLE reports ADD COLUMN notes_updated_at TEXT")
+
+    # Migration: plain_summary — AI-generated plain-English summary for client view.
+    # Generated on first view, cached so Claude is only called once per report.
+    if DATABASE_URL:
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS plain_summary TEXT NOT NULL DEFAULT ''")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
+        if "plain_summary" not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN plain_summary TEXT NOT NULL DEFAULT ''")
 
     # Breach intelligence table — stores AI-curated breach/incident reports from RSS feeds
     db_run(f"""
@@ -1340,11 +1451,12 @@ def reports():
     # Analysts use /control-room which shows all reports.
     user_id = session.get("user_id")
     report_list = db_fetchall(
-        f"SELECT id, created_at, threat_count, event_count, simulated FROM reports "
+        f"SELECT id, created_at, threat_count, event_count, simulated, status FROM reports "
         f"WHERE owner_id = {PH} ORDER BY id DESC",
         (user_id,),
     )
-    return render_template("reports.html", reports=report_list)
+    health = compute_health_score(user_id)
+    return render_template("reports.html", reports=report_list, health=health)
 
 
 @app.route("/reports/<int:report_id>")
@@ -1355,7 +1467,8 @@ def report_detail(report_id):
     Uses an integer primary key — no path traversal risk (no filesystem access).
     """
     row = db_fetchone(
-        f"SELECT id, created_at, threat_count, event_count, content, status, analyst_notes, owner_id, simulated "
+        f"SELECT id, created_at, threat_count, event_count, content, status, analyst_notes, "
+        f"owner_id, simulated, plain_summary "
         f"FROM reports WHERE id = {PH}",
         (report_id,),
     )
@@ -1369,6 +1482,13 @@ def report_detail(report_id):
         if row["owner_id"] != session.get("user_id"):
             abort(403)
 
+    # Generate plain-English summary on first client view (cached after that).
+    plain_summary = row.get("plain_summary") or ""
+    if not plain_summary and session.get("role") in ("client", "demo"):
+        plain_summary = generate_plain_summary(
+            row["id"], row["content"], row["threat_count"] or 0
+        )
+
     html_content = Markup(markdown.markdown(row["content"], extensions=["tables"]))
     return render_template(
         "report_detail.html",
@@ -1380,6 +1500,7 @@ def report_detail(report_id):
         status=row["status"] or "new",
         analyst_notes=row["analyst_notes"] or "",
         simulated=bool(row.get("simulated")),
+        plain_summary=plain_summary,
     )
 
 

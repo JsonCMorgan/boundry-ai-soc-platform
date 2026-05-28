@@ -262,6 +262,69 @@
             border-top: 1px solid #eee;
             margin-top: 48px;
         }
+
+        /* ── Health score card ── */
+        .health-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 24px 28px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            flex-wrap: wrap;
+        }
+        .health-score-circle {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 4px solid var(--hs-color, #27ae60);
+            background: color-mix(in srgb, var(--hs-color, #27ae60) 8%, white);
+        }
+        .health-score-number {
+            font-size: 1.8em;
+            font-weight: 800;
+            color: var(--hs-color, #27ae60);
+            line-height: 1;
+        }
+        .health-score-max {
+            font-size: 0.65em;
+            color: #bbb;
+            line-height: 1;
+            margin-top: 2px;
+        }
+        .health-right { flex: 1; min-width: 180px; }
+        .health-label {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: var(--hs-color, #27ae60);
+            margin-bottom: 4px;
+        }
+        .health-message { font-size: 0.88em; color: #555; margin-bottom: 10px; }
+        .health-bar-track {
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            max-width: 320px;
+        }
+        .health-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: var(--hs-color, #27ae60);
+            transition: width 0.8s ease;
+        }
+        .health-updated {
+            font-size: 0.75em;
+            color: #bbb;
+            margin-top: 6px;
+        }
     </style>
 </head>
 <body>
@@ -303,6 +366,22 @@
                 <div class="flash-{{ category }}">{{ message }}</div>
             {% endfor %}
         {% endwith %}
+
+        <!-- Security Health Score -->
+        <div class="health-card" style="--hs-color: {{ health.color }};">
+            <div class="health-score-circle">
+                <span class="health-score-number">{{ health.score }}</span>
+                <span class="health-score-max">/ 100</span>
+            </div>
+            <div class="health-right">
+                <div class="health-label">{{ health.label }}</div>
+                <div class="health-message">{{ health.message }}</div>
+                <div class="health-bar-track">
+                    <div class="health-bar-fill" style="width: {{ health.score }}%;"></div>
+                </div>
+                <div class="health-updated">Security Health Score &mdash; based on your last 30 days</div>
+            </div>
+        </div>
 
         <div class="page-header">
             <h1>Your Incident Reports</h1>

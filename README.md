@@ -1,8 +1,6 @@
 # Boundry.AI — SOC Operations Platform
 
-A full-stack security operations platform built for managed security service providers (MSSPs). Combines live threat monitoring, compliance reporting, and analyst training into a single deployable application.
-
-Built as the operational backbone of **Boundry.AI** — a cybersecurity services company focused on small-to-medium businesses across regulated industries.
+I'm building Boundry.AI as a cybersecurity services company targeting small-to-medium businesses in regulated industries — the dispensaries, medical practices, and law firms that need real security monitoring but can't get near an enterprise contract. This platform is the operational tool I'm building to run it.
 
 ---
 
@@ -127,12 +125,14 @@ Deployed on [Railway](https://railway.app). Environment variables managed via Ra
 
 ---
 
-## Background
+## Why I Built This
 
-Built to solve a real problem: small businesses in regulated industries (cannabis dispensaries, medical practices, law firms) need enterprise-grade security monitoring but can't afford enterprise contracts. Boundry.AI packages SOC-as-a-service into a platform that one analyst can operate across multiple clients simultaneously.
+I kept running into the same problem talking to small business owners — a cannabis dispensary, a physiotherapy clinic, a small law firm. They all had real compliance obligations and real exposure, but the moment you mentioned enterprise security tooling the conversation was over. The price point didn't fit, and neither did the complexity.
 
-The CISSP study integration exists because building this platform is how the founder is earning the certification — every feature maps directly to an exam domain.
+I wanted to build something that lets one analyst monitor multiple clients properly — a real SIEM, real compliance reporting, real incident workflow — without needing a team or a six-figure contract to run it.
+
+I'm also working through my CISSP while building this, so I wired the exam domains into the platform itself. Every MITRE technique, every compliance control, every incident type maps to a domain. It's made both the studying and the building sharper.
 
 ---
 
-*Built by Jason Morgan · [Boundry.AI](https://boundry.ai)*
+*Jason Morgan · [Boundry.AI](https://boundry.ai)*

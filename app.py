@@ -5653,6 +5653,45 @@ def api_log_terminal_activity():
     return jsonify({"ok": True})
 
 
+@app.route("/api/admin/set-role", methods=["POST"])
+@csrf.exempt
+@terminal_auth
+def api_admin_set_role():
+    """POST /api/admin/set-role — force-set a user's role and/or password.
+    Body: { "username": "...", "role": "analyst|demo|client", "password": "..." (optional) }
+    Authenticated via X-Boundry-Token. Used to fix seeding issues without a redeploy."""
+    data     = request.get_json(silent=True) or {}
+    username = str(data.get("username", "")).strip()
+    role     = str(data.get("role", "")).strip()
+    password = str(data.get("password", "")).strip()
+
+    if not username or role not in ("analyst", "demo", "client"):
+        return jsonify({"ok": False, "error": "username and valid role required"}), 400
+
+    user = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", (username,))
+    if not user:
+        return jsonify({"ok": False, "error": f"User '{username}' not found"}), 404
+
+    if password:
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        db_run(f"UPDATE users SET role = {PH}, password = {PH} WHERE username = {PH}",
+               (role, hashed, username))
+        return jsonify({"ok": True, "updated": "role + password", "username": username, "role": role})
+    else:
+        db_run(f"UPDATE users SET role = {PH} WHERE username = {PH}", (role, username))
+        return jsonify({"ok": True, "updated": "role only", "username": username, "role": role})
+
+
+@app.route("/api/admin/list-users", methods=["GET"])
+@csrf.exempt
+@terminal_auth
+def api_admin_list_users():
+    """GET /api/admin/list-users — list all users and their roles (no passwords).
+    Authenticated via X-Boundry-Token."""
+    users = db_fetchall("SELECT id, username, role FROM users ORDER BY id")
+    return jsonify({"users": users})
+
+
 @app.route("/api/terminal-activity", methods=["GET"])
 @analyst_required
 def api_get_terminal_activity():

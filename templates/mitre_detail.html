@@ -460,6 +460,38 @@
             <p class="hero-summary">{{ technique.summary }}</p>
         </div>
 
+        {% if cissp_domains_for_technique %}
+        <!-- CISSP Domain connection — analyst study note -->
+        <div style="background:#0e0a1a;border:1px solid #9944ee44;border-radius:8px;
+                    padding:16px 20px;margin-bottom:18px;">
+            <div style="font-size:0.7em;color:#9944ee;text-transform:uppercase;
+                        letter-spacing:0.08em;font-weight:bold;margin-bottom:10px;">
+                📘 CISSP Connection — {{ technique.id }}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                {% for domain in cissp_domains_for_technique %}
+                <div style="background:#12151f;border-radius:6px;padding:10px 14px;flex:1;min-width:220px;
+                            border-left:3px solid {{ domain.color }};">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                        <div style="width:8px;height:8px;border-radius:50%;background:{{ domain.color }};flex-shrink:0;"></div>
+                        <span style="font-size:0.8em;color:#aaa;font-weight:bold;">D{{ domain.num }} — {{ domain.name }}</span>
+                        <span style="font-size:0.68em;color:#444;margin-left:auto;">{{ domain.weight }}% of exam</span>
+                    </div>
+                    {% if domain.soc_bridge %}
+                    <p style="margin:0 0 8px;color:#777;font-size:0.78em;line-height:1.55;">{{ domain.soc_bridge }}</p>
+                    {% endif %}
+                    <a href="/cissp/domain/{{ domain.num }}"
+                       style="font-size:0.72em;color:{{ domain.color }};text-decoration:none;
+                              border:1px solid {{ domain.color }}44;padding:2px 8px;
+                              border-radius:8px;background:#1a1d2e;display:inline-block;">
+                        Study D{{ domain.num }} →
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- ── How it works ── -->
         <div class="section" id="sec-how">
             <div class="section-header" onclick="toggle('sec-how')">

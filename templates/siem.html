@@ -431,6 +431,35 @@
     </div>
 </div>
 
+{% if user_role == 'analyst' %}
+<!-- ── CISSP Study Note (analyst only) ── -->
+<div style="background:#0e0a1a;border:1px solid #9944ee44;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9944ee;margin-bottom:.6rem;">📘 CISSP Study Note — D6 &amp; D7</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+        <div style="border-left:3px solid #44aaff;padding-left:.75rem;">
+            <div style="font-size:.8rem;font-weight:700;color:#44aaff;margin-bottom:.25rem;">D6 · Security Assessment &amp; Testing (13%)</div>
+            <div style="font-size:.78rem;color:#aac4d8;line-height:1.5;">This live event feed <em>is</em> log analysis in action — the CISSP D6 skill of collecting, reviewing, and correlating security data to detect violations. Real-time dashboards fulfill the "continuous monitoring" requirement tested directly on the exam.</div>
+            <div style="margin-top:.4rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+                <span style="background:#44aaff22;border:1px solid #44aaff44;color:#44aaff;border-radius:3px;padding:2px 7px;font-size:.7rem;">Log Analysis</span>
+                <span style="background:#44aaff22;border:1px solid #44aaff44;color:#44aaff;border-radius:3px;padding:2px 7px;font-size:.7rem;">Continuous Monitoring</span>
+                <span style="background:#44aaff22;border:1px solid #44aaff44;color:#44aaff;border-radius:3px;padding:2px 7px;font-size:.7rem;">Audit Trails</span>
+            </div>
+            <a href="/cissp/domain/6" style="color:#44aaff;font-size:.72rem;display:inline-block;margin-top:.4rem;">Study D6 →</a>
+        </div>
+        <div style="border-left:3px solid #ff8844;padding-left:.75rem;">
+            <div style="font-size:.8rem;font-weight:700;color:#ff8844;margin-bottom:.25rem;">D7 · Security Operations (13%)</div>
+            <div style="font-size:.78rem;color:#aac4d8;line-height:1.5;">Running a SIEM is the core of SOC work — D7 covers incident detection, triage, escalation, and response playbooks. The severity bucketing (Critical / High / Medium) mirrors the D7 triage methodology examiners test directly.</div>
+            <div style="margin-top:.4rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+                <span style="background:#ff884422;border:1px solid #ff884444;color:#ff8844;border-radius:3px;padding:2px 7px;font-size:.7rem;">SIEM &amp; SOC Ops</span>
+                <span style="background:#ff884422;border:1px solid #ff884444;color:#ff8844;border-radius:3px;padding:2px 7px;font-size:.7rem;">Incident Triage</span>
+                <span style="background:#ff884422;border:1px solid #ff884444;color:#ff8844;border-radius:3px;padding:2px 7px;font-size:.7rem;">Alert Response</span>
+            </div>
+            <a href="/cissp/domain/7" style="color:#ff8844;font-size:.72rem;display:inline-block;margin-top:.4rem;">Study D7 →</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- ── Source filter pills ── -->
 <div class="source-pills">
     <span style="font-size:0.72em;color:#444;text-transform:uppercase;letter-spacing:0.08em;">Filter:</span>

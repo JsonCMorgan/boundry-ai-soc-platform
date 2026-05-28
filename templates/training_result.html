@@ -390,6 +390,51 @@
     </div>
     {% endif %}
 
+    {% if cissp_debrief %}
+    <!-- CISSP Domain Debrief — analyst only, auto-generated from scenario techniques -->
+    <div style="background:#0e0a1a;border:1px solid #9944ee44;border-radius:8px;
+                padding:24px 28px;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <span style="font-size:1.1em;">📘</span>
+            <h3 style="margin:0;font-size:1em;color:#9944ee;text-transform:uppercase;letter-spacing:0.07em;">
+                CISSP Debrief — Domains Covered in This Scenario
+            </h3>
+        </div>
+        <p style="color:#666;font-size:0.83em;margin:0 0 18px;line-height:1.6;">
+            The techniques in this scenario map to the following CISSP domains.
+            Read each note — the exam will ask you to think like a manager who
+            understands <em>why</em> these failures happen, not just what they are.
+        </p>
+        {% for domain in cissp_debrief %}
+        <div style="background:#12151f;border-radius:6px;padding:14px 18px;margin-bottom:10px;
+                    border-left:3px solid {{ domain.color }};">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <div style="width:9px;height:9px;border-radius:50%;background:{{ domain.color }};
+                            box-shadow:0 0 5px {{ domain.color }}88;flex-shrink:0;"></div>
+                <span style="font-size:0.72em;color:#555;font-family:monospace;">D{{ domain.num }}</span>
+                <span style="font-size:0.92em;color:#ccc;font-weight:bold;">{{ domain.name }}</span>
+                <span style="font-size:0.7em;color:#444;margin-left:auto;">Exam weight: {{ domain.weight }}%</span>
+            </div>
+            {% if domain.soc_bridge %}
+            <p style="margin:0 0 10px;color:#888;font-size:0.82em;line-height:1.6;">{{ domain.soc_bridge }}</p>
+            {% endif %}
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">
+                {% for topic in domain.key_topics %}
+                <span style="font-size:0.68em;padding:2px 7px;border-radius:8px;
+                             background:#1a1d2e;border:1px solid #2a2d3e;color:#555;">{{ topic }}</span>
+                {% endfor %}
+            </div>
+            <a href="/cissp/domain/{{ domain.num }}"
+               style="font-size:0.75em;color:{{ domain.color }};text-decoration:none;
+                      border:1px solid {{ domain.color }}44;padding:3px 10px;
+                      border-radius:10px;background:#1a1d2e;display:inline-block;">
+                Study D{{ domain.num }} →
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Nav -->
     <div class="nav-row">
         <a href="/training/start/{{ attempt.scenario_name }}" class="nav-btn" style="max-width:220px;"

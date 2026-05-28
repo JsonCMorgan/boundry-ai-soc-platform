@@ -614,6 +614,24 @@
     <span class="badge-spl">SPL-LITE v1</span>
   </div>
 
+  {% if user_role == 'analyst' %}
+  <!-- ── CISSP Study Note (analyst only) ── -->
+  <div style="background:#0e0a1a;border:1px solid #9944ee44;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9944ee;margin-bottom:.5rem;">📘 CISSP Study Note — D6 Security Assessment &amp; Testing (13%)</div>
+    <div style="border-left:3px solid #44aaff;padding-left:.75rem;">
+      <div style="font-size:.8rem;font-weight:700;color:#44aaff;margin-bottom:.25rem;">Writing SPL Queries = Practicing D6 Audit Skills</div>
+      <div style="font-size:.78rem;color:#aac4d8;line-height:1.5;">Every SPL query you write is a D6 security assessment exercise. CISSP D6 tests your ability to design, conduct, and interpret security audits — exactly what SPL does: filter event streams, aggregate anomalies, and surface violations. The <code style="background:#0a1420;padding:1px 4px;border-radius:2px;font-size:.75rem;color:#00d4ff;">| stats count by</code> pattern maps directly to the exam topic <em>"Collect security process data."</em> Brute-force detection queries? That's D6 + D7 combined.</div>
+      <div style="margin-top:.5rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+        <span style="background:#44aaff22;border:1px solid #44aaff44;color:#44aaff;border-radius:3px;padding:2px 7px;font-size:.7rem;">Log Analysis</span>
+        <span style="background:#44aaff22;border:1px solid #44aaff44;color:#44aaff;border-radius:3px;padding:2px 7px;font-size:.7rem;">Security Auditing</span>
+        <span style="background:#44aaff22;border:1px solid #44aaff44;color:#44aaff;border-radius:3px;padding:2px 7px;font-size:.7rem;">Continuous Monitoring</span>
+        <span style="background:#44aaff22;border:1px solid #44aaff44;color:#44aaff;border-radius:3px;padding:2px 7px;font-size:.7rem;">Anomaly Detection</span>
+      </div>
+      <a href="/cissp/domain/6" style="color:#44aaff;font-size:.72rem;display:inline-block;margin-top:.4rem;">Study D6 →</a>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ── Query panel ─────────────────────────────────────────────────── -->
   <div class="query-panel">
     <div class="query-label">

@@ -1363,6 +1363,48 @@
         </div>
         {% endif %}
 
+        {% if not client_mode %}
+        <!-- CISSP Daily Study Note — rotates through domains based on day of year -->
+        {% set day_num = now.timetuple().tm_yday if now else 1 %}
+        {% set domain_keys = cissp_domains.keys() | list %}
+        {% set active_d = domain_keys[day_num % 8] %}
+        {% set active_info = cissp_domains[active_d] %}
+        <div style="background:#0e0a1a;border:1px solid #9944ee33;border-radius:8px;
+                    padding:16px 20px;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:9px;height:9px;border-radius:50%;background:{{ active_info.color }};
+                                box-shadow:0 0 6px {{ active_info.color }}88;"></div>
+                    <span style="font-size:0.7em;color:#9944ee;text-transform:uppercase;
+                                 letter-spacing:0.08em;font-weight:bold;">
+                        📘 Study Note — D{{ active_d }}: {{ active_info.name }}
+                    </span>
+                    <span style="font-size:0.65em;color:#333;border:1px solid #2a2d3e;
+                                 padding:1px 7px;border-radius:8px;background:#12151f;">
+                        {{ active_info.weight }}% of exam
+                    </span>
+                </div>
+                <a href="/cissp/domain/{{ active_d }}"
+                   style="font-size:0.72em;color:{{ active_info.color }};text-decoration:none;
+                          border:1px solid {{ active_info.color }}44;padding:3px 10px;
+                          border-radius:8px;background:#1a1d2e;">
+                    Study →
+                </a>
+            </div>
+            {% if active_info.soc_bridge %}
+            <p style="margin:0 0 10px;color:#777;font-size:0.8em;line-height:1.6;">
+                {{ active_info.soc_bridge }}
+            </p>
+            {% endif %}
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                {% for topic in active_info.key_topics %}
+                <span style="font-size:0.67em;padding:2px 7px;border-radius:8px;
+                             background:#1a1d2e;border:1px solid #2a2d3e;color:#555;">{{ topic }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- NordVPN Status Panel -->
         <div class="scanner-panel" id="vpn-cr-panel" style="margin-bottom:20px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">

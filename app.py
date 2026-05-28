@@ -2018,7 +2018,7 @@ CISSP_DOMAINS = {
         "color": "#9944ee",
         "key_topics": ["Data Classification", "Asset Lifecycle", "Data Retention & Destruction",
                        "DLP", "DRM / CASB", "Data Roles (Owner, Custodian, User)", "Privacy"],
-        "soc_bridge": None,
+        "soc_bridge": "Your client asset inventory (/assets) is a live D2 practicum. Every registered website, server, or cloud service is a data asset with an owner, custodian, and classification concern. When your scanner finds shared folders or open SMB ports on a client machine, that's an Asset Security failure — data accessible beyond its intended audience. D2 exam questions love the data roles triad: Owner sets policy, Custodian implements it, User follows it. You're the Custodian for every client in your platform.",
     },
     3: {
         "name": "Security Architecture and Engineering",
@@ -2027,7 +2027,7 @@ CISSP_DOMAINS = {
         "key_topics": ["Cryptography (RSA, AES, PKI)", "Security Models (Bell-LaPadula, Biba)",
                        "Zero Trust Architecture", "Security Frameworks", "Physical Security",
                        "Secure Design Principles", "Virtualisation & Cloud Security"],
-        "soc_bridge": None,
+        "soc_bridge": "Your system scanner IS a D3 tool. Checking firewall state, Defender status, UAC, open ports, and shared folders maps directly to 'applying secure configuration baselines' — a core D3 requirement. The CISSP principle of least privilege (not running as admin, disabling unnecessary services) shows up in your findings every time you scan. Cryptography appears throughout your work: TLS grades in the compliance dashboard, bcrypt in your auth code, AES-256 recommendations in client guidance. D3 is where theory meets implementation.",
     },
     4: {
         "name": "Communication and Network Security",
@@ -2036,7 +2036,7 @@ CISSP_DOMAINS = {
         "key_topics": ["OSI / TCP-IP Model", "Firewalls & IDS/IPS", "VPNs & Tunnelling",
                        "Wireless Security", "Network Attacks", "Secure Protocols (TLS, SSH, HTTPS)",
                        "Microsegmentation"],
-        "soc_bridge": None,
+        "soc_bridge": "Your SIEM's firewall log collector ingests real DROP events — that's D4 network security controls in action. Your network scanner discovering open risky ports (SMB 445, RDP 3389) is exactly the kind of network exposure analysis D4 tests. Your NordVPN monitor implements a kill switch — a D4 encrypted tunnel control. When the SIEM fires on a brute force from an external IP, you're seeing D4 and D5 fail simultaneously: the network let the traffic through and IAM didn't stop it. The exam loves questions that cross domain boundaries.",
     },
     5: {
         "name": "Identity and Access Management",
@@ -2072,9 +2072,52 @@ CISSP_DOMAINS = {
         "key_topics": ["SDLC Security Phases", "OWASP Top 10", "Secure Coding Practices",
                        "Code Review Techniques", "SQL Injection & XSS", "DevSecOps",
                        "API Security", "Threat Modelling in SDLC"],
-        "soc_bridge": "Your SQL injection and XSS attack scenarios directly demonstrate OWASP Top 10 vulnerabilities — the core of what Domain 8 tests on the exam.",
+        "soc_bridge": "This Flask app is both your platform and your D8 textbook. It was originally built as a deliberately vulnerable application and is being systematically hardened — that IS the Secure Development Lifecycle in practice. Every SQL injection scenario you run, every XSS example in training, every OWASP Top 10 reference in the compliance checklist — D8 exam topics, all of them. The CSRF tokens, bcrypt hashing, input validation, and parameterised queries you've implemented are exactly what D8 asks you to prescribe as a security manager. You understand why they exist because you built them.",
     },
 }
+
+# MITRE ATT&CK technique → CISSP domain(s) mapping
+# Used to generate domain-specific study notes on training result + MITRE detail pages.
+_MITRE_TO_CISSP = {
+    "T1110":      [5, 7],   # Brute Force → IAM + Security Operations
+    "T1110.001":  [5, 7],   # Password Guessing → IAM + SecOps
+    "T1110.003":  [5, 7],   # Password Spraying → IAM + SecOps
+    "T1110.004":  [5, 7],   # Credential Stuffing → IAM + SecOps
+    "T1190":      [4, 8],   # Exploit Public-Facing Application → Network + Dev Security
+    "T1083":      [2, 7],   # File and Directory Discovery → Asset Security + SecOps
+    "T1548":      [5, 3],   # Abuse Elevation Control Mechanism → IAM + Architecture
+    "T1548.002":  [5, 3],   # UAC Bypass → IAM + Architecture
+    "T1078":      [5, 7],   # Valid Accounts → IAM + SecOps
+    "T1078.001":  [5, 7],   # Default Accounts → IAM + SecOps
+    "T1078.003":  [5, 7],   # Local Accounts → IAM + SecOps
+    "T1589":      [1, 2],   # Gather Victim Identity Info → Risk Mgmt + Asset Security
+    "T1589.001":  [1, 2],   # Email Addresses → Risk Mgmt + Asset Security
+    "T1059":      [7, 8],   # Command and Scripting Interpreter → SecOps + Dev Security
+    "T1059.007":  [8],      # JavaScript → Dev Security
+    "T1566":      [1, 7],   # Phishing → Risk Mgmt + SecOps
+    "T1566.001":  [1, 7],   # Spearphishing Attachment → Risk Mgmt + SecOps
+    "T1486":      [7, 1],   # Data Encrypted for Impact (Ransomware) → SecOps + Risk
+    "T1071":      [4, 7],   # Application Layer Protocol → Network + SecOps
+    "T1021":      [4, 5],   # Remote Services → Network + IAM
+    "T1021.001":  [4, 5],   # RDP → Network + IAM
+    "T1040":      [4],      # Network Sniffing → Network Security
+    "T1046":      [4, 6],   # Network Service Discovery → Network + Assessment
+    "T1595":      [4, 6],   # Active Scanning → Network + Assessment
+    "T1133":      [4, 5],   # External Remote Services → Network + IAM
+    "T1068":      [3, 5],   # Exploitation for Privilege Escalation → Architecture + IAM
+    "T1055":      [3, 7],   # Process Injection → Architecture + SecOps
+}
+
+
+def _get_cissp_domains_for_techniques(techniques: list) -> list:
+    """Return a deduplicated ordered list of CISSP domain dicts for a set of MITRE techniques."""
+    domain_nums = []
+    for t in techniques:
+        for d in _MITRE_TO_CISSP.get(t.upper(), []):
+            if d not in domain_nums:
+                domain_nums.append(d)
+    return [{"num": d, **CISSP_DOMAINS[d]} for d in domain_nums if d in CISSP_DOMAINS]
+
 
 # --- RPG Level system: 12 levels from Security Apprentice to CISSP Certified ---
 # (level, xp_required, title, icon)
@@ -2453,10 +2496,13 @@ def mitre_detail(technique_id):
     if not technique:
         abort(404)
     all_techniques = get_all_techniques()
+    # Map this technique to CISSP domains for the study note panel
+    cissp_domains_for_technique = _get_cissp_domains_for_techniques([technique_id.upper()])
     return render_template(
         "mitre_detail.html",
         technique=technique,
         all_techniques=all_techniques,
+        cissp_domains_for_technique=cissp_domains_for_technique,
     )
 
 
@@ -2871,6 +2917,11 @@ def training_result(attempt_id):
     sc = TRAINING_SCENARIOS.get(attempt["scenario_name"], {})
     player = get_player_profile(analyst_id)
     scenario_xp = session.pop("scenario_xp", None)   # consume once — don't replay on refresh
+
+    # CISSP domain debrief — map scenario techniques to domains for study notes
+    all_techniques = list(set(sc.get("techniques", []) + actual_techniques))
+    cissp_debrief  = _get_cissp_domains_for_techniques(all_techniques)
+
     return render_template(
         "training_result.html",
         attempt=attempt,
@@ -2879,6 +2930,7 @@ def training_result(attempt_id):
         actual_techniques=actual_techniques,
         player=player,
         scenario_xp=scenario_xp,
+        cissp_debrief=cissp_debrief,
     )
 
 
@@ -2974,6 +3026,7 @@ def control_room():
         total_findings_count=total_findings_count,
         player=player,
         terminal_activity=terminal_activity,
+        now=datetime.utcnow(),
     )
 
 

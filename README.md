@@ -127,11 +127,15 @@ Deployed on [Railway](https://railway.app). Environment variables managed via Ra
 
 ## Why I Built This
 
-I kept running into the same problem talking to small business owners — a cannabis dispensary, a physiotherapy clinic, a small law firm. They all had real compliance obligations and real exposure, but the moment you mentioned enterprise security tooling the conversation was over. The price point didn't fit, and neither did the complexity.
+I wanted to train for real-world scenarios, so I started thinking about who would actually need my services and what cybersecurity looks like from their side of the table.
 
-I wanted to build something that lets one analyst monitor multiple clients properly — a real SIEM, real compliance reporting, real incident workflow — without needing a team or a six-figure contract to run it.
+My background is in physical security — almost a decade working the door at bars and entertainment venues. A bouncer's job and a SOC analyst's job are more alike than people realise. You're reading the room, spotting the threat before it becomes an incident, deciding in real time whether to escalate or handle it yourself, and at the end of the night the establishment is still standing. The tools are different. The thinking isn't.
 
-I'm also working through my CISSP while building this, so I wired the exam domains into the platform itself. Every MITRE technique, every compliance control, every incident type maps to a domain. It's made both the studying and the building sharper.
+When I made the transition to cybersecurity I kept seeing the same gap. Governments and regulators are now holding companies accountable for how they protect their data — and rightfully so, after watching corporation after corporation absorb a breach, pay out millions, and move on. But the small business owner around the corner — the dispensary, the medical clinic, the law firm — they don't have a security team. Most of them don't know what ransomware would actually cost them until it's too late to find out. They're running a bar with no bouncer on the door and they don't even know it.
+
+I built this platform to be the thing that changes that equation. One analyst, multiple clients, real monitoring — without needing an enterprise budget or an enterprise team to run it. If I can give a small business the same visibility that a large one pays a fortune for, that feels like the right use of what I'm learning.
+
+I'm also working through my CISSP while building this, so I wired the exam domains directly into the platform. Every MITRE technique, every compliance control, every incident type connects back to a domain. Turns out the best way to learn something is to build it.
 
 ---
 

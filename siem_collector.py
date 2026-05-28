@@ -152,6 +152,27 @@ def ingest_event(source, event_id, event_type, severity,
             for k in keys[: _MAX_SEEN // 2]:
                 del _seen_cache[k]
 
+    # Check suppression list — silenced IPs/sources are auto-dismissed on ingest
+    try:
+        from functools import lru_cache as _lru
+        # Fetch suppressed values (IP or source) — lightweight query, runs every ingest
+        suppressed_ips = {
+            r["value"] for r in (_db_fetchall(
+                f"SELECT value FROM siem_suppression WHERE suppress_type='ip'"
+            ) or [])
+        }
+        suppressed_sources = {
+            r["value"] for r in (_db_fetchall(
+                f"SELECT value FROM siem_suppression WHERE suppress_type='source'"
+            ) or [])
+        }
+        if src_ip and src_ip in suppressed_ips:
+            return  # silently drop
+        if source and source in suppressed_sources:
+            return  # silently drop
+    except Exception:
+        pass  # never block ingest on suppression errors
+
     raw_str = json.dumps(raw or {}, default=str)
     try:
         _db_run(

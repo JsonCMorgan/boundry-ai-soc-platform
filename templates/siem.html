@@ -282,6 +282,53 @@
         .btn-retriage:hover { border-color:#00d4ff66; color:#00d4ff; }
         .btn-retriage:disabled { opacity:0.4; cursor:not-allowed; }
 
+        /* ── Bulk-action bar ── */
+        .bulk-bar { display:none; align-items:center; gap:8px; flex-wrap:wrap;
+            padding:8px 14px; background:#0e1520; border-bottom:1px solid #00b43233;
+            font-size:0.78em; }
+        .bulk-bar.visible { display:flex; }
+        .bulk-bar .selected-count { color:#00b432; font-weight:700; flex:1; }
+        .btn-bulk { padding:4px 12px; border-radius:3px; cursor:pointer;
+            font-size:0.75em; font-weight:600; border:1px solid; transition:all 0.15s; }
+        .btn-bulk.resolve  { border-color:#00b43266; color:#00b432; background:none; }
+        .btn-bulk.resolve:hover  { background:#00b43222; }
+        .btn-bulk.fp       { border-color:#ff990066; color:#ff9900; background:none; }
+        .btn-bulk.fp:hover       { background:#ff990011; }
+        .btn-bulk.cancel   { border-color:#33344466; color:#556; background:none; }
+        .btn-bulk.cancel:hover   { background:#1a1d2a; }
+        .btn-bulk.danger   { border-color:#ff444466; color:#ff6666; background:none; }
+        .btn-bulk.danger:hover   { background:#ff444411; }
+
+        /* ── Finding row — checkbox ── */
+        .finding-cb { width:14px; height:14px; accent-color:#00b432;
+            cursor:pointer; flex-shrink:0; margin-right:2px; }
+        .finding-row.selected { background:#00b43208; }
+
+        /* ── Action buttons on finding ── */
+        .finding-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+        .btn-fp { background:none; border:1px solid #ff990066; color:#ff9900;
+            padding:3px 9px; border-radius:3px; cursor:pointer; font-size:0.73em;
+            transition:all 0.15s; }
+        .btn-fp:hover { background:#ff990011; }
+        .btn-suppress { background:none; border:1px solid #ff444433; color:#ff6666;
+            padding:3px 9px; border-radius:3px; cursor:pointer; font-size:0.73em;
+            transition:all 0.15s; }
+        .btn-suppress:hover { background:#ff444411; }
+
+        /* ── Suppression list ── */
+        .suppress-row { display:flex; align-items:center; gap:8px; padding:7px 14px;
+            border-bottom:1px solid #1a1d2a; font-size:0.78em; }
+        .suppress-row:last-child { border-bottom:none; }
+        .suppress-val { color:#ff9900; font-family:monospace; flex:1; }
+        .suppress-type { color:#445; font-size:0.85em; }
+        .btn-unsuppress { background:none; border:1px solid #ff444433; color:#ff6666;
+            padding:2px 8px; border-radius:3px; cursor:pointer; font-size:0.72em; }
+        .btn-unsuppress:hover { background:#ff444411; }
+
+        /* ── Resolve modal ── */
+        #resolve-modal .modal-box { border-color:#00b43244; max-width:420px; }
+        #resolve-modal .modal-title { color:#00b432; }
+
         /* ── Rule delete ── */
         .btn-rule-del { background:none; border:none; color:#222; cursor:pointer;
             font-size:0.85em; padding:2px 5px; transition:color 0.15s; flex-shrink:0; }
@@ -411,7 +458,9 @@
                     </span>
                     <div class="toolbar">
                         <button class="btn-sm" id="btn-refresh" onclick="loadEvents(true)">⟳ Refresh</button>
-                        <button class="btn-sm danger" onclick="dismissAllVisible()">✕ Clear Visible</button>
+                        <button class="btn-sm danger" onclick="dismissAllVisible()" title="Dismiss all currently visible events">✕ Clear Visible</button>
+                        <button class="btn-sm danger" onclick="dismissBySeverity('INFO')"  title="Dismiss all INFO events">✕ INFO</button>
+                        <button class="btn-sm danger" onclick="dismissBySeverity('LOW')"   title="Dismiss all LOW events">✕ LOW</button>
                     </div>
                 </div>
 
@@ -519,22 +568,45 @@
         <div>
 
             <!-- SIEM Findings -->
-            <div class="panel">
+            <div class="panel" style="overflow:visible;">
                 <div class="panel-header">
                     <span class="panel-title">🚨 Correlation Findings</span>
-                    <span style="font-size:0.85em;color:#ff6a00;font-weight:700;" id="findings-count">
-                        {{ siem_findings|length }}{% if siem_findings|length > 0 %} open{% endif %}
-                    </span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:0.85em;color:#ff6a00;font-weight:700;" id="findings-count">
+                            {{ siem_findings|length }}{% if siem_findings|length > 0 %} open{% endif %}
+                        </span>
+                        {% if siem_findings %}
+                        <button class="btn-sm" style="font-size:0.7em;padding:2px 8px;"
+                                onclick="selectAllFindings(this)">☐ All</button>
+                        <button class="btn-sm danger" style="font-size:0.7em;padding:2px 8px;"
+                                onclick="resolveAllFindings()"
+                                title="Resolve every open finding at once">⚡ Close All</button>
+                        {% endif %}
+                    </div>
                 </div>
+
+                <!-- Bulk action bar — appears when ≥1 checkbox is ticked -->
+                <div class="bulk-bar" id="bulk-bar">
+                    <span class="selected-count" id="bulk-count">0 selected</span>
+                    <button class="btn-bulk resolve" onclick="bulkResolve('resolved')">✓ Resolve</button>
+                    <button class="btn-bulk fp"      onclick="bulkResolve('false_positive')">✗ False Positive</button>
+                    <button class="btn-bulk fp"      style="border-color:#88aaff66;color:#88aaff;"
+                                                     onclick="bulkResolve('accepted_risk')">⚠ Accept Risk</button>
+                    <button class="btn-bulk cancel"  onclick="clearSelection()">✕ Clear</button>
+                </div>
+
                 <div id="findings-list">
                     {% if siem_findings %}
                         {% for f in siem_findings %}
-                        <div class="finding-row" id="finding-{{ f.id }}">
+                        <div class="finding-row" id="finding-{{ f.id }}" data-id="{{ f.id }}">
                             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <input type="checkbox" class="finding-cb"
+                                       onchange="onFindingCheck(this, {{ f.id }})"
+                                       title="Select for bulk action">
                                 <span class="sev sev-{{ f.severity }}">{{ f.severity }}</span>
                                 <div class="finding-title" style="flex:1;">{{ f.title }}</div>
                             </div>
-                            <div class="finding-desc">{{ f.description[:100] }}…</div>
+                            <div class="finding-desc">{{ f.description[:120] }}…</div>
 
                             <!-- AI Triage card -->
                             <div class="triage-card" id="triage-{{ f.id }}">
@@ -547,17 +619,51 @@
                                 <div class="triage-body">{{ f.ai_triage }}</div>
                                 {% else %}
                                 <div class="triage-body triage-pending" id="triage-body-{{ f.id }}">
-                                    Generating triage note… (Ollama may take 15-30s)
+                                    Generating triage note…
                                 </div>
                                 {% endif %}
                             </div>
 
-                            <button class="btn-resolve" onclick="resolveFinding({{ f.id }},this)">✓ Resolve (+25 XP)</button>
+                            <!-- Per-finding action buttons -->
+                            <div class="finding-actions">
+                                <button class="btn-resolve"
+                                        onclick="openResolveModal([{{ f.id }}])">✓ Resolve</button>
+                                <button class="btn-fp"
+                                        onclick="resolveWithReason({{ f.id }}, 'false_positive')">✗ False Positive</button>
+                                <button class="btn-suppress"
+                                        onclick="suppressFromFinding({{ f.id }})">🚫 Suppress IP</button>
+                            </div>
                         </div>
                         {% endfor %}
                     {% else %}
                         <div class="empty" id="findings-empty">No open correlation findings</div>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- IP / Source Suppression List -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">🚫 Suppressed Sources</span>
+                    <button class="btn-sm" style="font-size:0.7em;padding:2px 9px;"
+                            onclick="openSuppressModal()">+ Add</button>
+                </div>
+                <div id="suppression-list">
+                {% if suppressions %}
+                    {% for s in suppressions %}
+                    <div class="suppress-row" id="suppress-{{ s.id }}">
+                        <span class="suppress-type">{{ s.suppress_type|upper }}</span>
+                        <span class="suppress-val">{{ s.value }}</span>
+                        <span style="color:#334;font-size:0.8em;flex:2;">{{ s.reason or '—' }}</span>
+                        <button class="btn-unsuppress"
+                                onclick="unsuppress({{ s.id }}, this)">Remove</button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty" id="suppress-empty" style="padding:18px;">
+                        No suppressed sources
+                    </div>
+                {% endif %}
                 </div>
             </div>
 
@@ -738,6 +844,66 @@
         </div>
 
         <button class="btn-create" id="rb-submit" onclick="submitRule()">⚡ Create Rule</button>
+    </div>
+</div>
+
+<!-- ── Resolve modal ── -->
+<div class="modal-overlay" id="resolve-modal" onclick="if(event.target===this)closeResolveModal()">
+    <div class="modal-box">
+        <div class="modal-title">
+            ✓ Resolve Finding(s)
+            <button class="modal-close" onclick="closeResolveModal()">✕</button>
+        </div>
+        <input type="hidden" id="resolve-ids">
+        <div class="form-row">
+            <label class="form-label">Resolution reason</label>
+            <select class="form-input" id="resolve-reason">
+                <option value="resolved">✓ Resolved — issue confirmed and fixed</option>
+                <option value="false_positive">✗ False Positive — not a real threat</option>
+                <option value="accepted_risk">⚠ Accepted Risk — known, not acting now</option>
+                <option value="escalated">↑ Escalated — handed to external team</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <label class="form-label">Notes (optional)</label>
+            <textarea class="form-input" id="resolve-notes" rows="3"
+                placeholder="e.g. Confirmed scanner traffic from internal vuln scan — added to allowlist"></textarea>
+        </div>
+        <button class="btn-create" onclick="submitResolve()" style="background:#00b43222;border-color:#00b43266;">
+            ✓ Confirm Resolution
+        </button>
+    </div>
+</div>
+
+<!-- ── Add suppression modal ── -->
+<div class="modal-overlay" id="suppress-modal" onclick="if(event.target===this)closeSuppressModal()">
+    <div class="modal-box">
+        <div class="modal-title">
+            🚫 Suppress Source
+            <button class="modal-close" onclick="closeSuppressModal()">✕</button>
+        </div>
+        <div class="form-row-2">
+            <div>
+                <label class="form-label">Type</label>
+                <select class="form-input" id="suppress-type">
+                    <option value="ip">IP Address</option>
+                    <option value="source">Log Source</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Value *</label>
+                <input class="form-input" id="suppress-value" placeholder="e.g. 192.168.1.50">
+            </div>
+        </div>
+        <div class="form-row">
+            <label class="form-label">Reason (optional)</label>
+            <input class="form-input" id="suppress-reason"
+                   placeholder="e.g. Internal vulnerability scanner">
+        </div>
+        <div style="font-size:0.72em;color:#556;margin-bottom:12px;">
+            All current <em>and future</em> events from this source will be silently dropped.
+        </div>
+        <button class="btn-create" onclick="submitSuppress()">🚫 Add to Suppression List</button>
     </div>
 </div>
 
@@ -1212,17 +1378,228 @@ function dismissAllVisible() {
     next();
 }
 
-function resolveFinding(id, btn) {
-    btn.disabled = true; btn.textContent = 'Resolving…';
-    csrfFetch(`/scan/findings/${id}/resolve`, { method:'POST' })
-        .then(r => r.json())
-        .then(d => {
+function dismissBySeverity(sev) {
+    const rows = [...document.querySelectorAll(`#event-tbody .event-row.sev-${sev}`)]
+        .filter(r => r.style.display !== 'none');
+    if (!rows.length) { showToast(`No ${sev} events to clear`); return; }
+    csrfFetch('/api/siem/events/dismiss-all', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({severity: sev}),
+    })
+    .then(() => {
+        rows.forEach(r => { r.style.opacity='0'; setTimeout(() => r.remove(), 150); });
+        showToast(`Cleared ${rows.length} ${sev} event(s)`);
+        refreshStats();
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  FINDINGS — SELECTION
+// ─────────────────────────────────────────────────────────────────────
+let _selectedIds = new Set();
+
+function onFindingCheck(cb, id) {
+    const row = document.getElementById(`finding-${id}`);
+    if (cb.checked) { _selectedIds.add(id); row.classList.add('selected'); }
+    else            { _selectedIds.delete(id); row.classList.remove('selected'); }
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    const bar = document.getElementById('bulk-bar');
+    const cnt = document.getElementById('bulk-count');
+    const n   = _selectedIds.size;
+    if (n > 0) { bar.classList.add('visible'); cnt.textContent = `${n} selected`; }
+    else        { bar.classList.remove('visible'); }
+}
+
+function clearSelection() {
+    _selectedIds.clear();
+    document.querySelectorAll('.finding-cb').forEach(cb => {
+        cb.checked = false;
+        document.getElementById(`finding-${cb.closest('.finding-row')?.dataset?.id}`)
+                 ?.classList.remove('selected');
+    });
+    updateBulkBar();
+}
+
+function selectAllFindings(btn) {
+    const cbs = document.querySelectorAll('.finding-cb');
+    const allChecked = [...cbs].every(c => c.checked);
+    cbs.forEach(cb => {
+        cb.checked = !allChecked;
+        const row = cb.closest('.finding-row');
+        const id  = parseInt(row?.dataset?.id);
+        if (!allChecked) { _selectedIds.add(id); row?.classList.add('selected'); }
+        else              { _selectedIds.delete(id); row?.classList.remove('selected'); }
+    });
+    btn.textContent = allChecked ? '☐ All' : '☑ All';
+    updateBulkBar();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  FINDINGS — RESOLVE MODAL
+// ─────────────────────────────────────────────────────────────────────
+function openResolveModal(ids) {
+    document.getElementById('resolve-ids').value = JSON.stringify(ids);
+    document.getElementById('resolve-reason').value = 'resolved';
+    document.getElementById('resolve-notes').value  = '';
+    document.getElementById('resolve-modal').classList.add('open');
+    setTimeout(() => document.getElementById('resolve-reason').focus(), 50);
+}
+
+function closeResolveModal() {
+    document.getElementById('resolve-modal').classList.remove('open');
+}
+
+function submitResolve() {
+    const ids    = JSON.parse(document.getElementById('resolve-ids').value || '[]');
+    const reason = document.getElementById('resolve-reason').value;
+    const notes  = document.getElementById('resolve-notes').value.trim();
+    if (!ids.length) return;
+    closeResolveModal();
+
+    csrfFetch('/scan/findings/bulk-resolve', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids, reason, notes}),
+    })
+    .then(r => r.json())
+    .then(d => {
+        ids.forEach(id => {
             const row = document.getElementById(`finding-${id}`);
             if (row) { row.style.opacity='0'; setTimeout(() => row.remove(), 300); }
-            if (d.xp?.awarded) showToast(`+${d.xp.awarded} XP — finding resolved`);
-            refreshStats();
-        })
-        .catch(() => { btn.disabled=false; btn.textContent='✓ Resolve (+25 XP)'; });
+        });
+        clearSelection();
+        if (d.total_xp) showToast(`+${d.total_xp} XP — ${d.resolved} finding(s) closed`);
+        else            showToast(`${d.resolved} finding(s) closed (${reason.replace('_',' ')})`);
+        setTimeout(refreshFindingCount, 350);
+        refreshStats();
+    })
+    .catch(() => showToast('Error resolving findings'));
+}
+
+function bulkResolve(reason) {
+    if (!_selectedIds.size) return;
+    openResolveModal([..._selectedIds]);
+    document.getElementById('resolve-reason').value = reason;
+}
+
+function resolveWithReason(id, reason) {
+    csrfFetch('/scan/findings/bulk-resolve', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids:[id], reason}),
+    })
+    .then(r => r.json())
+    .then(d => {
+        const row = document.getElementById(`finding-${id}`);
+        if (row) { row.style.opacity='0'; setTimeout(() => row.remove(), 300); }
+        if (d.total_xp) showToast(`+${d.total_xp} XP — marked ${reason.replace('_',' ')}`);
+        setTimeout(refreshFindingCount, 350);
+        refreshStats();
+    });
+}
+
+function resolveAllFindings() {
+    if (!confirm('Close ALL open correlation findings?')) return;
+    openResolveModal(
+        [...document.querySelectorAll('.finding-row')].map(r => parseInt(r.dataset.id))
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  FINDINGS — SUPPRESS FROM FINDING
+// ─────────────────────────────────────────────────────────────────────
+function suppressFromFinding(findingId) {
+    const row  = document.getElementById(`finding-${findingId}`);
+    const desc = row?.querySelector('.finding-desc')?.textContent || '';
+    // Extract first IPv4 from the description
+    const m = desc.match(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/);
+    const ip = m ? m[1] : '';
+    document.getElementById('suppress-type').value   = 'ip';
+    document.getElementById('suppress-value').value  = ip;
+    document.getElementById('suppress-reason').value = '';
+    document.getElementById('suppress-modal').classList.add('open');
+    setTimeout(() => document.getElementById('suppress-value').focus(), 50);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  SUPPRESS MODAL
+// ─────────────────────────────────────────────────────────────────────
+function openSuppressModal() {
+    document.getElementById('suppress-type').value   = 'ip';
+    document.getElementById('suppress-value').value  = '';
+    document.getElementById('suppress-reason').value = '';
+    document.getElementById('suppress-modal').classList.add('open');
+    setTimeout(() => document.getElementById('suppress-value').focus(), 50);
+}
+
+function closeSuppressModal() {
+    document.getElementById('suppress-modal').classList.remove('open');
+}
+
+function submitSuppress() {
+    const type   = document.getElementById('suppress-type').value;
+    const value  = document.getElementById('suppress-value').value.trim();
+    const reason = document.getElementById('suppress-reason').value.trim();
+    if (!value) { alert('Please enter a value to suppress.'); return; }
+    closeSuppressModal();
+
+    csrfFetch('/api/siem/suppress', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({type, value, reason}),
+    })
+    .then(r => r.json())
+    .then(d => {
+        showToast(`🚫 ${value} suppressed — future events will be silently dropped`);
+        // Add to suppression list UI
+        const list = document.getElementById('suppression-list');
+        const empty = document.getElementById('suppress-empty');
+        if (empty) empty.remove();
+        const id = Date.now(); // temp id — page reload will give real id
+        list.insertAdjacentHTML('afterbegin', `
+            <div class="suppress-row" id="suppress-${id}">
+                <span class="suppress-type">${type.toUpperCase()}</span>
+                <span class="suppress-val">${value}</span>
+                <span style="color:#334;font-size:0.8em;flex:2;">${reason || '—'}</span>
+                <button class="btn-unsuppress" onclick="unsuppress(${id},this)">Remove</button>
+            </div>
+        `);
+        refreshStats();
+    })
+    .catch(() => showToast('Error adding suppression'));
+}
+
+function unsuppress(id, btn) {
+    csrfFetch(`/api/siem/suppress/${id}`, {method:'DELETE'})
+        .then(r => r.json())
+        .then(() => {
+            const row = document.getElementById(`suppress-${id}`);
+            if (row) row.remove();
+            showToast('Suppression removed');
+        });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────────────────────────
+function refreshFindingCount() {
+    const remaining = document.querySelectorAll('.finding-row').length;
+    const el = document.getElementById('findings-count');
+    if (el) el.textContent = remaining > 0 ? `${remaining} open` : '0';
+    if (remaining === 0) {
+        const list = document.getElementById('findings-list');
+        if (list && !document.getElementById('findings-empty')) {
+            list.innerHTML = '<div class="empty" id="findings-empty">No open correlation findings</div>';
+        }
+    }
+}
+
+function resolveFinding(id, btn) {
+    openResolveModal([id]);
 }
 
 function toggleRule(id, btn) {
@@ -1297,7 +1674,13 @@ function openRuleModal() {
 function closeRuleModal() {
     document.getElementById('rule-modal').classList.remove('open');
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRuleModal(); });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        closeRuleModal();
+        closeResolveModal();
+        closeSuppressModal();
+    }
+});
 
 // Live preview text
 ['rb-etype','rb-gfield','rb-threshold','rb-window'].forEach(id => {

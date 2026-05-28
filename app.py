@@ -1218,11 +1218,34 @@ def init_db():
         if "enabled" not in existing_siem_rule_cols:
             db_run("ALTER TABLE siem_rules ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1")
 
-    # Migration: add ai_triage column to system_findings (stores Ollama triage note)
-    if not DATABASE_URL:
+    # Migration: add ai_triage + resolution tracking columns to system_findings
+    if DATABASE_URL:
+        db_run("ALTER TABLE system_findings ADD COLUMN IF NOT EXISTS ai_triage          TEXT    NOT NULL DEFAULT ''")
+        db_run("ALTER TABLE system_findings ADD COLUMN IF NOT EXISTS resolution_reason  TEXT    NOT NULL DEFAULT ''")
+        db_run("ALTER TABLE system_findings ADD COLUMN IF NOT EXISTS resolution_notes   TEXT    NOT NULL DEFAULT ''")
+        db_run("ALTER TABLE system_findings ADD COLUMN IF NOT EXISTS resolved_by        TEXT    NOT NULL DEFAULT ''")
+    else:
         existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(system_findings)")]
-        if "ai_triage" not in existing_cols:
-            db_run("ALTER TABLE system_findings ADD COLUMN ai_triage TEXT NOT NULL DEFAULT ''")
+        if "ai_triage"         not in existing_cols:
+            db_run("ALTER TABLE system_findings ADD COLUMN ai_triage         TEXT NOT NULL DEFAULT ''")
+        if "resolution_reason" not in existing_cols:
+            db_run("ALTER TABLE system_findings ADD COLUMN resolution_reason TEXT NOT NULL DEFAULT ''")
+        if "resolution_notes"  not in existing_cols:
+            db_run("ALTER TABLE system_findings ADD COLUMN resolution_notes  TEXT NOT NULL DEFAULT ''")
+        if "resolved_by"       not in existing_cols:
+            db_run("ALTER TABLE system_findings ADD COLUMN resolved_by       TEXT NOT NULL DEFAULT ''")
+
+    # SIEM suppression list — IPs and sources permanently silenced by the analyst
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS siem_suppression (
+            {id_col},
+            {ts_col},
+            suppress_type  TEXT NOT NULL DEFAULT 'ip',
+            value          TEXT NOT NULL DEFAULT '',
+            reason         TEXT NOT NULL DEFAULT '',
+            added_by       TEXT NOT NULL DEFAULT ''
+        )
+    """)
 
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
@@ -6005,6 +6028,233 @@ def resolve_finding(finding_id):
     return jsonify({"ok": True, "xp": xp_result})
 
 
+@app.route("/scan/findings/<int:finding_id>/resolve-with-reason", methods=["POST"])
+@analyst_required
+def resolve_finding_with_reason(finding_id):
+    """Mark a finding resolved with an optional reason and notes."""
+    analyst_id = session["user_id"]
+    username   = session.get("username", "")
+    data       = request.get_json(silent=True) or {}
+    reason     = data.get("reason", "resolved")[:64]
+    notes      = data.get("notes", "")[:500]
+
+    VALID_REASONS = {"resolved", "false_positive", "accepted_risk", "escalated"}
+    if reason not in VALID_REASONS:
+        reason = "resolved"
+
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    finding = db_fetchone(
+        f"SELECT id, title, cissp_domain FROM system_findings "
+        f"WHERE id = {PH} AND resolved = 0",
+        (finding_id,),
+    )
+    if not finding:
+        return jsonify({"error": "Finding not found or already resolved"}), 404
+
+    db_run(
+        f"UPDATE system_findings "
+        f"SET resolved=1, resolved_at={PH}, resolution_reason={PH}, "
+        f"    resolution_notes={PH}, resolved_by={PH} "
+        f"WHERE id={PH}",
+        (now_str, reason, notes, username, finding_id),
+    )
+    db_run(
+        f"UPDATE player_profile SET total_findings_resolved = total_findings_resolved + 1 "
+        f"WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["finding_resolved"],
+        f"Resolved ({reason}): {finding['title'][:50]}", "scanner",
+    )
+    return jsonify({"ok": True, "reason": reason, "xp": xp_result})
+
+
+@app.route("/scan/findings/bulk-resolve", methods=["POST"])
+@analyst_required
+def bulk_resolve_findings():
+    """Resolve multiple findings at once with a shared reason."""
+    analyst_id = session["user_id"]
+    username   = session.get("username", "")
+    data       = request.get_json(silent=True) or {}
+    ids        = data.get("ids", [])
+    reason     = data.get("reason", "resolved")[:64]
+    notes      = data.get("notes", "")[:500]
+
+    VALID_REASONS = {"resolved", "false_positive", "accepted_risk", "escalated"}
+    if reason not in VALID_REASONS:
+        reason = "resolved"
+    if not ids or not isinstance(ids, list):
+        return jsonify({"error": "No finding IDs provided"}), 400
+
+    # Clamp to 100 at a time — prevents abuse
+    ids = [int(i) for i in ids[:100] if str(i).isdigit()]
+    now_str   = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    resolved  = 0
+    total_xp  = 0
+
+    for fid in ids:
+        finding = db_fetchone(
+            f"SELECT id, title, cissp_domain FROM system_findings "
+            f"WHERE id = {PH} AND resolved = 0",
+            (fid,),
+        )
+        if not finding:
+            continue
+        db_run(
+            f"UPDATE system_findings "
+            f"SET resolved=1, resolved_at={PH}, resolution_reason={PH}, "
+            f"    resolution_notes={PH}, resolved_by={PH} "
+            f"WHERE id={PH}",
+            (now_str, reason, notes, username, fid),
+        )
+        db_run(
+            f"UPDATE player_profile SET total_findings_resolved = total_findings_resolved + 1 "
+            f"WHERE analyst_id = {PH}",
+            (analyst_id,),
+        )
+        xp_result = award_xp(
+            analyst_id, XP_REWARDS["finding_resolved"],
+            f"Bulk resolved ({reason}): {finding['title'][:45]}", "scanner",
+        )
+        total_xp += xp_result.get("awarded", 0)
+        resolved += 1
+
+    return jsonify({"ok": True, "resolved": resolved, "total_xp": total_xp, "reason": reason})
+
+
+@app.route("/scan/findings/bulk-resolve-all", methods=["POST"])
+@analyst_required
+def bulk_resolve_all_findings():
+    """Resolve ALL open findings of a given severity (or all if no severity given)."""
+    analyst_id = session["user_id"]
+    username   = session.get("username", "")
+    data       = request.get_json(silent=True) or {}
+    severity   = (data.get("severity") or "").upper().strip()
+    scan_type  = (data.get("scan_type") or "").strip()
+    reason     = data.get("reason", "resolved")[:64]
+
+    VALID_REASONS = {"resolved", "false_positive", "accepted_risk", "escalated"}
+    if reason not in VALID_REASONS:
+        reason = "resolved"
+
+    VALID_SEV = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", ""}
+    if severity not in VALID_SEV:
+        severity = ""
+
+    filters = ["resolved = 0"]
+    params  = []
+    if severity:
+        filters.append(f"severity = {PH}")
+        params.append(severity)
+    if scan_type in ("siem", "machine", "network"):
+        filters.append(f"scan_type = {PH}")
+        params.append(scan_type)
+
+    where = " AND ".join(filters)
+    findings = db_fetchall(
+        f"SELECT id, title FROM system_findings WHERE {where}", params
+    )
+
+    now_str  = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    resolved = 0
+    for f in findings:
+        db_run(
+            f"UPDATE system_findings "
+            f"SET resolved=1, resolved_at={PH}, resolution_reason={PH}, resolved_by={PH} "
+            f"WHERE id={PH}",
+            (now_str, reason, username, f["id"]),
+        )
+        resolved += 1
+
+    if resolved:
+        db_run(
+            f"UPDATE player_profile "
+            f"SET total_findings_resolved = total_findings_resolved + {resolved} "
+            f"WHERE analyst_id = {PH}",
+            (analyst_id,),
+        )
+        total_xp = resolved * XP_REWARDS.get("finding_resolved", 25)
+        award_xp(analyst_id, total_xp, f"Bulk-closed {resolved} findings ({reason})", "scanner")
+
+    return jsonify({"ok": True, "resolved": resolved, "reason": reason})
+
+
+# ── SIEM Suppression ────────────────────────────────────────────────────────────
+
+@app.route("/api/siem/suppress", methods=["POST"])
+@dashboard_required
+def api_siem_suppress():
+    """Add an IP or source to the suppression list. Future events are silently dropped."""
+    data          = request.get_json(silent=True) or {}
+    suppress_type = data.get("type", "ip")   # "ip" or "source"
+    value         = (data.get("value") or "").strip()[:120]
+    reason        = (data.get("reason") or "").strip()[:255]
+    added_by      = session.get("username", "")
+
+    if suppress_type not in ("ip", "source"):
+        return jsonify({"error": "type must be 'ip' or 'source'"}), 400
+    if not value:
+        return jsonify({"error": "value is required"}), 400
+
+    # Idempotent — don't double-insert
+    existing = db_fetchone(
+        f"SELECT id FROM siem_suppression WHERE suppress_type={PH} AND value={PH}",
+        (suppress_type, value),
+    )
+    if not existing:
+        db_run(
+            f"INSERT INTO siem_suppression (suppress_type, value, reason, added_by) "
+            f"VALUES ({PH},{PH},{PH},{PH})",
+            (suppress_type, value, reason, added_by),
+        )
+        # Also dismiss all existing events from this source so the feed clears instantly
+        if suppress_type == "ip":
+            db_run(
+                f"UPDATE siem_events SET dismissed=1 WHERE src_ip={PH} AND dismissed=0",
+                (value,),
+            )
+        else:
+            db_run(
+                f"UPDATE siem_events SET dismissed=1 WHERE source={PH} AND dismissed=0",
+                (value,),
+            )
+    security_log.info(f"SIEM_SUPPRESS type={suppress_type} value={value!r} by={added_by}")
+    return jsonify({"ok": True, "suppressed": value, "type": suppress_type})
+
+
+@app.route("/api/siem/suppression-list", methods=["GET"])
+@dashboard_required
+def api_siem_suppression_list():
+    """GET — return the full suppression list."""
+    rows = db_fetchall("SELECT * FROM siem_suppression ORDER BY id DESC")
+    return jsonify(rows)
+
+
+@app.route("/api/siem/suppress/<int:suppress_id>", methods=["DELETE"])
+@dashboard_required
+def api_siem_unsuppress(suppress_id):
+    """DELETE — remove an entry from the suppression list."""
+    db_run(f"DELETE FROM siem_suppression WHERE id={PH}", (suppress_id,))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/siem/events/dismiss-source", methods=["POST"])
+@dashboard_required
+def api_siem_dismiss_source():
+    """Dismiss all current events from a specific IP or source (one-time, no permanent suppress)."""
+    data  = request.get_json(silent=True) or {}
+    ip    = (data.get("ip") or "").strip()
+    src   = (data.get("source") or "").strip()
+    if ip:
+        db_run(f"UPDATE siem_events SET dismissed=1 WHERE src_ip={PH} AND dismissed=0", (ip,))
+    elif src:
+        db_run(f"UPDATE siem_events SET dismissed=1 WHERE source={PH} AND dismissed=0", (src,))
+    else:
+        return jsonify({"error": "ip or source required"}), 400
+    return jsonify({"ok": True})
+
+
 @app.route("/scan/findings/<int:finding_id>/remediation-plan", methods=["GET"])
 @analyst_required
 def finding_remediation_plan(finding_id):
@@ -6479,13 +6729,15 @@ def siem_dashboard():
     siem_findings = db_fetchall(
         "SELECT * FROM system_findings WHERE scan_type='siem' AND resolved=0 ORDER BY id DESC"
     )
-    player = get_player_profile(analyst_id)
+    suppressions  = db_fetchall("SELECT * FROM siem_suppression ORDER BY id DESC")
+    player        = get_player_profile(analyst_id)
 
     return render_template("siem.html",
         events=events,
         stats=stats,
         rules=rules,
         siem_findings=siem_findings,
+        suppressions=suppressions,
         player=player,
         syslog_port=siem_collector.syslog_port,
     )

@@ -7576,6 +7576,219 @@ _INDUSTRY_CONTROLS = {
 }
 
 
+# Per-domain key requirements for CISSP posture assessment.
+# Each control has: domain number, a requirement ID, title, description,
+# finding_keywords (auto-assessed from scan findings), and guidance.
+# Controls without keywords are always "manual" — they cannot be auto-assessed.
+_CISSP_DOMAIN_CONTROLS = {
+    1: [  # Security and Risk Management
+        {"id":"1A","title":"Written Information Security Policy",
+         "description":"A documented information security policy approved by management exists.",
+         "finding_keywords":[],
+         "guidance":"Policy must cover: scope, roles & responsibilities, acceptable use, incident reporting, and consequences. Review annually."},
+        {"id":"1B","title":"Formal Risk Assessment",
+         "description":"A documented risk assessment identifying threats, vulnerabilities, and likelihood has been conducted.",
+         "finding_keywords":[],
+         "guidance":"CISSP Req: risk assessments must be conducted regularly (at least annually). Outputs feed the risk register and remediation roadmap."},
+        {"id":"1C","title":"Business Continuity / Disaster Recovery Plan",
+         "description":"BCP and DRP documents exist, are tested, and are accessible to key personnel.",
+         "finding_keywords":[],
+         "guidance":"Must include: RTO/RPO targets, critical system inventory, recovery procedures, communication plan, and testing schedule."},
+    ],
+    2: [  # Asset Security
+        {"id":"2A","title":"Data Classification Scheme",
+         "description":"All data is classified (e.g. Public / Internal / Confidential / Restricted) with handling rules.",
+         "finding_keywords":[],
+         "guidance":"Classifications must be documented and applied. Staff must know what 'Confidential' means for their role — labelling alone is not enough."},
+        {"id":"2B","title":"Shared Resource & File Access Review",
+         "description":"Shared folders and network shares reviewed; only authorised personnel have access.",
+         "finding_keywords":["shared folder","smb","file sharing"],
+         "guidance":"Open shared folders on a network are a primary lateral movement vector. Review ACLs quarterly."},
+        {"id":"2C","title":"Data Retention & Destruction Policy",
+         "description":"Documented policy specifying how long each data type is retained and how it is destroyed at end-of-life.",
+         "finding_keywords":[],
+         "guidance":"Covers paper, digital media, and cloud storage. Secure destruction (shredding, certified wipe) must be documented."},
+    ],
+    3: [  # Security Architecture and Engineering
+        {"id":"3A","title":"Secure Configuration Baselines",
+         "description":"Security baselines applied to all systems; unnecessary services and ports disabled.",
+         "finding_keywords":["port 445","port 139","port 135","netbios","rdp","telnet","ftp","unnecessary"],
+         "guidance":"Use CIS Benchmarks or NIST SP 800-70 as your baseline. Every open port that isn't needed is an attack surface."},
+        {"id":"3B","title":"Encryption of Sensitive Data at Rest",
+         "description":"Sensitive and confidential data encrypted at rest using AES-256 or equivalent.",
+         "finding_keywords":["encryption","unencrypted","plaintext"],
+         "guidance":"Covers databases, backups, laptops, USB drives, and cloud storage. BitLocker (Windows) or FileVault (Mac) for endpoint encryption."},
+        {"id":"3C","title":"Cryptographic Controls & Key Management",
+         "description":"Cryptographic algorithms in use are current and approved; key management procedures documented.",
+         "finding_keywords":["weak cipher","md5","sha1","ssl 2","ssl 3","tls 1.0","tls 1.1"],
+         "guidance":"Retire MD5, SHA-1, SSLv2/3, TLS 1.0/1.1. Minimum standard: TLS 1.2+, AES-256, SHA-256+."},
+    ],
+    4: [  # Communication and Network Security
+        {"id":"4A","title":"Firewall Configured and Active",
+         "description":"Network firewall installed, configured with a default-deny policy, and monitored.",
+         "finding_keywords":["firewall disabled","firewall is disabled","firewall off"],
+         "guidance":"Default-deny: block all inbound, allow only what is explicitly needed. Log denied traffic and review weekly."},
+        {"id":"4B","title":"Network Segmentation",
+         "description":"Critical systems (POS, payment, servers) segmented from general-use and guest networks.",
+         "finding_keywords":["vlan","segmentation","flat network"],
+         "guidance":"Guest Wi-Fi must never share a network segment with production systems. PCI DSS and CISSP both require this."},
+        {"id":"4C","title":"Encrypted Communications (TLS/VPN)",
+         "description":"All remote access uses VPN; web services use TLS 1.2+; data in transit is encrypted.",
+         "finding_keywords":["vpn","tls","certificate"],
+         "guidance":"Check that your website(s) enforce HTTPS. Remote workers must use VPN. Test with ssllabs.com for certificate and TLS grade."},
+    ],
+    5: [  # Identity and Access Management
+        {"id":"5A","title":"Multi-Factor Authentication (MFA)",
+         "description":"MFA enforced on all accounts with access to sensitive systems, admin consoles, and remote access.",
+         "finding_keywords":["mfa","2fa","multi-factor","two-factor"],
+         "guidance":"CISSP principle: authentication should use at least 2 factors for anything sensitive. Start with admin accounts and email — the two highest-value targets."},
+        {"id":"5B","title":"User Account Control & Least Privilege",
+         "description":"UAC enabled; users operate with standard (non-admin) accounts for daily work.",
+         "finding_keywords":["uac disabled","uac is disabled","user account control","admin account","local admin"],
+         "guidance":"Least privilege: no user should have more access than needed for their job. Admins should have separate admin and standard accounts."},
+        {"id":"5C","title":"Access Review & Offboarding Process",
+         "description":"User accounts reviewed quarterly; access revoked same day on employee departure.",
+         "finding_keywords":["unused account","stale account","disabled account"],
+         "guidance":"Orphaned accounts are one of the most common breach vectors. Integrate offboarding with your IT checklist — Day 1 of departure = access removed."},
+    ],
+    6: [  # Security Assessment and Testing
+        {"id":"6A","title":"Regular Vulnerability Scanning",
+         "description":"Automated vulnerability scans conducted at least monthly; findings tracked to remediation.",
+         "finding_keywords":[],  # checked via scan history
+         "guidance":"Internal scans monthly at minimum; after any significant infrastructure change. PCI DSS requires quarterly external scans by an ASV."},
+        {"id":"6B","title":"Security Monitoring & SIEM",
+         "description":"SIEM or equivalent log monitoring in place; alerts reviewed regularly.",
+         "finding_keywords":[],  # checked via SIEM event count
+         "guidance":"Log sources must include: authentication events, network flows, endpoint activity, and application logs. SIEM without review is useless."},
+        {"id":"6C","title":"Penetration Testing",
+         "description":"Annual penetration test conducted by qualified internal or external testers.",
+         "finding_keywords":[],
+         "guidance":"Pen testing is required by PCI DSS (annually + after major changes) and strongly recommended by CISSP. Document scope, findings, and remediation."},
+    ],
+    7: [  # Security Operations
+        {"id":"7A","title":"Anti-Malware Protection Active",
+         "description":"Anti-malware software installed, running, and automatically updated on all endpoints.",
+         "finding_keywords":["defender","antivirus","malware","defender not running","defender disabled"],
+         "guidance":"CISSP: anti-malware is a detective control — essential but not sufficient. Pair with application whitelisting, user training, and EDR."},
+        {"id":"7B","title":"Incident Response Plan & Playbooks",
+         "description":"Documented IR plan with defined roles, escalation paths, and response playbooks.",
+         "finding_keywords":[],
+         "guidance":"CISSP IR lifecycle: Preparation → Detection → Containment → Eradication → Recovery → Lessons Learned. Plan must be tested at least annually (tabletop exercise)."},
+        {"id":"7C","title":"Patch Management Programme",
+         "description":"Security patches applied within defined timeframes; critical patches within 30 days.",
+         "finding_keywords":["windows update","update disabled","patch","outdated","end of life","eol"],
+         "guidance":"CISSP requires a documented patch management policy with defined SLAs: Critical = 24–72h, High = 7–14 days, Medium = 30 days."},
+    ],
+    8: [  # Software Development Security
+        {"id":"8A","title":"Web Application Security (OWASP Top 10)",
+         "description":"Web applications assessed against OWASP Top 10; critical vulnerabilities remediated.",
+         "finding_keywords":["sql injection","xss","cross-site","injection","owasp"],
+         "guidance":"OWASP Top 10 is the baseline for web app security. Run DAST (dynamic analysis) tools like OWASP ZAP on all public-facing web applications."},
+        {"id":"8B","title":"Secure Software Development Lifecycle (SDLC)",
+         "description":"Security requirements included in the SDLC; code reviews and security testing performed.",
+         "finding_keywords":[],
+         "guidance":"If you build software: threat modelling in design phase, static analysis in build phase, DAST in test phase. DevSecOps — shift security left."},
+        {"id":"8C","title":"Third-Party / Supply Chain Security",
+         "description":"Third-party software, plugins, and APIs assessed for security before deployment.",
+         "finding_keywords":[],
+         "guidance":"Software supply chain attacks are increasing. Maintain a software inventory (SBOM). Vet vendors, pin dependencies, monitor for CVEs in your stack."},
+    ],
+}
+
+
+def _evaluate_cissp_domains(findings, siem_count):
+    """Evaluate CISSP domain posture from unresolved scan findings.
+
+    Returns a list of domain dicts with:
+      - domain_num, name, color, weight, key_topics
+      - controls: list of requirement dicts with status/failing_findings
+      - domain_status: 'pass' | 'fail' | 'warn' | 'partial'
+      - open_count: number of findings mapped to this domain
+    """
+    from collections import defaultdict
+
+    # Group findings by cissp_domain
+    by_domain = defaultdict(list)
+    for f in findings:
+        d = f.get("cissp_domain") or 1
+        by_domain[int(d)].append(f)
+
+    # Build finding text index for keyword matching
+    finding_texts = [(f"{f.get('title','')} {f.get('description','')}".lower(), f)
+                     for f in findings]
+
+    results = []
+    for domain_num in sorted(CISSP_DOMAINS.keys()):
+        domain_info = CISSP_DOMAINS[domain_num]
+        ctrl_defs   = _CISSP_DOMAIN_CONTROLS.get(domain_num, [])
+        domain_findings = by_domain.get(domain_num, [])
+
+        evaluated_ctrls = []
+        for ctrl in ctrl_defs:
+            ctrl = dict(ctrl)
+            if not ctrl["finding_keywords"]:
+                # Special cases
+                if ctrl["id"] == "6A":  # vulnerability scanning history
+                    recent = db_fetchall(
+                        "SELECT COUNT(*) as cnt FROM system_findings "
+                        "WHERE created_at >= datetime('now', '-30 days')"
+                        if not DATABASE_URL else
+                        "SELECT COUNT(*) as cnt FROM system_findings "
+                        "WHERE created_at >= NOW() - INTERVAL '30 days'"
+                    )
+                    cnt = (recent[0].get("cnt") or 0) if recent else 0
+                    ctrl["status"] = "pass" if cnt > 0 else "warn"
+                    ctrl["status_label"] = "Active" if cnt > 0 else "No recent scans"
+                    ctrl["failing_findings"] = []
+                elif ctrl["id"] == "6B":  # SIEM monitoring
+                    ctrl["status"] = "pass" if siem_count > 0 else "warn"
+                    ctrl["status_label"] = f"{siem_count} events (24h)" if siem_count > 0 else "No SIEM events"
+                    ctrl["failing_findings"] = []
+                else:
+                    ctrl["status"] = "unknown"
+                    ctrl["status_label"] = "Manual review required"
+                    ctrl["failing_findings"] = []
+            else:
+                failing = [f for text, f in finding_texts
+                           if any(kw in text for kw in ctrl["finding_keywords"])]
+                if failing:
+                    ctrl["status"] = "fail"
+                    ctrl["status_label"] = f"{len(failing)} issue{'s' if len(failing)!=1 else ''} found"
+                else:
+                    ctrl["status"] = "pass"
+                    ctrl["status_label"] = "No issues detected"
+                ctrl["failing_findings"] = failing
+            evaluated_ctrls.append(ctrl)
+
+        # Domain-level status
+        has_fail = any(c["status"] == "fail" for c in evaluated_ctrls)
+        has_warn = any(c["status"] == "warn" for c in evaluated_ctrls)
+        all_pass = all(c["status"] in ("pass", "unknown") for c in evaluated_ctrls)
+
+        if has_fail:
+            domain_status = "fail"
+        elif has_warn:
+            domain_status = "warn"
+        elif len(domain_findings) > 0:
+            domain_status = "partial"  # findings in this domain but no control keyword match
+        else:
+            domain_status = "pass"
+
+        results.append({
+            "domain_num":    domain_num,
+            "name":          domain_info["name"],
+            "color":         domain_info["color"],
+            "weight":        domain_info["weight"],
+            "key_topics":    domain_info["key_topics"],
+            "soc_bridge":    domain_info.get("soc_bridge"),
+            "controls":      evaluated_ctrls,
+            "domain_status": domain_status,
+            "open_count":    len(domain_findings),
+        })
+
+    return results
+
+
 def _evaluate_pci_controls(findings):
     """Map unresolved scan findings to PCI DSS controls.
 
@@ -7700,6 +7913,24 @@ def compliance():
     )
     siem_count = (siem_recent[0].get("cnt") or 0) if siem_recent else 0
 
+    # CISSP domain posture
+    cissp_domains = _evaluate_cissp_domains(findings, siem_count)
+
+    # CISSP posture score — weighted by domain exam weight
+    total_weight = sum(d["weight"] for d in cissp_domains)
+    earned_weight = 0
+    for d in cissp_domains:
+        ctrls = d["controls"]
+        if not ctrls:
+            continue
+        pass_n = sum(1 for c in ctrls if c["status"] in ("pass", "unknown"))
+        earned_weight += d["weight"] * (pass_n / len(ctrls))
+    cissp_score = round((earned_weight / total_weight) * 100) if total_weight else 0
+
+    cissp_pass   = sum(1 for d in cissp_domains if d["domain_status"] == "pass")
+    cissp_fail   = sum(1 for d in cissp_domains if d["domain_status"] == "fail")
+    cissp_warn   = sum(1 for d in cissp_domains if d["domain_status"] in ("warn", "partial"))
+
     # Open CRITICAL/HIGH findings count
     critical_findings = [f for f in findings if f.get("severity") in ("CRITICAL", "HIGH")]
 
@@ -7717,6 +7948,11 @@ def compliance():
         pci_fail=pci_fail,
         pci_unk=pci_unk,
         pci_total=pci_total,
+        cissp_domains=cissp_domains,
+        cissp_score=cissp_score,
+        cissp_pass=cissp_pass,
+        cissp_fail=cissp_fail,
+        cissp_warn=cissp_warn,
         open_findings=len(findings),
         critical_findings=len(critical_findings),
         siem_count=siem_count,

@@ -240,6 +240,10 @@
             <div class="stat-value blue">{{ siem_count }}</div>
             <div class="stat-label">SIEM Events (24h)</div>
         </div>
+        <div class="stat-card" style="border-color:#9944ee33;">
+            <div class="stat-value" style="color:#9944ee;text-shadow:0 0 8px #9944ee66;">{{ cissp_score }}%</div>
+            <div class="stat-label">CISSP Posture</div>
+        </div>
     </div>
 
     <!-- Score ring + context card -->
@@ -347,6 +351,130 @@
                     Requires manual review — ensure your information security policy is written, approved, and distributed.
                 </div>
                 {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ── CISSP Domain Posture ── -->
+    <div class="section-header" style="margin-top:42px;">
+        <h2>CISSP Domain Posture</h2>
+        <span class="section-tag">8 domains</span>
+        <span class="section-tag" style="background:#1a1d2e;border-color:#9944ee44;color:#9944ee;">
+            Score: {{ cissp_score }}%
+        </span>
+        <div class="section-divider"></div>
+    </div>
+
+    <div class="info-box" style="background:#0e0e1a;border-color:#9944ee33;">
+        Every scan finding is mapped to its CISSP domain automatically.
+        <strong style="color:#9944ee;">Purple = CISSP domain colour.</strong>
+        Domain scores reflect open findings + automated control checks.
+        Manual controls (policies, procedures) show "Review Required."
+    </div>
+
+    <!-- CISSP score summary row -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+        <div class="stat-card" style="border-color:#9944ee44;">
+            <div class="stat-value" style="color:#9944ee;text-shadow:0 0 8px #9944ee88;">{{ cissp_score }}%</div>
+            <div class="stat-label">CISSP Posture Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value green">{{ cissp_pass }}</div>
+            <div class="stat-label">Domains Clear</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value {% if cissp_fail > 0 %}red{% else %}green{% endif %}">{{ cissp_fail }}</div>
+            <div class="stat-label">Domains Failing</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value yellow">{{ cissp_warn }}</div>
+            <div class="stat-label">Domains Need Review</div>
+        </div>
+    </div>
+
+    <!-- Domain cards grid -->
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+        {% for domain in cissp_domains %}
+        <div style="background:#12151f;border:1px solid #1e2235;border-radius:8px;overflow:hidden;
+                    border-left:3px solid {{ domain.color }}{% if domain.domain_status == 'fail' %}; border-left-color:#e74c3c{% endif %};"
+             onclick="this.classList.toggle('open');" class="control-card {{ domain.domain_status }}">
+
+            <div class="control-header" style="align-items:flex-start;gap:14px;padding:14px 18px;">
+                <!-- Domain number + colour dot -->
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;padding-top:2px;">
+                    <div style="width:10px;height:10px;border-radius:50%;background:{{ domain.color }};
+                                box-shadow:0 0 6px {{ domain.color }}88;flex-shrink:0;"></div>
+                    <span style="font-size:0.72em;color:#555;font-family:monospace;">D{{ domain.domain_num }}</span>
+                </div>
+
+                <!-- Name + weight -->
+                <div style="flex:1;">
+                    <div style="font-size:0.95em;color:#ccc;font-weight:bold;">{{ domain.name }}</div>
+                    <div style="font-size:0.72em;color:#555;margin-top:3px;">
+                        Exam weight: {{ domain.weight }}% ·
+                        {% if domain.open_count > 0 %}
+                        <span style="color:#f39c12;">{{ domain.open_count }} open finding{{ 's' if domain.open_count != 1 else '' }}</span>
+                        {% else %}
+                        <span style="color:#00b432;">no open findings</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Status badge -->
+                <span class="ctrl-badge {{ domain.domain_status }}"
+                      style="{% if domain.domain_status == 'partial' %}background:#1a1f05;border-color:#f39c1244;color:#f39c12;{% endif %}">
+                    {% if domain.domain_status == 'pass' %}✓ Clear
+                    {% elif domain.domain_status == 'fail' %}✗ Failing
+                    {% elif domain.domain_status == 'warn' %}⚠ Warning
+                    {% else %}~ Partial{% endif %}
+                </span>
+                <span class="ctrl-chevron">›</span>
+            </div>
+
+            <!-- Expanded body -->
+            <div class="control-body" style="padding:0 18px 18px;">
+                <!-- Key topics chips -->
+                <div style="display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 14px;">
+                    {% for topic in domain.key_topics %}
+                    <span style="font-size:0.7em;padding:2px 8px;border-radius:10px;
+                                 background:#1a1d2e;border:1px solid #2a2d3e;color:#666;">{{ topic }}</span>
+                    {% endfor %}
+                </div>
+
+                <!-- Per-control requirements -->
+                <div style="display:flex;flex-direction:column;gap:7px;">
+                    {% for ctrl in domain.controls %}
+                    <div style="background:#0e111a;border-radius:6px;padding:10px 14px;
+                                border-left:2px solid {% if ctrl.status == 'pass' %}#00b432{% elif ctrl.status == 'fail' %}#e74c3c{% elif ctrl.status == 'warn' %}#f39c12{% else %}#444{% endif %};">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+                            <span style="font-size:0.68em;color:#444;font-family:monospace;flex-shrink:0;">{{ ctrl.id }}</span>
+                            <span style="font-size:0.85em;color:#bbb;flex:1;">{{ ctrl.title }}</span>
+                            <span class="ctrl-badge {{ ctrl.status }}" style="font-size:0.65em;">
+                                {% if ctrl.status == 'pass' %}✓{% elif ctrl.status == 'fail' %}✗{% elif ctrl.status == 'warn' %}⚠{% else %}?{% endif %}
+                                {{ ctrl.status_label }}
+                            </span>
+                        </div>
+                        <div style="font-size:0.78em;color:#666;line-height:1.5;margin-bottom:5px;">{{ ctrl.description }}</div>
+
+                        {% if ctrl.failing_findings %}
+                        <div class="finding-list" style="margin-top:6px;">
+                            {% for f in ctrl.failing_findings %}
+                            <div class="finding-item">
+                                <span class="sev-pip {{ f.severity }}">{{ f.severity }}</span>
+                                <span class="finding-title">{{ f.title }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <div style="font-size:0.75em;color:#444;line-height:1.5;
+                                    border-top:1px solid #1a1d2e;padding-top:6px;margin-top:6px;">
+                            💡 {{ ctrl.guidance }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
         {% endfor %}

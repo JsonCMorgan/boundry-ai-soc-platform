@@ -116,6 +116,23 @@
   .xp-negative { color: #ff4444; }
   .source-tag { font-size: 11px; background: #1a1a1a; border-radius: 3px; padding: 1px 5px; color: #666; }
 
+  /* Account Security */
+  .security-panel {
+    background: #0d150d; border: 1px solid #1a3a1a; border-radius: 8px;
+    padding: 20px 24px; margin-bottom: 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .security-panel-text h2 { font-size: 14px; font-weight: 800; letter-spacing: 1px;
+                            text-transform: uppercase; color: #00b432; margin-bottom: 4px; }
+  .security-panel-text p { font-size: 13px; color: #666; }
+  .security-btn {
+    display: inline-block; padding: 10px 20px; background: #0d1f0d;
+    border: 1px solid #00b432; border-radius: 6px; color: #00b432;
+    text-decoration: none; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;
+    transition: background 0.2s, color 0.2s; white-space: nowrap;
+  }
+  .security-btn:hover { background: #00b432; color: #0a0f0a; }
+
   @media (max-width: 700px) {
     .profile-hero { flex-direction: column; text-align: center; }
     .hero-stats { margin-left: 0; text-align: center; flex-direction: row; flex-wrap: wrap; justify-content: center; }
@@ -187,6 +204,15 @@
         Readiness
       </div>
     </div>
+  </div>
+
+  <!-- Account Security -->
+  <div class="security-panel">
+    <div class="security-panel-text">
+      <h2>🔒 Account Security</h2>
+      <p>Update your password to keep your analyst account secure.</p>
+    </div>
+    <a href="/change-password" class="security-btn">Change Password</a>
   </div>
 
   <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 28px;">

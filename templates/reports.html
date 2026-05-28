@@ -202,6 +202,18 @@
         .status-reviewing { background: #fffbf0; color: #e67e22; border: 1px solid #f5d88b; }
         .status-escalated { background: #fdf5f5; color: #c0392b; border: 1px solid #e8c8c8; }
         .status-closed    { background: #f0faf0; color: #27ae60; border: 1px solid #b0d8b0; }
+        .source-pill {
+            display: inline-block;
+            font-size: 0.68em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
+        }
+        .source-pill-simulated { background: #fff8e6; color: #b8860b; border: 1px solid #e6c87a; }
+        .source-pill-live      { background: #f0faf0; color: #27ae60; border: 1px solid #b0d8b0; }
 
         /* ── Empty state ── */
         .empty-state {
@@ -305,6 +317,11 @@
                         Report #{{ r.id }} &mdash;
                         <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
                         {% if loop.first %}<span class="badge-new">Latest</span>{% endif %}
+                        {% if r.simulated %}
+                            <span class="source-pill source-pill-simulated">Simulated</span>
+                        {% else %}
+                            <span class="source-pill source-pill-live">Live</span>
+                        {% endif %}
                         {% if r.threat_count > 0 %}
                             <span class="badge-threats">&#x26A0; {{ r.threat_count }} threat(s) detected</span>
                         {% endif %}

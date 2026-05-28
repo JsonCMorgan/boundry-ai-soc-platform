@@ -186,6 +186,38 @@
             background: #120a22; border: 1px solid #441a88; border-left: 4px solid #9944ee;
             color: #bb88ff; padding: 10px 16px; border-radius: 4px; font-size: 0.9em;
         }
+        .flash-agent_simulated, .flash-agent_live {
+            grid-column: 1 / -1 !important;
+            display: flex !important; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 14px 18px !important; border-radius: 6px; font-size: 0.95em;
+            border: 2px solid transparent;
+        }
+        .flash-agent_simulated {
+            background: #2a1400 !important; border-color: #ff9944 !important;
+            border-left: 5px solid #ff9944 !important; color: #ffddaa !important;
+        }
+        .flash-agent_live {
+            background: #0a1a0a !important; border-color: #00b432 !important;
+            border-left: 5px solid #00b432 !important; color: #a0e0b0 !important;
+        }
+        .source-badge {
+            font-size: 0.85em; font-weight: bold; letter-spacing: 0.08em;
+            padding: 5px 12px; border-radius: 4px; text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .source-badge-simulated {
+            background: #3a2200; color: #ff9944; border: 2px solid #ff9944;
+        }
+        .source-badge-live {
+            background: #0a2a14; color: #00b432; border: 2px solid #00b432;
+        }
+        .source-pill {
+            font-size: 0.68em; font-weight: bold; letter-spacing: 0.05em;
+            padding: 2px 7px; border-radius: 3px; text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .source-pill-simulated { background: #2a1400; color: #ff9944; border: 1px solid #664400; }
+        .source-pill-live      { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
 
         /* ── Client list ── */
         .client-row {
@@ -1125,7 +1157,14 @@
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, message in messages %}
-                <div class="flash-{{ category }}">{{ message }}</div>
+                <div class="flash-{{ category }}">
+                    {% if category == 'agent_simulated' %}
+                        <span class="source-badge source-badge-simulated">Simulated Training</span>
+                    {% elif category == 'agent_live' %}
+                        <span class="source-badge source-badge-live">Live Incident</span>
+                    {% endif %}
+                    {{ message }}
+                </div>
             {% endfor %}
         {% endwith %}
 
@@ -1916,8 +1955,9 @@
                 <button type="submit" class="btn-simulate" style="background:#1a0a2a; border-color:#441a88; color:#aa66ff;">&#x1F517; Run Chain</button>
             </form>
 
-            <form method="POST" action="/run-agent" style="display:inline">
+            <form method="POST" action="/run-agent" style="display:inline" id="run-agent-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="simulated" id="agent-simulated-flag" value="0">
                 <button type="submit" class="btn-run">&#x1F916; Run Agent</button>
             </form>
             <form method="POST" action="/run-breach-intel" style="display:inline; margin-left:8px;">
@@ -1972,6 +2012,7 @@
                             <th>#</th>
                             <th>Client</th>
                             <th>Generated</th>
+                            <th>Source</th>
                             <th>Events</th>
                             <th>Threats</th>
                             <th>Status</th>
@@ -1986,6 +2027,13 @@
                                 <td style="color:#666; font-size:0.85em;">{{ r.owner_username or '—' }}</td>
                                 <td>
                                     <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
+                                </td>
+                                <td>
+                                    {% if r.simulated %}
+                                        <span class="source-pill source-pill-simulated" title="Training simulation">Sim</span>
+                                    {% else %}
+                                        <span class="source-pill source-pill-live" title="Live monitored events">Live</span>
+                                    {% endif %}
                                 </td>
                                 <td>{{ r.event_count }}</td>
                                 <td>
@@ -2016,7 +2064,7 @@
                             </tr>
                             {% endfor %}
                         {% else %}
-                            <tr class="empty-row"><td colspan="7">No reports yet — run the agent to generate one.</td></tr>
+                            <tr class="empty-row"><td colspan="8">No reports yet — run the agent to generate one.</td></tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -2037,6 +2085,7 @@
                             <tr>
                                 <th>Time</th>
                                 <th>Event</th>
+                                <th>Source</th>
                                 <th>Username</th>
                                 <th>Source IP</th>
                                 <th>Details</th>
@@ -2067,6 +2116,13 @@
                                         <span class="evt-badge evt-account-enum">ACCT_ENUM</span>
                                     {% else %}
                                         <span class="evt-badge evt-other">{{ e.event_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if e.simulated %}
+                                        <span class="source-pill source-pill-simulated" title="Training simulation">Sim</span>
+                                    {% else %}
+                                        <span class="source-pill source-pill-live" title="Live monitored events">Live</span>
                                     {% endif %}
                                 </td>
                                 <td>{{ e.username or '—' }}</td>
@@ -2476,6 +2532,14 @@
                 })
                 .catch(function() {});
         }
+
+        // After Simulate Attack, mark the next Run Agent as training data
+        document.querySelectorAll('form[action="/simulate-attack"]').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                var flag = document.getElementById('agent-simulated-flag');
+                if (flag) { flag.value = '1'; }
+            });
+        });
     </script>
     <script src="/static/game.js"></script>
 </body>
@@ -2722,7 +2786,14 @@ async function refreshVpnCR() {
 
         if (!d.available) {
             dot.textContent    = '● N/A';
-            status.textContent = 'Not installed';
+            dot.style.color    = '#8899aa';
+            title.textContent  = '🔒 NordVPN — not monitored here';
+            status.textContent = d.reason ? 'See note' : 'Not on this host';
+            status.style.color = '#8899aa';
+            card.style.borderLeft = '3px solid #445566';
+            ipEl.textContent   = '—';
+            ksEl.textContent   = '—';
+            detail.textContent = d.reason || 'VPN status is only read from the Boundry Windows terminal.';
             return;
         }
 

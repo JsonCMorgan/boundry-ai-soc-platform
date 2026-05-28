@@ -11,9 +11,15 @@ calls, no NordVPN CLI required:
 
 Status is exposed via get_vpn_status() for the dashboard widget and
 polled by the /api/vpn/status Flask route.
+
+**Deployment:** Only meaningful on Jason's Windows 11 terminal where the
+NordVPN client runs. Railway/Linux (DATABASE_URL production) has no NordVPN
+install or NordLynx adapter — start() disables monitoring and sets
+``reason`` so the UI does not imply the analyst's PC is "exposed".
 """
 
 import os
+import sys
 import time
 import sqlite3
 import logging
@@ -51,7 +57,8 @@ _started:     bool = False
 _last_alert:  float = 0.0   # unix timestamp of last SIEM alert
 
 _status: dict = {
-    "available":      False,   # NordVPN installed?
+    "available":      False,   # NordVPN installed on THIS host?
+    "monitoring":     False,   # background poll thread running?
     "connected":      False,
     "vpn_state":      "Unknown",
     "vpn_ip":         None,
@@ -61,6 +68,7 @@ _status: dict = {
     "last_connected": None,    # ISO timestamp of last confirmed connection
     "last_dropped":   None,    # ISO timestamp of last disconnect event
     "error":          None,
+    "reason":         None,    # human-readable when monitoring unavailable
     "heartbeat_age_s": None,   # seconds since last NordVPN heartbeat
 }
 
@@ -78,13 +86,33 @@ def start(db_run_fn: Callable, db_fetchall_fn: Callable, ph: str = "?") -> None:
     _db_fetchall = db_fetchall_fn
     _ph          = ph
 
+    if sys.platform != "win32":
+        log.info("[vpn] Non-Windows host (%s) — monitor disabled", sys.platform)
+        _status.update({
+            "available":  False,
+            "monitoring": False,
+            "reason": (
+                "VPN monitoring runs on the Boundry Windows terminal, not on this "
+                "server. Open Control Room at http://localhost:5000 for live NordVPN status."
+            ),
+        })
+        return
+
     # Check NordVPN is installed before starting
     if not os.path.exists(_HEARTBEAT_DB):
         log.info("[vpn] NordVPN heartbeat DB not found — monitor disabled")
-        _status["available"] = False
+        _status.update({
+            "available":  False,
+            "monitoring": False,
+            "reason": (
+                "NordVPN not detected on this machine (heartbeat database missing)."
+            ),
+        })
         return
 
     _status["available"] = True
+    _status["monitoring"] = True
+    _status["reason"] = None
 
     # Do an immediate synchronous read so the dashboard shows real data on first load
     # (background thread would otherwise wait POLL_INTERVAL before first update)

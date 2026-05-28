@@ -460,6 +460,18 @@
       color: var(--text-dim);
       white-space: nowrap;
     }
+    .event-origin-pill {
+      display: inline-block;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      padding: 2px 7px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .source-pill-simulated { background: #3d2200; color: #ffb366; border: 1px solid #886622; }
+    .source-pill-live      { background: #0a1a0a; color: #80d090; border: 1px solid #1a4a1a; }
     .count-val {
       font-family: var(--font-mono);
       font-size: .85rem;
@@ -729,7 +741,7 @@
         <div class="ref-item dim-text mono">id, created_at, severity</div>
         <div class="ref-item dim-text mono">source, event_id, event_type</div>
         <div class="ref-item dim-text mono">host, user_account, src_ip, dst_ip</div>
-        <div class="ref-item dim-text mono">description, raw</div>
+        <div class="ref-item dim-text mono">description, raw, simulated, origin</div>
         <div class="ref-item" style="margin-top:.4rem; font-size:.72rem; color:var(--text-dim)">
           Aliases: <span class="mono">user</span> → user_account,
           <span class="mono">ip</span> → src_ip,
@@ -886,6 +898,13 @@ function renderTable(columns, rows) {
         badge.className   = `sev-badge ${String(val).replace(/[^A-Z]/gi,"")}`;
         badge.textContent = String(val);
         td.appendChild(badge);
+      } else if (col === "simulated" || col === "origin") {
+        const isSim = val === 1 || val === true || val === "1";
+        const pill = document.createElement("span");
+        pill.className = "event-origin-pill " + (isSim ? "source-pill-simulated" : "source-pill-live");
+        pill.title = isSim ? "Training simulation" : "Live monitored events";
+        pill.textContent = isSim ? "Sim" : "Live";
+        td.appendChild(pill);
       } else if (col === "source") {
         const badge = document.createElement("span");
         badge.className   = "source-badge";

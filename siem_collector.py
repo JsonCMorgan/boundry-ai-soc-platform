@@ -130,7 +130,7 @@ def start(db_run_fn, db_fetchall_fn, ph="?", ai_fn=None):
 
 def ingest_event(source, event_id, event_type, severity,
                  host="", user="", src_ip="", dst_ip="",
-                 description="", raw=None):
+                 description="", raw=None, simulated=0):
     """
     Normalise and write one event to siem_events, then run the correlation engine.
     Thread-safe.  Called by both background threads and the Flask middleware.
@@ -157,11 +157,11 @@ def ingest_event(source, event_id, event_type, severity,
         _db_run(
             f"INSERT INTO siem_events "
             f"(source, event_id, event_type, severity, host, user_account, "
-            f"src_ip, dst_ip, description, raw_data) "
-            f"VALUES ({_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH})",
+            f"src_ip, dst_ip, description, raw_data, simulated) "
+            f"VALUES ({_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH})",
             (source, str(event_id), event_type, severity,
              host[:120], user[:120], src_ip[:60], dst_ip[:60],
-             description[:500], raw_str),
+             description[:500], raw_str, 1 if simulated else 0),
         )
     except Exception as exc:
         print(f"[siem] ingest_event DB error: {exc}")

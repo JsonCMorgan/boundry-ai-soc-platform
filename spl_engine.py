@@ -26,6 +26,8 @@ MAX_STATS_GROUPS = 500
 _ALLOWED_COLS = {
     "id", "source", "event_id", "event_type", "severity", "host",
     "user_account", "src_ip", "dst_ip", "description", "raw", "created_at",
+    "simulated",
+    "origin",
     # aggregation alias
     "count",
     # user-friendly aliases mapped below
@@ -37,6 +39,7 @@ _COL_ALIASES = {
     "timestamp": "created_at",
     "ip": "src_ip",
     "time": "created_at",
+    "origin": "simulated",
 }
 
 _SAFE_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}
@@ -279,7 +282,14 @@ def _do_parse(query: str, ph: str) -> dict[str, Any]:
         # ---- table ---------------------------------------------------------
         elif cmd == "table":
             raw_cols = re.split(r"[\s,]+", args.strip())
-            table_cols = [_safe_col(c) for c in raw_cols if c.strip()]
+            table_cols = []
+            for c in raw_cols:
+                if not c.strip():
+                    continue
+                if c.strip().lower() == "origin":
+                    table_cols.append("simulated AS origin")
+                else:
+                    table_cols.append(_safe_col(c))
             if not table_cols:
                 raise ValueError("Usage: | table <field1> [<field2> ...]")
             select_parts = table_cols

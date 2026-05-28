@@ -104,6 +104,25 @@
             cursor: pointer; font-weight: bold;
         }
         .btn-save-notes:hover { background: #c04444; }
+        .incident-source-banner {
+            border-radius: 6px; padding: 14px 18px; margin-bottom: 24px;
+            font-size: 0.9em; line-height: 1.55;
+        }
+        .incident-source-simulated {
+            background: #2a1400; border: 1px solid #883300; color: #ffcc88;
+        }
+        .incident-source-simulated strong { color: #ff9944; }
+        .incident-source-live {
+            background: #0a1a0a; border: 1px solid #1a4a1a; color: #80d090;
+        }
+        .incident-source-live strong { color: #00b432; }
+        .source-pill {
+            font-size: 0.75em; font-weight: bold; letter-spacing: 0.06em;
+            padding: 3px 10px; border-radius: 4px; text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .source-pill-simulated { background: #2a1400; color: #ff9944; border: 1px solid #883300; }
+        .source-pill-live      { background: #0a1a0a; color: #00b432; border: 1px solid #1a4a1a; }
     </style>
     {% else %}
     <style>
@@ -127,6 +146,23 @@
         .report-body code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
         .report-body hr { border: none; border-top: 1px solid #eee; margin: 32px 0; }
         footer { margin-top: 40px; font-size: 0.8em; color: #aaa; }
+        .incident-source-banner {
+            border-radius: 6px; padding: 14px 18px; margin-bottom: 24px;
+            font-size: 0.92em; line-height: 1.55;
+        }
+        .incident-source-simulated {
+            background: #fff8e6; border: 1px solid #e6c87a; color: #7a5a10;
+        }
+        .incident-source-live {
+            background: #f0faf0; border: 1px solid #b0d8b0; color: #1a5a2a;
+        }
+        .source-pill {
+            font-size: 0.75em; font-weight: bold; letter-spacing: 0.06em;
+            padding: 3px 10px; border-radius: 4px; text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .source-pill-simulated { background: #fff8e6; color: #b8860b; border: 1px solid #e6c87a; }
+        .source-pill-live      { background: #f0faf0; color: #27ae60; border: 1px solid #b0d8b0; }
     </style>
     {% endif %}
 </head>
@@ -149,6 +185,15 @@
         </nav>
     </div>
     <div class="container">
+        {% if simulated %}
+        <div class="incident-source-banner incident-source-simulated">
+            <strong>Training exercise</strong> — This report is based on simulated attack data from the Boundry training environment, not a confirmed production incident.
+        </div>
+        {% else %}
+        <div class="incident-source-banner incident-source-live">
+            <strong>Live incident</strong> — This report is based on observed security events from your monitored environment.
+        </div>
+        {% endif %}
         <div class="report-meta">
             <span>&#x1F4C5; <span class="local-time" data-utc="{{ created_at }}">{{ created_at }}</span></span>
             <span>&#x1F4CB; {{ event_count }} event(s) analysed</span>
@@ -156,6 +201,11 @@
                 <span class="badge-high">&#x26A0; {{ threat_count }} THREAT(S) DETECTED</span>
             {% else %}
                 <span>&#x2705; 0 threats</span>
+            {% endif %}
+            {% if simulated %}
+                <span class="source-pill source-pill-simulated">Simulated</span>
+            {% else %}
+                <span class="source-pill source-pill-live">Live</span>
             {% endif %}
         </div>
 
@@ -216,7 +266,21 @@
         Report #{{ report_id }} &mdash;
         Generated: <span class="local-time" data-utc="{{ created_at }}">{{ created_at }}</span>
         &mdash; {{ event_count }} event(s) analysed &mdash; {{ threat_count }} threat(s) detected
+        {% if simulated %}
+            <span class="source-pill source-pill-simulated">Simulated</span>
+        {% else %}
+            <span class="source-pill source-pill-live">Live</span>
+        {% endif %}
     </div>
+    {% if simulated %}
+    <div class="incident-source-banner incident-source-simulated">
+        <strong>Training exercise</strong> — This report reflects a simulated attack scenario used for security training, not a confirmed live breach.
+    </div>
+    {% else %}
+    <div class="incident-source-banner incident-source-live">
+        <strong>Live incident</strong> — This report is based on security events observed on your application.
+    </div>
+    {% endif %}
     <div class="report-body">{{ content }}</div>
     <footer>
         <hr style="border-color:#eee;">

@@ -450,7 +450,7 @@ def _seed_demo_reports(demo_user_id):
         # Reports already exist — refresh content so new sections appear after redeploy
         for row, (_, tc, ec, status, content) in zip(existing, demo_data):
             db_run(
-                f"UPDATE reports SET content = {PH} WHERE id = {PH}",
+                f"UPDATE reports SET content = {PH}, simulated = 1 WHERE id = {PH}",
                 (content, row["id"]),
             )
         return
@@ -461,8 +461,8 @@ def _seed_demo_reports(demo_user_id):
     for days_ago, tc, ec, status, content in demo_data:
         ts = (now - timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M:%S")
         db_run(
-            f"INSERT INTO reports (created_at, threat_count, event_count, content, status, owner_id)"
-            f" VALUES ({PH},{PH},{PH},{PH},{PH},{PH})",
+            f"INSERT INTO reports (created_at, threat_count, event_count, content, status, owner_id, simulated)"
+            f" VALUES ({PH},{PH},{PH},{PH},{PH},{PH},1)",
             (ts, tc, ec, content, status, demo_user_id),
         )
 
@@ -539,6 +539,14 @@ def init_db():
         if "owner_id"      not in existing_cols:
             db_run("ALTER TABLE reports ADD COLUMN owner_id      INTEGER")
 
+    # Migration: simulated flag — distinguishes training reports from live incidents
+    if DATABASE_URL:
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS simulated INTEGER NOT NULL DEFAULT 0")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
+        if "simulated" not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN simulated INTEGER NOT NULL DEFAULT 0")
+
     # Security events table — stores simulated / real attack events for the agent to read.
     # On Railway there is no LOG_FILE, so /simulate-attack writes here instead.
     # /run-agent reads from this table (plus the log file if available) and clears it after processing.
@@ -563,6 +571,14 @@ def init_db():
             db_run("ALTER TABLE security_events ADD COLUMN processed INTEGER NOT NULL DEFAULT 0")
         if "owner_id"  not in existing_cols:
             db_run("ALTER TABLE security_events ADD COLUMN owner_id  INTEGER")
+
+    # Migration: simulated flag on security_events (1 = training / simulate-attack)
+    if DATABASE_URL:
+        db_run("ALTER TABLE security_events ADD COLUMN IF NOT EXISTS simulated INTEGER NOT NULL DEFAULT 0")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(security_events)")]
+        if "simulated" not in existing_cols:
+            db_run("ALTER TABLE security_events ADD COLUMN simulated INTEGER NOT NULL DEFAULT 0")
 
     # Auto-create analyst account on startup if ANALYST_USERNAME + ANALYST_PASSWORD are set.
     # This means even if Railway wipes the DB, the analyst account is recreated automatically
@@ -864,6 +880,7 @@ def init_db():
     if DATABASE_URL:
         db_run("ALTER TABLE siem_events ADD COLUMN IF NOT EXISTS dismissed INTEGER NOT NULL DEFAULT 0")
         db_run("ALTER TABLE siem_events ADD COLUMN IF NOT EXISTS correlated_finding_id INTEGER")
+        db_run("ALTER TABLE siem_events ADD COLUMN IF NOT EXISTS simulated INTEGER NOT NULL DEFAULT 0")
         db_run("ALTER TABLE siem_rules  ADD COLUMN IF NOT EXISTS enabled INTEGER NOT NULL DEFAULT 1")
     else:
         existing_siem_event_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(siem_events)")]
@@ -871,6 +888,8 @@ def init_db():
             db_run("ALTER TABLE siem_events ADD COLUMN dismissed INTEGER NOT NULL DEFAULT 0")
         if "correlated_finding_id" not in existing_siem_event_cols:
             db_run("ALTER TABLE siem_events ADD COLUMN correlated_finding_id INTEGER")
+        if "simulated" not in existing_siem_event_cols:
+            db_run("ALTER TABLE siem_events ADD COLUMN simulated INTEGER NOT NULL DEFAULT 0")
 
         existing_siem_rule_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(siem_rules)")]
         if "enabled" not in existing_siem_rule_cols:
@@ -1237,7 +1256,7 @@ def reports():
     # Analysts use /control-room which shows all reports.
     user_id = session.get("user_id")
     report_list = db_fetchall(
-        f"SELECT id, created_at, threat_count, event_count FROM reports "
+        f"SELECT id, created_at, threat_count, event_count, simulated FROM reports "
         f"WHERE owner_id = {PH} ORDER BY id DESC",
         (user_id,),
     )
@@ -1252,7 +1271,7 @@ def report_detail(report_id):
     Uses an integer primary key — no path traversal risk (no filesystem access).
     """
     row = db_fetchone(
-        f"SELECT id, created_at, threat_count, event_count, content, status, analyst_notes, owner_id "
+        f"SELECT id, created_at, threat_count, event_count, content, status, analyst_notes, owner_id, simulated "
         f"FROM reports WHERE id = {PH}",
         (report_id,),
     )
@@ -1276,6 +1295,7 @@ def report_detail(report_id):
         event_count=row["event_count"],
         status=row["status"] or "new",
         analyst_notes=row["analyst_notes"] or "",
+        simulated=bool(row.get("simulated")),
     )
 
 
@@ -1288,7 +1308,7 @@ def report_pdf(report_id):
     Clients can only download their own reports; analysts can download any.
     """
     row = db_fetchone(
-        f"SELECT id, created_at, threat_count, event_count, content, owner_id "
+        f"SELECT id, created_at, threat_count, event_count, content, owner_id, simulated "
         f"FROM reports WHERE id = {PH}",
         (report_id,),
     )
@@ -1308,6 +1328,7 @@ def report_pdf(report_id):
             threat_count = row["threat_count"],
             event_count  = row["event_count"],
             content_md   = row["content"],
+            simulated    = bool(row.get("simulated")),
         )
         filename = f"BoundryAI_Incident_Report_{report_id}.pdf"
         return Response(
@@ -1925,8 +1946,9 @@ def training_start(scenario_name):
 
     # 6. Run agent to generate the AI report
     result = _run_agent_core(
-        triggered_by = session.get("username", "training"),
-        owner_id     = analyst_id,
+        triggered_by     = session.get("username", "training"),
+        owner_id         = analyst_id,
+        force_simulated  = True,
     )
     report_id = result.get("report_id")
 
@@ -2210,7 +2232,7 @@ def control_room():
     """
     clients     = db_fetchall("SELECT id, username, role FROM users ORDER BY username ASC")
     all_reports = db_fetchall(
-        "SELECT r.id, r.created_at, r.threat_count, r.event_count, r.status, "
+        "SELECT r.id, r.created_at, r.threat_count, r.event_count, r.status, r.simulated, "
         "u.username AS owner_username "
         "FROM reports r LEFT JOIN users u ON r.owner_id = u.id "
         "ORDER BY r.id DESC"
@@ -2220,7 +2242,7 @@ def control_room():
 
     # Live event feed — last 100 events (processed + pending) for the analyst feed panel
     recent_events = db_fetchall(
-        "SELECT id, created_at, event_type, username, ip, extra, processed "
+        "SELECT id, created_at, event_type, username, ip, extra, processed, simulated "
         "FROM security_events ORDER BY id DESC LIMIT 100"
     )
 
@@ -2419,6 +2441,53 @@ def _fetch_breach_intel():
     return saved
 
 
+_SIM_SIEM_TYPE_MAP = {
+    "LOGIN_FAILED": "logon_failed",
+    "LOGIN_SUCCESS": "logon_success",
+    "SEARCH": "sql_injection",
+    "XSS_ATTEMPT": "xss_attempt",
+    "DIRECTORY_TRAVERSAL": "directory_traversal",
+    "PRIV_ESC_ATTEMPT": "privilege_escalation",
+    "ACCOUNT_ENUM": "account_enumeration",
+}
+
+_SIM_SIEM_SEVERITY = {
+    "LOGIN_FAILED": "MEDIUM",
+    "LOGIN_SUCCESS": "HIGH",
+    "SEARCH": "HIGH",
+    "XSS_ATTEMPT": "HIGH",
+    "DIRECTORY_TRAVERSAL": "HIGH",
+    "PRIV_ESC_ATTEMPT": "HIGH",
+    "ACCOUNT_ENUM": "MEDIUM",
+}
+
+
+def _mirror_sim_to_siem(event_type, username, ip, extra="", severity=None):
+    """Mirror a security_events training row into siem_events for the SIEM UI."""
+    import time
+
+    siem_type = _SIM_SIEM_TYPE_MAP.get(event_type, event_type.lower())
+    sev = severity or _SIM_SIEM_SEVERITY.get(event_type, "HIGH")
+    parts = [f"Simulated {event_type.replace('_', ' ').lower()}"]
+    if username:
+        parts.append(f"user={username}")
+    if ip:
+        parts.append(f"from {ip}")
+    if extra:
+        parts.append(f"— {str(extra)[:200]}")
+    siem_collector.ingest_event(
+        source="simulation",
+        event_id=f"SIM-{time.time_ns()}",
+        event_type=siem_type,
+        severity=sev,
+        user=username or "",
+        src_ip=ip or "",
+        description=" ".join(parts),
+        raw={"security_event_type": event_type, "extra": extra},
+        simulated=1,
+    )
+
+
 def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None, scenario=None):
     """
     Generate a randomised attack scenario and write events to the DB.
@@ -2465,10 +2534,11 @@ def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None, scenar
 
     def insert(event_type, username, ip, extra=""):
         db_run(
-            f"INSERT INTO security_events (event_type, username, ip, extra, owner_id)"
-            f" VALUES ({PH},{PH},{PH},{PH},{PH})",
+            f"INSERT INTO security_events (event_type, username, ip, extra, owner_id, simulated)"
+            f" VALUES ({PH},{PH},{PH},{PH},{PH},1)",
             (event_type, username, ip, extra, owner_id),
         )
+        _mirror_sim_to_siem(event_type, username, ip, extra)
 
     # ── SCENARIO LIBRARY ─────────────────────────────────────────────────────
 
@@ -3019,13 +3089,14 @@ def _events_in_window(event_list, hours):
     return recent
 
 
-def _run_agent_core(triggered_by="unknown", owner_id=None):
+def _run_agent_core(triggered_by="unknown", owner_id=None, force_simulated=False):
     """
     Read events, detect threats, generate and save a report.
     owner_id scopes events and the saved report to a specific client.
     None = system/cron run (processes all unowned events, report visible to analyst only).
+    force_simulated: when True (Simulate Attack → Run Agent), report is always simulated.
     Called by /run-agent (browser) and /cron/run (automated).
-    Returns a dict: {status, threats_found, event_count, report_id, message}.
+    Returns a dict: {status, threats_found, event_count, report_id, message, simulated}.
     """
     import json as _json
     from collections import defaultdict
@@ -3117,9 +3188,20 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
             )
 
     # No events at all — nothing to analyse
-    if not db_rows and not log_path:
+    if not db_rows and not (log_path and log_path.exists()):
         return {"status": "ok", "threats_found": 0, "event_count": 0,
-                "report_id": None, "message": "No events found. Run Simulate Attack first."}
+                "report_id": None, "message": "No events found. Run Simulate Attack first.",
+                "simulated": False}
+
+    # Simulated vs live: explicit Simulate → Run Agent wins; else infer from event tags.
+    if force_simulated:
+        is_simulated = True
+    elif db_rows:
+        is_simulated = all(int(row.get("simulated") or 0) for row in db_rows)
+    elif log_path and log_path.exists():
+        is_simulated = False
+    else:
+        is_simulated = False
 
     # MITRE ATT&CK mapping — used in threat objects and AI prompt
     MITRE_MAP = {
@@ -3328,10 +3410,25 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                 "threats_detected": threat_count,
                 "threats": safe_threats,
             }
+            sim_context = (
+                "IMPORTANT — TRAINING SIMULATION: The events below were generated by an "
+                "authorised attack simulation exercise (not confirmed live production compromise). "
+                "In the Executive Summary, state clearly that this is a **simulated training scenario**. "
+                "Do not present it as a confirmed real-world breach. Frame recommendations as "
+                "training and readiness improvements.\n\n"
+                if is_simulated
+                else
+                "IMPORTANT — LIVE INCIDENT DATA: These events come from real security monitoring "
+                "of the client's environment (ingest or observability), not a labelled training drill. "
+                "Do not call this a simulation or training exercise unless the evidence explicitly "
+                "supports that. Only describe an APT campaign if multiple related threats share "
+                "attacker infrastructure and form a credible kill chain.\n\n"
+            )
             prompt = (
                 "You are a senior SOC (Security Operations Centre) analyst writing a formal "
                 "incident report for a client. Your audience is both the business owner "
                 "(plain English) and the IT team (technical detail).\n\n"
+                + sim_context +
                 "Analyse the following threat data from a web application security monitoring "
                 "system and produce a professional incident report.\n\n"
                 f"Incident Data:\n{_json.dumps(summary, indent=2)}\n\n"
@@ -3501,12 +3598,26 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
                       "The agent found no threat patterns in the current events.\n"]
         content = "\n".join(lines)
 
+    if is_simulated:
+        sim_banner = (
+            "> **Training exercise** — This report is based on **simulated attack data** "
+            "from the Boundry training environment, not a confirmed production incident.\n\n"
+        )
+        content = sim_banner + content
+    else:
+        live_banner = (
+            "> **Live incident** — This report is based on **observed security events** "
+            "from your monitored environment.\n\n"
+        )
+        content = live_banner + content
+
     # Save report — tagged with owner_id for multi-tenancy
     ts_expr = "NOW()" if DATABASE_URL else "datetime('now')"
+    sim_val = 1 if is_simulated else 0
     db_run(
-        f"INSERT INTO reports (created_at, threat_count, event_count, content, owner_id)"
-        f" VALUES ({ts_expr}, {PH}, {PH}, {PH}, {PH})",
-        (threat_count, event_count, content, owner_id),
+        f"INSERT INTO reports (created_at, threat_count, event_count, content, owner_id, simulated)"
+        f" VALUES ({ts_expr}, {PH}, {PH}, {PH}, {PH}, {PH})",
+        (threat_count, event_count, content, owner_id, sim_val),
     )
     row       = db_fetchone("SELECT id FROM reports ORDER BY id DESC LIMIT 1")
     report_id = row["id"] if row else None
@@ -3516,7 +3627,7 @@ def _run_agent_core(triggered_by="unknown", owner_id=None):
         f"triggered_by={triggered_by}"
     )
     return {"status": "ok", "threats_found": threat_count,
-            "event_count": event_count, "report_id": report_id}
+            "event_count": event_count, "report_id": report_id, "simulated": bool(is_simulated)}
 
 
 # --- ROUTE 4c: Report Triage (analyst only) ---
@@ -3700,6 +3811,7 @@ def simulate_attack():
         msg   = f"⚡ Attack simulation complete ({difficulty.upper()}) — {count} event(s) queued. Now click Run Agent."
 
     if "text/html" in request.accept_mimetypes:
+        session["agent_run_simulated"] = True
         flash(msg, "info")
         dest = "control_room" if session.get("role") == "analyst" else "reports"
         return redirect(url_for(dest))
@@ -3711,15 +3823,21 @@ def simulate_attack():
 @login_required
 def run_agent():
     """Browser-facing wrapper around _run_agent_core()."""
-    result = _run_agent_core(triggered_by=session.get("username", "unknown"), owner_id=session.get("user_id"))
+    force_sim = session.pop("agent_run_simulated", False) or request.form.get("simulated") == "1"
+    result = _run_agent_core(
+        triggered_by=session.get("username", "unknown"),
+        owner_id=session.get("user_id"),
+        force_simulated=force_sim,
+    )
 
     if "text/html" in request.accept_mimetypes:
         if result.get("report_id"):
+            flash_cat = "agent_simulated" if result.get("simulated") else "agent_live"
             flash(
-                f"🤖 Agent complete — {result['event_count']} events analysed, "
+                f"Agent complete — {result['event_count']} events analysed, "
                 f"{result['threats_found']} threat(s) detected. "
                 f"Report #{result['report_id']} saved.",
-                "success",
+                flash_cat,
             )
         elif result.get("message"):
             flash(f"⚠️ {result['message']}", "warning")
@@ -5475,7 +5593,8 @@ def siem_dashboard():
     # Recent 100 active events
     events = db_fetchall(
         "SELECT id, created_at AS timestamp, source, event_id, event_type, severity, "
-        "host, user_account, src_ip, dst_ip, description "
+        "host, user_account, src_ip, dst_ip, description, "
+        "COALESCE(simulated, 0) AS simulated "
         "FROM siem_events WHERE dismissed = 0 "
         "ORDER BY id DESC LIMIT 100"
     )
@@ -5541,7 +5660,8 @@ def api_siem_events():
     where  = " AND ".join(filters)
     events = db_fetchall(
         f"SELECT id, created_at AS timestamp, source, event_id, event_type, severity, "
-        f"host, user_account, src_ip, dst_ip, description "
+        f"host, user_account, src_ip, dst_ip, description, "
+        f"COALESCE(simulated, 0) AS simulated "
         f"FROM siem_events WHERE {where} ORDER BY id DESC LIMIT {limit}",
         tuple(params),
     )
@@ -5681,7 +5801,8 @@ def api_siem_search():
     where  = " AND ".join(filters)
     events = db_fetchall(
         f"SELECT id, created_at AS timestamp, source, event_id, event_type, severity, "
-        f"host, user_account, src_ip, dst_ip, description "
+        f"host, user_account, src_ip, dst_ip, description, "
+        f"COALESCE(simulated, 0) AS simulated "
         f"FROM siem_events WHERE {where} ORDER BY id DESC LIMIT {limit}",
         tuple(params),
     )
@@ -5813,7 +5934,7 @@ def api_siem_spl():
 @app.route("/api/vpn/status")
 @analyst_required
 def api_vpn_status():
-    """GET — return NordVPN connection status from local monitoring."""
+    """GET — NordVPN status from the host running Flask (Windows terminal only)."""
     return jsonify(vpn_monitor.get_vpn_status())
 
 
@@ -5967,6 +6088,7 @@ def _siem_flask_logger(response):
                 user=user,
                 description=f"Attack simulation triggered by analyst {user or ip}",
                 raw={"path": path, "method": method, "user": user},
+                simulated=1,
             )
 
     except Exception:

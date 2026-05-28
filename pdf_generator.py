@@ -107,7 +107,7 @@ def _parse_table(rows: list[str]) -> tuple[list[str], list[list[str]]]:
 
 # ── PDF rendering helpers ─────────────────────────────────────────────────────
 
-def _render_cover(pdf: BoundryPDF, threat_count: int, event_count: int, created_at: str):
+def _render_cover(pdf: BoundryPDF, threat_count: int, event_count: int, created_at: str, simulated: bool = False):
     """Render a branded cover page."""
     pdf.add_page()
 
@@ -135,6 +135,17 @@ def _render_cover(pdf: BoundryPDF, threat_count: int, event_count: int, created_
     pdf.set_text_color(*WHITE)
     pdf.set_xy(0, 60)
     pdf.cell(210, 10, "INCIDENT REPORT", align="C")
+
+    if simulated:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*AMBER)
+        pdf.set_xy(0, 68)
+        pdf.cell(210, 7, "TRAINING EXERCISE — SIMULATED ATTACK DATA (NOT A LIVE INCIDENT)", align="C")
+    else:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*GREEN)
+        pdf.set_xy(0, 68)
+        pdf.cell(210, 7, "LIVE INCIDENT — OBSERVED SECURITY EVENTS", align="C")
 
     # Stats row
     pdf.set_font("Helvetica", "", 10)
@@ -289,6 +300,7 @@ def generate_report_pdf(
     threat_count: int,
     event_count:  int,
     content_md:   str,
+    simulated:    bool = False,
 ) -> bytes:
     """
     Convert a markdown incident report into a branded Boundry.AI PDF.
@@ -304,7 +316,7 @@ def generate_report_pdf(
         PDF file as bytes — ready to stream as a download.
     """
     pdf = BoundryPDF(report_id=report_id, created_at=str(created_at)[:16])
-    _render_cover(pdf, threat_count, event_count, str(created_at)[:16])
+    _render_cover(pdf, threat_count, event_count, str(created_at)[:16], simulated=simulated)
 
     # ── Parse and render markdown ─────────────────────────────────────────────
     pdf.add_page()

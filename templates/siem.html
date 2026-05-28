@@ -59,6 +59,27 @@
         .source-pill[data-source="syslog"].active,
         .source-pill[data-source="syslog"]:hover { background:#ffcc0022; color:#ffdd55; border-color:#ffcc0044; }
 
+        /* ── Sim vs Live origin pills (event rows — not source filter pills) ── */
+        .event-origin-pill {
+            font-size:0.68em; font-weight:bold; letter-spacing:0.05em;
+            padding:2px 7px; border-radius:3px; text-transform:uppercase;
+            white-space:nowrap; display:inline-block;
+        }
+        .source-pill-simulated { background:#3d2200; color:#ffb366; border:1px solid #886622; }
+        .source-pill-live      { background:#0a1a0a; color:#80d090; border:1px solid #1a4a1a; }
+
+        .origin-legend {
+            display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+            padding:8px 16px; background:#0e1119; border-bottom:1px solid #1e2235;
+            font-size:0.72em; color:#666;
+        }
+        .origin-legend-label { text-transform:uppercase; letter-spacing:0.06em; color:#555; }
+        .origin-legend-item { display:flex; align-items:center; gap:6px; }
+        .origin-legend-desc { color:#888; }
+
+        .event-row.row-simulated { border-left:3px solid #ff9944; background:#1a1208; }
+        .event-row.row-live      { border-left:3px solid #1a4a1a; }
+
         /* ── Timeline panel ── */
         .timeline-panel { background:#12151f; border-bottom:1px solid #1e2235; padding:0; }
         .timeline-header { background:#161923; padding:10px 24px;
@@ -426,12 +447,25 @@
                     </div>
                 </div>
 
+                <div class="origin-legend" aria-label="Event origin legend">
+                    <span class="origin-legend-label">Origin</span>
+                    <span class="origin-legend-item">
+                        <span class="event-origin-pill source-pill-simulated">Sim</span>
+                        <span class="origin-legend-desc">Training / simulated attack</span>
+                    </span>
+                    <span class="origin-legend-item">
+                        <span class="event-origin-pill source-pill-live">Live</span>
+                        <span class="origin-legend-desc">Real collector or app monitoring</span>
+                    </span>
+                </div>
+
                 <!-- Event table -->
                 <table class="event-table" id="event-table">
                     <thead>
                         <tr>
                             <th>Time</th>
                             <th>Sev</th>
+                            <th>Origin</th>
                             <th>Source</th>
                             <th>Type</th>
                             <th>Host / IP</th>
@@ -442,9 +476,16 @@
                     </thead>
                     <tbody id="event-tbody">
                         {% for ev in events %}
-                        <tr class="event-row sev-{{ ev.severity }}" data-id="{{ ev.id }}" data-source="{{ ev.source }}">
+                        <tr class="event-row sev-{{ ev.severity }}{% if ev.simulated %} row-simulated{% else %} row-live{% endif %}" data-id="{{ ev.id }}" data-source="{{ ev.source }}">
                             <td class="ts">{{ ev.timestamp[:16] if ev.timestamp else '—' }}</td>
                             <td><span class="sev sev-{{ ev.severity }}">{{ ev.severity }}</span></td>
+                            <td>
+                                {% if ev.simulated %}
+                                    <span class="event-origin-pill source-pill-simulated" title="Training simulation">Sim</span>
+                                {% else %}
+                                    <span class="event-origin-pill source-pill-live" title="Live monitored events">Live</span>
+                                {% endif %}
+                            </td>
                             <td><span class="src src-{{ ev.source }}">{{ ev.source.replace('_',' ') }}</span></td>
                             <td style="font-family:monospace;font-size:0.82em;color:#888;">{{ ev.event_type }}</td>
                             <td>
@@ -456,7 +497,7 @@
                             <td><button class="btn-dismiss" onclick="dismissEvent({{ ev.id }},this)">✕</button></td>
                         </tr>
                         {% else %}
-                        <tr id="placeholder-row"><td colspan="8" class="empty">
+                        <tr id="placeholder-row"><td colspan="9" class="empty">
                             No events yet — collectors are running and will populate this as logs arrive.
                         </td></tr>
                         {% endfor %}
@@ -932,7 +973,7 @@ function renderSearchResults(events, total, query) {
     if (events.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 8;
+        td.colSpan = 9;
         const zero = document.createElement('div');
         zero.className = 'search-zero';
         zero.appendChild(document.createTextNode('No results for '));
@@ -990,7 +1031,7 @@ function clearSearch() {
 // ═══════════════════════════════════════════════════════════════════
 function exportCSV() {
     if (searchResults.length === 0) { showToast('Run a search first'); return; }
-    const cols = ['id','timestamp','source','event_type','severity','host','user_account','src_ip','dst_ip','description'];
+    const cols = ['id','timestamp','simulated','source','event_type','severity','host','user_account','src_ip','dst_ip','description'];
     const header = cols.join(',');
     const rows = searchResults.map(ev =>
         cols.map(c => `"${String(ev[c] || '').replace(/"/g,'""')}"`).join(',')
@@ -1013,6 +1054,19 @@ function exportCSV() {
 //  Windows Event Log / syslog / firewall log description must render
 //  as literal text, not execute.
 // ═══════════════════════════════════════════════════════════════════
+function isSimulatedEvent(ev) {
+    return ev.simulated === 1 || ev.simulated === true || ev.source === 'simulation';
+}
+
+function appendOriginPill(parent, ev) {
+    const isSim = isSimulatedEvent(ev);
+    const pill = document.createElement('span');
+    pill.className = 'event-origin-pill ' + (isSim ? 'source-pill-simulated' : 'source-pill-live');
+    pill.title = isSim ? 'Training simulation' : 'Live monitored events';
+    pill.textContent = isSim ? 'Sim' : 'Live';
+    parent.appendChild(pill);
+}
+
 function buildRow(ev, highlightQ) {
     const sev    = ev.severity || 'INFO';
     const srcCls = (ev.source || '').replace(/[^a-z_]/g,'');
@@ -1022,7 +1076,7 @@ function buildRow(ev, highlightQ) {
     const desc   = String(ev.description || '').substring(0,120);
 
     const tr = document.createElement('tr');
-    tr.className      = `event-row sev-${sev}`;
+    tr.className      = `event-row sev-${sev}` + (isSimulatedEvent(ev) ? ' row-simulated' : ' row-live');
     tr.dataset.id     = ev.id;
     tr.dataset.source = ev.source || '';
 
@@ -1037,6 +1091,10 @@ function buildRow(ev, highlightQ) {
     sevSpan.textContent = sev;
     tdSev.appendChild(sevSpan);
     tr.appendChild(tdSev);
+
+    const tdOrigin = document.createElement('td');
+    appendOriginPill(tdOrigin, ev);
+    tr.appendChild(tdOrigin);
 
     const tdSrc = document.createElement('td');
     const srcSpan = document.createElement('span');
@@ -1515,9 +1573,13 @@ async function refreshVpnStatus() {
 
         if (!d.available) {
             dot.textContent   = '● N/A';
-            dot.style.color   = '#556677';
-            stateLine.textContent = 'NordVPN not detected on this machine.';
-            stateLine.style.color = '#556677';
+            dot.style.color   = '#8899aa';
+            title.textContent = '🔒 NordVPN — not monitored here';
+            stateLine.textContent = d.reason || 'VPN status is only available on the Boundry Windows terminal.';
+            stateLine.style.color = '#8899aa';
+            ipLine.textContent = '';
+            settLine.textContent = '';
+            chkLine.textContent = '';
             return;
         }
 

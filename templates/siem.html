@@ -309,9 +309,11 @@
         <div class="topbar-sub">SIEM — Security Information &amp; Event Management</div>
     </div>
     <div class="xp-bar-wrap">
+        {% if not client_mode %}
         <span style="font-size:0.78em;color:#446;">{{ player.level_icon }} Lv.{{ player.level }}</span>
         <div class="xp-bar-outer"><div class="xp-bar-inner" style="width:{{ player.level_pct }}%;"></div></div>
         <span class="xp-count">{{ player.xp }} XP</span>
+        {% endif %}
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
         <div class="topbar-user">Analyst: <strong>{{ session['username'] }}</strong></div>
@@ -319,8 +321,12 @@
             <a href="/control-room">🖥 Control Room</a>
             <a href="/siem" class="active">📡 SIEM</a>
             <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
+            {% if not client_mode %}
             <a href="/cissp" style="color:#9944ee;">📘 CISSP</a>
             <a href="/profile" style="color:#ffd700;">⚔️ Profile</a>
+            {% else %}
+            <a href="/account">Account</a>
+            {% endif %}
             <a href="/logout">Logout</a>
         </nav>
     </div>
@@ -450,8 +456,8 @@
                 <div class="origin-legend" aria-label="Event origin legend">
                     <span class="origin-legend-label">Origin</span>
                     <span class="origin-legend-item">
-                        <span class="event-origin-pill source-pill-simulated">Sim</span>
-                        <span class="origin-legend-desc">Training / simulated attack</span>
+                        <span class="event-origin-pill source-pill-simulated">{{ origin_sim_label }}</span>
+                        <span class="origin-legend-desc">{% if client_mode %}Demo / simulated attack{% else %}Training / simulated attack{% endif %}</span>
                     </span>
                     <span class="origin-legend-item">
                         <span class="event-origin-pill source-pill-live">Live</span>
@@ -481,7 +487,7 @@
                             <td><span class="sev sev-{{ ev.severity }}">{{ ev.severity }}</span></td>
                             <td>
                                 {% if ev.simulated %}
-                                    <span class="event-origin-pill source-pill-simulated" title="Training simulation">Sim</span>
+                                    <span class="event-origin-pill source-pill-simulated" title="{% if client_mode %}Demo scenario{% else %}Training simulation{% endif %}">{{ origin_sim_label }}</span>
                                 {% else %}
                                     <span class="event-origin-pill source-pill-live" title="Live monitored events">Live</span>
                                 {% endif %}
@@ -733,6 +739,8 @@
 </div>
 
 <script>
+const ORIGIN_SIM_LABEL = {{ origin_sim_label | tojson }};
+const ORIGIN_SIM_TITLE = {{ ('Demo scenario' if client_mode else 'Training simulation') | tojson }};
 // ═══════════════════════════════════════════════════════════════════
 //  CSRF HELPER
 // ═══════════════════════════════════════════════════════════════════
@@ -1062,8 +1070,8 @@ function appendOriginPill(parent, ev) {
     const isSim = isSimulatedEvent(ev);
     const pill = document.createElement('span');
     pill.className = 'event-origin-pill ' + (isSim ? 'source-pill-simulated' : 'source-pill-live');
-    pill.title = isSim ? 'Training simulation' : 'Live monitored events';
-    pill.textContent = isSim ? 'Sim' : 'Live';
+    pill.title = isSim ? ORIGIN_SIM_TITLE : 'Live monitored events';
+    pill.textContent = isSim ? ORIGIN_SIM_LABEL : 'Live';
     parent.appendChild(pill);
 }
 

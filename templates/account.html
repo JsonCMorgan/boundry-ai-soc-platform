@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boundry.AI — Account</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; padding: 0; }
+
+        .topbar { background: #12151f; border-bottom: 2px solid #00b43233; padding: 14px 32px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 18px #00b43211; }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00b432;
+            letter-spacing: 0.04em; text-shadow: 0 0 12px #00b43266; text-decoration: none; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 18px;
+            font-size: 0.85em; transition: color 0.15s; }
+        .topbar nav a:hover { color: #00b432; }
+        .topbar nav a.active { color: #00b432; font-weight: bold; }
+
+        .main { max-width: 520px; margin: 48px auto; padding: 0 24px; }
+        .card { background: #12151f; border: 1px solid #1e2235; border-radius: 8px; padding: 32px; }
+        h1 { font-size: 1.4em; color: #00b432; margin: 0 0 8px; }
+        .subtitle { color: #666; font-size: 0.9em; margin-bottom: 28px; }
+        .username { font-size: 1.1em; color: #aaa; margin-bottom: 24px; }
+        .username strong { color: #fff; }
+        .btn { display: inline-block; padding: 10px 20px; background: #1a2a1a; color: #00b432;
+            border: 1px solid #00b432; border-radius: 4px; text-decoration: none; font-size: 0.9em;
+            font-weight: bold; transition: background 0.15s; }
+        .btn:hover { background: #00b432; color: #000; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <a class="topbar-brand" href="/control-room">🛡 Boundry.AI</a>
+    <nav>
+        <a href="/control-room">Control Room</a>
+        <a href="/siem">SIEM</a>
+        <a href="/siem/query">SPL Query</a>
+        <a href="/account" class="active">Account</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</div>
+
+<div class="main">
+    <div class="card">
+        <h1>Account</h1>
+        <p class="subtitle">Manage your Boundry.AI portal settings.</p>
+        <p class="username">Logged in as <strong>{{ session['username'] }}</strong></p>
+        <a class="btn" href="/change-password">Change Password</a>
+    </div>
+</div>
+
+</body>
+</html>

@@ -577,11 +577,16 @@
     <a href="/control-room">Control Room</a>
     <a href="/siem">SIEM Live</a>
     <a href="/siem/query" class="active">SPL Query</a>
+    {% if not client_mode %}
     <a href="/cissp">CISSP</a>
     <a href="/profile" style="color:#ffd700;">⚔ Profile</a>
+    {% else %}
+    <a href="/account">Account</a>
+    {% endif %}
+    <a href="/logout">Logout</a>
   </nav>
   <div class="topbar-spacer"></div>
-  {% if profile %}
+  {% if profile and not client_mode %}
   <div class="xp-bar-wrap">
     <span class="xp-level-badge">Lv {{ profile.level }}</span>
     <div class="xp-bar-outer">
@@ -755,6 +760,8 @@
 </div><!-- /.page -->
 
 <script>
+const ORIGIN_SIM_LABEL = {{ origin_sim_label | tojson }};
+const ORIGIN_SIM_TITLE = {{ ('Demo scenario' if client_mode else 'Training simulation') | tojson }};
 /* ── State ────────────────────────────────────────────────────────────── */
 const EXAMPLES = {{ examples | tojson }};
 let lastRows = [];
@@ -902,8 +909,8 @@ function renderTable(columns, rows) {
         const isSim = val === 1 || val === true || val === "1";
         const pill = document.createElement("span");
         pill.className = "event-origin-pill " + (isSim ? "source-pill-simulated" : "source-pill-live");
-        pill.title = isSim ? "Training simulation" : "Live monitored events";
-        pill.textContent = isSim ? "Sim" : "Live";
+        pill.title = isSim ? ORIGIN_SIM_TITLE : "Live monitored events";
+        pill.textContent = isSim ? ORIGIN_SIM_LABEL : "Live";
         td.appendChild(pill);
       } else if (col === "source") {
         const badge = document.createElement("span");

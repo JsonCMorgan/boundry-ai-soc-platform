@@ -1079,7 +1079,7 @@
         <span class="topbar-brand">&#x1F6E1; Boundry.AI — Control Room</span>
         <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
             <!-- XP Bar -->
-            {% if player %}
+            {% if player and not client_mode %}
             <div class="xp-bar-wrap" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;">
                 {% if player.streak_days and player.streak_days >= 2 %}
                 <span class="xp-streak-badge" style="color:#ff8c00;font-weight:700;font-size:12px;" title="{{ player.streak_days }}-day streak">🔥{{ player.streak_days }}d</span>
@@ -1093,12 +1093,19 @@
             {% endif %}
             <span class="topbar-user">Analyst: <strong>{{ session['username'] }}</strong></span>
             <nav>
+                {% if not client_mode %}
                 <a href="/scorecard">&#x1F4CA; Scorecard</a>
                 <a href="/training" style="color:#00b432; font-weight:bold;">🎓 SOC Training</a>
                 <a href="/cissp" style="color:#9944ee; font-weight:bold;">📘 CISSP</a>
+                {% endif %}
                 <a href="/siem" style="color:#00d4ff; font-weight:bold;">📡 SIEM</a>
+                <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
+                {% if client_mode %}
+                <a href="/account">Account</a>
+                {% else %}
                 <a href="/profile" style="color:#ffd700; font-weight:bold;">⚔️ Profile</a>
                 <a href="/reports">Client View</a>
+                {% endif %}
                 <a href="/logout">Logout</a>
             </nav>
         </div>
@@ -1159,7 +1166,7 @@
             {% for category, message in messages %}
                 <div class="flash-{{ category }}">
                     {% if category == 'agent_simulated' %}
-                        <span class="source-badge source-badge-simulated">Simulated Training</span>
+                        <span class="source-badge source-badge-simulated">{% if client_mode %}Demo Scenario{% else %}Simulated Training{% endif %}</span>
                     {% elif category == 'agent_live' %}
                         <span class="source-badge source-badge-live">Live Incident</span>
                     {% endif %}
@@ -1269,6 +1276,7 @@
         </div>
 
         <!-- CISSP Domain Mastery Panel -->
+        {% if not client_mode %}
         <div class="cissp-panel">
             <div class="cissp-toggle" onclick="toggleCISSP()">
                 <span>
@@ -1329,6 +1337,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- NordVPN Status Panel -->
         <div class="scanner-panel" id="vpn-cr-panel" style="margin-bottom:20px;">
@@ -1927,7 +1936,7 @@
         <!-- Agent controls -->
         <div class="agent-panel">
             <div class="agent-label">
-                <strong>Agent Controls</strong> — Simulate an attack to generate events,
+                <strong>Agent Controls</strong> — {% if client_mode %}Run a security demo to generate events,{% else %}Simulate an attack to generate events,{% endif %}
                 then run the agent to analyse them and produce a report.
             </div>
             {% if pending_count > 0 %}
@@ -1941,7 +1950,7 @@
                     <option value="medium" selected>Medium — realistic scenario</option>
                     <option value="hard">Hard — subtle, multi-vector + false positives</option>
                 </select>
-                <button type="submit" class="btn-simulate">&#x26A1; Simulate Attack</button>
+                <button type="submit" class="btn-simulate">&#x26A1; {% if client_mode %}Run Security Demo{% else %}Simulate Attack{% endif %}</button>
             </form>
 
             <form method="POST" action="/simulate-attack" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed #1e2235;">
@@ -2030,7 +2039,7 @@
                                 </td>
                                 <td>
                                     {% if r.simulated %}
-                                        <span class="source-pill source-pill-simulated" title="Training simulation">Sim</span>
+                                        <span class="source-pill source-pill-simulated" title="{% if client_mode %}Demo scenario{% else %}Training simulation{% endif %}">{{ origin_sim_label }}</span>
                                     {% else %}
                                         <span class="source-pill source-pill-live" title="Live monitored events">Live</span>
                                     {% endif %}
@@ -2120,7 +2129,7 @@
                                 </td>
                                 <td>
                                     {% if e.simulated %}
-                                        <span class="source-pill source-pill-simulated" title="Training simulation">Sim</span>
+                                        <span class="source-pill source-pill-simulated" title="{% if client_mode %}Demo scenario{% else %}Training simulation{% endif %}">{{ origin_sim_label }}</span>
                                     {% else %}
                                         <span class="source-pill source-pill-live" title="Live monitored events">Live</span>
                                     {% endif %}
@@ -2167,7 +2176,7 @@
                 </div>
                 {% else %}
                     <div style="color:#333; font-style:italic; text-align:center; padding:28px;">
-                        No events yet — click Simulate Attack to generate some.
+                        No events yet — click {% if client_mode %}Run Security Demo{% else %}Simulate Attack{% endif %} to generate some.
                     </div>
                 {% endif %}
             </div>

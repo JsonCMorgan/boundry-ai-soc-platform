@@ -87,6 +87,13 @@ app.config.update(
 _debug = os.environ.get("FLASK_DEBUG", "").strip().lower() in ("1", "true", "yes")
 app.config["DEBUG"] = _debug
 
+
+def is_client_mode():
+    """Client-facing portal — no training/gamification; demo flows stay enabled.
+    Set BOUNDARY_CLIENT_MODE=1 on Railway for the client portal deployment."""
+    return os.environ.get("BOUNDARY_CLIENT_MODE", "").strip().lower() in ("1", "true", "yes")
+
+
 DB_PATH = Path(__file__).parent / "app.db"
 REPORTS_DIR = Path(__file__).parent / "docs" / "reports"
 
@@ -173,11 +180,14 @@ csrf = CSRFProtect(app)
 
 
 @app.context_processor
-def _inject_csrf():
-    """Expose `csrf_token()` to every Jinja template so forms and AJAX can
-    embed the token without each view passing it explicitly.
-    """
-    return {"csrf_token": generate_csrf}
+def _inject_globals():
+    """Expose shared template globals (CSRF, client portal mode)."""
+    client = is_client_mode()
+    return {
+        "csrf_token": generate_csrf,
+        "client_mode": client,
+        "origin_sim_label": "Demo" if client else "Sim",
+    }
 
 # --- Security logging (feeds into Splunk / Railway logs) ---
 # In production (no LOG_FILE env var), logs go to stdout so Railway captures them.
@@ -980,6 +990,16 @@ def analyst_required(f):
     return decorated
 
 
+@app.before_request
+def _client_mode_route_guard():
+    """Hide training/gamification routes when BOUNDARY_CLIENT_MODE is enabled."""
+    if not is_client_mode():
+        return
+    path = request.path
+    if path == "/profile" or path.startswith("/training") or path.startswith("/cissp"):
+        abort(404)
+
+
 # --- ROUTE 0: Demo (public — no login required) ---
 @app.route("/demo")
 def demo():
@@ -1104,6 +1124,13 @@ def change_password():
             success = "Password updated successfully."
 
     return render_template("change_password.html", error=error, success=success)
+
+
+@app.route("/account")
+@login_required
+def account():
+    """Minimal account page for client portal mode."""
+    return render_template("account.html")
 
 
 # --- ROUTE 0b: Register (A03: Injection, A07: Auth Failures) ---
@@ -1531,6 +1558,9 @@ def award_xp(analyst_id, amount, reason, source=""):
     checks for level-ups and achievement unlocks.
     Returns a notification dict for the browser (XP toast + level-up modal).
     """
+    if is_client_mode():
+        return {}
+
     today = datetime.utcnow().strftime("%Y-%m-%d")
 
     # Ensure profile exists

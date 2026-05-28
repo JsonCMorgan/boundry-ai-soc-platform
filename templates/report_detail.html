@@ -187,7 +187,7 @@
     <div class="container">
         {% if simulated %}
         <div class="incident-source-banner incident-source-simulated">
-            <strong>Training exercise</strong> — This report is based on simulated attack data from the Boundry training environment, not a confirmed production incident.
+            <strong>{% if client_mode %}Security demo{% else %}Training exercise{% endif %}</strong> — This report is based on {% if client_mode %}demo attack data from the Boundry security demo{% else %}simulated attack data from the Boundry training environment{% endif %}, not a confirmed production incident.
         </div>
         {% else %}
         <div class="incident-source-banner incident-source-live">
@@ -203,7 +203,7 @@
                 <span>&#x2705; 0 threats</span>
             {% endif %}
             {% if simulated %}
-                <span class="source-pill source-pill-simulated">Simulated</span>
+                <span class="source-pill source-pill-simulated">{% if client_mode %}Demo{% else %}Simulated{% endif %}</span>
             {% else %}
                 <span class="source-pill source-pill-live">Live</span>
             {% endif %}
@@ -267,14 +267,14 @@
         Generated: <span class="local-time" data-utc="{{ created_at }}">{{ created_at }}</span>
         &mdash; {{ event_count }} event(s) analysed &mdash; {{ threat_count }} threat(s) detected
         {% if simulated %}
-            <span class="source-pill source-pill-simulated">Simulated</span>
+            <span class="source-pill source-pill-simulated">{% if client_mode %}Demo{% else %}Simulated{% endif %}</span>
         {% else %}
             <span class="source-pill source-pill-live">Live</span>
         {% endif %}
     </div>
     {% if simulated %}
     <div class="incident-source-banner incident-source-simulated">
-        <strong>Training exercise</strong> — This report reflects a simulated attack scenario used for security training, not a confirmed live breach.
+        <strong>{% if client_mode %}Security demo{% else %}Training exercise{% endif %}</strong> — This report reflects a {% if client_mode %}demo attack scenario{% else %}simulated attack scenario used for security training{% endif %}, not a confirmed live breach.
     </div>
     {% else %}
     <div class="incident-source-banner incident-source-live">

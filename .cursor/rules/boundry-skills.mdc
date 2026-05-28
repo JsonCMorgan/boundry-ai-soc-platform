@@ -1,0 +1,45 @@
+---
+description: Boundry.AI business skills — attach when user mentions weekly report, SIEM report, client onboarding, triage finding, new client, or Boundry agent operations
+alwaysApply: false
+---
+
+# Boundry.AI Skills Auto-Attach
+
+When the user's message matches a trigger below, **read the corresponding skill file first** before taking action. Follow the loop in `agent_skills/__how_to_use_step_skills.md`.
+
+## Trigger → Skill mapping
+
+| User mentions | Read this skill |
+|---------------|-----------------|
+| weekly report, SIEM report, weekly SIEM, monitoring report | `agent_skills/weekly_siem_report_skill.md` |
+| client onboarding, new client, onboard, intake | `agent_skills/client_onboarding_skill.md` |
+| triage finding, new finding, HIGH finding, CRITICAL finding, retriage | `agent_skills/new_finding_triage_skill.md` |
+| resume, continue, interrupted | Check `agent_tasks/` for matching `*_progress.md` |
+
+## Before every skill run
+
+1. Read `docs/AGENT_OPERATIONS.md` if Jason asks how to operate day-to-day.
+2. Read or create the progress file in `agent_tasks/` (see skill Artifacts section).
+3. Re-read the full skill file at the start of each CONCEPT → EDIT loop.
+4. Update progress file using `agent_skills/__how_to_take_notes.md` format.
+
+## Resume interrupted work
+
+If a progress file exists with status `IN_PROGRESS` or `REVISION_COMPLETE`:
+
+```
+Read agent_tasks/<matching_progress_file>.md and continue from "What remains".
+```
+
+Progress file wins over chat history.
+
+## Constraints
+
+- Do **not** edit `app.py` or templates during skill runs unless Jason explicitly requests code changes.
+- Use real Boundry.AI routes documented in skills — grep `app.py` if unsure.
+- Ollama first for AI; Anthropic fallback only per `.cursorrules`.
+- Read project business context from `.cursorrules` when needed.
+
+## Priority
+
+**Path A (revenue):** `weekly_siem_report_skill.md` takes precedence when Jason asks what to run for money this week.

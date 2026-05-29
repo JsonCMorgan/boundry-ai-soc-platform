@@ -5794,15 +5794,10 @@ Requirements:
 Respond ONLY with valid JSON — absolutely no other text, no markdown, no code fences:
 {{"scenario":"<3-5 sentence realistic scenario>","question":"<question asking FIRST or BEST action>","options":{{"A":"<option>","B":"<option>","C":"<option>","D":"<option>"}},"correct":"<A|B|C|D>","explanation":"<2-3 sentences: why the correct answer is best AND why the others are wrong>","mindset":"<manager|technical|both>","difficulty":<1|2|3>}}"""
 
-    # CISSP_DOMAINS is author-controlled (no untrusted log data here) — but we
-    # still send the standard AI_SYSTEM_PROMPT so the model behaviour is
-    # consistent across all Boundry.AI prompts.
-    try:
-        text = _call_ollama(prompt, max_tokens=900, temperature=0.75,
-                            timeout=90, system=AI_SYSTEM_PROMPT).strip()
-        text = re.sub(r"^```[a-z]*\n?", "", text).rstrip("`").strip()
-        q    = _j.loads(text)
-        # Validate required structure
+    def _parse_cissp_response(text):
+        """Validate and parse the JSON response from any AI backend."""
+        text = re.sub(r"^```[a-z]*\n?", "", text.strip()).rstrip("`").strip()
+        q = _j.loads(text)
         required = ["scenario", "question", "options", "correct", "explanation", "mindset", "difficulty"]
         if not all(k in q for k in required):
             security_log.warning(f"CISSP_Q_MISSING_FIELDS domain={domain_num} keys={list(q.keys())}")
@@ -5815,9 +5810,37 @@ Respond ONLY with valid JSON — absolutely no other text, no markdown, no code 
             q["mindset"] = "manager"
         q["difficulty"] = max(1, min(3, int(q.get("difficulty", 2))))
         return q
+
+    # 1. Try Ollama (local) first
+    try:
+        text = _call_ollama(prompt, max_tokens=900, temperature=0.75,
+                            timeout=180, system=AI_SYSTEM_PROMPT).strip()
+        q = _parse_cissp_response(text)
+        if q:
+            return q
     except Exception as exc:
-        security_log.warning(f"CISSP_Q_GENERATION_FAILED domain={domain_num} error={exc}")
-        return None
+        security_log.warning(f"CISSP_Q_OLLAMA_FAILED domain={domain_num} error={exc}")
+
+    # 2. Fall back to Anthropic Claude if API key is set
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if api_key:
+        try:
+            import anthropic as _anthropic
+            ai_client = _anthropic.Anthropic(api_key=api_key)
+            message   = ai_client.messages.create(
+                model="claude-opus-4-5",
+                max_tokens=900,
+                system=AI_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            q = _parse_cissp_response(message.content[0].text)
+            if q:
+                security_log.info(f"CISSP_Q_ANTHROPIC_FALLBACK domain={domain_num}")
+                return q
+        except Exception as exc:
+            security_log.warning(f"CISSP_Q_ANTHROPIC_FAILED domain={domain_num} error={exc}")
+
+    return None
 
 
 def _cissp_readiness_score(analyst_id):
@@ -5956,7 +5979,7 @@ def cissp_get_question(domain_num):
     analyst_id = session["user_id"]
     q          = _generate_cissp_question(domain_num)
     if not q:
-        return jsonify({"error": "Question generation failed. Is Ollama running at http://localhost:11434?"}), 503
+        return jsonify({"error": "Question generation failed. Start Ollama locally, or set ANTHROPIC_API_KEY to use Claude as a fallback."}), 503
 
     db_run(
         f"INSERT INTO cissp_attempts "
@@ -8837,6 +8860,30 @@ if not os.environ.get("WERKZEUG_RUN_MAIN") or os.environ.get("WERKZEUG_RUN_MAIN"
         vpn_monitor.start(db_run_fn=db_run, db_fetchall_fn=db_fetchall, ph=PH)
     except Exception as _vpn_err:
         print(f"[vpn] Monitor startup failed (non-fatal): {_vpn_err}")
+
+    # Keep Ollama warm — ping every 4 minutes so the model never unloads.
+    # Ollama's default keep-alive is 5 minutes; we ping before that expires.
+    def _keep_ollama_warm():
+        import time as _time
+        _time.sleep(5)  # let startup finish first
+        while True:
+            try:
+                import urllib.request as _req, json as _j
+                url = _ollama_chat_url()
+                payload = _j.dumps({
+                    "model": OLLAMA_MODEL,
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "max_tokens": 1,
+                }).encode()
+                r = _req.Request(url, data=payload, headers={"Content-Type": "application/json"})
+                _req.urlopen(r, timeout=120)
+                print(f"[ollama] Keep-alive ping sent — model {OLLAMA_MODEL!r} is warm")
+            except Exception as _e:
+                print(f"[ollama] Keep-alive failed (Ollama not running?): {_e}")
+            _time.sleep(240)  # ping every 4 minutes
+
+    import threading as _threading
+    _threading.Thread(target=_keep_ollama_warm, daemon=True).start()
 
 if __name__ == "__main__":
     app.run(debug=_debug)

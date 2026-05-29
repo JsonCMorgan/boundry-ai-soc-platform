@@ -1,0 +1,166 @@
+---
+id: data_breach
+title: Data Breach & Exfiltration Response
+icon: "📤"
+color: "#8b5cf6"
+severity: CRITICAL
+version: "1.0"
+last_updated: 2026-05-28
+
+summary: >
+  A data breach occurs when personal, financial, or confidential information is
+  accessed or exfiltrated without authorisation. This includes ransomware double-
+  extortion, insider theft, misconfigured cloud storage, SQL injection data dumps,
+  and physical theft of devices. This playbook focuses on the response and the
+  strict regulatory notification obligations that follow.
+
+applicable_to:
+  - Any business storing personal information (universal under PIPEDA)
+  - Healthcare (HIPAA — any PHI exposure)
+  - Cannabis (PIPEDA — customer PII, METRC data)
+  - Financial / Legal (GLBA, PIPEDA — client financial data)
+  - Payment processing (PCI DSS — cardholder data)
+
+mitre_techniques:
+  - id: T1005
+    name: "Data from Local System"
+    tactic: "Collection"
+  - id: T1041
+    name: "Exfiltration Over C2 Channel"
+    tactic: "Exfiltration"
+  - id: T1190
+    name: "Exploit Public-Facing Application"
+    tactic: "Initial Access"
+  - id: T1552
+    name: "Unsecured Credentials"
+    tactic: "Credential Access"
+  - id: T1530
+    name: "Data from Cloud Storage"
+    tactic: "Collection"
+
+key_indicators:
+  - "Large outbound data transfers to unknown external IPs"
+  - "SQL injection attempts in SIEM followed by unusual query volume"
+  - "DIRECTORY_TRAVERSAL events — attacker mapping file system"
+  - "Compressed archive files created on a server (staging before exfiltration)"
+  - "Access to sensitive paths (patient records, financial files) from unexpected accounts"
+  - "Cloud storage misconfiguration alerts — publicly accessible buckets or shares"
+
+do_not:
+  - "Do NOT patch the vulnerability before forensic evidence is captured"
+  - "Do NOT restore from backup before determining what was taken and from where"
+  - "Do NOT notify affected individuals before you know the scope — premature notice causes panic and may be inaccurate"
+  - "Do NOT assume a breach is limited to what you found first — the visible exfiltration may be a distraction"
+  - "Do NOT underestimate scope: if one database was accessible, assume all were"
+
+phases:
+  - phase: 1
+    label: Identify
+    icon: "🔍"
+    color: "#3b82f6"
+    summary: >
+      Establish exactly what data was accessed, by whom, and through what vector.
+      The scope of your notification obligation depends entirely on these answers.
+    steps:
+      - "Identify the attack vector: SQL injection? Compromised credentials? Cloud misconfiguration? Insider? Each has a different containment path."
+      - "Determine what data was accessible from the compromised entry point: don't assume — check database permissions, file share access, and role assignments."
+      - "Review outbound traffic logs for the 48-72 hours before detection: large transfers, unusual destination IPs, or compression utility usage."
+      - "Identify affected records: how many individuals? What categories of data (names, health info, financial data, SIN numbers)?"
+      - "Establish a timeline: when was the entry, when was the exfiltration, when was it detected?"
+      - "Preserve evidence: firewall logs, application logs, SIEM events, database query logs — all need to be secured before any remediation."
+    regulations:
+      - name: "PIPEDA — Breach of Security Safeguards Regulations"
+        req: "You must assess the risk of harm from the breach before determining notification obligations. Scope assessment IS a legal requirement."
+      - name: "HIPAA §164.412"
+        req: "If you cannot demonstrate that PHI was not acquired, you must treat it as a reportable breach and proceed with notification."
+      - name: "PCI DSS Req 12.10.4"
+        req: "Immediately investigate the scope of cardholder data potentially exposed."
+    mitre: ["T1005", "T1041", "T1190"]
+
+  - phase: 2
+    label: Contain
+    icon: "🔒"
+    color: "#f59e0b"
+    summary: >
+      Stop the active exfiltration and close the entry point. The longer data
+      flows out, the larger the regulatory and legal exposure.
+    steps:
+      - "Block the attack vector immediately: disable the vulnerable endpoint, revoke the compromised credentials, or fix the misconfiguration."
+      - "Block outbound connections to attacker-controlled infrastructure identified in logs."
+      - "Isolate systems containing the most sensitive data to prevent further access while investigation continues."
+      - "Revoke access for any accounts shown to have unusual query volume or file access in the lead-up to detection."
+      - "Take a forensic snapshot (memory dump + disk image) of affected systems before any changes — this is your legal evidence."
+      - "Disable the specific functionality being exploited if a full patch isn't immediately available (e.g., disable file upload, disable public API endpoint)."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.3 — Containment must balance speed with evidence preservation. Do not destroy evidence in the rush to contain."
+      - name: "HIPAA §164.308(a)(6)(ii)"
+        req: "Mitigate the harmful effects of the security incident to the extent practicable."
+    mitre: ["T1041", "T1530"]
+
+  - phase: 3
+    label: Eradicate
+    icon: "🧹"
+    color: "#ef4444"
+    summary: >
+      Close every vulnerability the attacker used and verify they have no
+      remaining access or backdoors.
+    steps:
+      - "Patch the exploited vulnerability — document the CVE, patch version, and date applied."
+      - "Audit all user and service account permissions: revoke any excessive access that allowed the breach to be as broad as it was."
+      - "Rotate all credentials that may have been exposed or could have been used: database passwords, API keys, admin accounts."
+      - "Audit third-party integrations: if the breach came through a vendor or integration, revoke and re-evaluate that access."
+      - "Check for any backdoors or persistence mechanisms left by the attacker (new accounts, cron jobs, SSH keys, web shells)."
+      - "Re-test the patched vulnerability with a controlled scan to confirm it is fully closed."
+    regulations:
+      - name: "PCI DSS Req 6.3"
+        req: "All security vulnerabilities are managed and patched with a defined process. Document the fix and the timeline."
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.4 — Identify all affected systems and eliminate all components of the incident."
+    mitre: ["T1552", "T1190"]
+
+  - phase: 4
+    label: Recover
+    icon: "♻️"
+    color: "#10b981"
+    summary: >
+      Restore normal operations with enhanced controls in place. A breach that
+      is not learned from will recur.
+    steps:
+      - "Restore affected systems from clean pre-breach backups where possible, or rebuild from known-good images."
+      - "Implement additional monitoring on previously compromised systems: enhanced logging, anomaly alerts, and access reviews."
+      - "Enforce least-privilege access going forward: remove any permissions that were broader than operationally necessary."
+      - "Conduct mandatory security awareness training for staff involved or at risk — especially around credential handling and social engineering."
+      - "Re-assess and update your data inventory: what personal data do you hold, where, and who can access it?"
+      - "Engage legal counsel to review notification letters and regulatory filings before they are sent."
+    regulations:
+      - name: "PIPEDA — Privacy Management Program"
+        req: "Organisations must implement changes to mitigate the risk of further breaches following an incident."
+      - name: "HIPAA §164.308(a)(8)"
+        req: "Evaluate and update existing security measures in response to the breach."
+    mitre: []
+
+  - phase: 5
+    label: Notify
+    icon: "📣"
+    color: "#8b5cf6"
+    summary: >
+      Notification is not optional for regulated data. Missing a deadline is
+      a separate regulatory violation from the breach itself. Move fast.
+    steps:
+      - "Determine which regulations apply based on data type and jurisdiction: PIPEDA (Canadian personal data), HIPAA (health data), PCI DSS (card data)."
+      - "Prepare your notification list: regulators first, then affected individuals, then optionally media (if thresholds require it)."
+      - "Draft individual notification letters: must include what happened, what data was involved, what you are doing about it, and what affected individuals should do."
+      - "Notify your cyber insurer within their policy window — failure to notify promptly can void coverage."
+      - "Report to law enforcement: local police for evidence purposes, FBI IC3 for cybercrime record."
+      - "Retain all breach documentation: notification records, investigation notes, remediation evidence — required for at least 6 years under HIPAA."
+    regulations:
+      - name: "PIPEDA (Canada)"
+        req: "Report to OPC as soon as feasible. Notify affected individuals as soon as feasible. Keep records for 24 months."
+      - name: "HIPAA Breach Rule"
+        req: "Notify HHS within 60 days. Notify individuals within 60 days. Media notice if 500+ affected in a single state."
+      - name: "PCI DSS Req 12.10.4"
+        req: "Notify card brands (Visa, Mastercard) and your acquiring bank immediately. They have their own forensic investigation process."
+      - name: "GLBA Safeguards Rule"
+        req: "Financial institutions must notify their primary federal regulator as soon as possible and no later than 30 days after discovering a notification event."
+    mitre: []

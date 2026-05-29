@@ -56,6 +56,13 @@ _EVENT_MITRE = {
     "api_unauthorized":        ("T1190",     "Exploit Public-Facing Application",  "Initial Access"),
     "syslog_message":          ("T1041",     "Exfiltration Over C2 Channel",       "Exfiltration"),
     "scan_initiated":          ("T1595",     "Active Scanning",                    "Reconnaissance"),
+    # ── Ransomware kill-chain event types ─────────────────────────────────────
+    "shadow_copy_deleted":     ("T1490",     "Inhibit System Recovery",            "Impact"),
+    "backup_deleted":          ("T1490",     "Inhibit System Recovery",            "Impact"),
+    "mass_file_rename":        ("T1486",     "Data Encrypted for Impact",          "Impact"),
+    "ransomware_note":         ("T1486",     "Data Encrypted for Impact",          "Impact"),
+    "defender_disabled":       ("T1562.001", "Disable or Modify Tools",            "Defense Evasion"),
+    "powershell_exec":         ("T1059.001", "PowerShell",                         "Execution"),
 }
 
 # Dedup cache: maps "source:event_id:timestamp" → True
@@ -549,6 +556,22 @@ _DEFAULT_RULES = [
     ("New Local Account Created",
      "A new user account was created on this host — verify it is authorised.",
      "account_created",         "host",         1,  3600, "HIGH",     "finding"),
+    # ── Ransomware-specific rules ──────────────────────────────────────────────
+    ("Shadow Copy Deletion",
+     "Volume Shadow Copy Service deletion detected — ransomware pre-encryption step (T1490).",
+     "shadow_copy_deleted",     "host",         1,  3600, "CRITICAL", "finding"),
+    ("Backup Deletion Attempt",
+     "Backup deletion command detected — attacker eliminating recovery options (T1490).",
+     "backup_deleted",          "host",         1,  3600, "CRITICAL", "finding"),
+    ("Mass File Rename Detected",
+     "Rapid mass file renaming — consistent with ransomware encryption pattern (T1486).",
+     "mass_file_rename",        "host",         50, 300,  "CRITICAL", "finding"),
+    ("Suspicious PowerShell Execution",
+     "Multiple PowerShell process creations in short window — common ransomware delivery mechanism.",
+     "powershell_exec",         "host",         3,  300,  "HIGH",     "finding"),
+    ("Windows Defender Disabled",
+     "Endpoint protection disabled — attacker clearing defences before payload deployment.",
+     "defender_disabled",       "host",         1,  3600, "CRITICAL", "finding"),
 ]
 
 

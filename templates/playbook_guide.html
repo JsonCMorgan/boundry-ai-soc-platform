@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — {{ title }}</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f7f8fa; color: #222; margin: 0; }
+
+        .topbar {
+            background: #fff; border-bottom: 1px solid #e8e8e8;
+            padding: 0 40px; display: flex; align-items: center;
+            justify-content: space-between; height: 56px;
+        }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #c0392b; text-decoration: none; }
+        .topbar-brand span { color: #222; }
+        .topbar-nav { display: flex; align-items: center; gap: 20px; }
+        .topbar-nav a { color: #666; text-decoration: none; font-size: 0.87em; }
+        .topbar-nav a:hover { color: #c0392b; }
+
+        /* Header band */
+        .guide-band {
+            background: #fff;
+            border-bottom: 3px solid {{ color }};
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .guide-icon { font-size: 2em; }
+        .guide-title { font-size: 1.3em; font-weight: 700; color: #222; margin-bottom: 2px; }
+        .guide-sub   { font-size: 0.82em; color: #999; }
+        .guide-actions { margin-left: auto; display: flex; gap: 10px; }
+        .guide-btn {
+            font-size: 0.82em; font-weight: 600; padding: 7px 14px;
+            border-radius: 5px; text-decoration: none;
+            background: #f0f0f0; color: #444;
+        }
+        .guide-btn:hover { background: #e5e5e5; }
+
+        /* Markdown content */
+        .md-wrap {
+            max-width: 840px;
+            margin: 36px auto 60px;
+            padding: 0 24px;
+        }
+        .md-content {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 36px 40px;
+            line-height: 1.75;
+        }
+        .md-content h1 { font-size: 1.5em; font-weight: 700; border-bottom: 2px solid {{ color }}; padding-bottom: 10px; margin-bottom: 20px; }
+        .md-content h2 { font-size: 1.15em; font-weight: 700; margin: 32px 0 12px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+        .md-content h3 { font-size: 1em; font-weight: 700; margin: 20px 0 8px; color: #444; }
+        .md-content p  { margin: 0 0 14px; color: #444; }
+        .md-content ul, .md-content ol { padding-left: 20px; margin: 0 0 16px; }
+        .md-content li { margin-bottom: 6px; color: #444; }
+        .md-content strong { color: #222; }
+        .md-content em { color: #555; }
+        .md-content code {
+            background: #f5f5f5; border-radius: 3px;
+            padding: 1px 6px; font-size: 0.88em; color: #c0392b;
+        }
+        .md-content blockquote {
+            border-left: 3px solid {{ color }}; margin: 16px 0;
+            padding: 10px 16px; background: #fafafa;
+            color: #555; font-style: italic;
+        }
+        .md-content table {
+            width: 100%; border-collapse: collapse; margin: 16px 0;
+            font-size: 0.88em;
+        }
+        .md-content th {
+            background: #f5f6f8; padding: 8px 12px;
+            border: 1px solid #e8e8e8; font-weight: 700;
+            text-align: left; color: #333;
+        }
+        .md-content td {
+            padding: 8px 12px; border: 1px solid #e8e8e8; color: #444;
+        }
+        .md-content hr { border: none; border-top: 1px solid #e8e8e8; margin: 28px 0; }
+
+        /* Print styles */
+        @media print {
+            .topbar, .guide-actions, .topbar-nav { display: none; }
+            .guide-band { border: none; padding: 0 0 16px; }
+            .md-wrap { margin: 0; max-width: 100%; }
+            .md-content { border: none; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <a href="{{ url_for('reports') if role == 'client' else url_for('control_room') }}" class="topbar-brand">Boundry<span>.AI</span></a>
+    <div class="topbar-nav">
+        <a href="{{ url_for('playbook_index') }}">← All Playbooks</a>
+        {% if role == 'analyst' %}
+        <a href="{{ url_for('playbook_detail', playbook_id=playbook_id) }}">Technical Version</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}">Log out</a>
+    </div>
+</nav>
+
+<div class="guide-band">
+    <div class="guide-icon">{{ icon }}</div>
+    <div>
+        <div class="guide-title">{{ title }}</div>
+        <div class="guide-sub">Plain-Language Guide — written for a non-technical reader</div>
+    </div>
+    <div class="guide-actions">
+        <a href="javascript:window.print()" class="guide-btn">🖨 Print</a>
+        {% if role == 'analyst' %}
+        <a href="{{ url_for('playbook_detail', playbook_id=playbook_id) }}" class="guide-btn">Technical Version →</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="md-wrap">
+    <div class="md-content">
+        {{ content | safe }}
+    </div>
+</div>
+
+</body>
+</html>

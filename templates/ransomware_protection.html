@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — Ransomware Protection</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f8fa;
+            color: #222;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 58px;
+        }
+        .topbar-brand {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: #c0392b;
+            text-decoration: none;
+            letter-spacing: -0.3px;
+        }
+        .topbar-brand span { color: #222; }
+        .topbar-nav { display: flex; align-items: center; gap: 24px; }
+        .topbar-nav a {
+            color: #666;
+            text-decoration: none;
+            font-size: 0.88em;
+        }
+        .topbar-nav a:hover { color: #c0392b; }
+
+        /* ── Page scaffold ── */
+        .page-wrap { max-width: 1100px; margin: 0 auto; padding: 36px 24px 60px; }
+
+        /* ── Page header ── */
+        .page-header { margin-bottom: 32px; }
+        .page-header h1 { font-size: 1.55em; font-weight: 700; margin: 0 0 6px; }
+        .page-header p  { color: #666; font-size: 0.9em; margin: 0; }
+
+        /* ── Score hero ── */
+        .score-hero {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 12px;
+            padding: 36px 40px;
+            display: flex;
+            align-items: center;
+            gap: 48px;
+            margin-bottom: 28px;
+        }
+        .score-ring {
+            flex-shrink: 0;
+            text-align: center;
+        }
+        .score-ring .big-num {
+            font-size: 4em;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .score-ring .grade-badge {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 18px;
+            border-radius: 20px;
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #fff;
+        }
+        .score-ring .score-label {
+            font-size: 0.78em;
+            color: #999;
+            margin-top: 4px;
+        }
+        .score-details { flex: 1; }
+        .score-details h2 { font-size: 1.1em; font-weight: 700; margin: 0 0 8px; }
+        .score-details p  { color: #555; font-size: 0.9em; margin: 0 0 20px; line-height: 1.55; }
+
+        /* ── Pillar grid ── */
+        .pillar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .pillar-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 20px 20px 16px;
+            text-align: center;
+        }
+        .pillar-icon { font-size: 1.8em; margin-bottom: 6px; }
+        .pillar-label { font-size: 0.8em; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+        .pillar-score { font-size: 2em; font-weight: 800; }
+        .pillar-max   { font-size: 0.8em; color: #aaa; }
+        .pillar-bar   { height: 6px; background: #eee; border-radius: 3px; margin: 10px 0 8px; overflow: hidden; }
+        .pillar-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+        .pillar-desc  { font-size: 0.75em; color: #888; line-height: 1.4; }
+
+        /* ── Section heading ── */
+        .section-heading {
+            font-size: 1em;
+            font-weight: 700;
+            color: #333;
+            margin: 0 0 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+
+        /* ── Playbook accordion ── */
+        .playbook-section { margin-bottom: 40px; }
+        .playbook-phase {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 20px;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid transparent;
+            transition: background 0.15s;
+        }
+        .phase-header:hover { background: #fafafa; }
+        .phase-header.open  { border-bottom-color: #e8e8e8; }
+        .phase-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1em;
+            flex-shrink: 0;
+        }
+        .phase-num {
+            font-size: 0.78em;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .phase-title { font-size: 1em; font-weight: 700; color: #222; }
+        .phase-summary { font-size: 0.82em; color: #777; margin-top: 2px; }
+        .phase-chevron { margin-left: auto; color: #bbb; font-size: 0.85em; transition: transform 0.2s; }
+        .phase-header.open .phase-chevron { transform: rotate(180deg); }
+
+        .phase-body { padding: 20px 24px; display: none; }
+        .phase-body.open { display: block; }
+
+        .phase-steps { margin: 0 0 20px 0; padding: 0; list-style: none; }
+        .phase-steps li {
+            padding: 8px 0 8px 24px;
+            position: relative;
+            font-size: 0.88em;
+            color: #444;
+            line-height: 1.5;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .phase-steps li:last-child { border-bottom: none; }
+        .phase-steps li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #bbb;
+        }
+
+        .reg-heading { font-size: 0.78em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #999; margin: 0 0 10px; }
+        .reg-list { display: flex; flex-direction: column; gap: 8px; }
+        .reg-item {
+            background: #f9f9f9;
+            border-left: 3px solid #3b82f6;
+            border-radius: 0 6px 6px 0;
+            padding: 8px 12px;
+            font-size: 0.82em;
+        }
+        .reg-item strong { display: block; color: #333; margin-bottom: 2px; }
+        .reg-item span   { color: #666; }
+
+        /* ── Notification deadlines table ── */
+        .notif-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.87em;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #e8e8e8;
+        }
+        .notif-table th {
+            background: #f5f6f8;
+            padding: 10px 16px;
+            text-align: left;
+            font-size: 0.78em;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #777;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .notif-table td {
+            padding: 11px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #444;
+        }
+        .notif-table tr:last-child td { border-bottom: none; }
+        .deadline-chip {
+            display: inline-block;
+            background: #fef3cd;
+            color: #856404;
+            border-radius: 12px;
+            padding: 2px 10px;
+            font-size: 0.82em;
+            font-weight: 600;
+        }
+        .deadline-chip.red {
+            background: #fde8e8;
+            color: #c0392b;
+        }
+
+        /* ── CTA strip ── */
+        .cta-strip {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 24px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .cta-strip h3 { font-size: 1em; font-weight: 700; margin: 0 0 4px; }
+        .cta-strip p  { font-size: 0.85em; color: #777; margin: 0; }
+        .btn {
+            display: inline-block;
+            padding: 10px 22px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.88em;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-primary { background: #c0392b; color: #fff; }
+        .btn-secondary { background: #f0f0f0; color: #444; }
+
+        @media (max-width: 700px) {
+            .pillar-grid { grid-template-columns: repeat(2, 1fr); }
+            .score-hero  { flex-direction: column; gap: 24px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <a href="{{ url_for('reports') }}" class="topbar-brand">Boundry<span>.AI</span></a>
+    <div class="topbar-nav">
+        <a href="{{ url_for('reports') }}">← Security Dashboard</a>
+        {% if role == 'analyst' %}
+        <a href="{{ url_for('control_room') }}">Control Room</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}">Log out</a>
+    </div>
+</nav>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h1>🛡️ Ransomware Protection Report</h1>
+        <p>Your current ransomware readiness score — how well protected, monitored, and prepared your environment is against today's most common SMB threat.</p>
+    </div>
+
+    <!-- Score Hero -->
+    <div class="score-hero">
+        <div class="score-ring">
+            <div class="big-num" style="color: {{ ransomware.grade_color }};">{{ ransomware.total }}</div>
+            <span class="grade-badge" style="background: {{ ransomware.grade_color }};">{{ ransomware.grade }}</span>
+            <div class="score-label">out of 100</div>
+        </div>
+        <div class="score-details">
+            <h2>Overall Ransomware Posture</h2>
+            <p>{{ ransomware.narrative }}</p>
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary" style="font-size:0.82em;">← Back to Dashboard</a>
+            &nbsp;
+            <a href="{{ url_for('ransomware_protection') }}" class="btn btn-secondary" style="font-size:0.82em;">↻ Refresh Score</a>
+        </div>
+    </div>
+
+    <!-- Pillar breakdown -->
+    <div class="pillar-grid" style="margin-bottom:36px;">
+        {% for p in ransomware.pillars %}
+        <div class="pillar-card">
+            <div class="pillar-icon">{{ p.icon }}</div>
+            <div class="pillar-label">{{ p.label }}</div>
+            <div class="pillar-score" style="color: {% if p.score >= 20 %}#10b981{% elif p.score >= 12 %}#f59e0b{% else %}#ef4444{% endif %};">{{ p.score }}</div>
+            <div class="pillar-max">/ {{ p.max }} pts</div>
+            <div class="pillar-bar">
+                <div class="pillar-bar-fill"
+                     style="width: {{ (p.score / p.max * 100)|int }}%; background: {% if p.score >= 20 %}#10b981{% elif p.score >= 12 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+            </div>
+            <div class="pillar-desc">{{ p.desc }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Response Playbook -->
+    <div class="playbook-section">
+        <h2 class="section-heading">🚨 Incident Response Playbook — What Happens If You're Hit</h2>
+        <p style="font-size:0.88em;color:#666;margin:-4px 0 20px;">
+            This is your five-phase playbook aligned to NIST SP 800-61r2 and the CISA Ransomware Guide.
+            Each phase shows exactly what your analyst does — and what regulations require.
+        </p>
+
+        {% for phase in playbook %}
+        <div class="playbook-phase" id="phase-{{ phase.phase }}">
+            <div class="phase-header" onclick="togglePhase({{ phase.phase }})">
+                <div class="phase-dot" style="background: {{ phase.color }}20; color: {{ phase.color }};">{{ phase.icon }}</div>
+                <div>
+                    <div class="phase-num">Phase {{ phase.phase }}</div>
+                    <div class="phase-title">{{ phase.label }}</div>
+                    <div class="phase-summary">{{ phase.summary }}</div>
+                </div>
+                <div class="phase-chevron">▼</div>
+            </div>
+            <div class="phase-body" id="phase-body-{{ phase.phase }}">
+                <ul class="phase-steps">
+                    {% for step in phase.steps %}
+                    <li>{{ step }}</li>
+                    {% endfor %}
+                </ul>
+                {% if phase.regulations %}
+                <div class="reg-heading">Regulatory Requirements This Phase Triggers</div>
+                <div class="reg-list">
+                    {% for reg in phase.regulations %}
+                    <div class="reg-item">
+                        <strong>{{ reg.name }}</strong>
+                        <span>{{ reg.req }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Notification Deadlines quick-ref -->
+    <div style="margin-bottom:40px;">
+        <h2 class="section-heading">⏱️ Regulatory Notification Deadlines</h2>
+        <table class="notif-table">
+            <thead>
+                <tr>
+                    <th>Regulation</th>
+                    <th>Who It Applies To</th>
+                    <th>Deadline After Discovery</th>
+                    <th>Notify</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>PIPEDA</strong> (Canada)</td>
+                    <td>Any business collecting Canadian personal data</td>
+                    <td><span class="deadline-chip red">72 hours (significant risk)</span></td>
+                    <td>Office of the Privacy Commissioner (OPC) + affected individuals</td>
+                </tr>
+                <tr>
+                    <td><strong>HIPAA Breach Rule</strong></td>
+                    <td>Healthcare providers and their business associates</td>
+                    <td><span class="deadline-chip">60 days</span></td>
+                    <td>HHS Office for Civil Rights + affected individuals (+ media if 500+ affected in a state)</td>
+                </tr>
+                <tr>
+                    <td><strong>PCI DSS 12.10</strong></td>
+                    <td>Any entity storing or processing cardholder data</td>
+                    <td><span class="deadline-chip red">Immediately</span></td>
+                    <td>Card brands (Visa/Mastercard) + acquiring bank</td>
+                </tr>
+                <tr>
+                    <td><strong>CIRCIA / CISA</strong></td>
+                    <td>Critical infrastructure operators (US, covered entities)</td>
+                    <td><span class="deadline-chip red">72 hours</span></td>
+                    <td>CISA + FBI IC3 (ic3.gov)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-strip">
+        <div>
+            <h3>Questions about your ransomware protection?</h3>
+            <p>Your Boundry.AI analyst monitors for ransomware indicators 24/7 and maintains this playbook on your behalf.</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary">Back to Dashboard</a>
+            {% if role == 'analyst' %}
+            <a href="{{ url_for('siem_dashboard') }}" class="btn btn-primary">Open SIEM →</a>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function togglePhase(n) {
+        const header = document.querySelector('#phase-' + n + ' .phase-header');
+        const body   = document.getElementById('phase-body-' + n);
+        const isOpen = header.classList.contains('open');
+        if (isOpen) {
+            header.classList.remove('open');
+            body.classList.remove('open');
+        } else {
+            header.classList.add('open');
+            body.classList.add('open');
+        }
+    }
+    // Auto-open phase 1 on load
+    document.addEventListener('DOMContentLoaded', () => togglePhase(1));
+</script>
+</body>
+</html>

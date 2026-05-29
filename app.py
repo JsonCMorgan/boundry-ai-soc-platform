@@ -1174,6 +1174,18 @@ def init_db():
         )
     """)
 
+    # ── Daily Build Log ────────────────────────────────────────────────────────
+    # Jason drops notes here throughout the day; 8 PM cron emails them to Peta.
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS daily_log (
+            {id_col},
+            {ts_col},
+            category  TEXT NOT NULL DEFAULT 'built',
+            note      TEXT NOT NULL DEFAULT '',
+            sent      INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
     # ── SIEM tables ────────────────────────────────────────────────────────────
     # Normalised event store — one row per ingested log event from any source.
     db_run(f"""
@@ -1924,7 +1936,29 @@ def reports():
         (user_id,),
     )
     health = compute_health_score(user_id)
-    return render_template("reports.html", reports=report_list, health=health)
+    ransomware = _evaluate_ransomware_score(client_id=user_id)
+    return render_template("reports.html", reports=report_list, health=health, ransomware=ransomware)
+
+
+@app.route("/ransomware-protection")
+@login_required
+def ransomware_protection():
+    """
+    Client-facing Ransomware Protection Score page.
+    Shows the four-pillar score (Detect / Protect / Respond / Recover),
+    the five-phase response playbook, and regulatory obligations.
+    Accessible to both analysts (viewing platform-wide) and clients (viewing their own data).
+    """
+    user_id = session.get("user_id")
+    role = session.get("role", "client")
+    # Analysts see the platform-wide score; clients see their own
+    client_id = None if role == "analyst" else user_id
+    ransomware = _evaluate_ransomware_score(client_id=client_id)
+    return render_template(
+        "ransomware_protection.html",
+        ransomware=ransomware,
+        playbook=_RANSOMWARE_PLAYBOOK,
+    )
 
 
 @app.route("/reports/<int:report_id>")
@@ -2132,6 +2166,286 @@ def _get_cissp_domains_for_techniques(techniques: list) -> list:
             if d not in domain_nums:
                 domain_nums.append(d)
     return [{"num": d, **CISSP_DOMAINS[d]} for d in domain_nums if d in CISSP_DOMAINS]
+
+
+# ── Ransomware Defence Module ─────────────────────────────────────────────────
+#
+# Five-phase response playbook aligned to NIST SP 800-61r2 / CISA Ransomware Guide.
+# Each phase lists the analyst steps, regulatory requirements triggered, and the
+# MITRE techniques this phase counters.
+#
+_RANSOMWARE_PLAYBOOK = [
+    {
+        "phase": 1,
+        "label": "Identify",
+        "icon": "🔍",
+        "color": "#3b82f6",
+        "summary": "Determine the scope of the infection before taking containment action.",
+        "steps": [
+            "Identify all affected hosts using SIEM event search (event_types: mass_file_rename, ransomware_note, shadow_copy_deleted).",
+            "Determine Patient Zero — the first host to show PHISHING_EMAIL or MACRO_EXEC events.",
+            "Check for lateral movement events (LATERAL_MOVE) to identify spread path.",
+            "Preserve volatile evidence: memory dumps, running process list, open network connections before isolation.",
+            "Screenshot or photograph ransom note — record wallet address and demand amount.",
+        ],
+        "regulations": [
+            {"name": "NIST SP 800-61r2", "req": "Section 3.2 — Detection and Analysis: Determine scope before containment to avoid driving threat underground."},
+            {"name": "CISA Ransomware Guide", "req": "Step 1 — Take stock of what's affected and preserve evidence for law enforcement."},
+            {"name": "PIPEDA", "req": "Assess whether personal information is involved to trigger breach notification obligations."},
+        ],
+        "mitre": ["T1566.001", "T1059.001", "T1486"],
+    },
+    {
+        "phase": 2,
+        "label": "Contain",
+        "icon": "🔒",
+        "color": "#f59e0b",
+        "summary": "Isolate affected systems to stop lateral spread without triggering additional payload detonation.",
+        "steps": [
+            "Disconnect infected hosts from network (physically unplug or disable NIC — do NOT shut down, may destroy encryption keys in memory).",
+            "Isolate network segments: block SMB (445), RDP (3389), WMI (135) at firewall level.",
+            "Revoke compromised credentials immediately — reset all accounts that show LOGIN_SUCCESS from attacker IPs.",
+            "Disable any new services or scheduled tasks created post-infection (check PERSISTENCE_REG events).",
+            "Notify VPN provider to revoke active sessions from suspicious source IPs.",
+        ],
+        "regulations": [
+            {"name": "NIST SP 800-61r2", "req": "Section 3.3 — Containment: Choose strategy based on potential damage and evidence preservation needs."},
+            {"name": "HIPAA §164.308(a)(6)", "req": "Incident response procedures must include containment and mitigation steps."},
+            {"name": "PCI DSS Req 12.10.1", "req": "Incident response plan must address containment and eradication of threats."},
+        ],
+        "mitre": ["T1562.001", "T1490", "T1543.003"],
+    },
+    {
+        "phase": 3,
+        "label": "Eradicate",
+        "icon": "🧹",
+        "color": "#ef4444",
+        "summary": "Remove all attacker footholds — persistence mechanisms, malware, and compromised credentials.",
+        "steps": [
+            "Wipe and re-image all infected hosts — do NOT attempt to decrypt and reuse a compromised system.",
+            "Remove all persistence mechanisms: malicious services (PERSISTENCE_REG events), scheduled tasks, registry run keys.",
+            "Scan all remaining hosts with updated AV/EDR signatures for the identified ransomware strain.",
+            "Rotate ALL credentials: admin accounts, service accounts, API keys, VPN credentials.",
+            "Patch the initial access vector (e.g., email gateway hardening, macro policy enforcement via Group Policy).",
+        ],
+        "regulations": [
+            {"name": "NIST SP 800-61r2", "req": "Section 3.4 — Eradication: Identify and eliminate all attacker-controlled components."},
+            {"name": "CISA Ransomware Guide", "req": "Rebuild from clean images — do not trust a decrypted system, even with a paid key."},
+            {"name": "PCI DSS Req 5.3", "req": "Anti-malware mechanisms must be maintained and updated to protect against current threats."},
+        ],
+        "mitre": ["T1486", "T1490", "T1059.001"],
+    },
+    {
+        "phase": 4,
+        "label": "Recover",
+        "icon": "♻️",
+        "color": "#10b981",
+        "summary": "Restore operations from verified clean backups. Prioritise by business criticality.",
+        "steps": [
+            "Verify backup integrity BEFORE restore — confirm backups were not themselves encrypted or deleted.",
+            "Restore in priority order: identity systems first (AD/DNS), then critical business systems, then endpoints.",
+            "Test restored systems in an isolated environment before reconnecting to production network.",
+            "Monitor restored systems closely for 30 days — some ransomware strains have secondary payloads.",
+            "Document all recovery decisions and timelines for regulatory reporting and post-incident review.",
+        ],
+        "regulations": [
+            {"name": "NIST SP 800-61r2", "req": "Section 3.5 — Recovery: Restore systems and verify normal operations."},
+            {"name": "NIST CSF RC.RP-1", "req": "Recovery plan is executed during or after a cybersecurity incident."},
+            {"name": "HIPAA §164.308(a)(7)", "req": "Contingency plan must include data backup, disaster recovery, and emergency mode operations."},
+        ],
+        "mitre": [],
+    },
+    {
+        "phase": 5,
+        "label": "Notify",
+        "icon": "📣",
+        "color": "#8b5cf6",
+        "summary": "Meet regulatory notification requirements. Deadlines start from the moment you confirm a breach.",
+        "steps": [
+            "Determine if personal data was accessed or exfiltrated (not just encrypted) — affects notification scope.",
+            "Report to law enforcement: FBI IC3 (ic3.gov) and/or CISA (cisa.gov/report). Do NOT pay ransom before reporting.",
+            "Notify cyber insurer within policy window — most require notification within 24-72 hours of discovery.",
+            "If personal data involved: notify affected individuals and regulators within statutory deadlines (see below).",
+            "Prepare a written incident summary: timeline, scope, containment actions, recovery status, and root cause.",
+        ],
+        "regulations": [
+            {"name": "PIPEDA (Canada)", "req": "Report to OPC and notify affected individuals 'as soon as feasible' — generally interpreted as 72 hours for significant risk."},
+            {"name": "HIPAA Breach Rule", "req": "Notify HHS and affected individuals within 60 days of discovery. Media notice if 500+ records in a state."},
+            {"name": "PCI DSS Req 12.10.4", "req": "Notify card brands and acquirers immediately upon confirmed or suspected cardholder data compromise."},
+            {"name": "CISA Reporting", "req": "Report to CISA within 72 hours of reasonably believed ransomware attack (under CIRCIA for covered entities)."},
+        ],
+        "mitre": [],
+    },
+]
+
+
+def _evaluate_ransomware_score(client_id=None):
+    """
+    Compute the Ransomware Protection Score for a client (or the platform overall).
+
+    Four pillars × 25 points each = 100 maximum.
+
+    Pillar 1 — Detect (25 pts)
+        Based on active SIEM correlation rules covering ransomware event types.
+        Full marks if all 5 ransomware rules are enabled.
+
+    Pillar 2 — Protect (25 pts)
+        Based on open CRITICAL/HIGH findings related to ransomware attack surface:
+        fewer open findings = higher score.
+
+    Pillar 3 — Respond (25 pts)
+        Based on analyst response speed on ransomware-related findings:
+        faster mean triage time = higher score.
+
+    Pillar 4 — Recover (25 pts)
+        Static assessment: training completion (ransomware track scenarios).
+        Full marks if all 4 ransomware scenarios have been completed at least once.
+
+    Returns dict with keys: total, pillars (list), grade, grade_color, narrative.
+    """
+    ransomware_rules = [
+        "Shadow Copy Deletion",
+        "Backup Deletion Attempt",
+        "Mass File Rename Detected",
+        "Suspicious PowerShell Execution",
+        "Windows Defender Disabled",
+    ]
+    ransomware_scenario_keys = [
+        "t11_ransomware_initial_access",
+        "t12_ransomware_defence_evasion",
+        "t13_ransomware_encryption",
+        "t14_ransomware_kill_chain",
+    ]
+    ransomware_mitre = {"T1566.001", "T1059.001", "T1562.001", "T1490", "T1486", "T1543.003"}
+
+    # ── Pillar 1: Detect ──────────────────────────────────────────────────────
+    try:
+        enabled_rules = db_fetchall(
+            f"SELECT name FROM siem_rules WHERE enabled = 1"
+        )
+        enabled_names = {r["name"] for r in (enabled_rules or [])}
+        active_ransomware_rules = sum(1 for r in ransomware_rules if r in enabled_names)
+        detect_score = round((active_ransomware_rules / len(ransomware_rules)) * 25)
+    except Exception:
+        detect_score = 0
+
+    # ── Pillar 2: Protect ─────────────────────────────────────────────────────
+    try:
+        # Count open CRITICAL/HIGH findings linked to ransomware MITRE techniques
+        findings_q = (
+            f"SELECT mitre_technique FROM system_findings "
+            f"WHERE status NOT IN ('closed','resolved') "
+            f"AND severity IN ('CRITICAL','HIGH')"
+        )
+        if client_id:
+            findings_q += f" AND owner_id = {PH}"
+            open_findings = db_fetchall(findings_q, (client_id,)) or []
+        else:
+            open_findings = db_fetchall(findings_q) or []
+        ransomware_open = sum(
+            1 for f in open_findings
+            if (f.get("mitre_technique") or "").upper() in ransomware_mitre
+        )
+        # 0 open → 25 pts; every 2 open findings costs 5 pts, floor 0
+        protect_score = max(0, 25 - (ransomware_open * 5))
+    except Exception:
+        protect_score = 25  # benefit of the doubt if data unavailable
+
+    # ── Pillar 3: Respond ─────────────────────────────────────────────────────
+    try:
+        # Mean triage gap (seconds) on closed ransomware findings
+        closed_q = (
+            f"SELECT created_at, resolved_at FROM system_findings "
+            f"WHERE status IN ('closed','resolved') "
+            f"AND resolved_at IS NOT NULL"
+        )
+        if client_id:
+            closed_q += f" AND owner_id = {PH}"
+            closed = db_fetchall(closed_q, (client_id,)) or []
+        else:
+            closed = db_fetchall(closed_q) or []
+        if closed:
+            import time as _time
+            gaps = []
+            for row in closed:
+                try:
+                    gaps.append(float(row["resolved_at"]) - float(row["created_at"]))
+                except (TypeError, ValueError):
+                    pass
+            if gaps:
+                mean_gap_hours = (sum(gaps) / len(gaps)) / 3600
+                # ≤4 hrs → 25 pts | ≤24 hrs → 20 pts | ≤72 hrs → 15 pts | >72 hrs → 5 pts
+                if mean_gap_hours <= 4:
+                    respond_score = 25
+                elif mean_gap_hours <= 24:
+                    respond_score = 20
+                elif mean_gap_hours <= 72:
+                    respond_score = 15
+                else:
+                    respond_score = 5
+            else:
+                respond_score = 15  # no closed findings yet — neutral
+        else:
+            respond_score = 15
+    except Exception:
+        respond_score = 15
+
+    # ── Pillar 4: Recover ─────────────────────────────────────────────────────
+    try:
+        analyst_id = client_id or session.get("user_id")
+        if analyst_id:
+            completed = db_fetchall(
+                f"SELECT scenario_id FROM training_results "
+                f"WHERE user_id = {PH} AND scenario_id IN "
+                f"('t11_ransomware_initial_access','t12_ransomware_defence_evasion',"
+                f"'t13_ransomware_encryption','t14_ransomware_kill_chain')",
+                (analyst_id,),
+            ) or []
+            completed_keys = {r["scenario_id"] for r in completed}
+            done_count = sum(1 for k in ransomware_scenario_keys if k in completed_keys)
+            recover_score = round((done_count / len(ransomware_scenario_keys)) * 25)
+        else:
+            recover_score = 0
+    except Exception:
+        recover_score = 0
+
+    total = detect_score + protect_score + respond_score + recover_score
+
+    if total >= 90:
+        grade, grade_color = "A", "#10b981"
+    elif total >= 75:
+        grade, grade_color = "B", "#3b82f6"
+    elif total >= 60:
+        grade, grade_color = "C", "#f59e0b"
+    elif total >= 40:
+        grade, grade_color = "D", "#f97316"
+    else:
+        grade, grade_color = "F", "#ef4444"
+
+    narratives = {
+        "A": "Strong ransomware posture. Detection rules are active, findings are triaged quickly, and recovery training is complete.",
+        "B": "Good coverage with room to improve. Review any open high-severity findings and complete remaining training scenarios.",
+        "C": "Moderate risk exposure. Ensure all ransomware correlation rules are enabled and open critical findings are addressed promptly.",
+        "D": "Significant gaps in ransomware defence. Immediate action recommended on detection rules and open findings.",
+        "F": "High ransomware risk. This environment lacks the foundational controls to detect or respond to a ransomware attack.",
+    }
+
+    return {
+        "total": total,
+        "grade": grade,
+        "grade_color": grade_color,
+        "narrative": narratives[grade],
+        "pillars": [
+            {"label": "Detect",  "score": detect_score,  "max": 25, "icon": "📡",
+             "desc": "Active SIEM correlation rules covering ransomware event types"},
+            {"label": "Protect", "score": protect_score, "max": 25, "icon": "🛡️",
+             "desc": "Open critical/high findings linked to ransomware attack surface"},
+            {"label": "Respond", "score": respond_score, "max": 25, "icon": "⚡",
+             "desc": "Mean time to triage and close ransomware-related findings"},
+            {"label": "Recover", "score": recover_score, "max": 25, "icon": "♻️",
+             "desc": "Ransomware Defence training track completion"},
+        ],
+    }
 
 
 # --- RPG Level system: 12 levels from Security Apprentice to CISSP Certified ---
@@ -2493,7 +2807,109 @@ TRAINING_SCENARIOS = {
         "techniques": ["T1110.003", "T1078", "T1059.007", "T1548"], "succeeded": True,
         "hint": "Low failure counts, valid credentials, patient probing. Think like the defender, not just the log reader.",
     },
+    # ── Ransomware Defence track ───────────────────────────────────────────────
+    "t11_ransomware_initial_access": {
+        "label": "Ransomware 1 — Initial Access",
+        "track": "Ransomware Defence", "order": 11,
+        "description": "A phishing email delivers a malicious macro. PowerShell executes in the background. Can you catch it before the payload drops?",
+        "sim_fn": "ransomware_initial_access", "sim_chain": None,
+        "techniques": ["T1566.001", "T1059.001"], "succeeded": False,
+        "hint": "Look for PHISHING_EMAIL followed by MACRO_EXEC and POWERSHELL_DROPPER from the same host. This is the containment window.",
+    },
+    "t12_ransomware_defence_evasion": {
+        "label": "Ransomware 2 — Defence Evasion",
+        "track": "Ransomware Defence", "order": 12,
+        "description": "Defender is disabled and shadow copies are deleted. The attacker is clearing the board before detonation.",
+        "sim_fn": "ransomware_defence_evasion", "sim_chain": None,
+        "techniques": ["T1562.001", "T1490"], "succeeded": True,
+        "hint": "DEFENDER_DISABLED + SHADOW_COPY_DELETED in the same host window = imminent encryption. What do you do first?",
+    },
+    "t13_ransomware_encryption": {
+        "label": "Ransomware 3 — Encryption Wave",
+        "track": "Ransomware Defence", "order": 13,
+        "description": "Mass file renaming is underway. A ransom note has appeared. Encryption is live — focus is containment and evidence preservation.",
+        "sim_fn": "ransomware_encryption", "sim_chain": None,
+        "techniques": ["T1486"], "succeeded": True,
+        "hint": "MASS_FILE_RENAME volume and RANSOM_NOTE tell you it's too late to prevent. Your job now: isolate, preserve, recover.",
+    },
+    "t14_ransomware_kill_chain": {
+        "label": "Ransomware APT — Full Kill Chain",
+        "track": "Ransomware Defence", "order": 14,
+        "description": "The complete ransomware attack: phishing → macro → PowerShell → persistence → Defender killed → backups deleted → lateral movement → encryption → ransom note. Every phase visible in the logs.",
+        "sim_fn": None, "sim_chain": "ransomware_kill_chain",
+        "techniques": ["T1566.001", "T1059.001", "T1543.003", "T1562.001", "T1490", "T1486"], "succeeded": True,
+        "hint": "Six techniques across six phases. Map each event type to its MITRE technique and identify exactly where the kill chain could have been broken.",
+    },
 }
+
+
+# --- ROUTE 4b2: Incident Response Playbooks ---
+import playbook_loader as _playbooks
+
+@app.route("/playbooks")
+@login_required
+def playbook_index():
+    """
+    Incident response playbook library.
+    Analysts see all playbooks with full detail links.
+    Clients see only the business-readable (Markdown) versions.
+    """
+    all_playbooks = _playbooks.get_all_playbooks()
+    _uid  = session.get("user_id")
+    _role = session.get("role", "client")
+    try:
+        _player = get_player_profile(_uid) if (_role == "analyst" and _uid) else None
+    except Exception:
+        _player = None
+    return render_template(
+        "playbooks.html",
+        playbooks=all_playbooks,
+        role=_role,
+        ops_mode=session.get("analyst_mode", False),
+        player=_player,
+    )
+
+
+@app.route("/playbooks/<playbook_id>")
+@login_required
+def playbook_detail(playbook_id):
+    """
+    Full playbook detail — YAML-driven five-phase response guide.
+    Analyst: sees technical YAML view with MITRE links, regulations, steps.
+    Client: redirected to the business markdown view.
+    """
+    pb = _playbooks.get_playbook(playbook_id)
+    if not pb:
+        abort(404)
+    role = session.get("role", "client")
+    # Clients get the plain-language version
+    if role == "client":
+        return redirect(url_for("playbook_markdown", playbook_id=playbook_id))
+    return render_template("playbook_detail.html", pb=pb, playbook_id=playbook_id, role=role)
+
+
+@app.route("/playbooks/<playbook_id>/guide")
+@login_required
+def playbook_markdown(playbook_id):
+    """
+    Business-readable Markdown version of a playbook.
+    Rendered as HTML. Accessible to all roles.
+    """
+    import markdown as _md
+    md_text = _playbooks.get_markdown(playbook_id)
+    if md_text is None:
+        abort(404)
+    pb_meta = _playbooks.get_playbook(playbook_id) or {}
+    html_content = _md.markdown(md_text, extensions=["tables", "fenced_code"])
+    return render_template(
+        "playbook_guide.html",
+        content=html_content,
+        title=pb_meta.get("title", "Playbook"),
+        icon=pb_meta.get("icon", "📋"),
+        color=pb_meta.get("color", "#666"),
+        playbook_id=playbook_id,
+        role=session.get("role", "client"),
+    )
 
 
 # --- ROUTE 4c: MITRE ATT&CK Technique Detail Pages ---
@@ -3020,6 +3436,18 @@ def control_room():
         "FROM terminal_activity ORDER BY id DESC LIMIT 30"
     )
 
+    # Ransomware Early Warning — recent ransomware-type SIEM events (last 24 hrs)
+    ransomware_event_types = (
+        "'shadow_copy_deleted','backup_deleted','mass_file_rename',"
+        "'ransomware_note','defender_disabled','powershell_exec'"
+    )
+    ransomware_events = db_fetchall(
+        f"SELECT id, created_at, event_type, severity, user_account, src_ip, description "
+        f"FROM siem_events WHERE event_type IN ({ransomware_event_types}) "
+        f"ORDER BY id DESC LIMIT 20"
+    ) or []
+    ransomware_score = _evaluate_ransomware_score()
+
     return render_template(
         "control_room.html",
         clients=clients,
@@ -3041,6 +3469,8 @@ def control_room():
         total_findings_count=total_findings_count,
         player=player,
         terminal_activity=terminal_activity,
+        ransomware_events=ransomware_events,
+        ransomware_score=ransomware_score,
         now=datetime.utcnow(),
     )
 
@@ -3178,6 +3608,17 @@ _SIM_SIEM_TYPE_MAP = {
     "DIRECTORY_TRAVERSAL": "directory_traversal",
     "PRIV_ESC_ATTEMPT": "privilege_escalation",
     "ACCOUNT_ENUM": "account_enumeration",
+    # Ransomware kill-chain events
+    "PHISHING_EMAIL":       "logon_failed",
+    "MACRO_EXEC":           "powershell_exec",
+    "POWERSHELL_DROPPER":   "powershell_exec",
+    "PERSISTENCE_REG":      "service_installed",
+    "DEFENDER_DISABLED":    "defender_disabled",
+    "SHADOW_COPY_DELETED":  "shadow_copy_deleted",
+    "BACKUP_DELETED":       "backup_deleted",
+    "LATERAL_MOVE":         "privilege_escalation",
+    "MASS_FILE_RENAME":     "mass_file_rename",
+    "RANSOM_NOTE":          "ransomware_note",
 }
 
 _SIM_SIEM_SEVERITY = {
@@ -3188,6 +3629,17 @@ _SIM_SIEM_SEVERITY = {
     "DIRECTORY_TRAVERSAL": "HIGH",
     "PRIV_ESC_ATTEMPT": "HIGH",
     "ACCOUNT_ENUM": "MEDIUM",
+    # Ransomware kill-chain severities
+    "PHISHING_EMAIL":       "MEDIUM",
+    "MACRO_EXEC":           "HIGH",
+    "POWERSHELL_DROPPER":   "HIGH",
+    "PERSISTENCE_REG":      "HIGH",
+    "DEFENDER_DISABLED":    "CRITICAL",
+    "SHADOW_COPY_DELETED":  "CRITICAL",
+    "BACKUP_DELETED":       "CRITICAL",
+    "LATERAL_MOVE":         "HIGH",
+    "MASS_FILE_RENAME":     "CRITICAL",
+    "RANSOM_NOTE":          "CRITICAL",
 }
 
 
@@ -3403,10 +3855,67 @@ def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None, scenar
         for route in random.sample(PRIV_ESC_ROUTES, random.randint(4, 6)):
             insert("PRIV_ESC_ATTEMPT", entry_account, ip, route)
 
+    # ── RANSOMWARE KILL-CHAIN SCENARIOS ──────────────────────────────────────
+
+    def chain_ransomware_kill_chain():
+        """Initial Access → Execution → Persistence → Defence Evasion → Impact
+        T1566.001 → T1059.001 → T1543.003 → T1562.001 → T1490 → T1486
+        The full modern ransomware playbook — phishing email delivers a malicious
+        macro, PowerShell drops the payload, persistence is established, defences
+        are stripped, backups are destroyed, and files are encrypted. By the time
+        the ransom note appears the window to stop it has already closed."""
+        target_host = random.choice(["WS-ACCOUNTING-01", "WS-RECEPTION-02", "WS-MANAGER-03"])
+        victim = random.choice(LEGIT_USERS)
+        # Phase 1 — Initial Access: phishing email with malicious macro
+        insert("PHISHING_EMAIL",    victim, ip, f"subject=Invoice_Q4_2025.xlsm host={target_host}")
+        insert("MACRO_EXEC",        victim, ip, f"macro=AutoOpen doc=Invoice_Q4_2025.xlsm host={target_host}")
+        # Phase 2 — Execution: PowerShell dropper downloads payload
+        insert("POWERSHELL_DROPPER", victim, ip,
+               f"cmd=powershell -enc <base64> -NoP -W Hidden host={target_host}")
+        # Phase 3 — Persistence: malicious service installed
+        insert("PERSISTENCE_REG",   victim, ip, f"service=WindowsUpdateSvc host={target_host}")
+        # Phase 4 — Defence Evasion: kill AV/EDR before detonating
+        insert("DEFENDER_DISABLED", victim, ip, f"method=Set-MpPreference -DisableRealtimeMonitoring host={target_host}")
+        # Phase 5 — Impact: destroy backups + encrypt files
+        insert("SHADOW_COPY_DELETED", victim, ip, f"cmd=vssadmin delete shadows /all /quiet host={target_host}")
+        insert("BACKUP_DELETED",    victim, ip,  f"cmd=wbadmin delete catalog -quiet host={target_host}")
+        insert("LATERAL_MOVE",      victim, ip,  f"target=FS-FILESERVER-01 method=SMB host={target_host}")
+        # Encryption: rapid rename wave (50+ files) simulated as multiple events
+        for _ in range(random.randint(3, 5)):
+            insert("MASS_FILE_RENAME", victim, ip,
+                   f"count={random.randint(50, 200)} ext=.locked host={target_host}")
+        insert("RANSOM_NOTE", victim, ip, f"file=HOW_TO_RECOVER_FILES.txt host={target_host}")
+
+    def scenario_ransomware_initial_access():
+        """Phishing + macro execution only — early detection opportunity. T1566.001 → T1059.001"""
+        target_host = random.choice(["WS-SALES-04", "WS-HR-01", "WS-FINANCE-02"])
+        victim = random.choice(LEGIT_USERS)
+        insert("PHISHING_EMAIL",    victim, ip, f"subject=Urgent_Payment.xlsm host={target_host}")
+        insert("MACRO_EXEC",        victim, ip, f"macro=AutoOpen host={target_host}")
+        insert("POWERSHELL_DROPPER", victim, ip, f"cmd=powershell -enc <base64> -W Hidden host={target_host}")
+
+    def scenario_ransomware_defence_evasion():
+        """Defender disabled + shadow copies deleted — pre-encryption window. T1562.001 → T1490"""
+        target_host = random.choice(["WS-ACCOUNTING-01", "WS-MANAGER-03"])
+        victim = random.choice(LEGIT_USERS)
+        insert("DEFENDER_DISABLED",   victim, ip, f"method=registry host={target_host}")
+        insert("SHADOW_COPY_DELETED", victim, ip, f"cmd=vssadmin delete shadows /all host={target_host}")
+        insert("BACKUP_DELETED",      victim, ip, f"cmd=wbadmin delete catalog host={target_host}")
+
+    def scenario_ransomware_encryption():
+        """Mass file rename + ransom note — encryption has begun. T1486"""
+        target_host = random.choice(["FS-FILESERVER-01", "WS-ACCOUNTING-01"])
+        victim = random.choice(LEGIT_USERS)
+        for _ in range(random.randint(4, 6)):
+            insert("MASS_FILE_RENAME", victim, ip,
+                   f"count={random.randint(100, 500)} ext=.encrypted host={target_host}")
+        insert("RANSOM_NOTE", victim, ip, f"file=README_LOCKED.txt host={target_host}")
+
     APT_CHAINS = {
-        "recon_to_takeover": chain_recon_to_takeover,
-        "web_exploit_chain": chain_web_exploit_chain,
-        "stealthy_apt":      chain_stealthy_apt,
+        "recon_to_takeover":        chain_recon_to_takeover,
+        "web_exploit_chain":        chain_web_exploit_chain,
+        "stealthy_apt":             chain_stealthy_apt,
+        "ransomware_kill_chain":    chain_ransomware_kill_chain,
     }
 
     # ── DIFFICULTY POOLS ─────────────────────────────────────────────────────
@@ -3431,15 +3940,20 @@ def _simulate_attack_core(owner_id=None, difficulty="medium", chain=None, scenar
     ]
 
     SCENARIO_MAP = {
-        "brute_force":          scenario_brute_force,
-        "sql_injection":        scenario_sql_injection,
-        "xss_attack":           scenario_xss_attack,
-        "directory_traversal":  scenario_directory_traversal,
-        "credential_stuffing":  scenario_credential_stuffing,
-        "password_spray":       scenario_password_spray,
-        "privilege_escalation": scenario_privilege_escalation,
-        "account_enumeration":  scenario_account_enumeration,
-        "suspicious_login":     scenario_suspicious_login,
+        "brute_force":                  scenario_brute_force,
+        "sql_injection":                scenario_sql_injection,
+        "xss_attack":                   scenario_xss_attack,
+        "directory_traversal":          scenario_directory_traversal,
+        "credential_stuffing":          scenario_credential_stuffing,
+        "password_spray":               scenario_password_spray,
+        "privilege_escalation":         scenario_privilege_escalation,
+        "account_enumeration":          scenario_account_enumeration,
+        "suspicious_login":             scenario_suspicious_login,
+        # Ransomware Defence track
+        "ransomware_initial_access":    scenario_ransomware_initial_access,
+        "ransomware_defence_evasion":   scenario_ransomware_defence_evasion,
+        "ransomware_encryption":        scenario_ransomware_encryption,
+        "ransomware_kill_chain":        chain_ransomware_kill_chain,
     }
 
     if chain and chain in APT_CHAINS:
@@ -4859,6 +5373,191 @@ def cron_weekly_digest():
     return jsonify(status="ok", digests_sent=sent_count, clients_eligible=len(clients))
 
 
+# --- ROUTE 8a2: Daily EOD Report (8 PM — build progress update for Peta) ---
+@app.route("/cron/daily-report", methods=["POST"])
+@csrf.exempt
+def cron_daily_report():
+    """
+    Send Peta a daily end-of-day build update at 8 PM.
+
+    Reads from the daily_log table — entries Jason added throughout the day
+    in three categories:
+      built      — features and work completed today
+      for_peta   — things that need her eyes (aesthetic, copy, business decisions)
+      question   — questions waiting on her input
+
+    If no log entries exist, sends a short "quiet day" note so she still hears
+    from us and knows the email is working.
+
+    Railway cron command (daily at 20:00):
+        curl -s -X POST https://<your-app>/cron/daily-report \\
+             -H "X-Cron-Secret: $CRON_SECRET"
+    """
+    expected = os.environ.get("CRON_SECRET", "")
+    provided = request.headers.get("X-Cron-Secret", "")
+    if not expected or not hmac.compare_digest(
+        (provided or "").encode("utf-8"),
+        (expected or "").encode("utf-8"),
+    ):
+        abort(404)
+
+    from datetime import datetime as _dt
+
+    today_str  = _dt.utcnow().strftime("%A, %B %d, %Y")
+    app_url    = os.environ.get("APP_URL", "https://web-production-31963.up.railway.app").rstrip("/")
+    peta_email = os.environ.get("PETA_EMAIL", "simplypeta@gmail.com")
+
+    # ── Pull today's log entries ──────────────────────────────────────────────
+    if DATABASE_URL:
+        today_entries = db_fetchall(
+            "SELECT id, category, note FROM daily_log "
+            "WHERE sent = 0 AND created_at >= NOW() - INTERVAL '24 hours' "
+            "ORDER BY id ASC"
+        ) or []
+    else:
+        today_entries = db_fetchall(
+            "SELECT id, category, note FROM daily_log "
+            "WHERE sent = 0 AND date(created_at) = date('now') "
+            "ORDER BY id ASC"
+        ) or []
+
+    built    = [e["note"] for e in today_entries if e["category"] == "built"]
+    for_peta = [e["note"] for e in today_entries if e["category"] == "for_peta"]
+    questions= [e["note"] for e in today_entries if e["category"] == "question"]
+
+    # ── Build each section's HTML ─────────────────────────────────────────────
+    def _section(icon, heading, items, color, empty_msg=None):
+        if not items:
+            if empty_msg is None:
+                return ""
+            items_html = f'<p style="color:#555;font-style:italic;margin:0;font-size:0.9em;">{empty_msg}</p>'
+        else:
+            items_html = "".join(
+                f'<div style="display:flex;gap:10px;margin-bottom:10px;">'
+                f'<span style="color:{color};flex-shrink:0;margin-top:2px;">→</span>'
+                f'<span style="color:#ccc;font-size:0.92em;line-height:1.6;">{item}</span>'
+                f'</div>'
+                for item in items
+            )
+        return f"""
+      <tr>
+        <td style="padding:18px 32px 4px;">
+          <div style="font-size:0.72em;font-weight:700;letter-spacing:0.1em;
+                      text-transform:uppercase;color:{color};
+                      border-bottom:1px solid #1e2235;padding-bottom:8px;margin-bottom:12px;">
+            {icon}&nbsp;&nbsp;{heading}
+          </div>
+          {items_html}
+        </td>
+      </tr>"""
+
+    built_section    = _section("✅", "What Got Built Today", built,    "#00c47a",
+                                 empty_msg=None)
+    for_peta_section = _section("👀", "Needs Your Eyes", for_peta, "#00d4ff",
+                                 empty_msg=None)
+    questions_section= _section("❓", "Questions for You",  questions, "#f59e0b",
+                                 empty_msg=None)
+
+    # Quiet day fallback
+    if not today_entries:
+        main_content = """
+      <tr>
+        <td style="padding:20px 32px;">
+          <p style="color:#888;font-size:0.92em;line-height:1.7;margin:0;">
+            Quiet day on the log — nothing was flagged for your attention today.
+            Jason may have been heads-down on something or forgot to log it (classic).
+            Either way, platform is running and we're making progress.
+          </p>
+        </td>
+      </tr>"""
+    else:
+        main_content = built_section + for_peta_section + questions_section
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 16px;">
+    <tr><td align="center">
+    <table width="580" cellpadding="0" cellspacing="0"
+           style="background:#ffffff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+
+      <!-- Header -->
+      <tr>
+        <td style="background:#0f1c2e;padding:24px 32px;">
+          <div style="font-size:1.1em;font-weight:bold;color:#00d4ff;letter-spacing:0.04em;">
+            Boundry.AI
+          </div>
+          <div style="color:#6a8aaa;font-size:0.82em;margin-top:3px;">
+            Daily Update &mdash; {today_str}
+          </div>
+        </td>
+      </tr>
+
+      <!-- Greeting -->
+      <tr>
+        <td style="padding:24px 32px 8px;">
+          <p style="margin:0;color:#333;font-size:1em;line-height:1.7;">
+            Hey Peta 👋
+          </p>
+          <p style="margin:10px 0 0;color:#555;font-size:0.93em;line-height:1.7;">
+            Here's the rundown from today. Anything in the
+            <strong style="color:#00d4ff;">Needs Your Eyes</strong> section
+            is waiting on you — everything else is just an update.
+          </p>
+        </td>
+      </tr>
+
+      {main_content}
+
+      <!-- Spacer -->
+      <tr><td style="padding:8px 32px;"></td></tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="padding:18px 32px;border-top:1px solid #eee;">
+          <p style="color:#999;font-size:0.78em;margin:0;line-height:1.6;">
+            Sent automatically every evening from the Boundry.AI build log.<br>
+            Questions? Just reply to this email — Jason monitors it.<br>
+            <a href="{app_url}/daily-log" style="color:#0077cc;">View the full log →</a>
+          </p>
+        </td>
+      </tr>
+
+    </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    # Mark all sent entries as sent
+    ids = [e["id"] for e in today_entries]
+    if ids:
+        placeholders = ",".join([PH] * len(ids))
+        db_run(f"UPDATE daily_log SET sent = 1 WHERE id IN ({placeholders})", ids)
+
+    ok = send_email(
+        to_address=peta_email,
+        subject=f"Boundry.AI Update — {today_str}",
+        html_body=html_body,
+    )
+
+    security_log.info(f"CRON_DAILY_REPORT sent={ok} recipient={peta_email} entries={len(today_entries)}")
+    return jsonify(
+        status="ok",
+        sent=ok,
+        recipient=peta_email,
+        date=today_str,
+        entries_sent=len(today_entries),
+        built=len(built),
+        for_peta=len(for_peta),
+        questions=len(questions),
+    )
+
+
 # --- ROUTE 8b: Manual Breach Intel Refresh (analyst only) ---
 @app.route("/run-breach-intel", methods=["POST"])
 @analyst_required
@@ -4870,6 +5569,75 @@ def run_breach_intel():
     else:
         flash("🔍 No new breach reports found (feeds may not have updated yet).", "info")
     return redirect(url_for("control_room"))
+
+
+@app.route("/daily-log")
+@analyst_required
+def daily_log():
+    """
+    Jason's daily build log — drop notes throughout the day, cron emails them
+    to Peta at 8 PM. Three categories: built, for_peta, question.
+    """
+    from datetime import datetime as _dt
+    today_start = _dt.utcnow().strftime("%Y-%m-%d")
+
+    if DATABASE_URL:
+        today_entries = db_fetchall(
+            f"SELECT id, created_at, category, note, sent FROM daily_log "
+            f"WHERE created_at >= %s ORDER BY id DESC",
+            (today_start,),
+        ) or []
+        recent_entries = db_fetchall(
+            f"SELECT id, created_at, category, note, sent FROM daily_log "
+            f"WHERE created_at < %s ORDER BY id DESC LIMIT 50",
+            (today_start,),
+        ) or []
+    else:
+        today_entries = db_fetchall(
+            f"SELECT id, created_at, category, note, sent FROM daily_log "
+            f"WHERE date(created_at) = date('now') ORDER BY id DESC"
+        ) or []
+        recent_entries = db_fetchall(
+            f"SELECT id, created_at, category, note, sent FROM daily_log "
+            f"WHERE date(created_at) < date('now') ORDER BY id DESC LIMIT 50"
+        ) or []
+
+    return render_template(
+        "daily_log.html",
+        today_entries=today_entries,
+        recent_entries=recent_entries,
+        today=_dt.utcnow().strftime("%A, %B %d"),
+    )
+
+
+@app.route("/daily-log/add", methods=["POST"])
+@analyst_required
+def daily_log_add():
+    """Add an entry to today's build log."""
+    category = request.form.get("category", "built")
+    note     = (request.form.get("note") or "").strip()
+    if category not in ("built", "for_peta", "question"):
+        category = "built"
+    if not note:
+        flash("Note can't be empty.", "warning")
+        return redirect(url_for("daily_log"))
+    if len(note) > 1000:
+        note = note[:1000]
+    db_run(
+        f"INSERT INTO daily_log (category, note) VALUES ({PH},{PH})",
+        (category, note),
+    )
+    flash("✅ Note added to today's log.", "success")
+    return redirect(url_for("daily_log"))
+
+
+@app.route("/daily-log/delete/<int:entry_id>", methods=["POST"])
+@analyst_required
+def daily_log_delete(entry_id):
+    """Delete a log entry (only unsent ones)."""
+    db_run(f"DELETE FROM daily_log WHERE id = {PH} AND sent = 0", (entry_id,))
+    flash("Entry removed.", "info")
+    return redirect(url_for("daily_log"))
 
 
 @app.route("/scorecard")
@@ -6822,6 +7590,18 @@ def siem_dashboard():
     suppressions  = db_fetchall("SELECT * FROM siem_suppression ORDER BY id DESC")
     player        = get_player_profile(analyst_id)
 
+    # Ransomware indicator events — last 24 hours, shown in Ransomware Indicators panel
+    ransomware_event_types = (
+        "'shadow_copy_deleted','backup_deleted','mass_file_rename',"
+        "'ransomware_note','defender_disabled','powershell_exec'"
+    )
+    ransomware_indicators = db_fetchall(
+        f"SELECT id, created_at, event_type, severity, user_account, src_ip, description, host "
+        f"FROM siem_events "
+        f"WHERE event_type IN ({ransomware_event_types}) AND dismissed = 0 "
+        f"ORDER BY id DESC LIMIT 50"
+    ) or []
+
     return render_template("siem.html",
         events=events,
         stats=stats,
@@ -6830,6 +7610,7 @@ def siem_dashboard():
         suppressions=suppressions,
         player=player,
         syslog_port=siem_collector.syslog_port,
+        ransomware_indicators=ransomware_indicators,
     )
 
 

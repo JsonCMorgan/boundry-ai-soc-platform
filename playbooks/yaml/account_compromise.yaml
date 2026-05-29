@@ -1,0 +1,159 @@
+---
+id: account_compromise
+title: Account Compromise & Credential Theft Response
+icon: "🔑"
+color: "#3b82f6"
+severity: HIGH
+version: "1.0"
+last_updated: 2026-05-28
+
+summary: >
+  Account compromise occurs when an attacker gains valid credentials for a
+  legitimate account — through phishing, credential stuffing, password spray,
+  purchase of stolen credentials, or brute force. Because the attacker is using
+  real credentials, there is no malware for AV to detect. The SIEM is your
+  best tool: login from unusual IPs, at unusual hours, followed by lateral
+  movement or privilege escalation attempts.
+
+applicable_to:
+  - All businesses with user accounts (universal)
+  - High risk: admin accounts, financial system accounts, email accounts
+  - Cloud-hosted services (Microsoft 365, Google Workspace, AWS, Azure)
+
+mitre_techniques:
+  - id: T1110
+    name: "Brute Force"
+    tactic: "Credential Access"
+  - id: T1110.003
+    name: "Password Spraying"
+    tactic: "Credential Access"
+  - id: T1110.004
+    name: "Credential Stuffing"
+    tactic: "Credential Access"
+  - id: T1078
+    name: "Valid Accounts"
+    tactic: "Defence Evasion / Persistence"
+  - id: T1548
+    name: "Abuse Elevation Control Mechanism"
+    tactic: "Privilege Escalation"
+
+key_indicators:
+  - "Multiple LOGIN_FAILED events from a single IP across many accounts (credential stuffing)"
+  - "Single password tried across many accounts with low failure rate per account (spray)"
+  - "LOGIN_SUCCESS from an IP or country the user has never used before"
+  - "LOGIN_SUCCESS at an unusual hour (e.g., 3 AM for a 9-5 employee)"
+  - "Immediate PRIV_ESC_ATTEMPT events following login — attacker testing access level"
+  - "ACCOUNT_LOCKOUT_STORM — mass lockouts indicating active attack in progress"
+
+do_not:
+  - "Do NOT just reset the password and consider it done — understand how they got in"
+  - "Do NOT unlock a locked account without first verifying it was not locked by the attacker"
+  - "Do NOT assume one compromised account means the attacker has only one account"
+  - "Do NOT notify the user via the compromised account — use a different channel"
+  - "Do NOT assume cloud accounts are unaffected — credential attacks often target cloud first"
+
+phases:
+  - phase: 1
+    label: Identify
+    icon: "🔍"
+    color: "#3b82f6"
+    summary: >
+      Confirm the compromise and determine the scope: which account(s), what access
+      they had, and what the attacker did with that access.
+    steps:
+      - "Confirm the attack vector: brute force (many failures → success), spray (one attempt per account), stuffing (breach database), or unknown."
+      - "Identify all accounts that logged in successfully from attacker IPs during the attack window."
+      - "Review what the compromised account(s) accessed: files, databases, cloud resources, emails, admin panels."
+      - "Check for privilege escalation: did the attacker attempt to move from the compromised account to admin or service accounts?"
+      - "Determine dwell time: how long was the attacker inside? Every hour increases the likelihood of data exfiltration."
+      - "Check for lateral movement: LATERAL_MOVE events or login attempts to other systems from the compromised account."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.2 — Identify the scope fully before containment to ensure you do not miss compromised accounts."
+      - name: "PIPEDA"
+        req: "If the compromised account had access to personal information, a breach assessment is required immediately."
+    mitre: ["T1110", "T1110.003", "T1110.004", "T1078"]
+
+  - phase: 2
+    label: Contain
+    icon: "🔒"
+    color: "#f59e0b"
+    summary: >
+      Evict the attacker from every compromised account simultaneously.
+      Doing them one at a time gives the attacker time to pivot.
+    steps:
+      - "Force password resets on ALL identified compromised accounts at the same time — not one at a time."
+      - "Terminate all active sessions for compromised accounts: this invalidates stolen session tokens even if the password reset hasn't propagated yet."
+      - "Enable MFA on all compromised accounts immediately — and consider enforcing it platform-wide."
+      - "Block the attacker's IP addresses and ASN ranges at the perimeter."
+      - "Disable accounts that cannot be immediately secured (e.g., shared service accounts) until credentials are rotated."
+      - "Alert other administrators using an out-of-band channel (phone, separate email account) — do not use potentially compromised systems."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.3 — Containment: Disable accounts and terminate sessions to prevent further attacker access."
+      - name: "PCI DSS Req 8.2"
+        req: "All user accounts must have unique credentials. Shared or generic accounts must be disabled during an incident."
+    mitre: ["T1078", "T1548"]
+
+  - phase: 3
+    label: Eradicate
+    icon: "🧹"
+    color: "#ef4444"
+    summary: >
+      Remove all attacker footholds and understand how the credentials were
+      obtained so you can prevent recurrence.
+    steps:
+      - "Audit all accounts for attacker-created modifications: new forwarding rules, OAuth app authorisations, registered MFA devices, API tokens."
+      - "Remove any accounts created by the attacker during their dwell time."
+      - "Identify the credential source: check HaveIBeenPwned (haveibeenpwned.com) and similar services for the compromised credentials."
+      - "Enforce password policy changes: minimum 12 characters, breach-check on new passwords, no reuse of previous 10 passwords."
+      - "Audit rate-limiting and lockout policies: were they effective? Adjust thresholds if the attack succeeded despite them."
+      - "Review and tighten access permissions on all compromised accounts — they may have had broader access than their role requires."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.4 — Eradication: Remove all attacker artefacts and close the vulnerability that allowed compromise."
+      - name: "HIPAA §164.312(a)(2)(i)"
+        req: "Assign unique user names and establish procedures for verifying the identity of each user."
+    mitre: ["T1078"]
+
+  - phase: 4
+    label: Recover
+    icon: "♻️"
+    color: "#10b981"
+    summary: >
+      Restore full operational capability with enhanced credential security.
+      A compromised account environment needs structural improvements, not just a reset.
+    steps:
+      - "Confirm all compromised accounts are fully secured: new passwords, MFA active, sessions terminated, access reviewed."
+      - "Implement or enforce MFA across the entire organisation if not already in place."
+      - "Deploy a privileged access management (PAM) approach for admin accounts: separate admin accounts from daily-use accounts."
+      - "Set up SIEM alerts for impossible travel (login from two geographies within an impossible time window)."
+      - "Conduct staff password hygiene training: password managers, recognising spray attacks, why credential reuse is dangerous."
+      - "Run a controlled credential stuffing simulation against your own systems within 60 days to validate new controls."
+    regulations:
+      - name: "NIST CSF PR.AC-1"
+        req: "Identities and credentials are managed for authorised devices, users, and processes."
+      - name: "PCI DSS Req 8.3"
+        req: "Strong cryptography is used to safeguard all credentials during transmission and storage."
+    mitre: []
+
+  - phase: 5
+    label: Notify
+    icon: "📣"
+    color: "#8b5cf6"
+    summary: >
+      Notification depends on what the attacker accessed with the compromised credentials.
+      The compromise itself is an incident; what they did with it determines breach obligations.
+    steps:
+      - "Assess what data was accessed using the compromised credentials: personal data, financial data, health records, cardholder data?"
+      - "If personal data was accessed: breach notification obligations apply under applicable regulation."
+      - "Notify affected users: inform them their credentials were compromised, require password changes on any other sites where they may have reused that password."
+      - "Notify cyber insurer within policy window."
+      - "Report to FBI IC3 if the attack appears to be part of a larger credential stuffing operation."
+      - "Document the full incident: attack timeline, accounts compromised, data accessed, actions taken, and post-incident improvements."
+    regulations:
+      - name: "PIPEDA (Canada)"
+        req: "If the compromise resulted in access to personal information with real risk of significant harm, notify OPC and individuals as soon as feasible."
+      - name: "HIPAA"
+        req: "Access to a system containing PHI via compromised credentials is a potential breach — assess and notify if PHI was accessed."
+    mitre: []

@@ -325,6 +325,48 @@
             color: #bbb;
             margin-top: 6px;
         }
+
+        /* ── Ransomware score card ── */
+        .ransomware-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 20px 28px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .rw-score-circle {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 3px solid var(--rw-color, #ef4444);
+            background: color-mix(in srgb, var(--rw-color, #ef4444) 8%, white);
+        }
+        .rw-score-num  { font-size: 1.5em; font-weight: 800; color: var(--rw-color, #ef4444); line-height: 1; }
+        .rw-score-max  { font-size: 0.62em; color: #bbb; line-height: 1; margin-top: 1px; }
+        .rw-body       { flex: 1; min-width: 180px; }
+        .rw-title      { font-size: 0.95em; font-weight: 700; color: #333; margin-bottom: 4px; }
+        .rw-narrative  { font-size: 0.83em; color: #666; margin-bottom: 10px; line-height: 1.45; }
+        .rw-pillars    { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+        .rw-pillar     { text-align: center; }
+        .rw-pillar-icon { font-size: 1em; }
+        .rw-pillar-label { font-size: 0.68em; color: #999; display: block; }
+        .rw-pillar-score { font-size: 0.88em; font-weight: 700; color: #444; }
+        .rw-link {
+            font-size: 0.82em;
+            color: #c0392b;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .rw-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -420,6 +462,30 @@
                 <div class="health-updated">Security Health Score &mdash; based on your last 30 days</div>
             </div>
         </div>
+
+        <!-- Ransomware Protection Score -->
+        {% if ransomware %}
+        <div class="ransomware-card" style="--rw-color: {{ ransomware.grade_color }};">
+            <div class="rw-score-circle">
+                <span class="rw-score-num">{{ ransomware.total }}</span>
+                <span class="rw-score-max">/ 100</span>
+            </div>
+            <div class="rw-body">
+                <div class="rw-title">🛡️ Ransomware Protection Score &nbsp;<span style="font-size:0.85em;font-weight:700;color:{{ ransomware.grade_color }};">Grade {{ ransomware.grade }}</span></div>
+                <div class="rw-narrative">{{ ransomware.narrative }}</div>
+                <div class="rw-pillars">
+                    {% for p in ransomware.pillars %}
+                    <div class="rw-pillar">
+                        <span class="rw-pillar-icon">{{ p.icon }}</span>
+                        <span class="rw-pillar-score">{{ p.score }}/{{ p.max }}</span>
+                        <span class="rw-pillar-label">{{ p.label }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <a href="{{ url_for('ransomware_protection') }}" class="rw-link">View Full Ransomware Report &amp; Response Playbook →</a>
+            </div>
+        </div>
+        {% endif %}
 
         <div class="page-header">
             <h1>Your Incident Reports</h1>

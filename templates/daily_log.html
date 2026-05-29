@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — Daily Log</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; }
+
+        .topbar {
+            background: #12151f; border-bottom: 1px solid #1e2235;
+            padding: 0 40px; display: flex; align-items: center;
+            justify-content: space-between; height: 56px;
+        }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00d4ff; text-decoration: none; }
+        .topbar-brand span { color: #d4d4d4; }
+        .topbar-nav { display: flex; align-items: center; gap: 20px; }
+        .topbar-nav a { color: #888; text-decoration: none; font-size: 0.87em; }
+        .topbar-nav a:hover { color: #00d4ff; }
+
+        .page-wrap { max-width: 860px; margin: 0 auto; padding: 36px 24px 60px; }
+
+        /* Header */
+        .page-header { margin-bottom: 28px; }
+        .page-header h1 { font-size: 1.4em; font-weight: 700; color: #fff; margin: 0 0 5px; }
+        .page-header p  { color: #666; font-size: 0.87em; margin: 0; line-height: 1.5; }
+
+        /* Flash messages */
+        .flash-success { background: #0a2010; border: 1px solid #2a6030; color: #4a9e6a; border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; font-size: 0.88em; }
+        .flash-warning { background: #1a1000; border: 1px solid #604010; color: #c08040; border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; font-size: 0.88em; }
+        .flash-info    { background: #0a1020; border: 1px solid #204060; color: #4488aa; border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; font-size: 0.88em; }
+
+        /* Add entry form */
+        .add-form {
+            background: #12151f;
+            border: 1px solid #1e2235;
+            border-radius: 10px;
+            padding: 22px 24px;
+            margin-bottom: 28px;
+        }
+        .add-form h2 {
+            font-size: 0.8em; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #888; margin: 0 0 16px;
+        }
+        .form-row { display: flex; gap: 12px; align-items: flex-start; }
+        .cat-select {
+            background: #0b0e17; border: 1px solid #2a3040; color: #d4d4d4;
+            border-radius: 6px; padding: 10px 12px; font-size: 0.87em;
+            flex-shrink: 0; width: 160px; cursor: pointer;
+        }
+        .cat-select option { background: #0b0e17; }
+        .note-input {
+            flex: 1; background: #0b0e17; border: 1px solid #2a3040; color: #d4d4d4;
+            border-radius: 6px; padding: 10px 12px; font-size: 0.87em;
+            resize: vertical; min-height: 44px; font-family: Arial, sans-serif;
+        }
+        .note-input:focus, .cat-select:focus { outline: none; border-color: #00d4ff; }
+        .add-btn {
+            background: #00d4ff; color: #000; font-weight: 700; font-size: 0.87em;
+            border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer;
+            flex-shrink: 0; white-space: nowrap;
+        }
+        .add-btn:hover { background: #00bbee; }
+
+        .cat-hint {
+            display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap;
+        }
+        .cat-hint-item { font-size: 0.76em; color: #555; }
+        .cat-hint-item span { font-weight: 700; }
+
+        /* Today's entries */
+        .section-head {
+            font-size: 0.78em; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #666; margin: 0 0 12px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .section-head .count-chip {
+            background: #1e2235; border-radius: 10px; padding: 2px 8px;
+            font-size: 0.9em; color: #888;
+        }
+
+        .entry-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
+        .entry-card {
+            background: #12151f; border: 1px solid #1e2235;
+            border-left: 3px solid var(--cat-color, #444);
+            border-radius: 6px; padding: 12px 16px;
+            display: flex; align-items: flex-start; gap: 12px;
+        }
+        .entry-cat-badge {
+            flex-shrink: 0; font-size: 0.7em; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.06em;
+            color: var(--cat-color, #888); padding-top: 2px;
+            white-space: nowrap; width: 80px;
+        }
+        .entry-note { flex: 1; font-size: 0.88em; color: #ccc; line-height: 1.55; }
+        .entry-time { font-size: 0.74em; color: #444; flex-shrink: 0; white-space: nowrap; }
+        .entry-del-btn {
+            background: none; border: none; color: #2a3040; cursor: pointer;
+            font-size: 0.85em; padding: 0 0 0 8px; flex-shrink: 0;
+        }
+        .entry-del-btn:hover { color: #ff4444; }
+        .entry-sent-badge {
+            font-size: 0.7em; color: #4a9e6a; background: #0a2010;
+            border-radius: 8px; padding: 1px 6px; flex-shrink: 0;
+        }
+
+        .empty-day {
+            text-align: center; padding: 32px; color: #333;
+            font-style: italic; font-size: 0.88em;
+            background: #0e1018; border-radius: 8px; border: 1px dashed #1e2235;
+        }
+
+        /* Recent history */
+        .history-toggle {
+            font-size: 0.78em; color: #555; cursor: pointer; user-select: none;
+            display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px;
+        }
+        .history-toggle:hover { color: #888; }
+        .history-panel { display: none; }
+        .history-panel.open { display: block; }
+        .history-entry {
+            display: flex; gap: 10px; padding: 6px 0;
+            border-bottom: 1px solid #1a1d2e; font-size: 0.83em;
+        }
+        .history-entry:last-child { border-bottom: none; }
+        .hist-date  { color: #444; flex-shrink: 0; width: 100px; font-size: 0.9em; }
+        .hist-cat   { flex-shrink: 0; width: 70px; }
+        .hist-note  { color: #777; }
+
+        /* Category colours */
+        .cat-built    { --cat-color: #00c47a; }
+        .cat-for_peta { --cat-color: #00d4ff; }
+        .cat-question { --cat-color: #f59e0b; }
+
+        /* Tip strip */
+        .tip-strip {
+            background: #0a1020; border: 1px solid #1e2235; border-radius: 8px;
+            padding: 12px 16px; font-size: 0.8em; color: #555; line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .tip-strip strong { color: #888; }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <a href="{{ url_for('control_room') }}" class="topbar-brand">Boundry<span>.AI</span></a>
+    <div class="topbar-nav">
+        <a href="{{ url_for('control_room') }}">← Control Room</a>
+        <a href="{{ url_for('logout') }}">Log out</a>
+    </div>
+</nav>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h1>📋 Daily Build Log — {{ today }}</h1>
+        <p>Drop notes here throughout the day. At 8 PM, Peta gets an email with everything flagged for her — categorised, clear, no jargon.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <!-- How categories work -->
+    <div class="tip-strip">
+        <strong>Three categories:</strong>
+        &nbsp; ✅ <strong style="color:#00c47a;">Built Today</strong> — features, fixes, and work completed &nbsp;&nbsp;
+        👀 <strong style="color:#00d4ff;">Needs Your Eyes</strong> — things Peta needs to review or decide &nbsp;&nbsp;
+        ❓ <strong style="color:#f59e0b;">Questions</strong> — waiting on her input before we can move forward
+    </div>
+
+    <!-- Add entry form -->
+    <div class="add-form">
+        <h2>Add to Today's Log</h2>
+        <form method="POST" action="{{ url_for('daily_log_add') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-row">
+                <select name="category" class="cat-select">
+                    <option value="built">✅ Built Today</option>
+                    <option value="for_peta">👀 Needs Your Eyes</option>
+                    <option value="question">❓ Question for Peta</option>
+                </select>
+                <textarea name="note" class="note-input" placeholder="What do you want Peta to know?" rows="2"></textarea>
+                <button type="submit" class="add-btn">Add →</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Today's entries -->
+    <div class="section-head">
+        Today's Log
+        <span class="count-chip">{{ today_entries|length }} entr{{ 'ies' if today_entries|length != 1 else 'y' }}</span>
+    </div>
+
+    {% if today_entries %}
+    <div class="entry-list">
+        {% for entry in today_entries %}
+        <div class="entry-card cat-{{ entry.category }}">
+            <div class="entry-cat-badge">
+                {% if entry.category == 'built' %}✅ Built{% elif entry.category == 'for_peta' %}👀 For Peta{% else %}❓ Question{% endif %}
+            </div>
+            <div class="entry-note">{{ entry.note }}</div>
+            <div class="entry-time">{{ entry.created_at[:10] if entry.created_at else '' }}</div>
+            {% if entry.sent %}
+            <span class="entry-sent-badge">Sent ✓</span>
+            {% else %}
+            <form method="POST" action="{{ url_for('daily_log_delete', entry_id=entry.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="entry-del-btn" title="Remove this entry">✕</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-day">
+        Nothing logged yet today. Add your first note above — what did you build?
+    </div>
+    {% endif %}
+
+    <!-- Recent history -->
+    {% if recent_entries %}
+    <div class="history-toggle" onclick="toggleHistory()">
+        <span id="hist-arrow">▶</span> Previous entries ({{ recent_entries|length }})
+    </div>
+    <div class="history-panel" id="history-panel">
+        <div style="background:#0e1018;border-radius:8px;padding:12px 16px;border:1px solid #1e2235;">
+            {% for entry in recent_entries %}
+            <div class="history-entry">
+                <span class="hist-date">{{ entry.created_at[:10] if entry.created_at else '' }}</span>
+                <span class="hist-cat" style="color:{% if entry.category=='built' %}#00c47a{% elif entry.category=='for_peta' %}#00d4ff{% else %}#f59e0b{% endif %};">
+                    {% if entry.category == 'built' %}Built{% elif entry.category == 'for_peta' %}For Peta{% else %}Question{% endif %}
+                </span>
+                <span class="hist-note">{{ entry.note }}</span>
+                {% if entry.sent %}<span style="color:#3a6a40;font-size:0.8em;margin-left:auto;flex-shrink:0;">✓ sent</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function toggleHistory() {
+        var panel = document.getElementById('history-panel');
+        var arrow = document.getElementById('hist-arrow');
+        var open  = panel.classList.contains('open');
+        panel.classList.toggle('open', !open);
+        arrow.textContent = open ? '▶' : '▼';
+    }
+    // Auto-expand textarea as user types
+    document.querySelectorAll('.note-input').forEach(function(el) {
+        el.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.max(44, this.scrollHeight) + 'px';
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — {{ pb.title }}</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; }
+
+        .topbar {
+            background: #12151f; border-bottom: 1px solid #1e2235;
+            padding: 0 40px; display: flex; align-items: center;
+            justify-content: space-between; height: 56px;
+        }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00d4ff; text-decoration: none; }
+        .topbar-brand span { color: #d4d4d4; }
+        .topbar-nav { display: flex; align-items: center; gap: 20px; }
+        .topbar-nav a { color: #888; text-decoration: none; font-size: 0.87em; }
+        .topbar-nav a:hover { color: #00d4ff; }
+
+        .page-wrap { max-width: 1000px; margin: 0 auto; padding: 36px 24px 60px; }
+
+        /* Hero */
+        .pb-hero {
+            background: #12151f;
+            border: 1px solid #1e2235;
+            border-left: 6px solid {{ pb.color }};
+            border-radius: 10px;
+            padding: 28px 32px;
+            margin-bottom: 28px;
+        }
+        .pb-hero-top { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+        .pb-hero-icon { font-size: 2.2em; }
+        .pb-hero-title { font-size: 1.4em; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .pb-hero-meta  { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .sev-chip {
+            font-size: 0.78em; font-weight: 700; padding: 3px 10px; border-radius: 10px;
+            background: {{ pb.color }}; color: {% if pb.severity == 'HIGH' %}#000{% else %}#fff{% endif %};
+        }
+        .meta-chip { font-size: 0.78em; color: #666; background: #1a1d2e; border-radius: 10px; padding: 3px 10px; }
+
+        .pb-summary { color: #aaa; font-size: 0.9em; line-height: 1.65; margin-bottom: 16px; }
+
+        .pb-quick { display: flex; gap: 10px; flex-wrap: wrap; }
+        .pb-quick a {
+            font-size: 0.82em; font-weight: 600; padding: 7px 14px;
+            border-radius: 5px; text-decoration: none;
+        }
+        .btn-guide   { background: #1e2235; color: #aaa; border: 1px solid #2a3040; }
+        .btn-guide:hover { color: #fff; }
+
+        /* Do NOT section */
+        .donot-panel {
+            background: #1a0808; border: 1px solid #ff444430;
+            border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;
+        }
+        .donot-panel h3 { font-size: 0.8em; font-weight: 700; text-transform: uppercase;
+                          letter-spacing: 0.08em; color: #ff6666; margin: 0 0 10px; }
+        .donot-panel ul { margin: 0; padding: 0 0 0 16px; }
+        .donot-panel li { font-size: 0.85em; color: #cc8888; margin-bottom: 5px; line-height: 1.5; }
+
+        /* MITRE techniques */
+        .mitre-panel {
+            background: #0e0e1a; border: 1px solid #2a3040;
+            border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;
+        }
+        .mitre-panel h3 { font-size: 0.8em; font-weight: 700; text-transform: uppercase;
+                           letter-spacing: 0.08em; color: #4488ff; margin: 0 0 10px; }
+        .mitre-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .mitre-tag {
+            font-size: 0.78em; font-family: monospace;
+            background: #4488ff15; border: 1px solid #4488ff30;
+            color: #4488ff; border-radius: 10px; padding: 3px 10px;
+            text-decoration: none;
+        }
+        .mitre-tag:hover { background: #4488ff25; }
+        .mitre-tactic { font-size: 0.75em; color: #555; margin-top: 2px; }
+
+        /* Indicators */
+        .indicators-panel {
+            background: #0e1a0e; border: 1px solid #2a4030;
+            border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;
+        }
+        .indicators-panel h3 { font-size: 0.8em; font-weight: 700; text-transform: uppercase;
+                                letter-spacing: 0.08em; color: #4a9e6a; margin: 0 0 10px; }
+        .indicators-panel ul { margin: 0; padding: 0 0 0 16px; }
+        .indicators-panel li { font-size: 0.84em; color: #4a9e6a; margin-bottom: 5px; line-height: 1.5; }
+
+        /* Applicable to */
+        .applicable-panel {
+            background: #0e0e1a; border: 1px solid #2a3040;
+            border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;
+        }
+        .applicable-panel h3 { font-size: 0.8em; font-weight: 700; text-transform: uppercase;
+                                letter-spacing: 0.08em; color: #888; margin: 0 0 8px; }
+        .applicable-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .applicable-tag {
+            font-size: 0.78em; background: #1e2235; border: 1px solid #2a3040;
+            color: #aaa; border-radius: 10px; padding: 3px 10px;
+        }
+
+        /* Phase cards */
+        .phase-section { margin-bottom: 12px; }
+        .phase-card {
+            background: #12151f; border: 1px solid #1e2235;
+            border-radius: 10px; overflow: hidden; margin-bottom: 12px;
+        }
+        .phase-header {
+            display: flex; align-items: center; gap: 14px;
+            padding: 16px 20px; cursor: pointer; user-select: none;
+            border-bottom: 1px solid transparent; transition: background 0.15s;
+        }
+        .phase-header:hover { background: #14182a; }
+        .phase-header.open  { border-bottom-color: #1e2235; background: #14182a; }
+        .phase-num-badge {
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1em; flex-shrink: 0;
+        }
+        .phase-label { font-size: 0.98em; font-weight: 700; color: #fff; }
+        .phase-summary-short { font-size: 0.82em; color: #666; margin-top: 2px; }
+        .phase-chevron { margin-left: auto; color: #444; font-size: 0.85em; transition: transform 0.2s; }
+        .phase-header.open .phase-chevron { transform: rotate(180deg); color: #888; }
+
+        .phase-body { padding: 20px 24px; display: none; }
+        .phase-body.open { display: block; }
+
+        .phase-full-summary {
+            color: #aaa; font-size: 0.87em; line-height: 1.6;
+            margin-bottom: 18px; padding: 12px 14px;
+            background: #0e1018; border-radius: 6px;
+            border-left: 3px solid var(--phase-color, #888);
+        }
+
+        .steps-label { font-size: 0.72em; font-weight: 700; text-transform: uppercase;
+                       letter-spacing: 0.08em; color: #666; margin-bottom: 8px; }
+        .steps-list  { list-style: none; padding: 0; margin: 0 0 20px; }
+        .steps-list li {
+            position: relative; padding: 8px 0 8px 24px;
+            font-size: 0.87em; color: #ccc; line-height: 1.55;
+            border-bottom: 1px solid #1a1d2e;
+        }
+        .steps-list li:last-child { border-bottom: none; }
+        .steps-list li::before { content: "→"; position: absolute; left: 0; color: var(--phase-color, #888); }
+
+        .regs-label { font-size: 0.72em; font-weight: 700; text-transform: uppercase;
+                      letter-spacing: 0.08em; color: #888; margin: 0 0 8px; }
+        .reg-items { display: flex; flex-direction: column; gap: 8px; }
+        .reg-item {
+            background: #0e0e1a; border-left: 3px solid #3b82f6;
+            border-radius: 0 6px 6px 0; padding: 9px 12px; font-size: 0.83em;
+        }
+        .reg-item strong { display: block; color: #aaa; margin-bottom: 2px; font-size: 0.9em; }
+        .reg-item span   { color: #666; line-height: 1.5; }
+
+        /* MITRE chips in phase */
+        .phase-mitre { margin-top: 14px; display: flex; gap: 6px; flex-wrap: wrap; }
+        .phase-mitre-chip {
+            font-size: 0.74em; font-family: monospace;
+            background: #4488ff12; border: 1px solid #4488ff25;
+            color: #4488ff; border-radius: 8px; padding: 2px 8px;
+            text-decoration: none;
+        }
+        .phase-mitre-chip:hover { background: #4488ff20; }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <a href="{{ url_for('control_room') }}" class="topbar-brand">Boundry<span>.AI</span></a>
+    <div class="topbar-nav">
+        <a href="{{ url_for('playbook_index') }}">← Playbooks</a>
+        <a href="{{ url_for('control_room') }}">Control Room</a>
+        <a href="{{ url_for('siem_dashboard') }}">SIEM</a>
+        <a href="{{ url_for('logout') }}">Log out</a>
+    </div>
+</nav>
+
+<div class="page-wrap">
+
+    <!-- Hero -->
+    <div class="pb-hero">
+        <div class="pb-hero-top">
+            <div class="pb-hero-icon">{{ pb.icon }}</div>
+            <div>
+                <div class="pb-hero-title">{{ pb.title }}</div>
+                <div class="pb-hero-meta">
+                    <span class="sev-chip">{{ pb.severity }}</span>
+                    <span class="meta-chip">v{{ pb.version }}</span>
+                    <span class="meta-chip">Updated {{ pb.last_updated }}</span>
+                    <span class="meta-chip">{{ pb.phases|length }} phases</span>
+                </div>
+            </div>
+        </div>
+        <div class="pb-summary">{{ pb.summary }}</div>
+        <div class="pb-quick">
+            {% if pb.has_markdown %}
+            <a href="{{ url_for('playbook_markdown', playbook_id=playbook_id) }}" class="btn-guide pb-quick">
+                📄 Plain-Language Guide (for Peta / clients)
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Do NOT list -->
+    {% if pb.do_not %}
+    <div class="donot-panel">
+        <h3>⛔ Do NOT Do These Things</h3>
+        <ul>
+            {% for item in pb.do_not %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Indicators -->
+    {% if pb.key_indicators %}
+    <div class="indicators-panel">
+        <h3>🚦 Key Indicators — What to Look For</h3>
+        <ul>
+            {% for ind in pb.key_indicators %}
+            <li>{{ ind }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- MITRE Techniques -->
+    {% if pb.mitre_techniques %}
+    <div class="mitre-panel">
+        <h3>⚔️ MITRE ATT&amp;CK Techniques</h3>
+        <div class="mitre-tags">
+            {% for t in pb.mitre_techniques %}
+            <div>
+                <a href="{{ url_for('mitre_detail', technique_id=t.id) }}" class="mitre-tag">
+                    {{ t.id }} — {{ t.name }}
+                </a>
+                <div class="mitre-tactic">{{ t.tactic }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Applicable to -->
+    {% if pb.applicable_to %}
+    <div class="applicable-panel">
+        <h3>Applicable To</h3>
+        <div class="applicable-tags">
+            {% for item in pb.applicable_to %}
+            <span class="applicable-tag">{{ item }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Phases -->
+    <h2 style="font-size:0.9em;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin:0 0 14px;">Response Phases</h2>
+
+    {% for phase in pb.phases %}
+    <div class="phase-card" id="pc-{{ phase.phase }}" style="--phase-color: {{ phase.color }};">
+        <div class="phase-header" id="ph-{{ phase.phase }}" onclick="togglePhase({{ phase.phase }})">
+            <div class="phase-num-badge" style="background: {{ phase.color }}20; color: {{ phase.color }};">{{ phase.icon }}</div>
+            <div>
+                <div style="font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#555;margin-bottom:2px;">Phase {{ phase.phase }}</div>
+                <div class="phase-label">{{ phase.label }}</div>
+                <div class="phase-summary-short">{{ phase.summary[:90] }}…</div>
+            </div>
+            <span class="phase-chevron">▼</span>
+        </div>
+        <div class="phase-body" id="pb-body-{{ phase.phase }}" style="--phase-color: {{ phase.color }};">
+            <div class="phase-full-summary">{{ phase.summary }}</div>
+
+            <div class="steps-label">Steps to Take</div>
+            <ul class="steps-list">
+                {% for step in phase.steps %}
+                <li>{{ step }}</li>
+                {% endfor %}
+            </ul>
+
+            {% if phase.regulations %}
+            <div class="regs-label">Regulatory Requirements</div>
+            <div class="reg-items">
+                {% for reg in phase.regulations %}
+                <div class="reg-item">
+                    <strong>{{ reg.name }}</strong>
+                    <span>{{ reg.req }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if phase.mitre %}
+            <div class="phase-mitre">
+                {% for tid in phase.mitre %}
+                <a href="{{ url_for('mitre_detail', technique_id=tid) }}" class="phase-mitre-chip">{{ tid }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+
+<script>
+    function togglePhase(n) {
+        var h = document.getElementById('ph-' + n);
+        var b = document.getElementById('pb-body-' + n);
+        var open = h.classList.contains('open');
+        h.classList.toggle('open', !open);
+        b.classList.toggle('open', !open);
+    }
+    // Auto-open phase 1
+    document.addEventListener('DOMContentLoaded', function() { togglePhase(1); });
+</script>
+</body>
+</html>

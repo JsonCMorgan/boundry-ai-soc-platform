@@ -1,0 +1,177 @@
+---
+id: ransomware
+title: Ransomware Attack Response
+icon: "🔒"
+color: "#ef4444"
+severity: CRITICAL
+version: "1.0"
+last_updated: 2026-05-28
+
+summary: >
+  A ransomware attack encrypts business files and demands payment for the decryption key.
+  Modern ransomware groups also exfiltrate data before encrypting ("double extortion"),
+  meaning a breach notification obligation exists even if you pay. This playbook covers
+  the full response — from the moment you detect it to the moment you file regulatory notice.
+
+applicable_to:
+  - Any SMB handling personal data
+  - Healthcare (HIPAA)
+  - Cannabis (METRC/PIPEDA)
+  - Legal / Financial (PIPEDA, GLBA)
+  - Any business accepting payment cards (PCI DSS)
+
+mitre_techniques:
+  - id: T1566.001
+    name: "Spearphishing Attachment"
+    tactic: "Initial Access"
+  - id: T1059.001
+    name: "PowerShell"
+    tactic: "Execution"
+  - id: T1543.003
+    name: "Windows Service"
+    tactic: "Persistence"
+  - id: T1562.001
+    name: "Disable or Modify Tools"
+    tactic: "Defence Evasion"
+  - id: T1490
+    name: "Inhibit System Recovery"
+    tactic: "Impact"
+  - id: T1486
+    name: "Data Encrypted for Impact"
+    tactic: "Impact"
+
+key_indicators:
+  - "PHISHING_EMAIL / MACRO_EXEC events in SIEM"
+  - "DEFENDER_DISABLED — AV killed before payload"
+  - "SHADOW_COPY_DELETED / BACKUP_DELETED — recovery options destroyed"
+  - "MASS_FILE_RENAME — encryption wave in progress"
+  - "RANSOMWARE_NOTE — encryption complete"
+  - "Volume of CRITICAL alerts spiking across a single host"
+
+do_not:
+  - "Do NOT shut down the infected machine immediately — memory may hold decryption keys"
+  - "Do NOT pay the ransom before consulting law enforcement"
+  - "Do NOT trust a decrypted system — rebuild from clean images"
+  - "Do NOT alert the attacker you have detected them before containment is ready"
+  - "Do NOT wipe before forensic evidence is preserved"
+
+phases:
+  - phase: 1
+    label: Identify
+    icon: "🔍"
+    color: "#3b82f6"
+    summary: >
+      Determine the scope of the infection before taking containment action.
+      Premature isolation can cause the attacker to detonate dormant payloads
+      or destroy additional data.
+    steps:
+      - "Identify all affected hosts: search SIEM for mass_file_rename, ransomware_note, shadow_copy_deleted in the last 4 hours."
+      - "Determine Patient Zero: find the earliest PHISHING_EMAIL or MACRO_EXEC event and trace the host."
+      - "Check for lateral movement: LATERAL_MOVE events show spread path — how many hosts are compromised?"
+      - "Preserve volatile evidence BEFORE isolation: document running processes, open network connections, and logged-in users."
+      - "Photograph or screenshot the ransom note: record the wallet address, demand amount, and any attacker contact info."
+      - "Check for data exfiltration: large outbound transfers to unknown IPs in the hours before encryption started."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.2 — Detection and Analysis: Determine scope before containment to avoid driving threat underground."
+      - name: "CISA Ransomware Guide"
+        req: "Step 1 — Take stock of what is affected and preserve evidence for law enforcement before isolating."
+      - name: "PIPEDA (Canada)"
+        req: "Assess whether personal information was accessed or exfiltrated — this triggers breach notification obligations separate from the ransom itself."
+    mitre: ["T1566.001", "T1059.001", "T1486"]
+
+  - phase: 2
+    label: Contain
+    icon: "🔒"
+    color: "#f59e0b"
+    summary: >
+      Isolate affected systems to stop lateral spread. The goal is to sever
+      the attacker's connection and limit damage without triggering additional
+      payload detonation.
+    steps:
+      - "Disconnect infected hosts from network: physically unplug the ethernet cable or disable the NIC. Do NOT power off — memory may hold keys."
+      - "Isolate network segments: block SMB (445), RDP (3389), and WMI (135) at the firewall immediately."
+      - "Revoke compromised credentials: reset all accounts that had LOGIN_SUCCESS events from attacker IPs in the past 48 hours."
+      - "Disable any new persistence mechanisms: check PERSISTENCE_REG / SERVICE_INSTALLED events from the attack window."
+      - "Notify VPN and remote access providers: revoke active sessions from suspicious source IPs."
+      - "Alert IT and management: do NOT use email on potentially compromised systems — use phone or a separate device."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.3 — Containment: Choose strategy based on potential damage and the need to preserve evidence."
+      - name: "HIPAA §164.308(a)(6)"
+        req: "Incident response procedures must include containment and mitigation steps. Document every action taken."
+      - name: "PCI DSS Req 12.10.1"
+        req: "The incident response plan must address containment and eradication of threats to the cardholder data environment."
+    mitre: ["T1562.001", "T1490", "T1543.003"]
+
+  - phase: 3
+    label: Eradicate
+    icon: "🧹"
+    color: "#ef4444"
+    summary: >
+      Remove all attacker footholds completely. A missed persistence mechanism
+      means the attacker can re-encrypt after you recover.
+    steps:
+      - "Wipe and re-image all infected hosts — do NOT attempt to decrypt and reuse a compromised operating system."
+      - "Remove all persistence: malicious services (check SERVICE_INSTALLED events), scheduled tasks, registry run keys, startup folders."
+      - "Scan all remaining hosts with updated AV/EDR signatures for the identified ransomware family."
+      - "Rotate ALL credentials: every admin account, service account, API key, and VPN credential on the network."
+      - "Harden the initial access vector: enforce macro blocking via Group Policy, deploy email attachment filtering, update phishing training."
+      - "Patch the vulnerability that was exploited if applicable — check CVE databases for the ransomware family's known TTPs."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.4 — Eradication: Identify and eliminate all attacker-controlled components before recovery begins."
+      - name: "CISA Ransomware Guide"
+        req: "Rebuild from clean images. Do not trust a decrypted system even with a paid key — implants may remain."
+      - name: "PCI DSS Req 5.3"
+        req: "Anti-malware mechanisms must be maintained and actively updated to protect against current malware threats."
+    mitre: ["T1486", "T1490", "T1059.001"]
+
+  - phase: 4
+    label: Recover
+    icon: "♻️"
+    color: "#10b981"
+    summary: >
+      Restore operations from verified clean backups. Prioritise by business
+      criticality. Do not reconnect systems until they are confirmed clean.
+    steps:
+      - "Verify backup integrity BEFORE restoring: confirm backups were not themselves encrypted or deleted during the attack."
+      - "Restore in priority order: identity systems first (Active Directory, DNS), then critical business systems, then individual workstations."
+      - "Test restored systems in an isolated environment before reconnecting to the production network."
+      - "Monitor all restored systems closely for 30 days — some ransomware strains have secondary payloads or dormant backdoors."
+      - "Document all recovery decisions and timelines: this record is required for regulatory reporting and cyber insurance claims."
+      - "Conduct a tabletop review post-recovery: what detection gaps allowed this to happen? Update rules and training accordingly."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.5 — Recovery: Restore affected systems and verify that systems are functioning normally."
+      - name: "NIST CSF RC.RP-1"
+        req: "Recovery plan is executed during or after a cybersecurity incident."
+      - name: "HIPAA §164.308(a)(7)"
+        req: "Contingency plan must include data backup plan, disaster recovery plan, and emergency mode operation plan."
+    mitre: []
+
+  - phase: 5
+    label: Notify
+    icon: "📣"
+    color: "#8b5cf6"
+    summary: >
+      Meet regulatory notification requirements. Deadlines begin from the moment
+      you confirm (or reasonably believe) a breach has occurred — not from
+      when you finish responding.
+    steps:
+      - "Determine if personal data was accessed or exfiltrated — encryption alone may not trigger notification; exfiltration does."
+      - "Report to law enforcement: FBI IC3 (ic3.gov) and/or CISA (cisa.gov/report). Do NOT pay ransom before reporting."
+      - "Notify your cyber insurer within their policy window — most require 24-72 hours notice from discovery."
+      - "If personal data is involved: notify affected individuals and regulators within statutory deadlines (see below)."
+      - "Prepare a written incident summary: timeline, scope, containment actions taken, recovery status, and root cause."
+      - "Preserve all communication records, SIEM logs, and forensic evidence for at least 3 years."
+    regulations:
+      - name: "PIPEDA (Canada)"
+        req: "Report to the OPC and notify affected individuals 'as soon as feasible' — generally 72 hours for significant risk of harm."
+      - name: "HIPAA Breach Rule"
+        req: "Notify HHS and affected individuals within 60 days of discovery. Media notice required if 500+ records affected in a state."
+      - name: "PCI DSS Req 12.10.4"
+        req: "Notify card brands and acquirer immediately upon confirmed or suspected cardholder data compromise."
+      - name: "CIRCIA / CISA"
+        req: "Report to CISA within 72 hours of reasonably believing a ransomware attack has occurred (covered entities)."
+    mitre: []

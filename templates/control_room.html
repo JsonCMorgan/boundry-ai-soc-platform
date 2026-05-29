@@ -1101,9 +1101,11 @@
                 <a href="/training" style="color:#00b432; font-weight:bold;">🎓 SOC Training</a>
                 <a href="/cissp" style="color:#9944ee; font-weight:bold;">📘 CISSP</a>
                 {% endif %}
+                <a href="/playbooks" style="color:#ff9900; font-weight:bold;">📋 Playbooks</a>
+                <a href="/daily-log" style="color:#f59e0b; font-weight:bold;">📓 Daily Log</a>
                 <a href="/siem" style="color:#00d4ff; font-weight:bold;">📡 SIEM</a>
                 <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
-                <a href="/compliance" style="color:#f39c12; font-weight:bold;">📋 Compliance</a>
+                <a href="/compliance" style="color:#f39c12; font-weight:bold;">📊 Compliance</a>
                 {% if user_role == 'analyst' %}
                 {% if not ops_mode %}<a href="/profile" style="color:#ffd700; font-weight:bold;">⚔️ Profile</a>{% endif %}
                 <a href="/reports">Reports</a>
@@ -1562,6 +1564,106 @@
                     </div>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+
+        <!-- ── Ransomware Early Warning Panel ──────────────────────────────── -->
+        <div class="scanner-panel" style="margin-bottom:18px;">
+            <div class="scanner-toggle" onclick="toggleRansomware()" style="display:flex;align-items:center;justify-content:space-between;">
+                <span>
+                    🛡️ Ransomware Early Warning
+                    {% if ransomware_events %}
+                    <span style="font-size:0.85em; color:#ff4444; font-weight:800; text-transform:none; letter-spacing:0;">
+                        — ⚠️ {{ ransomware_events|length }} indicator(s) detected
+                    </span>
+                    {% else %}
+                    <span style="font-size:0.85em; color:#4a9; text-transform:none; letter-spacing:0;">— No indicators in SIEM</span>
+                    {% endif %}
+                    &nbsp;
+                    <a href="{{ url_for('siem_dashboard') }}" style="font-size:0.78em; color:#4488ff; font-weight:600; text-transform:none;">SIEM →</a>
+                </span>
+                <span id="rw-panel-arrow">▼</span>
+            </div>
+            <div id="rw-panel-body" style="display:none; padding:18px 20px;">
+
+                <!-- Score strip -->
+                {% if ransomware_score %}
+                <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; background:#0a1020; border:1px solid #224488; border-radius:6px; padding:14px 16px; align-items:center;">
+                    <div style="text-align:center;">
+                        <div style="font-size:1.8em; font-weight:800; color:{{ ransomware_score.grade_color }}; line-height:1;">{{ ransomware_score.total }}</div>
+                        <div style="font-size:0.68em; color:#888;">Protection Score</div>
+                    </div>
+                    <div style="font-size:0.95em; font-weight:700; color:{{ ransomware_score.grade_color }};">Grade {{ ransomware_score.grade }}</div>
+                    <div style="flex:1; font-size:0.82em; color:#aaa; line-height:1.4;">{{ ransomware_score.narrative }}</div>
+                    <div style="display:flex; gap:10px;">
+                        {% for p in ransomware_score.pillars %}
+                        <div style="text-align:center;">
+                            <div style="font-size:1em;">{{ p.icon }}</div>
+                            <div style="font-size:0.85em; font-weight:700; color:#ccc;">{{ p.score }}/{{ p.max }}</div>
+                            <div style="font-size:0.65em; color:#777;">{{ p.label }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="{{ url_for('ransomware_protection') }}" style="font-size:0.8em; color:#00d4ff; font-weight:600; white-space:nowrap;">Full Report →</a>
+                </div>
+                {% endif %}
+
+                <!-- Indicator events table -->
+                {% if ransomware_events %}
+                <div style="font-size:0.78em; color:#ff9944; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">
+                    ⚠️ Active Ransomware-Type Events in SIEM
+                </div>
+                <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.83em;">
+                    <thead>
+                        <tr style="text-align:left; font-size:0.75em; text-transform:uppercase; letter-spacing:0.05em; color:#888; border-bottom:1px solid #2a3a4a;">
+                            <th style="padding:6px 10px;">Severity</th>
+                            <th style="padding:6px 10px;">Event Type</th>
+                            <th style="padding:6px 10px;">User</th>
+                            <th style="padding:6px 10px;">Source IP</th>
+                            <th style="padding:6px 10px;">Description</th>
+                            <th style="padding:6px 10px;">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ev in ransomware_events %}
+                        <tr style="border-bottom:1px solid #1a2530;">
+                            <td style="padding:7px 10px;">
+                                <span style="
+                                    display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.78em; font-weight:700;
+                                    background:{% if ev.severity=='CRITICAL' %}#ff444420{% elif ev.severity=='HIGH' %}#ff880020{% else %}#ffcc0020{% endif %};
+                                    color:{% if ev.severity=='CRITICAL' %}#ff4444{% elif ev.severity=='HIGH' %}#ff9900{% else %}#ffcc00{% endif %};">
+                                    {{ ev.severity }}
+                                </span>
+                            </td>
+                            <td style="padding:7px 10px; color:#ccc; font-family:monospace;">{{ ev.event_type }}</td>
+                            <td style="padding:7px 10px; color:#aaa;">{{ ev.user or ev.user_account or '—' }}</td>
+                            <td style="padding:7px 10px; color:#aaa; font-family:monospace;">{{ ev.src_ip or '—' }}</td>
+                            <td style="padding:7px 10px; color:#bbb; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ ev.description }}">{{ ev.description }}</td>
+                            <td style="padding:7px 10px; color:#666; white-space:nowrap;">{{ ev.created_at[:16] if ev.created_at else '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                <div style="margin-top:10px; text-align:right;">
+                    <a href="{{ url_for('siem_dashboard') }}" style="font-size:0.82em; color:#4488ff;">View all in SIEM →</a>
+                </div>
+                {% else %}
+                <div style="color:#444; font-style:italic; text-align:center; padding:24px;">
+                    ✅ No ransomware-type events detected in SIEM. Active monitoring is in place.
+                </div>
+                {% endif %}
+
+                <!-- Playbook quick-ref links -->
+                <div style="margin-top:18px; padding-top:14px; border-top:1px solid #1e2d3d; display:flex; gap:10px; flex-wrap:wrap; font-size:0.82em;">
+                    <span style="color:#666;">Response playbook:</span>
+                    <a href="{{ url_for('ransomware_protection') }}#phase-1" style="color:#4488ff;">1. Identify</a>
+                    <a href="{{ url_for('ransomware_protection') }}#phase-2" style="color:#4488ff;">2. Contain</a>
+                    <a href="{{ url_for('ransomware_protection') }}#phase-3" style="color:#4488ff;">3. Eradicate</a>
+                    <a href="{{ url_for('ransomware_protection') }}#phase-4" style="color:#4488ff;">4. Recover</a>
+                    <a href="{{ url_for('ransomware_protection') }}#phase-5" style="color:#4488ff;">5. Notify</a>
+                </div>
             </div>
         </div>
 
@@ -2498,6 +2600,20 @@
             if (body.classList.contains('open')) { body.classList.remove('open'); arrow.textContent = '▼'; }
             else { body.classList.add('open'); arrow.textContent = '▲'; }
         }
+
+        function toggleRansomware() {
+            var body  = document.getElementById('rw-panel-body');
+            var arrow = document.getElementById('rw-panel-arrow');
+            if (body.style.display === 'none' || body.style.display === '') {
+                body.style.display = 'block'; arrow.textContent = '▲';
+            } else {
+                body.style.display = 'none'; arrow.textContent = '▼';
+            }
+        }
+        // Auto-expand if indicators present
+        {% if ransomware_events %}
+        document.addEventListener('DOMContentLoaded', function() { toggleRansomware(); });
+        {% endif %}
 
         // ── Run machine scan ──
         function runMachineScan() {

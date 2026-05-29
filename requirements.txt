@@ -26,6 +26,9 @@ Flask-WTF
 # Report rendering
 Markdown==3.10.2
 
+# YAML playbook loading
+PyYAML==6.0.2
+
 # AI report generation
 anthropic==0.49.0
 

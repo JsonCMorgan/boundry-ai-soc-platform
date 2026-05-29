@@ -474,6 +474,79 @@
 </div>
 {% endif %}
 
+<!-- ── Ransomware Indicators Panel ── -->
+{% if ransomware_indicators is defined %}
+<div style="background:#120a08;border:1px solid {% if ransomware_indicators %}#ff444444{% else %}#1e3020{% endif %};border-radius:8px;margin-bottom:1.25rem;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.25rem;cursor:pointer;user-select:none;"
+         onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.rw-arrow').textContent=this.nextElementSibling.style.display==='block'?'▲':'▼';">
+        <span style="font-size:.8rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:{% if ransomware_indicators %}#ff7755{% else %}#4a9e6a{% endif %};">
+            🛡️ Ransomware Indicators
+            {% if ransomware_indicators %}
+            &nbsp;<span style="background:#ff444420;border:1px solid #ff444440;color:#ff6644;border-radius:10px;padding:2px 8px;font-size:.78rem;">{{ ransomware_indicators|length }} event(s)</span>
+            {% else %}
+            &nbsp;<span style="background:#1e3020;border:1px solid #2a4830;color:#4a9e6a;border-radius:10px;padding:2px 8px;font-size:.78rem;">Clear</span>
+            {% endif %}
+        </span>
+        <span style="display:flex;align-items:center;gap:12px;">
+            <a href="{{ url_for('ransomware_protection') }}" style="font-size:.78rem;color:#4488ff;font-weight:600;" onclick="event.stopPropagation();">Full Report →</a>
+            <span class="rw-arrow" style="color:#888;font-size:.82rem;">{% if ransomware_indicators %}▲{% else %}▼{% endif %}</span>
+        </span>
+    </div>
+    <div style="display:{% if ransomware_indicators %}block{% else %}none{% endif %};padding:0 1.25rem 1rem;">
+        {% if ransomware_indicators %}
+        <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+            <thead>
+                <tr style="text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#777;border-bottom:1px solid #2a1a12;">
+                    <th style="padding:6px 8px;">Severity</th>
+                    <th style="padding:6px 8px;">Type</th>
+                    <th style="padding:6px 8px;">User</th>
+                    <th style="padding:6px 8px;">Host / IP</th>
+                    <th style="padding:6px 8px;">Description</th>
+                    <th style="padding:6px 8px;">Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ev in ransomware_indicators %}
+                <tr style="border-bottom:1px solid #1a0f08;">
+                    <td style="padding:6px 8px;">
+                        <span style="display:inline-block;padding:1px 7px;border-radius:9px;font-size:.72rem;font-weight:700;
+                            background:{% if ev.severity=='CRITICAL' %}#ff222210{% elif ev.severity=='HIGH' %}#ff880010{% else %}#ffaa0010{% endif %};
+                            color:{% if ev.severity=='CRITICAL' %}#ff4444{% elif ev.severity=='HIGH' %}#ff9900{% else %}#ffcc00{% endif %};">
+                            {{ ev.severity }}
+                        </span>
+                    </td>
+                    <td style="padding:6px 8px;color:#cc8866;font-family:monospace;font-size:.78rem;">{{ ev.event_type }}</td>
+                    <td style="padding:6px 8px;color:#aaa;">{{ ev.user_account or '—' }}</td>
+                    <td style="padding:6px 8px;color:#aaa;font-family:monospace;font-size:.78rem;">{{ ev.host or ev.src_ip or '—' }}</td>
+                    <td style="padding:6px 8px;color:#bbb;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ ev.description }}">{{ ev.description }}</td>
+                    <td style="padding:6px 8px;color:#666;white-space:nowrap;font-size:.78rem;">{{ ev.created_at[:16] if ev.created_at else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div style="color:#3a6a40;font-style:italic;text-align:center;padding:20px 0;">
+            ✅ No ransomware indicators detected. Monitoring is active.
+        </div>
+        {% endif %}
+        <!-- Kill-chain reference chips -->
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;font-size:.75rem;align-items:center;">
+            <span style="color:#666;">Watching:</span>
+            {% set rw_chips = [
+                ('#ff4444','T1566.001','Phishing'),('​#ff8800','T1059.001','PowerShell'),
+                ('#ffaa00','T1562.001','Def. Evasion'),('#ff4444','T1490','Backup Del.'),
+                ('#ff4444','T1486','Encryption'),('​#ff8800','T1543.003','Persistence')
+            ] %}
+            {% for color, tid, label in rw_chips %}
+            <a href="/mitre/{{ tid }}" style="background:{{ color }}15;border:1px solid {{ color }}33;color:{{ color }};border-radius:10px;padding:2px 8px;text-decoration:none;font-family:monospace;">{{ tid }} {{ label }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- ── Source filter pills ── -->
 <div class="source-pills">
     <span style="font-size:0.72em;color:#444;text-transform:uppercase;letter-spacing:0.08em;">Filter:</span>

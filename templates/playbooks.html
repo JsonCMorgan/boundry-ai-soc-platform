@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — Incident Response Playbooks</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; }
+
+        /* Topbar */
+        .topbar {
+            background: #12151f; border-bottom: 1px solid #1e2235;
+            padding: 0 40px; display: flex; align-items: center;
+            justify-content: space-between; height: 56px;
+        }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00d4ff; text-decoration: none; }
+        .topbar-brand span { color: #d4d4d4; }
+        .topbar-nav { display: flex; align-items: center; gap: 20px; }
+        .topbar-nav a { color: #888; text-decoration: none; font-size: 0.87em; }
+        .topbar-nav a:hover { color: #00d4ff; }
+
+        {% if not ops_mode %}
+        /* XP bar */
+        .xp-bar-wrap { background: #1a1d2e; border-bottom: 1px solid #1e2235; padding: 6px 40px; display: flex; align-items: center; gap: 14px; }
+        .xp-label { font-size: 0.75em; color: #666; white-space: nowrap; }
+        .xp-track { flex: 1; max-width: 260px; height: 6px; background: #2a2d3e; border-radius: 3px; overflow: hidden; }
+        .xp-fill  { height: 100%; background: linear-gradient(90deg,#9944ee,#00d4ff); border-radius: 3px; transition: width 0.6s ease; }
+        .xp-level { font-size: 0.78em; font-weight: 700; color: #9944ee; }
+        {% endif %}
+
+        /* Page */
+        .page-wrap { max-width: 1080px; margin: 0 auto; padding: 36px 24px 60px; }
+        .page-header { margin-bottom: 32px; }
+        .page-header h1 { font-size: 1.5em; font-weight: 700; margin: 0 0 6px; color: #fff; }
+        .page-header p  { color: #888; font-size: 0.88em; margin: 0; }
+
+        /* Severity legend */
+        .legend { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+        .leg-chip {
+            display: flex; align-items: center; gap: 6px;
+            background: #12151f; border: 1px solid #1e2235;
+            border-radius: 20px; padding: 5px 14px; font-size: 0.8em;
+        }
+        .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        /* Playbook grid */
+        .playbook-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 18px;
+        }
+        .pb-card {
+            background: #12151f;
+            border: 1px solid #1e2235;
+            border-left: 4px solid var(--pb-color, #666);
+            border-radius: 8px;
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .pb-card:hover { background: #14182a; }
+
+        .pb-header { display: flex; align-items: center; gap: 12px; }
+        .pb-icon { font-size: 1.6em; }
+        .pb-meta { flex: 1; }
+        .pb-title { font-size: 0.97em; font-weight: 700; color: #fff; margin-bottom: 3px; }
+        .pb-sev {
+            display: inline-block; font-size: 0.7em; font-weight: 700;
+            padding: 2px 8px; border-radius: 10px;
+            background: var(--pb-color, #666); color: #000;
+        }
+        .pb-sev.sev-CRITICAL { background: #ff4444; color: #fff; }
+        .pb-sev.sev-HIGH     { background: #ff9900; color: #000; }
+        .pb-sev.sev-MEDIUM   { background: #ffcc00; color: #000; }
+
+        .pb-summary { font-size: 0.83em; color: #888; line-height: 1.5; flex: 1; }
+
+        .pb-stats { display: flex; gap: 14px; font-size: 0.78em; color: #555; }
+        .pb-stat span { color: #888; }
+
+        .pb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pb-btn {
+            font-size: 0.8em; font-weight: 600; padding: 7px 14px;
+            border-radius: 5px; text-decoration: none; display: inline-block;
+        }
+        .pb-btn-tech  { background: var(--pb-color, #333); color: #000; }
+        .pb-btn-guide { background: #1e2235; color: #aaa; border: 1px solid #2a3040; }
+        .pb-btn-tech:hover  { opacity: 0.85; }
+        .pb-btn-guide:hover { color: #fff; }
+
+        /* Empty state */
+        .empty { text-align: center; padding: 60px 20px; color: #555; }
+        .empty h2 { color: #888; }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <a href="{{ url_for('control_room') if role == 'analyst' else url_for('reports') }}" class="topbar-brand">Boundry<span>.AI</span></a>
+    <div class="topbar-nav">
+        {% if role == 'analyst' %}
+        <a href="{{ url_for('control_room') }}">Control Room</a>
+        <a href="{{ url_for('siem_dashboard') }}">SIEM</a>
+        {% if not ops_mode %}<a href="{{ url_for('cissp_hub') }}" style="color:#9944ee;">📘 CISSP</a>{% endif %}
+        {% else %}
+        <a href="{{ url_for('reports') }}">← Dashboard</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}">Log out</a>
+    </div>
+</nav>
+
+{% if role == 'analyst' and not ops_mode and player %}
+<div class="xp-bar-wrap">
+    <span class="xp-label">{{ player.level_name }} · Lv {{ player.level }}</span>
+    <div class="xp-track">
+        <div class="xp-fill" style="width: {{ player.level_pct }}%;"></div>
+    </div>
+    <span class="xp-level">{{ player.xp }} XP</span>
+</div>
+{% endif %}
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h1>📋 Incident Response Playbooks</h1>
+        <p>
+            Five-phase response guides for every threat scenario your clients face.
+            Tech version (YAML) for analysts — plain-language guide for clients and Peta.
+        </p>
+    </div>
+
+    <div class="legend">
+        <div class="leg-chip"><div class="leg-dot" style="background:#ff4444;"></div> CRITICAL — immediate response required</div>
+        <div class="leg-chip"><div class="leg-dot" style="background:#ff9900;"></div> HIGH — respond within the hour</div>
+        <a href="{{ url_for('playbook_index') }}" style="font-size:0.8em;color:#888;margin-left:auto;text-decoration:none;display:flex;align-items:center;">
+            {{ playbooks|length }} playbook{{ 's' if playbooks|length != 1 else '' }} loaded
+        </a>
+    </div>
+
+    {% if playbooks %}
+    <div class="playbook-grid">
+        {% for pb in playbooks %}
+        <div class="pb-card" style="--pb-color: {{ pb.color }};">
+            <div class="pb-header">
+                <div class="pb-icon">{{ pb.icon }}</div>
+                <div class="pb-meta">
+                    <div class="pb-title">{{ pb.title }}</div>
+                    <span class="pb-sev sev-{{ pb.severity }}">{{ pb.severity }}</span>
+                </div>
+            </div>
+            <div class="pb-summary">{{ pb.summary }}</div>
+            <div class="pb-stats">
+                <span>📋 {{ pb.phase_count }} phases</span>
+                <span>⚔️ {{ pb.mitre_count }} MITRE techniques</span>
+                {% if pb.has_markdown %}<span>📄 Guide available</span>{% endif %}
+            </div>
+            <div class="pb-actions">
+                {% if role == 'analyst' %}
+                <a href="{{ url_for('playbook_detail', playbook_id=pb.id) }}" class="pb-btn pb-btn-tech" style="color:#000;">
+                    Technical Playbook →
+                </a>
+                {% endif %}
+                {% if pb.has_markdown %}
+                <a href="{{ url_for('playbook_markdown', playbook_id=pb.id) }}" class="pb-btn pb-btn-guide">
+                    Plain-Language Guide
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+        <h2>No playbooks found</h2>
+        <p>Drop YAML files into the <code>playbooks/yaml/</code> directory to add playbooks.</p>
+    </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

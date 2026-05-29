@@ -1,0 +1,160 @@
+---
+id: phishing_bec
+title: Phishing & Business Email Compromise (BEC) Response
+icon: "🎣"
+color: "#f59e0b"
+severity: HIGH
+version: "1.0"
+last_updated: 2026-05-28
+
+summary: >
+  Phishing is the #1 initial access vector for SMB breaches (88% of attacks begin here,
+  Verizon DBIR 2025). Business Email Compromise is a specific variant where an attacker
+  hijacks or impersonates a corporate email account to redirect payments, steal credentials,
+  or exfiltrate sensitive data. This playbook covers both credential-harvesting phishing
+  and BEC scenarios.
+
+applicable_to:
+  - All businesses with email accounts (universal)
+  - High risk: finance, AP/AR teams, executives
+  - Cannabis, healthcare, legal, financial services
+
+mitre_techniques:
+  - id: T1566.001
+    name: "Spearphishing Attachment"
+    tactic: "Initial Access"
+  - id: T1566.002
+    name: "Spearphishing Link"
+    tactic: "Initial Access"
+  - id: T1078
+    name: "Valid Accounts"
+    tactic: "Defence Evasion / Persistence"
+  - id: T1534
+    name: "Internal Spearphishing"
+    tactic: "Lateral Movement"
+  - id: T1114
+    name: "Email Collection"
+    tactic: "Collection"
+
+key_indicators:
+  - "PHISHING_EMAIL events in SIEM — especially with executable or macro attachments"
+  - "LOGIN_SUCCESS from unusual IP or geography following a phishing event"
+  - "ACCOUNT_ENUM events — attacker mapping the organisation after access"
+  - "New mail forwarding rules created on a compromised account"
+  - "Unusual large wire transfers or payment redirect requests"
+  - "Emails sent from a lookalike domain (boundry-ai.com vs boundry.ai)"
+
+do_not:
+  - "Do NOT click links or open attachments in suspected phishing emails to 'verify' them"
+  - "Do NOT reply to a suspected BEC email — even to tell them you know"
+  - "Do NOT process any payment request received via email during an active incident"
+  - "Do NOT delete the phishing email before preserving headers as evidence"
+  - "Do NOT assume a clean AV scan means no compromise — credential theft leaves no malware"
+
+phases:
+  - phase: 1
+    label: Identify
+    icon: "🔍"
+    color: "#3b82f6"
+    summary: >
+      Confirm that a phishing or BEC event has occurred and determine what was
+      accessed. Speed matters here — BEC attackers move fast once inside.
+    steps:
+      - "Preserve the phishing email: forward the raw email (with headers) to your security contact before deleting. Headers reveal the true sending server."
+      - "Check SIEM for PHISHING_EMAIL events: identify which users received it and whether any triggered MACRO_EXEC or POWERSHELL_DROPPER."
+      - "Determine if credentials were entered: did the user click a link and enter a password? If yes, treat the account as compromised."
+      - "Check for account activity post-click: look for LOGIN_SUCCESS events from unfamiliar IPs in the following 30 minutes."
+      - "Review mail forwarding rules: BEC attackers immediately set up rules to forward copies of all email to an external address."
+      - "Check for sent items the user didn't write: look for outgoing emails requesting payments, credentials, or sensitive data."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.2 — Determine scope: which accounts are affected, what data was potentially accessed."
+      - name: "PIPEDA (Canada)"
+        req: "If credentials to a system containing personal information were compromised, a breach assessment is mandatory."
+    mitre: ["T1566.001", "T1566.002", "T1078"]
+
+  - phase: 2
+    label: Contain
+    icon: "🔒"
+    color: "#f59e0b"
+    summary: >
+      Lock out the attacker from the compromised account and prevent the
+      phishing from spreading internally or to clients.
+    steps:
+      - "Force password reset on the compromised account immediately — do this before notifying the user to prevent the attacker from doing it first."
+      - "Revoke all active sessions for the account: this kicks the attacker out even if they changed the password."
+      - "Disable any forwarding rules created during the attack window."
+      - "Enable or enforce MFA on the compromised account (and all accounts if not already active)."
+      - "Block the sending domain/IP at the email gateway to prevent re-delivery to other staff."
+      - "Notify other staff: send an internal warning about the phishing campaign WITHOUT clicking links — use a different channel (Teams, Slack, phone)."
+      - "If BEC payment fraud is suspected: immediately contact your bank to halt or recall the transaction."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.3 — Containment: Prioritise actions that prevent further access and limit the blast radius."
+      - name: "PCI DSS Req 8.4"
+        req: "MFA is required for all access to the cardholder data environment. A compromised account requires immediate MFA enforcement."
+    mitre: ["T1078", "T1534"]
+
+  - phase: 3
+    label: Eradicate
+    icon: "🧹"
+    color: "#ef4444"
+    summary: >
+      Remove all attacker access and artefacts. Phishing attacks often install
+      secondary payloads — treat the host as compromised, not just the email account.
+    steps:
+      - "Scan the host where the phishing email was opened for malware — do not assume credential theft was the only payload."
+      - "Remove all attacker-created mail rules, OAuth app authorisations, and registered devices on the compromised account."
+      - "Audit all accounts that received internal emails from the compromised address during the attack window."
+      - "Rotate credentials for any services the compromised account had access to — especially admin panels, billing, and payroll."
+      - "Review and tighten email security settings: SPF, DKIM, DMARC alignment, attachment sandboxing, and link rewriting."
+      - "Report the phishing domain to Google SafeBrowsing, Microsoft SmartScreen, and your email gateway vendor for blocklisting."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.4 — Eradication: Remove all artefacts of the attacker's presence before proceeding to recovery."
+      - name: "HIPAA §164.308(a)(5)"
+        req: "Security awareness and training must include phishing procedures and password management guidance."
+    mitre: ["T1078", "T1114"]
+
+  - phase: 4
+    label: Recover
+    icon: "♻️"
+    color: "#10b981"
+    summary: >
+      Restore normal operations and verify that the attacker no longer has
+      any foothold. BEC recovery often requires client communication.
+    steps:
+      - "Confirm the compromised account is clean: new password, MFA active, no forwarding rules, no rogue OAuth apps."
+      - "Review and restore any deleted or moved emails from the attack window."
+      - "If clients received fraudulent payment instructions: contact them directly by phone to verify they did not transfer funds."
+      - "Conduct phishing simulation training for the affected user and their team within 30 days."
+      - "Update email security policies: require verbal confirmation for any payment request received by email over a threshold amount."
+      - "Document the full incident for post-incident review and regulatory file."
+    regulations:
+      - name: "NIST CSF RC.CO-3"
+        req: "Recovery activities are communicated to internal and external stakeholders."
+    mitre: []
+
+  - phase: 5
+    label: Notify
+    icon: "📣"
+    color: "#8b5cf6"
+    summary: >
+      Determine notification obligations. BEC may not trigger mandatory reporting
+      unless personal data was accessed or financial fraud occurred — but document
+      regardless.
+    steps:
+      - "Assess data exposure: did the attacker read emails containing personal information (client PII, patient records, financial data)?"
+      - "If personal data was read or exfiltrated: mandatory breach notification obligations apply (see regulations)."
+      - "If financial fraud occurred: report to your bank's fraud team and local law enforcement immediately."
+      - "Report the phishing infrastructure to FBI IC3 (ic3.gov) — BEC is their #1 cybercrime category by dollar loss."
+      - "Notify cyber insurer within policy window."
+      - "Notify affected clients if their data was accessed, even if you are not legally required to — it is the right thing to do and protects long-term trust."
+    regulations:
+      - name: "PIPEDA (Canada)"
+        req: "If a BEC resulted in access to personal information with real risk of significant harm, report to OPC and notify individuals as soon as feasible."
+      - name: "HIPAA Breach Rule"
+        req: "Access to a compromised email account containing PHI is a reportable breach unless you can demonstrate the PHI was not actually acquired."
+      - name: "FBI IC3"
+        req: "Report BEC to ic3.gov — the FBI's Internet Crime Complaint Center. For fraud over $100K, the Recovery Asset Team (RAT) may be able to halt transfers."
+    mitre: []

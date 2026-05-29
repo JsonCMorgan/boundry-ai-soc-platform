@@ -1,0 +1,165 @@
+---
+id: insider_threat
+title: Insider Threat Response
+icon: "👤"
+color: "#f97316"
+severity: HIGH
+version: "1.0"
+last_updated: 2026-05-28
+
+summary: >
+  An insider threat is any security incident involving someone with legitimate
+  access to your systems — a current employee, a contractor, or a former staff
+  member whose access was not properly revoked. Insiders are dangerous precisely
+  because they are authorised: no phishing, no brute force, no malware needed.
+  This playbook covers both malicious insiders (deliberate theft or sabotage) and
+  negligent insiders (accidental exposure or policy violations).
+
+  CRITICAL: The investigation must remain strictly confidential until HR and legal
+  have been consulted. Tipping off the subject gives them time to destroy evidence
+  or accelerate the theft.
+
+applicable_to:
+  - All businesses with employees or contractors
+  - High risk: businesses with departing employees who had broad data access
+  - Healthcare (patient record access), legal (client file access), finance (transaction access)
+
+mitre_techniques:
+  - id: T1078
+    name: "Valid Accounts"
+    tactic: "Defence Evasion / Persistence"
+  - id: T1005
+    name: "Data from Local System"
+    tactic: "Collection"
+  - id: T1052
+    name: "Exfiltration Over Physical Medium"
+    tactic: "Exfiltration"
+  - id: T1567
+    name: "Exfiltration Over Web Service"
+    tactic: "Exfiltration"
+  - id: T1485
+    name: "Data Destruction"
+    tactic: "Impact"
+
+key_indicators:
+  - "Unusual access to files outside the user's normal job function"
+  - "Large downloads or uploads to personal cloud storage (Dropbox, Google Drive, USB)"
+  - "Access to sensitive data after receiving a resignation or termination notice"
+  - "After-hours access to systems the user does not normally use at night"
+  - "Account still active after an employee's last day (failed offboarding)"
+  - "Deliberate data deletion or file corruption before departure"
+  - "Repeated access to competitor-relevant data: pricing, client lists, contracts"
+
+do_not:
+  - "CRITICAL: Do NOT alert the subject that they are under investigation — evidence will be destroyed"
+  - "Do NOT conduct the investigation yourself without involving HR and legal counsel"
+  - "Do NOT access the subject's personal devices without legal authority"
+  - "Do NOT revoke access suddenly without a coordinated plan — tip-off risk"
+  - "Do NOT skip the documentation step — insider threat cases often end in legal proceedings"
+  - "Do NOT assume malice without evidence — negligence is far more common than deliberate theft"
+
+phases:
+  - phase: 1
+    label: Identify
+    icon: "🔍"
+    color: "#3b82f6"
+    summary: >
+      Confirm suspicious activity and gather evidence silently. At this stage
+      the subject must not know they are being investigated.
+    steps:
+      - "Collect evidence passively: review access logs, download history, email records, and file activity from existing systems without creating any new access that the subject could notice."
+      - "Establish the baseline: what does this user's normal activity look like? Identify specific deviations in volume, timing, or data category."
+      - "Identify what data was accessed: was it within the scope of their role? Could it be legitimately explained by their job function?"
+      - "Check for exfiltration channels: email to personal addresses, USB device connections, cloud sync uploads, printing large volumes."
+      - "Document everything with timestamps: create a dated evidence log that could survive legal scrutiny."
+      - "Engage HR and legal counsel NOW before taking any further action — they need to be part of every decision from this point."
+    regulations:
+      - name: "PIPEDA (Canada)"
+        req: "Employee monitoring must be proportionate to the risk and conducted under a lawful purpose. Consult legal before expanding monitoring."
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.2 — Identify the full scope of the incident. Insider threat investigations require coordination with HR and legal."
+    mitre: ["T1078", "T1005"]
+
+  - phase: 2
+    label: Contain
+    icon: "🔒"
+    color: "#f59e0b"
+    summary: >
+      Contain the threat in a coordinated way that preserves evidence and
+      prevents further data loss — ideally timed with HR action.
+    steps:
+      - "Coordinate the access revocation with HR: time the account suspension to coincide with the HR conversation (termination, disciplinary meeting, etc.)."
+      - "Revoke access in the correct sequence: remote access and VPN first, then email, then file systems, then physical access cards — all within minutes of each other."
+      - "Preserve a forensic copy of the subject's workstation and accounts before they are wiped or reallocated."
+      - "Change all shared credentials, admin passwords, and service accounts the subject had access to."
+      - "If physical media is suspected: involve HR in requesting the return of any company devices, USB drives, or printed materials."
+      - "Monitor for any attempts to access systems after revocation — post-termination access attempts are a serious indicator of malicious intent."
+    regulations:
+      - name: "NIST SP 800-61r2"
+        req: "Section 3.3 — Containment must be coordinated to preserve evidence while stopping the threat."
+      - name: "Employment law (general)"
+        req: "The method of account revocation may have employment law implications. Always involve HR and legal before execution."
+    mitre: ["T1078", "T1052", "T1567"]
+
+  - phase: 3
+    label: Eradicate
+    icon: "🧹"
+    color: "#ef4444"
+    summary: >
+      Fully remove the insider's access, identify all data taken, and close
+      the systemic gaps that allowed the threat to develop.
+    steps:
+      - "Audit every system the subject had access to: ensure all credentials, tokens, SSH keys, API keys, and physical access are revoked."
+      - "Identify all data that was copied or exfiltrated: this determines regulatory obligations and potential legal claims."
+      - "Check for any backdoors, scheduled tasks, or changes made to systems that could provide continued access after termination."
+      - "Review and enforce the principle of least privilege: could this employee access data they should never have needed?"
+      - "Audit your offboarding process: was access revoked promptly for other departed employees? Run a full audit of inactive but enabled accounts."
+      - "Assess systemic controls: what monitoring, data loss prevention (DLP), or access controls would have caught this earlier or prevented it?"
+    regulations:
+      - name: "PCI DSS Req 7.1"
+        req: "Limit access to system components and cardholder data to only those individuals whose job requires it."
+      - name: "HIPAA §164.308(a)(4)"
+        req: "Implement policies and procedures for authorising access to PHI. Review access when employees change roles or depart."
+    mitre: ["T1078", "T1485"]
+
+  - phase: 4
+    label: Recover
+    icon: "♻️"
+    color: "#10b981"
+    summary: >
+      Restore operational security and address the organisational conditions
+      that contributed to the insider threat.
+    steps:
+      - "Confirm all access has been fully revoked and all shared credentials have been rotated."
+      - "Restore or recover any data that was deleted or tampered with by the insider."
+      - "Brief relevant staff on the outcome (without disclosing confidential details) — especially if the incident affects their work processes."
+      - "Implement additional DLP controls: file access monitoring, USB port management, cloud upload restrictions for sensitive data categories."
+      - "Review your employee lifecycle process: how quickly are accounts disabled for departing staff? Automate this if possible."
+      - "Conduct a post-incident organisational review: were there warning signs? Unaddressed grievances? Access that was broader than needed?"
+    regulations:
+      - name: "NIST CSF PR.AC-4"
+        req: "Access permissions are managed incorporating the principles of least privilege and separation of duties."
+    mitre: []
+
+  - phase: 5
+    label: Notify
+    icon: "📣"
+    color: "#8b5cf6"
+    summary: >
+      Insider threat notification is complex — it involves employment law, regulatory
+      obligations, and potentially law enforcement. Get legal counsel involved early.
+    steps:
+      - "Assess regulatory obligations: was personal data, health data, or cardholder data taken or compromised?"
+      - "If data was exfiltrated: the same breach notification obligations apply as for any other breach (PIPEDA, HIPAA, PCI DSS)."
+      - "Consider law enforcement: if the insider theft is criminal (trade secret theft, fraud, extortion), contact police and preserve the evidence chain."
+      - "Notify affected clients if their data was involved — consult legal on timing and wording to protect against defamation claims."
+      - "Notify cyber insurer — most policies cover insider threats but require prompt notification."
+      - "Document everything: the investigation record, evidence collected, actions taken, and notifications sent. Keep for at least 6 years."
+    regulations:
+      - name: "PIPEDA (Canada)"
+        req: "Insider misuse of personal information is a breach under PIPEDA if it poses real risk of significant harm. Report and notify as required."
+      - name: "HIPAA"
+        req: "Workforce member misuse of PHI is a breach. Covered entities must investigate and report unauthorised access regardless of whether the individual is an employee."
+      - name: "Employment law (general)"
+        req: "Consult your employment lawyer before taking action and before communicating anything about the investigation externally."
+    mitre: []

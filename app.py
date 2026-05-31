@@ -6105,12 +6105,20 @@ def cissp_submit_answer(domain_num):
         source="cissp",
     )
 
+    # Fetch updated totals so the frontend can refresh the stats bar without a page reload
+    updated = db_fetchone(
+        f"SELECT attempts, correct FROM cissp_progress WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, domain_num),
+    ) or {"attempts": 1, "correct": is_correct}
+
     return jsonify({
         "correct":              bool(is_correct),
         "correct_answer":       correct,
         "correct_answer_text":  options.get(correct, ""),
         "explanation":          attempt["explanation"],
         "xp":                   xp_result,
+        "new_attempts":         updated["attempts"],
+        "new_correct":          updated["correct"],
     })
 
 

@@ -238,25 +238,25 @@
     {% set pct = ((cor / att * 100)|int) if att > 0 else 0 %}
     <div class="progress-bar-wrap">
         <div class="progress-stat">
-            <div class="progress-stat-val">{{ att }}</div>
+            <div class="progress-stat-val" id="stat-attempted">{{ att }}</div>
             <div class="progress-stat-lbl">Attempted</div>
         </div>
         <div class="progress-stat">
-            <div class="progress-stat-val" style="color:#00b432;">{{ cor }}</div>
+            <div class="progress-stat-val" id="stat-correct" style="color:#00b432;">{{ cor }}</div>
             <div class="progress-stat-lbl">Correct</div>
         </div>
         <div class="progress-stat">
-            <div class="progress-stat-val" style="color:{% if wrg > 0 %}#ff6a00{% else %}#555{% endif %};">{{ wrg }}</div>
+            <div class="progress-stat-val" id="stat-wrong" style="color:{% if wrg > 0 %}#ff6a00{% else %}#555{% endif %};">{{ wrg }}</div>
             <div class="progress-stat-lbl">Wrong</div>
         </div>
         <div class="progress-stat">
-            <div class="progress-stat-val">{% if att > 0 %}{{ pct }}%{% else %}—{% endif %}</div>
+            <div class="progress-stat-val" id="stat-accuracy">{% if att > 0 %}{{ pct }}%{% else %}—{% endif %}</div>
             <div class="progress-stat-lbl">Accuracy</div>
         </div>
         <div class="progress-bar-outer">
-            <div class="progress-bar-inner" style="width:{{ pct }}%;"></div>
+            <div class="progress-bar-inner" id="stat-bar" style="width:{{ pct }}%;"></div>
         </div>
-        <div style="font-size:0.75em; color:#555;">
+        <div id="stat-label" style="font-size:0.75em; color:#555;">
             {% if pct >= 70 and att >= 5 %}🟢 Mastering{% elif att >= 1 %}🟡 In Progress{% else %}⚪ Not started{% endif %}
         </div>
     </div>
@@ -499,7 +499,26 @@
             updateHistoryCount();
             // Add row to history table
             addHistoryRow(d, letter);
+            // Update the live stats bar
+            if (d.new_attempts !== undefined) updateProgressStats(d.new_attempts, d.new_correct);
         });
+    }
+
+    function updateProgressStats(att, cor) {
+        var wrg = att - cor;
+        var pct = att > 0 ? Math.floor(cor / att * 100) : 0;
+        var el;
+        el = document.getElementById('stat-attempted');  if (el) el.textContent = att;
+        el = document.getElementById('stat-correct');    if (el) el.textContent = cor;
+        el = document.getElementById('stat-wrong');
+        if (el) {
+            el.textContent = wrg;
+            el.style.color = wrg > 0 ? '#ff6a00' : '#555';
+        }
+        el = document.getElementById('stat-accuracy');   if (el) el.textContent = att > 0 ? pct + '%' : '—';
+        el = document.getElementById('stat-bar');        if (el) el.style.width = pct + '%';
+        el = document.getElementById('stat-label');
+        if (el) el.textContent = (pct >= 70 && att >= 5) ? '🟢 Mastering' : (att >= 1 ? '🟡 In Progress' : '⚪ Not started');
     }
 
     function skipQuestion() {

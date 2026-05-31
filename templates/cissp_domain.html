@@ -445,6 +445,7 @@
                 setMindsetBadge(d.mindset);
                 setDifficulty(d.difficulty);
                 setState('question');
+                refreshStats();
             })
             .catch(function(err) {
                 document.getElementById('error-msg').innerHTML =
@@ -499,9 +500,20 @@
             updateHistoryCount();
             // Add row to history table
             addHistoryRow(d, letter);
-            // Update the live stats bar
-            if (d.new_attempts !== undefined) updateProgressStats(d.new_attempts, d.new_correct);
+            // Update the live stats bar — use response values if available, else fetch from server
+            if (d.new_attempts !== undefined) {
+                updateProgressStats(d.new_attempts, d.new_correct);
+            } else {
+                refreshStats();
+            }
         });
+    }
+
+    function refreshStats() {
+        fetch('/cissp/domain/' + DOMAIN_NUM + '/stats', {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if (d.attempts !== undefined) updateProgressStats(d.attempts, d.correct); })
+            .catch(function() {});
     }
 
     function updateProgressStats(att, cor) {
@@ -581,12 +593,7 @@
     // Refresh stats when page is restored from browser back-forward cache
     // (bfcache serves a frozen snapshot — fetch current DB values silently)
     window.addEventListener('pageshow', function(e) {
-        if (e.persisted) {
-            fetch('/cissp/domain/' + DOMAIN_NUM + '/stats', {credentials: 'same-origin'})
-                .then(function(r) { return r.json(); })
-                .then(function(d) { if (d.attempts !== undefined) updateProgressStats(d.attempts, d.correct); })
-                .catch(function() {});
-        }
+        if (e.persisted) refreshStats();
     });
 </script>
 <script src="/static/game.js"></script>

@@ -577,6 +577,17 @@
         origSetMindset(mindset);
         document.getElementById('mindset-badge').dataset.mindset = mindset;
     };
+
+    // Refresh stats when page is restored from browser back-forward cache
+    // (bfcache serves a frozen snapshot — fetch current DB values silently)
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) {
+            fetch('/cissp/domain/' + DOMAIN_NUM + '/stats', {credentials: 'same-origin'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) { if (d.attempts !== undefined) updateProgressStats(d.attempts, d.correct); })
+                .catch(function() {});
+        }
+    });
 </script>
 <script src="/static/game.js"></script>
 </body>

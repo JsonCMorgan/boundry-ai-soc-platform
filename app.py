@@ -6122,6 +6122,18 @@ def cissp_submit_answer(domain_num):
     })
 
 
+@app.route("/cissp/domain/<int:domain_num>/stats")
+@analyst_required
+def cissp_domain_stats(domain_num):
+    """AJAX — return current attempts/correct for this domain (used to refresh stale bfcache pages)."""
+    analyst_id = session["user_id"]
+    row = db_fetchone(
+        f"SELECT attempts, correct FROM cissp_progress WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, domain_num),
+    ) or {"attempts": 0, "correct": 0}
+    return jsonify({"attempts": row["attempts"], "correct": row["correct"]})
+
+
 @app.route("/cissp/domain/<int:domain_num>/skip", methods=["POST"])
 @analyst_required
 def cissp_skip_question(domain_num):

@@ -1958,6 +1958,7 @@ def ransomware_protection():
         "ransomware_protection.html",
         ransomware=ransomware,
         playbook=_RANSOMWARE_PLAYBOOK,
+        role=role,
     )
 
 
@@ -6377,10 +6378,11 @@ def cissp_flashcard_review(card_id):
     )
 
     # Award tiny XP for each card reviewed (keeps streak going on study days)
+    xp_result = None
     if correct:
-        award_xp(analyst_id, 1, reason="Flashcard review (correct)", source="flashcard")
+        xp_result = award_xp(analyst_id, 1, reason="Flashcard review (correct)", source="flashcard")
 
-    return jsonify({"ok": True, "next_review": next_review, "interval_days": round(interval, 1)})
+    return jsonify({"ok": True, "next_review": next_review, "interval_days": round(interval, 1), "xp": xp_result})
 
 
 # ── CISSP CAT Exam ───────────────────────────────────────────────────────────

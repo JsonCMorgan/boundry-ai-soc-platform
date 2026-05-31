@@ -5779,7 +5779,7 @@ def _generate_cissp_question(domain_num, difficulty_hint=None):
     elif difficulty_hint == 2:
         _difficulty_guidance = "\nDifficulty target: INTERMEDIATE — use a realistic workplace scenario requiring security judgment, not just recall."
 
-    prompt = f"""You are an expert ISC2 CISSP exam question writer.
+    prompt = f"""You are an expert ISC2 CISSP exam question writer. You must write ENTIRELY in English — no other languages.
 
 Write ONE scenario-based practice question for CISSP Domain {domain_num}: {domain["name"]} ({domain["weight"]}% of exam).
 Key topics for this domain: {topics_str}{_difficulty_guidance}
@@ -5790,14 +5790,36 @@ Requirements:
 3. Apply core CISSP principles: least privilege, defence in depth, people → process → technology order, risk before controls, governance over tools, manager ensures the PROCESS is followed.
 4. Frame the question as "What should you do FIRST?" or "What is the BEST course of action?" — CISSP always tests priority.
 5. Classify the mindset this question tests: "manager" (governance/risk/policy decision) or "technical" (specific technical knowledge) or "both".
+6. ALL text — scenario, question, options, and explanation — must be written in English only. Do not use any other language.
 
 Respond ONLY with valid JSON — absolutely no other text, no markdown, no code fences:
 {{"scenario":"<3-5 sentence realistic scenario>","question":"<question asking FIRST or BEST action>","options":{{"A":"<option>","B":"<option>","C":"<option>","D":"<option>"}},"correct":"<A|B|C|D>","explanation":"<2-3 sentences: why the correct answer is best AND why the others are wrong>","mindset":"<manager|technical|both>","difficulty":<1|2|3>}}"""
 
+    def _extract_json(text):
+        """Robustly extract a JSON object from model output.
+        Handles markdown fences, leading/trailing prose, and minor formatting noise."""
+        # Strip markdown code fences
+        text = re.sub(r"```[a-z]*\n?", "", text).replace("```", "").strip()
+        # Try the whole string first
+        try:
+            return _j.loads(text)
+        except Exception:
+            pass
+        # Find the first {...} block in the response (handles leading prose)
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            try:
+                return _j.loads(match.group())
+            except Exception:
+                pass
+        return None
+
     def _parse_cissp_response(text):
         """Validate and parse the JSON response from any AI backend."""
-        text = re.sub(r"^```[a-z]*\n?", "", text.strip()).rstrip("`").strip()
-        q = _j.loads(text)
+        q = _extract_json(text)
+        if q is None:
+            security_log.warning(f"CISSP_Q_JSON_PARSE_FAILED domain={domain_num}")
+            return None
         required = ["scenario", "question", "options", "correct", "explanation", "mindset", "difficulty"]
         if not all(k in q for k in required):
             security_log.warning(f"CISSP_Q_MISSING_FIELDS domain={domain_num} keys={list(q.keys())}")
@@ -5809,17 +5831,30 @@ Respond ONLY with valid JSON — absolutely no other text, no markdown, no code 
         if q["mindset"] not in ("manager", "technical", "both"):
             q["mindset"] = "manager"
         q["difficulty"] = max(1, min(3, int(q.get("difficulty", 2))))
+        # Reject if CJK characters slipped in (Qwen is bilingual)
+        all_text = " ".join([
+            q.get("scenario", ""), q.get("question", ""), q.get("explanation", ""),
+            *q.get("options", {}).values()
+        ])
+        if re.search(u'[　-鿿豈-﫿]', all_text):
+            security_log.warning(f"CISSP_Q_NON_ENGLISH domain={domain_num} — rejecting")
+            return None
         return q
 
-    # 1. Try Ollama (local) first
-    try:
-        text = _call_ollama(prompt, max_tokens=900, temperature=0.75,
-                            timeout=180, system=AI_SYSTEM_PROMPT).strip()
-        q = _parse_cissp_response(text)
-        if q:
-            return q
-    except Exception as exc:
-        security_log.warning(f"CISSP_Q_OLLAMA_FAILED domain={domain_num} error={exc}")
+    # 1. Try Ollama (local) — up to 3 attempts before giving up
+    _ollama_attempts = 0
+    while _ollama_attempts < 3:
+        _ollama_attempts += 1
+        try:
+            text = _call_ollama(prompt, max_tokens=900, temperature=0.75,
+                                timeout=180, system=AI_SYSTEM_PROMPT).strip()
+            q = _parse_cissp_response(text)
+            if q:
+                return q
+            security_log.warning(f"CISSP_Q_INVALID_RESPONSE domain={domain_num} attempt={_ollama_attempts} — retrying")
+        except Exception as exc:
+            security_log.warning(f"CISSP_Q_OLLAMA_FAILED domain={domain_num} attempt={_ollama_attempts} error={exc}")
+            break  # Connection error — no point retrying Ollama
 
     # 2. Fall back to Anthropic Claude if API key is set
     api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()

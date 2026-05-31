@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — Beta Test Checklist</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; padding: 0; }
+
+        .topbar {
+            background: #12151f; border-bottom: 1px solid #1e2235;
+            padding: 0 40px; display: flex; align-items: center;
+            justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100;
+        }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00d4ff; }
+        .topbar-brand span { color: #d4d4d4; }
+        .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .progress-text { font-size: 0.85em; color: #888; }
+        .progress-text strong { color: #00d4ff; }
+        .reset-btn {
+            font-size: 0.78em; background: none; border: 1px solid #2a3040;
+            color: #555; border-radius: 5px; padding: 5px 12px; cursor: pointer;
+        }
+        .reset-btn:hover { border-color: #ff4444; color: #ff4444; }
+
+        /* Overall progress bar */
+        .progress-bar-wrap {
+            background: #12151f; border-bottom: 1px solid #1e2235;
+            padding: 10px 40px; display: flex; align-items: center; gap: 16px;
+        }
+        .progress-track { flex: 1; height: 8px; background: #1e2235; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00c47a); border-radius: 4px; transition: width 0.4s ease; }
+        .progress-pct { font-size: 0.85em; font-weight: 700; color: #00d4ff; min-width: 40px; text-align: right; }
+
+        .page-wrap { max-width: 900px; margin: 0 auto; padding: 36px 24px 80px; }
+
+        .page-header { margin-bottom: 32px; }
+        .page-header h1 { font-size: 1.4em; font-weight: 700; color: #fff; margin: 0 0 6px; }
+        .page-header p { color: #666; font-size: 0.87em; margin: 0; line-height: 1.6; }
+
+        /* Tier sections */
+        .tier { margin-bottom: 36px; }
+        .tier-header {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 14px; padding-bottom: 10px;
+            border-bottom: 1px solid #1e2235;
+        }
+        .tier-badge {
+            font-size: 0.72em; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; padding: 3px 10px; border-radius: 10px;
+        }
+        .tier-1 .tier-badge { background: #ff440020; color: #ff6666; border: 1px solid #ff440040; }
+        .tier-2 .tier-badge { background: #ff990020; color: #ffaa44; border: 1px solid #ff990040; }
+        .tier-3 .tier-badge { background: #3b82f620; color: #6699ff; border: 1px solid #3b82f640; }
+
+        .tier-title { font-size: 1em; font-weight: 700; color: #ccc; }
+        .tier-subtitle { font-size: 0.82em; color: #555; margin-left: auto; }
+        .tier-count { font-size: 0.8em; color: #555; }
+
+        /* Group headers within tiers */
+        .group-label {
+            font-size: 0.72em; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #444; margin: 20px 0 8px 4px;
+        }
+
+        /* Checklist items */
+        .checklist { display: flex; flex-direction: column; gap: 6px; }
+
+        .check-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            background: #12151f; border: 1px solid #1e2235;
+            border-radius: 7px; padding: 12px 16px;
+            cursor: pointer; transition: background 0.15s, border-color 0.15s;
+            user-select: none;
+        }
+        .check-item:hover { background: #14182a; border-color: #2a3040; }
+        .check-item.done { background: #0a1a0e; border-color: #1a3a20; }
+        .check-item.done .check-label { color: #4a7a5a; text-decoration: line-through; }
+        .check-item.done .check-detail { color: #2a4a30; }
+
+        .checkbox {
+            width: 20px; height: 20px; border-radius: 5px;
+            border: 2px solid #2a3040; background: #0b0e17;
+            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; margin-top: 1px;
+        }
+        .check-item.done .checkbox {
+            background: #00c47a; border-color: #00c47a;
+        }
+        .checkmark { color: #000; font-size: 13px; font-weight: 900; display: none; }
+        .check-item.done .checkmark { display: block; }
+
+        .check-content { flex: 1; }
+        .check-label { font-size: 0.88em; color: #ccc; font-weight: 600; line-height: 1.4; }
+        .check-detail { font-size: 0.78em; color: #555; margin-top: 3px; line-height: 1.5; }
+
+        .check-tag {
+            font-size: 0.7em; font-weight: 700; padding: 2px 8px;
+            border-radius: 8px; flex-shrink: 0; white-space: nowrap;
+            margin-top: 2px; align-self: flex-start;
+        }
+        .tag-soc     { background: #3b82f620; color: #6699ff; border: 1px solid #3b82f630; }
+        .tag-training{ background: #9944ee20; color: #bb77ff; border: 1px solid #9944ee30; }
+        .tag-client  { background: #00c47a20; color: #44bb88; border: 1px solid #00c47a30; }
+        .tag-infra   { background: #ff990020; color: #ffaa44; border: 1px solid #ff990030; }
+        .tag-email   { background: #f59e0b20; color: #f5b544; border: 1px solid #f59e0b30; }
+
+        /* Completion banner */
+        .complete-banner {
+            display: none; background: #0a2010; border: 1px solid #2a6030;
+            border-radius: 10px; padding: 24px 28px; text-align: center;
+            margin-bottom: 32px;
+        }
+        .complete-banner.show { display: block; }
+        .complete-banner h2 { color: #00c47a; margin: 0 0 8px; font-size: 1.2em; }
+        .complete-banner p  { color: #4a7a5a; margin: 0; font-size: 0.88em; }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <div class="topbar-brand">Boundry<span>.AI</span> — Beta Checklist</div>
+    <div class="topbar-right">
+        <span class="progress-text">
+            <strong id="done-count">0</strong> / <strong id="total-count">0</strong> complete
+        </span>
+        <button class="reset-btn" onclick="resetAll()">↺ Reset All</button>
+    </div>
+</nav>
+
+<div class="progress-bar-wrap">
+    <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:0%;"></div>
+    </div>
+    <div class="progress-pct" id="progress-pct">0%</div>
+</div>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h1>🧪 Beta Test Checklist</h1>
+        <p>Click each item to mark it as tested and passing. Progress saves automatically in your browser.<br>
+        <strong style="color:#ff6666;">If something fails</strong> — note it and we fix it before moving on.</p>
+    </div>
+
+    <div class="complete-banner" id="complete-banner">
+        <h2>✅ All tests passed!</h2>
+        <p>Boundry.AI is ready. Every feature is confirmed working. Time to get clients.</p>
+    </div>
+
+    <!-- TIER 1 -->
+    <div class="tier tier-1">
+        <div class="tier-header">
+            <span class="tier-badge">Tier 1</span>
+            <span class="tier-title">Core — Must Work Perfectly</span>
+            <span class="tier-subtitle">These are your credibility. Zero tolerance for failure.</span>
+        </div>
+
+        <div class="group-label">Authentication & Navigation</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="auth-login">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Analyst login works</div>
+                    <div class="check-detail">Log in with analyst credentials → lands on Control Room</div>
+                </div>
+                <span class="check-tag tag-soc">Auth</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="auth-client">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Client login works</div>
+                    <div class="check-detail">Log in as client → lands on client dashboard, no analyst pages visible</div>
+                </div>
+                <span class="check-tag tag-client">Auth</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="auth-demo">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Demo login works</div>
+                    <div class="check-detail">Demo account loads correctly with demo data visible</div>
+                </div>
+                <span class="check-tag tag-client">Auth</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="auth-logout">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Logout clears session</div>
+                    <div class="check-detail">Logout → redirected to login, back button doesn't re-enter dashboard</div>
+                </div>
+                <span class="check-tag tag-soc">Auth</span>
+            </div>
+        </div>
+
+        <div class="group-label">Control Room</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="cr-loads">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Control Room loads without error</div>
+                    <div class="check-detail">No 500 errors, all panels render, stats show correct counts</div>
+                </div>
+                <span class="check-tag tag-soc">Control Room</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="cr-clients">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Client list displays correctly</div>
+                    <div class="check-detail">All registered clients show with correct roles</div>
+                </div>
+                <span class="check-tag tag-soc">Control Room</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="cr-ransomware">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Ransomware Early Warning Panel loads</div>
+                    <div class="check-detail">Panel visible, expands/collapses, shows event count correctly</div>
+                </div>
+                <span class="check-tag tag-soc">Control Room</span>
+            </div>
+        </div>
+
+        <div class="group-label">SIEM</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="siem-loads">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">SIEM dashboard loads</div>
+                    <div class="check-detail">Event feed shows, no errors, ransomware indicator panel visible</div>
+                </div>
+                <span class="check-tag tag-soc">SIEM</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="siem-events">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Events are ingesting</div>
+                    <div class="check-detail">Live event feed is populating — events appear with timestamps, types, severity</div>
+                </div>
+                <span class="check-tag tag-soc">SIEM</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="siem-spl">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">SPL query runs without error</div>
+                    <div class="check-detail">Run a basic query (e.g. <code style="color:#00d4ff;font-size:0.9em;">index=siem | stats count by event_type</code>) → results return</div>
+                </div>
+                <span class="check-tag tag-soc">SIEM</span>
+            </div>
+        </div>
+
+        <div class="group-label">Security Reports</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="reports-list">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Reports list loads for analyst and client</div>
+                    <div class="check-detail">Both roles can see their respective reports without error</div>
+                </div>
+                <span class="check-tag tag-soc">Reports</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="reports-generate">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">AI report generates successfully</div>
+                    <div class="check-detail">Trigger a scan → report generates with AI summary, threat count, findings</div>
+                </div>
+                <span class="check-tag tag-soc">Reports</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="reports-detail">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Report detail page opens correctly</div>
+                    <div class="check-detail">All sections render — executive summary, findings, recommendations</div>
+                </div>
+                <span class="check-tag tag-soc">Reports</span>
+            </div>
+        </div>
+
+        <div class="group-label">Incident Response Playbooks</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="pb-index">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Playbooks index loads — both buttons visible</div>
+                    <div class="check-detail">All 5 playbooks shown with Technical Playbook and Plain-Language Guide buttons</div>
+                </div>
+                <span class="check-tag tag-soc">Playbooks</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="pb-technical">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">All 5 technical playbooks open correctly</div>
+                    <div class="check-detail">Ransomware, Phishing/BEC, Data Breach, Account Compromise, Insider Threat — phases expand, MITRE tags link correctly</div>
+                </div>
+                <span class="check-tag tag-soc">Playbooks</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="pb-guide">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">All 5 plain-language guides open correctly</div>
+                    <div class="check-detail">Readable, no raw Markdown visible, print button works</div>
+                </div>
+                <span class="check-tag tag-client">Playbooks</span>
+            </div>
+        </div>
+
+        <div class="group-label">CISSP Training</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="cissp-hub">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">CISSP Hub loads</div>
+                    <div class="check-detail">All 8 domains visible with progress bars and domain weights</div>
+                </div>
+                <span class="check-tag tag-training">CISSP</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="cissp-questions">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Questions generate across multiple domains</div>
+                    <div class="check-detail">Test at least 3 different domains — questions load within 10 seconds, no errors</div>
+                </div>
+                <span class="check-tag tag-training">CISSP</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="cissp-answers">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Answers submit and score correctly</div>
+                    <div class="check-detail">Select answer → feedback shows correct/wrong, explanation appears, XP awards</div>
+                </div>
+                <span class="check-tag tag-training">CISSP</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="cissp-xp">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">XP and level bar update after answering</div>
+                    <div class="check-detail">XP counter increases, progress bar moves, streak updates</div>
+                </div>
+                <span class="check-tag tag-training">CISSP</span>
+            </div>
+        </div>
+
+        <div class="group-label">Ransomware Protection</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="ransom-score">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Ransomware Protection Score page loads</div>
+                    <div class="check-detail">Score hero, grade badge, 4 NIST CSF pillars with progress bars, regulatory table all render</div>
+                </div>
+                <span class="check-tag tag-client">Ransomware</span>
+            </div>
+        </div>
+
+        <div class="group-label">Daily Build Log</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="log-add">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Add log entry works for all 3 categories</div>
+                    <div class="check-detail">Built Today, Needs Your Eyes, and Question all save and appear with correct colour coding</div>
+                </div>
+                <span class="check-tag tag-infra">Daily Log</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="log-delete">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Delete entry works</div>
+                    <div class="check-detail">✕ button removes the entry, unsent entries only</div>
+                </div>
+                <span class="check-tag tag-infra">Daily Log</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TIER 2 -->
+    <div class="tier tier-2">
+        <div class="tier-header">
+            <span class="tier-badge">Tier 2</span>
+            <span class="tier-title">Important — Should Work Reliably</span>
+            <span class="tier-subtitle">Differentiating features that clients will notice.</span>
+        </div>
+
+        <div class="group-label">Breach Intel</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="intel-loads">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Breach intel feed loads and displays items</div>
+                    <div class="check-detail">Items show with title, source, severity, summary</div>
+                </div>
+                <span class="check-tag tag-soc">Intel</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="intel-dismiss">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Dismiss and archive actions work</div>
+                    <div class="check-detail">Dismissed items leave the feed, archived items appear in archive panel</div>
+                </div>
+                <span class="check-tag tag-soc">Intel</span>
+            </div>
+        </div>
+
+        <div class="group-label">Training Scenarios</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="training-loads">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Training page loads with all scenario tracks</div>
+                    <div class="check-detail">All tracks visible including Ransomware Defence track</div>
+                </div>
+                <span class="check-tag tag-training">Training</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="training-run">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Run a scenario end-to-end</div>
+                    <div class="check-detail">Start scenario → events inject into SIEM → visible in dashboard → XP awarded on completion</div>
+                </div>
+                <span class="check-tag tag-training">Training</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="training-ransomware">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Ransomware kill chain scenario runs</div>
+                    <div class="check-detail">All 4 ransomware scenarios generate correct SIEM event types</div>
+                </div>
+                <span class="check-tag tag-training">Training</span>
+            </div>
+        </div>
+
+        <div class="group-label">CISSP Extended</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="cissp-flashcards">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Flashcards load and flip correctly</div>
+                    <div class="check-detail">Cards show term/definition, flip animation works, navigation works</div>
+                </div>
+                <span class="check-tag tag-training">CISSP</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="cissp-practice">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Practice mode works</div>
+                    <div class="check-detail">Mixed-domain questions generate, answers score, session summary shows</div>
+                </div>
+                <span class="check-tag tag-training">CISSP</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="cissp-cat">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">CAT Exam starts and runs</div>
+                    <div class="check-detail">Exam initiates, adaptive difficulty adjusts between questions, final score reports correctly</div>
+                </div>
+                <span class="check-tag tag-training">CISSP</span>
+            </div>
+        </div>
+
+        <div class="group-label">MITRE ATT&CK</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="mitre-pages">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">MITRE technique detail pages load</div>
+                    <div class="check-detail">Click a MITRE tag from a playbook or finding → detail page loads correctly</div>
+                </div>
+                <span class="check-tag tag-soc">MITRE</span>
+            </div>
+        </div>
+
+        <div class="group-label">Client Portal</div>
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="client-dashboard">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Client dashboard loads correctly</div>
+                    <div class="check-detail">Health score, ransomware score, report list all display — no analyst UI leaking through</div>
+                </div>
+                <span class="check-tag tag-client">Client</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="client-reports">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Client can view their reports</div>
+                    <div class="check-detail">Client report detail page opens, findings and recommendations visible</div>
+                </div>
+                <span class="check-tag tag-client">Client</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="client-playbooks">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Client sees plain-language guides only</div>
+                    <div class="check-detail">Client navigating to /playbooks gets the guide view — no Technical Playbook button visible</div>
+                </div>
+                <span class="check-tag tag-client">Client</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TIER 3 -->
+    <div class="tier tier-3">
+        <div class="tier-header">
+            <span class="tier-badge">Tier 3</span>
+            <span class="tier-title">Infrastructure — Automation & Delivery</span>
+            <span class="tier-subtitle">Requires Railway env vars to be set first.</span>
+        </div>
+
+        <div class="checklist">
+            <div class="check-item" onclick="toggle(this)" data-id="email-daily">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Daily build log email sends to Peta</div>
+                    <div class="check-detail">Trigger manually with curl or wait for 8 PM cron → email arrives in Peta's inbox, formatted correctly</div>
+                </div>
+                <span class="check-tag tag-email">Email</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="email-weekly">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Weekly client digest email sends</div>
+                    <div class="check-detail">Trigger Monday 9 AM cron (or manually) → each client receives their weekly summary</div>
+                </div>
+                <span class="check-tag tag-email">Email</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="railway-deploy">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">Railway deployment builds and runs</div>
+                    <div class="check-detail">Push to main → Railway builds successfully, app accessible at production URL</div>
+                </div>
+                <span class="check-tag tag-infra">Railway</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="railway-envvars">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">All Railway env vars configured</div>
+                    <div class="check-detail">RESEND_API_KEY, CRON_SECRET, PETA_EMAIL, APP_URL, SECRET_KEY all set in Railway Variables</div>
+                </div>
+                <span class="check-tag tag-infra">Railway</span>
+            </div>
+            <div class="check-item" onclick="toggle(this)" data-id="railway-db">
+                <div class="checkbox"><span class="checkmark">✓</span></div>
+                <div class="check-content">
+                    <div class="check-label">PostgreSQL working on Railway</div>
+                    <div class="check-detail">Production DB initialises correctly — can register, login, and generate a report on the live URL</div>
+                </div>
+                <span class="check-tag tag-infra">Railway</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    var STORAGE_KEY = 'boundry_beta_checklist_v1';
+
+    function loadState() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+        catch(e) { return {}; }
+    }
+
+    function saveState(state) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function toggle(el) {
+        var id    = el.getAttribute('data-id');
+        var state = loadState();
+        var done  = el.classList.contains('done');
+        if (done) {
+            el.classList.remove('done');
+            delete state[id];
+        } else {
+            el.classList.add('done');
+            state[id] = true;
+        }
+        saveState(state);
+        updateProgress();
+    }
+
+    function updateProgress() {
+        var items = document.querySelectorAll('.check-item');
+        var done  = document.querySelectorAll('.check-item.done');
+        var total = items.length;
+        var count = done.length;
+        var pct   = total ? Math.round(count / total * 100) : 0;
+
+        document.getElementById('done-count').textContent  = count;
+        document.getElementById('total-count').textContent = total;
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-pct').textContent  = pct + '%';
+
+        var banner = document.getElementById('complete-banner');
+        if (count === total && total > 0) {
+            banner.classList.add('show');
+        } else {
+            banner.classList.remove('show');
+        }
+    }
+
+    function resetAll() {
+        if (!confirm('Reset all checkboxes?')) return;
+        localStorage.removeItem(STORAGE_KEY);
+        document.querySelectorAll('.check-item.done').forEach(function(el) {
+            el.classList.remove('done');
+        });
+        updateProgress();
+    }
+
+    // Restore saved state on load
+    (function init() {
+        var state = loadState();
+        document.querySelectorAll('.check-item').forEach(function(el) {
+            if (state[el.getAttribute('data-id')]) {
+                el.classList.add('done');
+            }
+        });
+        updateProgress();
+    })();
+</script>
+
+</body>
+</html>

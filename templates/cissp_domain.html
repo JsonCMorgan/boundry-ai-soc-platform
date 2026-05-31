@@ -592,9 +592,9 @@
 
     // Refresh stats when page is restored from browser back-forward cache
     // (bfcache serves a frozen snapshot — fetch current DB values silently)
-    window.addEventListener('pageshow', function(e) {
-        if (e.persisted) refreshStats();
-    });
+    // Always refresh stats on page show — covers normal loads, bfcache restores,
+    // and browser-cached pages where the server-rendered values may be stale.
+    window.addEventListener('pageshow', function() { refreshStats(); });
 </script>
 <script src="/static/game.js"></script>
 </body>

@@ -162,6 +162,16 @@
         .event-table th { background:#0e1119; color:#555; font-size:0.75em;
             text-transform:uppercase; letter-spacing:0.05em;
             padding:8px 12px; border-bottom:1px solid #1e2235; text-align:left; white-space:nowrap; }
+        .event-table th.sortable { cursor:pointer; user-select:none; }
+        .event-table th.sortable:hover { color:#00d4ff; }
+        .event-table th.sort-asc  { color:#00d4ff; }
+        .event-table th.sort-asc::after  { content:' ▲'; font-size:0.85em; }
+        .event-table th.sort-desc { color:#00d4ff; }
+        .event-table th.sort-desc::after { content:' ▼'; font-size:0.85em; }
+        .event-table th.sort-asc-2  { color:#9944ee; }
+        .event-table th.sort-asc-2::after  { content:' ▲²'; font-size:0.75em; }
+        .event-table th.sort-desc-2 { color:#9944ee; }
+        .event-table th.sort-desc-2::after { content:' ▼²'; font-size:0.75em; }
         .event-table td { padding:8px 12px; border-bottom:1px solid #0f1118; vertical-align:top; }
         .event-row { transition:background 0.1s; }
         .event-row:hover { background:#161923; }
@@ -657,14 +667,14 @@
                 <table class="event-table" id="event-table">
                     <thead>
                         <tr>
-                            <th>Time</th>
-                            <th>Sev</th>
+                            <th class="sortable" data-col="ts"     onclick="sortBy('ts')">Time</th>
+                            <th class="sortable" data-col="sev"    onclick="sortBy('sev')">Sev</th>
                             <th>Origin</th>
-                            <th>Source</th>
-                            <th>Type</th>
-                            <th>Host / IP</th>
-                            <th>User</th>
-                            <th>Description</th>
+                            <th class="sortable" data-col="source" onclick="sortBy('source')">Source</th>
+                            <th class="sortable" data-col="type"   onclick="sortBy('type')">Type</th>
+                            <th class="sortable" data-col="host"   onclick="sortBy('host')">Host / IP</th>
+                            <th class="sortable" data-col="user"   onclick="sortBy('user')">User</th>
+                            <th class="sortable" data-col="desc"   onclick="sortBy('desc')">Description</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -1491,6 +1501,77 @@ function appendHighlighted(parent, text, query) {
 // ═══════════════════════════════════════════════════════════════════
 //  DISMISS / RESOLVE
 // ═══════════════════════════════════════════════════════════════════
+// ── Multi-column table sort ──────────────────────────────────────────────────
+var _sortKeys = [];  // [{col, dir}] — up to 2 levels, index 0 = primary
+
+var SEV_ORDER = { CRITICAL:0, HIGH:1, MEDIUM:2, LOW:3, INFO:4 };
+
+function _cellVal(row, col) {
+    var cells = row.querySelectorAll('td');
+    switch(col) {
+        case 'ts':     return cells[0] ? cells[0].textContent.trim() : '';
+        case 'sev':    return SEV_ORDER[(cells[1] ? cells[1].textContent.trim() : 'INFO')] ?? 9;
+        case 'source': return cells[3] ? cells[3].textContent.trim().toLowerCase() : '';
+        case 'type':   return cells[4] ? cells[4].textContent.trim().toLowerCase() : '';
+        case 'host':   return cells[5] ? cells[5].textContent.trim().toLowerCase() : '';
+        case 'user':   return cells[6] ? cells[6].textContent.trim().toLowerCase() : '';
+        case 'desc':   return cells[7] ? cells[7].textContent.trim().toLowerCase() : '';
+        default:       return '';
+    }
+}
+
+function sortBy(col) {
+    var existing = _sortKeys.findIndex(function(k){ return k.col === col; });
+    if (existing === 0) {
+        // Primary col clicked again — flip direction
+        _sortKeys[0].dir = _sortKeys[0].dir === 'asc' ? 'desc' : 'asc';
+    } else if (existing === 1) {
+        // Secondary col clicked — promote to primary, keep direction, drop old primary
+        var promoted = _sortKeys.splice(1, 1)[0];
+        promoted.dir = promoted.dir === 'asc' ? 'desc' : 'asc';
+        _sortKeys.unshift(promoted);
+    } else {
+        // New col — push as secondary if primary exists, else primary
+        if (_sortKeys.length >= 2) _sortKeys.pop();
+        if (_sortKeys.length === 0) {
+            _sortKeys.push({col: col, dir: 'asc'});
+        } else {
+            _sortKeys.push({col: col, dir: 'asc'});
+        }
+    }
+    _applySortHeaders();
+    _applySortRows();
+}
+
+function _applySortHeaders() {
+    document.querySelectorAll('.event-table th.sortable').forEach(function(th) {
+        th.classList.remove('sort-asc','sort-desc','sort-asc-2','sort-desc-2');
+    });
+    _sortKeys.forEach(function(k, i) {
+        var th = document.querySelector('.event-table th[data-col="' + k.col + '"]');
+        if (!th) return;
+        var cls = (i === 0 ? 'sort-' : 'sort-') + k.dir + (i === 1 ? '-2' : '');
+        th.classList.add(cls);
+    });
+}
+
+function _applySortRows() {
+    var tbody = document.getElementById('event-tbody');
+    if (!tbody) return;
+    var rows = Array.from(tbody.querySelectorAll('tr.event-row'));
+    rows.sort(function(a, b) {
+        for (var i = 0; i < _sortKeys.length; i++) {
+            var k = _sortKeys[i];
+            var av = _cellVal(a, k.col);
+            var bv = _cellVal(b, k.col);
+            var cmp = (typeof av === 'number') ? (av - bv) : av.localeCompare(bv);
+            if (cmp !== 0) return k.dir === 'asc' ? cmp : -cmp;
+        }
+        return 0;
+    });
+    rows.forEach(function(r){ tbody.appendChild(r); });
+}
+
 function dismissEvent(id, btn) {
     csrfFetch(`/api/siem/events/${id}/dismiss`, { method:'POST' })
         .then(() => {

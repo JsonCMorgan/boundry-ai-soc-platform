@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Boundry.AI — Security Settings</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; padding: 0; }
+
+        .topbar {
+            background: #12151f; border-bottom: 2px solid #00b43233;
+            padding: 14px 32px; display: flex; align-items: center;
+            justify-content: space-between; position: sticky; top: 0; z-index: 50;
+        }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00b432; letter-spacing: 0.04em;
+            text-shadow: 0 0 8px #00b432cc; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 20px; font-size: 0.85em; transition: color 0.15s; }
+        .topbar nav a:hover { color: #00b432; }
+
+        .main { max-width: 860px; margin: 0 auto; padding: 36px 24px 80px; }
+
+        .page-header h1 { font-size: 1.5em; color: #fff; margin: 0 0 6px; }
+        .page-header p  { color: #888; font-size: 0.9em; margin: 0; line-height: 1.6; }
+
+        .section {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 8px;
+            padding: 24px 26px; margin-top: 28px;
+        }
+        .section-title { font-size: 1.05em; font-weight: 700; color: #eee; margin: 0 0 4px;
+            display: flex; align-items: center; gap: 10px; }
+        .section-desc { font-size: 0.84em; color: #777; line-height: 1.6; margin: 0 0 6px; }
+
+        .scope-note {
+            background: #1a1400; border: 1px solid #4a3a00; border-radius: 6px;
+            padding: 12px 14px; margin: 16px 0 22px; font-size: 0.8em; color: #d0a850; line-height: 1.55;
+        }
+        .scope-note strong { color: #ffcc55; }
+
+        .preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        @media (max-width: 680px) { .preset-grid { grid-template-columns: 1fr; } }
+
+        .preset-card {
+            background: #0e1119; border: 2px solid #1e2235; border-radius: 8px;
+            padding: 18px 18px 20px; cursor: pointer; transition: all 0.15s; position: relative;
+        }
+        .preset-card:hover { border-color: #2a3550; background: #131826; }
+        .preset-card.active { border-color: var(--c); background: #0f1a12; box-shadow: 0 0 20px -6px var(--c); }
+        .preset-card.active::after {
+            content: '● ACTIVE'; position: absolute; top: 12px; right: 14px;
+            font-size: 0.62em; font-weight: 800; letter-spacing: 0.08em; color: var(--c);
+        }
+
+        .preset-name { font-size: 1.05em; font-weight: 800; color: var(--c); margin-bottom: 3px; }
+        .preset-limit { font-family: monospace; font-size: 1.35em; font-weight: 700; color: #fff; margin: 8px 0 4px; }
+        .preset-limit span { font-size: 0.55em; color: #666; font-family: Arial; font-weight: 400; }
+        .preset-blurb { font-size: 0.76em; color: #888; line-height: 1.5; margin-top: 8px; }
+
+        .p-normal   { --c: #00b432; }
+        .p-elevated { --c: #ff9900; }
+        .p-lockdown { --c: #ff4444; }
+
+        .toast {
+            position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #0f1a12; border: 1px solid #00b43266; color: #00ff88;
+            padding: 12px 22px; border-radius: 8px; font-size: 0.86em; font-weight: 600;
+            box-shadow: 0 8px 32px #000a; opacity: 0; transition: all 0.3s; z-index: 100;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <span class="topbar-brand">Boundry.AI — Security Settings</span>
+    <nav>
+        <a href="{{ url_for('control_room') }}">← Control Room</a>
+        <a href="{{ url_for('siem_dashboard') }}">SIEM</a>
+        <a href="{{ url_for('logout') }}">Log out</a>
+    </nav>
+</nav>
+
+<div class="main">
+
+    <div class="page-header">
+        <h1>🛡️ Security Settings</h1>
+        <p>Analyst-only controls for hardening the Boundry.AI command center itself.</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">🚦 Login Rate Limit</div>
+        <p class="section-desc">
+            Caps how many login attempts a single IP can make per minute. Raising the
+            strictness (Lockdown) is the standard containment step when you spot account
+            enumeration, brute-force, or credential-stuffing activity. Changes take effect
+            <strong style="color:#aaa;">immediately — no restart</strong> — and every attempt
+            that gets throttled is logged to your SIEM feed.
+        </p>
+
+        <div class="scope-note">
+            <strong>Scope:</strong> this throttle protects <strong>this platform's own login</strong>
+            (the Boundry.AI command center). It does not reach a client's separate website or
+            login portal on their own infrastructure — that traffic never passes through here.
+        </div>
+
+        <div class="preset-grid">
+            {% set blurbs = {
+                'normal':   'Default. Comfortable for legitimate users who occasionally mistype a password.',
+                'elevated': 'Tightened. Use when you are seeing suspicious login activity but nothing confirmed.',
+                'lockdown': 'Strictest. Matches the IR playbook — throttle hard during an active brute-force or stuffing attempt.'
+            } %}
+            {% for key, limit in presets.items() %}
+            <div class="preset-card p-{{ key }} {% if key == current_preset %}active{% endif %}"
+                 data-preset="{{ key }}" onclick="setPreset('{{ key }}', this)">
+                <div class="preset-name">{{ key|capitalize }}</div>
+                <div class="preset-limit">{{ limit.split(' ')[0] }} <span>/ min</span></div>
+                <div class="preset-blurb">{{ blurbs[key] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+    function setPreset(preset, card) {
+        fetch('{{ url_for("set_login_rate_limit") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrf },
+            credentials: 'same-origin',
+            body: JSON.stringify({ preset: preset }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.error) { showToast('⚠ ' + d.error); return; }
+            document.querySelectorAll('.preset-card').forEach(function(c) { c.classList.remove('active'); });
+            card.classList.add('active');
+            showToast('✓ Login limit set to ' + d.preset.charAt(0).toUpperCase() + d.preset.slice(1) + ' (' + d.limit + ')');
+        })
+        .catch(function() { showToast('⚠ Failed to update — is the server running?'); });
+    }
+
+    function showToast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(t._timer);
+        t._timer = setTimeout(function() { t.classList.remove('show'); }, 2800);
+    }
+</script>
+
+</body>
+</html>

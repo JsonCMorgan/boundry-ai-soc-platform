@@ -400,6 +400,74 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
+# ── Adjustable login throttle (IR playbook step: rate-limit brute-force / stuffing) ──
+# The login limit is analyst-tunable at runtime via the Control Room / Security
+# Settings page. Flask-Limiter evaluates the callable per-request, so a change
+# takes effect immediately with no restart. Persisted in app_settings.
+LOGIN_RATE_PRESETS = {
+    "normal":   "10 per minute",
+    "elevated": "5 per minute",
+    "lockdown": "3 per minute",
+}
+LOGIN_RATE_DEFAULT  = "normal"
+_app_settings_cache = {}
+
+def _get_app_setting(key, default=None):
+    """Read a persisted app setting, with a small in-process cache."""
+    if key in _app_settings_cache:
+        return _app_settings_cache[key]
+    try:
+        row = db_fetchone(f"SELECT value FROM app_settings WHERE key = {PH}", (key,))
+    except Exception:
+        return default
+    val = row["value"] if row else default
+    _app_settings_cache[key] = val
+    return val
+
+def _set_app_setting(key, value):
+    """Persist an app setting (upsert) and refresh the cache."""
+    existing = db_fetchone(f"SELECT key FROM app_settings WHERE key = {PH}", (key,))
+    if existing:
+        db_run(f"UPDATE app_settings SET value = {PH} WHERE key = {PH}", (value, key))
+    else:
+        db_run(f"INSERT INTO app_settings (key, value) VALUES ({PH}, {PH})", (key, value))
+    _app_settings_cache[key] = value
+
+def _login_rate_limit():
+    """Dynamic Flask-Limiter callable — returns the current login throttle string."""
+    preset = _get_app_setting("login_rate_preset", LOGIN_RATE_DEFAULT)
+    return LOGIN_RATE_PRESETS.get(preset, LOGIN_RATE_PRESETS[LOGIN_RATE_DEFAULT])
+
+
+@app.errorhandler(429)
+def _rate_limit_exceeded(e):
+    """When the login throttle trips, log it to the SIEM so the analyst sees
+    the brute-force / credential-stuffing attempt being blocked in real time."""
+    ip       = get_remote_address()
+    endpoint = request.endpoint or ""
+    if endpoint == "login":
+        try:
+            siem_collector.ingest_event(
+                source="flask_app",
+                event_id=f"RL-{time.time_ns()}",
+                event_type="login_rate_limited",
+                severity="HIGH",
+                src_ip=ip or "",
+                description=(f"Login throttled — rate limit exceeded from {ip}. "
+                             f"Possible brute-force or credential stuffing. "
+                             f"Current limit: {_login_rate_limit()}."),
+                raw={"limit": _login_rate_limit(), "endpoint": endpoint},
+                simulated=0,
+            )
+        except Exception:
+            pass
+        security_log.warning(f"LOGIN_RATE_LIMITED ip={ip} limit={_login_rate_limit()}")
+        return render_template(
+            "login.html",
+            error="Too many login attempts. Please wait a minute and try again.",
+        ), 429
+    return jsonify({"error": "Rate limit exceeded. Slow down and try again shortly."}), 429
+
 # --- CSRF protection (A01: broken access control, browser CSRF) ---
 # Wraps every state-changing view (POST/PUT/DELETE/PATCH) and requires a
 # session-bound token in either the `csrf_token` form field or the
@@ -1273,6 +1341,14 @@ def init_db():
         )
     """)
 
+    # Persisted app settings (key/value) — e.g. the adjustable login rate limit.
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key    TEXT PRIMARY KEY,
+            value  TEXT NOT NULL DEFAULT ''
+        )
+    """)
+
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.
@@ -1396,7 +1472,7 @@ def demo():
 
 # --- ROUTE 0: Login / Logout (A01: Broken Access Control, A07: Auth Failures) ---
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("10 per minute")
+@limiter.limit(_login_rate_limit)
 def login():
     """
     Block job: authenticate the user against hashed credentials in the DB.
@@ -1469,6 +1545,50 @@ def logout():
     """Clear the session and redirect to login."""
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/security-settings")
+@analyst_required
+def security_settings():
+    """Analyst-only security controls — currently the adjustable login throttle."""
+    current = _get_app_setting("login_rate_preset", LOGIN_RATE_DEFAULT)
+    return render_template(
+        "security_settings.html",
+        current_preset=current,
+        presets=LOGIN_RATE_PRESETS,
+        role=session.get("role", "client"),
+        ops_mode=session.get("analyst_mode", False),
+    )
+
+
+@app.route("/security-settings/rate-limit", methods=["POST"])
+@analyst_required
+def set_login_rate_limit():
+    """Change the login throttle preset. Takes effect immediately (no restart)."""
+    data   = request.get_json(silent=True) or request.form
+    preset = (data.get("preset") or "").strip().lower()
+    if preset not in LOGIN_RATE_PRESETS:
+        return jsonify({"error": "Invalid preset — must be normal, elevated, or lockdown."}), 400
+    old = _get_app_setting("login_rate_preset", LOGIN_RATE_DEFAULT)
+    _set_app_setting("login_rate_preset", preset)
+    # Record the change in the SIEM so it's audit-visible
+    try:
+        siem_collector.ingest_event(
+            source="flask_app",
+            event_id=f"CFG-{time.time_ns()}",
+            event_type="config_change",
+            severity="INFO",
+            user=session.get("username", ""),
+            src_ip=get_remote_address() or "",
+            description=(f"Login rate limit changed: {old} → {preset} "
+                         f"({LOGIN_RATE_PRESETS[preset]}) by {session.get('username','')}"),
+            raw={"setting": "login_rate_preset", "old": old, "new": preset},
+            simulated=0,
+        )
+    except Exception:
+        pass
+    security_log.info(f"LOGIN_RATE_CHANGED old={old} new={preset} by={session.get('username','')}")
+    return jsonify({"ok": True, "preset": preset, "limit": LOGIN_RATE_PRESETS[preset]})
 
 
 @app.route("/set-mode", methods=["POST"])
@@ -3472,6 +3592,8 @@ def control_room():
         terminal_activity=terminal_activity,
         ransomware_events=ransomware_events,
         ransomware_score=ransomware_score,
+        login_rate_preset=_get_app_setting("login_rate_preset", LOGIN_RATE_DEFAULT),
+        login_rate_presets=LOGIN_RATE_PRESETS,
         now=datetime.utcnow(),
     )
 

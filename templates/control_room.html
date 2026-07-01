@@ -1567,6 +1567,60 @@
             </div>
         </div>
 
+        <!-- ── Login Throttle Quick Control ─────────────────────────────────── -->
+        <div class="scanner-panel" style="margin-bottom:18px;">
+            <div class="scanner-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:default;">
+                <span>
+                    🚦 Login Throttle
+                    <span id="lt-status-label" style="font-size:0.85em; text-transform:none; letter-spacing:0;
+                        color:{% if login_rate_preset == 'lockdown' %}#ff4444{% elif login_rate_preset == 'elevated' %}#ff9900{% else %}#00b432{% endif %}; font-weight:700;">
+                        — {{ login_rate_preset|capitalize }} ({{ login_rate_presets[login_rate_preset].split(' ')[0] }}/min)
+                    </span>
+                    &nbsp;
+                    <a href="{{ url_for('security_settings') }}" style="font-size:0.78em; color:#4488ff; font-weight:600; text-transform:none;">Settings →</a>
+                </span>
+                <div style="display:flex; gap:6px;">
+                    {% for key, limit in login_rate_presets.items() %}
+                    <button type="button" class="lt-btn" data-preset="{{ key }}" onclick="setLoginRate('{{ key }}')"
+                        style="font-size:0.74em; font-weight:700; padding:5px 12px; border-radius:5px; cursor:pointer;
+                        border:1px solid {% if key == 'lockdown' %}#ff444455{% elif key == 'elevated' %}#ff990055{% else %}#00b43255{% endif %};
+                        background:{% if key == login_rate_preset %}{% if key == 'lockdown' %}#ff444422{% elif key == 'elevated' %}#ff990022{% else %}#00b43222{% endif %}{% else %}#12151f{% endif %};
+                        color:{% if key == 'lockdown' %}#ff6666{% elif key == 'elevated' %}#ffaa44{% else %}#44cc66{% endif %};">
+                        {{ key|capitalize }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <script>
+            function setLoginRate(preset) {
+                var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+                fetch('{{ url_for("set_login_rate_limit") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ preset: preset }),
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.error) { alert(d.error); return; }
+                    var colors = { normal:'#00b432', elevated:'#ff9900', lockdown:'#ff4444' };
+                    var btnColors = { normal:'#44cc66', elevated:'#ffaa44', lockdown:'#ff6666' };
+                    // Update status label
+                    var lbl = document.getElementById('lt-status-label');
+                    lbl.textContent = '— ' + d.preset.charAt(0).toUpperCase() + d.preset.slice(1) + ' (' + d.limit.split(' ')[0] + '/min)';
+                    lbl.style.color = colors[d.preset] || '#00b432';
+                    // Update button highlight
+                    document.querySelectorAll('.lt-btn').forEach(function(b) {
+                        var k = b.getAttribute('data-preset');
+                        var tint = { normal:'#00b43222', elevated:'#ff990022', lockdown:'#ff444422' };
+                        b.style.background = (k === d.preset) ? tint[k] : '#12151f';
+                    });
+                })
+                .catch(function() { alert('Failed to update login throttle — is the server running?'); });
+            }
+        </script>
+
         <!-- ── Ransomware Early Warning Panel ──────────────────────────────── -->
         <div class="scanner-panel" style="margin-bottom:18px;">
             <div class="scanner-toggle" onclick="toggleRansomware()" style="display:flex;align-items:center;justify-content:space-between;">

@@ -783,6 +783,7 @@ def _seed_demo_reports(demo_user_id):
         # (days_ago, threat_count, event_count, status, content)
         (7,  1, 49, "closed",    _DEMO_REPORT_1),
         (3,  1,  5, "reviewing", _DEMO_REPORT_2),
+        (1,  2, 22, "escalated", _DEMO_REPORT_1),  # shows the 'escalated' triage state in the sandbox
         (0,  1, 14, "new",       _DEMO_REPORT_3),
     ]
 
@@ -3532,21 +3533,43 @@ def control_room():
     Shows all clients, all reports, system stats, and quick action controls.
     Trust boundary: analyst_required enforces role check (A01).
     """
-    clients     = db_fetchall("SELECT id, username, role FROM users ORDER BY username ASC")
-    all_reports = db_fetchall(
-        "SELECT r.id, r.created_at, r.threat_count, r.event_count, r.status, r.simulated, "
-        "u.username AS owner_username "
-        "FROM reports r LEFT JOIN users u ON r.owner_id = u.id "
-        "ORDER BY r.id DESC"
-    )
-    pending_row   = db_fetchone(f"SELECT COUNT(*) AS cnt FROM security_events WHERE processed = {PH}", (0,))
-    pending_count = pending_row["cnt"] if pending_row else 0
+    # Demo sandbox: a role='demo' viewer only ever sees demo-owned data, so a
+    # prospect exploring the live dashboard never sees real client names or reports.
+    is_demo = session.get("role") == "demo"
+    demo_id = session.get("user_id") if is_demo else None
 
-    # Live event feed — last 100 events (processed + pending) for the analyst feed panel
-    recent_events = db_fetchall(
-        "SELECT id, created_at, event_type, username, ip, extra, processed, simulated "
-        "FROM security_events ORDER BY id DESC LIMIT 100"
-    )
+    if is_demo:
+        clients     = db_fetchall(f"SELECT id, username, role FROM users WHERE id = {PH}", (demo_id,))
+        all_reports = db_fetchall(
+            f"SELECT r.id, r.created_at, r.threat_count, r.event_count, r.status, r.simulated, "
+            f"u.username AS owner_username "
+            f"FROM reports r LEFT JOIN users u ON r.owner_id = u.id "
+            f"WHERE r.owner_id = {PH} ORDER BY r.id DESC",
+            (demo_id,),
+        )
+        pending_row   = db_fetchone(
+            f"SELECT COUNT(*) AS cnt FROM security_events WHERE processed = {PH} AND owner_id = {PH}",
+            (0, demo_id),
+        )
+        recent_events = db_fetchall(
+            f"SELECT id, created_at, event_type, username, ip, extra, processed, simulated "
+            f"FROM security_events WHERE owner_id = {PH} ORDER BY id DESC LIMIT 100",
+            (demo_id,),
+        )
+    else:
+        clients     = db_fetchall("SELECT id, username, role FROM users ORDER BY username ASC")
+        all_reports = db_fetchall(
+            "SELECT r.id, r.created_at, r.threat_count, r.event_count, r.status, r.simulated, "
+            "u.username AS owner_username "
+            "FROM reports r LEFT JOIN users u ON r.owner_id = u.id "
+            "ORDER BY r.id DESC"
+        )
+        pending_row   = db_fetchone(f"SELECT COUNT(*) AS cnt FROM security_events WHERE processed = {PH}", (0,))
+        recent_events = db_fetchall(
+            "SELECT id, created_at, event_type, username, ip, extra, processed, simulated "
+            "FROM security_events ORDER BY id DESC LIMIT 100"
+        )
+    pending_count = pending_row["cnt"] if pending_row else 0
 
     # Summary stats for the header bar
     total_clients = len([c for c in clients if c["role"] == "client"])
@@ -5039,10 +5062,15 @@ def _run_agent_core(triggered_by="unknown", owner_id=None, force_simulated=False
 @app.route("/reports/<int:report_id>/triage", methods=["POST"])
 @dashboard_required
 def triage_report(report_id):
-    """Update the triage status of a report. Analyst-only."""
+    """Update the triage status of a report. Analyst + demo (demo limited to its own)."""
     status = request.form.get("status", "new")
     if status not in ("new", "reviewing", "escalated", "closed"):
         abort(400)
+    # Demo sandbox: a demo user may only triage its own seeded reports, never real client data.
+    if session.get("role") == "demo":
+        owner = db_fetchone(f"SELECT owner_id FROM reports WHERE id = {PH}", (report_id,))
+        if not owner or owner["owner_id"] != session.get("user_id"):
+            abort(403)
     # Fetch current status before overwriting (needed for triage_log)
     current = db_fetchone(f"SELECT status FROM reports WHERE id = {PH}", (report_id,))
     old_status = current["status"] if current else "new"
@@ -5064,7 +5092,12 @@ def triage_report(report_id):
 @app.route("/reports/<int:report_id>/notes", methods=["POST"])
 @dashboard_required
 def save_notes(report_id):
-    """Save analyst investigation notes on a report. Analyst-only."""
+    """Save analyst investigation notes on a report. Analyst + demo (demo limited to its own)."""
+    # Demo sandbox: a demo user may only annotate its own seeded reports.
+    if session.get("role") == "demo":
+        owner = db_fetchone(f"SELECT owner_id FROM reports WHERE id = {PH}", (report_id,))
+        if not owner or owner["owner_id"] != session.get("user_id"):
+            abort(403)
     notes = request.form.get("notes", "").strip()
     if DATABASE_URL:
         db_run(

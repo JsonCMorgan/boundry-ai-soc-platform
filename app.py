@@ -1374,6 +1374,18 @@ def init_db():
         )
     """)
 
+    # Per-client password-setup tokens — issued when an analyst onboards a client.
+    # The client uses the one-time link to set their own password.
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS password_setup_tokens (
+            token       TEXT PRIMARY KEY,
+            user_id     INTEGER NOT NULL,
+            expires_at  TEXT    NOT NULL,
+            used        INTEGER NOT NULL DEFAULT 0,
+            {ts_col}
+        )
+    """)
+
     # Only seed if the table is empty AND SEED_DB=true is explicitly set.
     # In production (Railway), SEED_DB is not set — first user is created via /register.
     # In local dev, set SEED_DB=true to get the lab test accounts.
@@ -5086,6 +5098,105 @@ def integration():
         "info",
     )
     return redirect(url_for("reports"))
+
+
+@app.route("/analyst/clients/add", methods=["POST"])
+@analyst_required
+def add_client():
+    """Onboard a new client: create the account, issue an API key, and send a
+    password-setup link. Falls back to showing the link on-screen if email
+    (RESEND_API_KEY) is not configured. Lands on the client's integration page."""
+    import secrets as _secrets
+    username      = (request.form.get("username") or "").strip()
+    email         = (request.form.get("email") or "").strip()
+    business_name = (request.form.get("business_name") or "").strip()
+    industry      = (request.form.get("industry") or "").strip()
+
+    # Validate
+    if len(username) < 3 or len(username) > 50:
+        flash("Username must be between 3 and 50 characters.", "danger")
+        return redirect(url_for("control_room"))
+    if "@" not in email:
+        flash("A valid client email is required for the setup link.", "danger")
+        return redirect(url_for("control_room"))
+    if db_fetchone(f"SELECT id FROM users WHERE username = {PH}", (username,)):
+        flash(f"A user named '{username}' already exists.", "danger")
+        return redirect(url_for("control_room"))
+
+    # Create the client with an unusable random password (they set their own via link)
+    placeholder_pw = bcrypt.hashpw(_secrets.token_urlsafe(32).encode(), bcrypt.gensalt()).decode()
+    api_key        = _secrets.token_urlsafe(32)
+    new_id = db_insert(
+        f"INSERT INTO users (username, password, role, api_key, email, business_name, industry) "
+        f"VALUES ({PH}, {PH}, 'client', {PH}, {PH}, {PH}, {PH})",
+        (username, placeholder_pw, api_key, email, business_name, industry),
+    )
+
+    # Issue a one-time, 48-hour password-setup token
+    token   = _secrets.token_urlsafe(32)
+    expires = (datetime.utcnow() + timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
+    db_run(
+        f"INSERT INTO password_setup_tokens (token, user_id, expires_at) VALUES ({PH}, {PH}, {PH})",
+        (token, new_id, expires),
+    )
+    app_url   = os.environ.get("APP_URL", request.url_root.rstrip("/")).rstrip("/")
+    setup_url = f"{app_url}/set-password/{token}"
+
+    # Try to email the link; fall back to showing it to the analyst
+    html_body = f"""
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="color:#00b432;">Welcome to Boundry.AI</h2>
+      <p>Your security monitoring account has been created. Click below to set your
+      password and access your dashboard.</p>
+      <p style="margin:24px 0;">
+        <a href="{setup_url}" style="background:#00b432;color:#000;font-weight:700;
+        padding:12px 22px;border-radius:6px;text-decoration:none;">Set Your Password →</a>
+      </p>
+      <p style="color:#888;font-size:0.85em;">This link expires in 48 hours. If you did not
+      expect this email, you can ignore it.</p>
+    </div>"""
+    emailed = send_email(email, "Set up your Boundry.AI account", html_body)
+
+    security_log.info(f"CLIENT_ADDED username={username} id={new_id} by={session.get('username','')} emailed={emailed}")
+    if emailed:
+        flash(f"Client '{username}' created — setup link emailed to {email}.", "success")
+    else:
+        flash(f"Client '{username}' created. Email isn't configured, so send them this "
+              f"setup link manually: {setup_url}", "info")
+    return redirect(url_for("analyst_integration", client_id=new_id))
+
+
+@app.route("/set-password/<token>", methods=["GET", "POST"])
+@limiter.limit("10 per hour; 30 per day")
+def set_password(token):
+    """One-time password-setup page reached via the link emailed to a new client."""
+    row = db_fetchone(
+        f"SELECT t.token, t.user_id, t.expires_at, t.used, u.username "
+        f"FROM password_setup_tokens t JOIN users u ON t.user_id = u.id "
+        f"WHERE t.token = {PH}",
+        (token,),
+    )
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    if (not row) or row["used"] or row["expires_at"] < now:
+        return render_template("set_password.html", invalid=True, username=None), 400
+
+    error = None
+    if request.method == "POST":
+        new_pw  = request.form.get("new_password", "")
+        confirm = request.form.get("confirm_password", "")
+        if (pw_error := validate_password(new_pw)):
+            error = pw_error
+        elif new_pw != confirm:
+            error = "Passwords do not match."
+        else:
+            hashed = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+            db_run(f"UPDATE users SET password = {PH} WHERE id = {PH}", (hashed, row["user_id"]))
+            db_run(f"UPDATE password_setup_tokens SET used = 1 WHERE token = {PH}", (token,))
+            security_log.info(f"CLIENT_PASSWORD_SET user_id={row['user_id']} username={row['username']}")
+            flash("Password set — you can now log in.", "success")
+            return redirect(url_for("login"))
+
+    return render_template("set_password.html", invalid=False, username=row["username"], error=error)
 
 
 @app.route("/analyst/client/<int:client_id>/integration")

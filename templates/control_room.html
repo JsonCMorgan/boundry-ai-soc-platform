@@ -2220,10 +2220,40 @@
         <!-- Client list -->
         <div>
             <div class="panel">
-                <div class="panel-header">
-                    Users
-                    <span class="badge-count">{{ clients|length }}</span>
+                <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>Users <span class="badge-count">{{ clients|length }}</span></span>
+                    <button type="button" onclick="toggleAddClient()"
+                        style="font-size:0.72em;font-weight:700;color:#00b432;background:#0a1a0e;
+                        border:1px solid #1a5a2a;padding:4px 11px;border-radius:4px;cursor:pointer;">
+                        + Add Client
+                    </button>
                 </div>
+
+                <!-- Add Client form (hidden until toggled) -->
+                <form id="add-client-form" method="POST" action="{{ url_for('add_client') }}"
+                      style="display:none;padding:14px 16px;background:#0d1420;border-bottom:1px solid #1e2235;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <input name="username" placeholder="Username *" required
+                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
+                        <input name="email" type="email" placeholder="Client email *" required
+                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
+                        <input name="business_name" placeholder="Business name (optional)"
+                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
+                        <input name="industry" placeholder="Industry (optional)"
+                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
+                    </div>
+                    <div style="font-size:0.7em;color:#556;margin-top:8px;line-height:1.5;">
+                        Creates a client account, generates their API key, and sends a password-setup
+                        link. If email isn't configured, the link is shown to you to send manually.
+                    </div>
+                    <button type="submit"
+                        style="margin-top:10px;font-size:0.78em;font-weight:700;color:#000;background:#00b432;
+                        border:none;padding:7px 16px;border-radius:4px;cursor:pointer;">
+                        Create Client &amp; Get Integration →
+                    </button>
+                </form>
+
                 {% for c in clients %}
                 <div class="client-row">
                     <div class="client-avatar">{{ c.username[0] }}</div>
@@ -2242,6 +2272,13 @@
                 {% endfor %}
             </div>
         </div>
+        <script>
+            function toggleAddClient() {
+                var f = document.getElementById('add-client-form');
+                f.style.display = (f.style.display === 'none' || !f.style.display) ? 'block' : 'none';
+                if (f.style.display === 'block') { var u = f.querySelector('[name=username]'); if (u) u.focus(); }
+            }
+        </script>
 
         <!-- All reports -->
         <div>

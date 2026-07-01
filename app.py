@@ -391,6 +391,31 @@ def db_run(sql, params=()):
     finally:
         conn.close()
 
+
+def db_insert(sql, params=(), returning="id"):
+    """Execute an INSERT and return the new row's id atomically.
+
+    Postgres uses RETURNING; SQLite uses cursor.lastrowid. This avoids the
+    race in `SELECT id ... ORDER BY id DESC LIMIT 1` after an INSERT, which
+    can return another client's row under concurrent multi-tenant writes.
+    """
+    conn, kind = get_conn()
+    try:
+        if kind == "pg":
+            cur = conn.cursor()
+            if "returning" not in sql.lower():
+                sql = sql.rstrip().rstrip(";") + f" RETURNING {returning}"
+            cur.execute(sql, params)
+            new_id = cur.fetchone()[0]
+            conn.commit()
+            return new_id
+        else:
+            cur = conn.execute(sql, params)
+            conn.commit()
+            return cur.lastrowid
+    finally:
+        conn.close()
+
 # --- Rate limiting (A07: brute force protection) ---
 # 10 login attempts per minute per IP. Exceeding this returns HTTP 429.
 limiter = Limiter(
@@ -4980,13 +5005,11 @@ def _run_agent_core(triggered_by="unknown", owner_id=None, force_simulated=False
     # Save report — tagged with owner_id for multi-tenancy
     ts_expr = "NOW()" if DATABASE_URL else "datetime('now')"
     sim_val = 1 if is_simulated else 0
-    db_run(
+    report_id = db_insert(
         f"INSERT INTO reports (created_at, threat_count, event_count, content, owner_id, simulated)"
         f" VALUES ({ts_expr}, {PH}, {PH}, {PH}, {PH}, {PH})",
         (threat_count, event_count, content, owner_id, sim_val),
     )
-    row       = db_fetchone("SELECT id FROM reports ORDER BY id DESC LIMIT 1")
-    report_id = row["id"] if row else None
 
     # Email alert — notify client immediately if live report has threats
     if report_id and owner_id and not is_simulated and threat_count > 0:

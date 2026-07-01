@@ -286,6 +286,18 @@
         <p>Your current ransomware readiness score — how well protected, monitored, and prepared your environment is against today's most common SMB threat.</p>
     </div>
 
+    {% if role != 'analyst' %}
+    <div style="background:#101a2a; border:1px solid #24405f; border-left:4px solid #3b82f6;
+                border-radius:6px; padding:13px 16px; margin-bottom:24px; font-size:0.82em;
+                color:#9db8d6; line-height:1.55;">
+        <strong style="color:#cfe2ff;">Baseline readiness assessment.</strong>
+        This score reflects the ransomware defences and monitoring rules active on the
+        Boundry.AI platform protecting you. A detailed score derived from a live scan of
+        <em>your own</em> environment activates once full infrastructure monitoring is in
+        place — ask your analyst about expanding coverage.
+    </div>
+    {% endif %}
+
     <!-- Score Hero -->
     <div class="score-hero">
         <div class="score-ring">

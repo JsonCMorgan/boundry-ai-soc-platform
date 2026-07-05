@@ -4471,7 +4471,7 @@ def _generate_report_with_ai(prompt):
             import anthropic as _anthropic
             ai_client = _anthropic.Anthropic(api_key=api_key)
             message   = ai_client.messages.create(
-                model="claude-opus-4-5",
+                model="claude-haiku-4-5",
                 max_tokens=1024,
                 system=AI_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": _cap_prompt(prompt)}],
@@ -6153,7 +6153,7 @@ Respond ONLY with valid JSON — absolutely no other text, no markdown, no code 
             import anthropic as _anthropic
             ai_client = _anthropic.Anthropic(api_key=api_key)
             message   = ai_client.messages.create(
-                model="claude-opus-4-5",
+                model="claude-haiku-4-5",
                 max_tokens=900,
                 system=AI_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": prompt}],

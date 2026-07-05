@@ -5232,6 +5232,33 @@ def set_password(token):
     return render_template("set_password.html", invalid=False, username=row["username"], error=error)
 
 
+@app.route("/analyst/client/<int:client_id>/delete", methods=["POST"])
+@analyst_required
+def delete_client(client_id):
+    """Off-board a client: remove their account and associated data.
+
+    Guarded to role='client' only — analyst and demo accounts can never be
+    deleted through this route, so there's no way to lock yourself out or
+    nuke the demo sandbox by accident.
+    """
+    client = db_fetchone(f"SELECT id, username, role FROM users WHERE id = {PH}", (client_id,))
+    if not client:
+        abort(404)
+    if client["role"] != "client":
+        flash("Only client accounts can be removed.", "danger")
+        return redirect(url_for("control_room"))
+
+    # Remove the client's data first, then the account itself
+    db_run(f"DELETE FROM reports WHERE owner_id = {PH}", (client_id,))
+    db_run(f"DELETE FROM security_events WHERE owner_id = {PH}", (client_id,))
+    db_run(f"DELETE FROM password_setup_tokens WHERE user_id = {PH}", (client_id,))
+    db_run(f"DELETE FROM users WHERE id = {PH}", (client_id,))
+
+    security_log.info(f"CLIENT_DELETED id={client_id} username={client['username']} by={session.get('username','')}")
+    flash(f"Client '{client['username']}' and their data have been removed.", "success")
+    return redirect(url_for("control_room"))
+
+
 @app.route("/analyst/client/<int:client_id>/integration")
 @analyst_required
 def analyst_integration(client_id):

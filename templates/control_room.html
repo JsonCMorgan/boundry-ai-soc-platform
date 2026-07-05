@@ -2267,6 +2267,18 @@
                        title="View integration code for {{ c.username }}">
                         &#x1F527; Integration
                     </a>
+                    <form method="POST" action="{{ url_for('delete_client', client_id=c.id) }}"
+                          onsubmit="return confirm('Remove client \'{{ c.username }}\' and ALL their reports and events? This cannot be undone.');"
+                          style="display:inline; margin-left:6px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit"
+                                style="font-size:0.72em; color:#ff6666; background:#2a0d0d;
+                                       border:1px solid #661a1a; padding:3px 9px; border-radius:3px;
+                                       cursor:pointer; white-space:nowrap;"
+                                title="Remove {{ c.username }}">
+                            &#x2715; Remove
+                        </button>
+                    </form>
                     {% endif %}
                 </div>
                 {% endfor %}

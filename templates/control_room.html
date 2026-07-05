@@ -223,10 +223,11 @@
         .client-row {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             padding: 10px 16px;
             border-bottom: 1px solid #1a1d2a;
             font-size: 0.88em;
-            gap: 10px;
+            gap: 8px;
         }
         .client-row:last-child { border-bottom: none; }
         .client-avatar {
@@ -2260,25 +2261,27 @@
                     <span class="client-name">{{ c.username }}</span>
                     <span class="role-pill role-{{ c.role }}">{{ c.role }}</span>
                     {% if c.role == 'client' %}
-                    <a href="/analyst/client/{{ c.id }}/integration"
-                       style="margin-left:auto; font-size:0.72em; color:#aa66ff; text-decoration:none;
-                              background:#1a0a2a; border:1px solid #441a88; padding:3px 9px;
-                              border-radius:3px; white-space:nowrap;"
-                       title="View integration code for {{ c.username }}">
-                        &#x1F527; Integration
-                    </a>
-                    <form method="POST" action="{{ url_for('delete_client', client_id=c.id) }}"
-                          onsubmit="return confirm('Remove client \'{{ c.username }}\' and ALL their reports and events? This cannot be undone.');"
-                          style="display:inline; margin-left:6px;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit"
-                                style="font-size:0.72em; color:#ff6666; background:#2a0d0d;
-                                       border:1px solid #661a1a; padding:3px 9px; border-radius:3px;
-                                       cursor:pointer; white-space:nowrap;"
-                                title="Remove {{ c.username }}">
-                            &#x2715; Remove
-                        </button>
-                    </form>
+                    <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
+                        <a href="/analyst/client/{{ c.id }}/integration"
+                           style="font-size:0.72em; color:#aa66ff; text-decoration:none;
+                                  background:#1a0a2a; border:1px solid #441a88; padding:3px 9px;
+                                  border-radius:3px; white-space:nowrap;"
+                           title="View integration code for {{ c.username }}">
+                            &#x1F527; Integration
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_client', client_id=c.id) }}"
+                              onsubmit="return confirm('Remove client \'{{ c.username }}\' and ALL their reports and events? This cannot be undone.');"
+                              style="display:inline; margin:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit"
+                                    style="font-size:0.72em; color:#ff6666; background:#2a0d0d;
+                                           border:1px solid #661a1a; padding:3px 8px; border-radius:3px;
+                                           cursor:pointer; line-height:1;"
+                                    title="Remove client {{ c.username }}">
+                                &#x2715;
+                            </button>
+                        </form>
+                    </span>
                     {% endif %}
                 </div>
                 {% endfor %}

@@ -324,7 +324,14 @@ def notify_client_of_report(report_id: int, owner_id: int, threat_count: int) ->
     )
 
 
-DB_PATH = Path(__file__).parent / "app.db"
+# SQLite database path. Configurable via SQLITE_PATH so production can point it
+# at a persistent Railway volume (e.g. SQLITE_PATH=/data/app.db) that survives
+# deploys. Defaults to the app directory for local dev — nothing changes locally.
+DB_PATH = Path(os.environ.get("SQLITE_PATH", str(Path(__file__).parent / "app.db")))
+try:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)  # ensure the (volume) dir exists
+except Exception:
+    pass
 REPORTS_DIR = Path(__file__).parent / "docs" / "reports"
 
 # SQL placeholder: PostgreSQL uses %s, SQLite uses ?

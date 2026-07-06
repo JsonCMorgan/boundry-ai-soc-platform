@@ -51,6 +51,27 @@
         }
         .topbar nav a:hover { color: #00b432; text-shadow: 0 0 8px #00b43299; }
 
+        /* ── Nav dropdown menus ── */
+        .nav-menu { position: relative; display: inline-block; margin-left: 20px; }
+        .nav-trigger {
+            color: #999; font-size: 0.85em; cursor: pointer; user-select: none;
+            padding: 6px 0; transition: color 0.15s;
+        }
+        .nav-menu:hover .nav-trigger { color: #fff; }
+        .nav-dropdown {
+            display: none; position: absolute; top: 100%; left: 0;
+            background: #12151f; border: 1px solid #2a2d3e; border-radius: 7px;
+            padding: 6px; min-width: 190px; box-shadow: 0 10px 30px #000c; z-index: 200;
+        }
+        /* invisible bridge so moving cursor to the menu doesn't close it */
+        .nav-menu::after { content: ''; position: absolute; top: 100%; left: 0; height: 8px; width: 100%; }
+        .nav-menu:hover .nav-dropdown { display: block; }
+        .nav-dropdown a {
+            display: block; margin-left: 0; padding: 8px 12px; border-radius: 5px;
+            font-size: 0.85em; white-space: nowrap; transition: background 0.12s;
+        }
+        .nav-dropdown a:hover { background: #1c2030; text-shadow: none; }
+
         /* ── Stat bar ── */
         .statbar {
             background: #0e1119;
@@ -1098,24 +1119,31 @@
             </span>
             <nav>
                 {% if user_role == 'analyst' and not ops_mode %}
-                <a href="/scorecard">&#x1F4CA; Scorecard</a>
-                <a href="/training" style="color:#00b432; font-weight:bold;">🎓 SOC Training</a>
-                <a href="/cissp" style="color:#9944ee; font-weight:bold;">📘 CISSP</a>
-                <a href="/glossary" style="color:#bb77ff; font-weight:bold;">📖 Glossary</a>
+                <span class="nav-menu">
+                    <span class="nav-trigger" style="color:#9944ee;">🎓 Training ▾</span>
+                    <span class="nav-dropdown">
+                        <a href="/training"  style="color:#00b432;">🎓 SOC Training</a>
+                        <a href="/cissp"     style="color:#9944ee;">📘 CISSP</a>
+                        <a href="/glossary"  style="color:#bb77ff;">📖 Glossary</a>
+                        <a href="/scorecard" style="color:#888;">📊 Scorecard</a>
+                        <a href="/profile"   style="color:#ffd700;">⚔️ Profile</a>
+                    </span>
+                </span>
                 {% endif %}
-                <a href="/playbooks" style="color:#ff9900; font-weight:bold;">📋 Playbooks</a>
+                <span class="nav-menu">
+                    <span class="nav-trigger" style="color:#00d4ff;">🛡️ Operations ▾</span>
+                    <span class="nav-dropdown">
+                        <a href="/siem"       style="color:#00d4ff;">📡 SIEM</a>
+                        <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
+                        <a href="/playbooks"  style="color:#ff9900;">📋 Playbooks</a>
+                        <a href="/compliance" style="color:#f39c12;">📊 Compliance</a>
+                        {% if user_role == 'analyst' %}<a href="/reports" style="color:#cc4444;">📄 Reports</a>{% endif %}
+                    </span>
+                </span>
                 <a href="/daily-log" style="color:#f59e0b; font-weight:bold;">📓 Daily Log</a>
-                <a href="/siem" style="color:#00d4ff; font-weight:bold;">📡 SIEM</a>
-                <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
-                <a href="/compliance" style="color:#f39c12; font-weight:bold;">📊 Compliance</a>
-                {% if user_role == 'analyst' %}
-                {% if not ops_mode %}<a href="/profile" style="color:#ffd700; font-weight:bold;">⚔️ Profile</a>{% endif %}
-                <a href="/reports">Reports</a>
-                {% else %}
-                <a href="/account">Account</a>
-                {% endif %}
+                {% if user_role != 'analyst' %}<a href="/account">Account</a>{% endif %}
                 <a href="/logout" style="color:#ff8888; font-weight:bold; border:1px solid #662222;
-                   background:#2a0d0d; padding:4px 12px; border-radius:5px; margin-left:8px;">
+                   background:#2a0d0d; padding:4px 12px; border-radius:5px; margin-left:16px;">
                    🚪 Log Out</a>
             </nav>
             <!-- Mode toggle -->

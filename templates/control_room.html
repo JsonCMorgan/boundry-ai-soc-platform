@@ -2263,7 +2263,24 @@
                     <span class="client-name">{{ c.username }}</span>
                     <span class="role-pill role-{{ c.role }}">{{ c.role }}</span>
                     {% if c.role == 'client' %}
+                    {% set rscore = client_risk.get(c.id) %}
                     <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
+                        {% if rscore %}
+                        <a href="/analyst/client/{{ c.id }}/risk-assessment"
+                           style="font-size:0.72em; color:#000; text-decoration:none; font-weight:700;
+                                  background:{{ rscore.color }}; padding:3px 8px; border-radius:3px; white-space:nowrap;"
+                           title="Risk {{ rscore.grade }} · ${{ '{:,.0f}'.format(rscore.recommended_monthly) }}/mo recommended">
+                            📊 {{ rscore.grade }} · ${{ '{:,.0f}'.format(rscore.recommended_monthly) }}/mo
+                        </a>
+                        {% else %}
+                        <a href="/analyst/client/{{ c.id }}/risk-assessment"
+                           style="font-size:0.72em; color:#ff9944; text-decoration:none;
+                                  background:#2a1600; border:1px solid #663300; padding:3px 9px;
+                                  border-radius:3px; white-space:nowrap;"
+                           title="Run risk assessment for {{ c.username }}">
+                            📊 Assess Risk
+                        </a>
+                        {% endif %}
                         <a href="/analyst/client/{{ c.id }}/integration"
                            style="font-size:0.72em; color:#aa66ff; text-decoration:none;
                                   background:#1a0a2a; border:1px solid #441a88; padding:3px 9px;

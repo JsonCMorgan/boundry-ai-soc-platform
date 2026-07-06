@@ -1287,6 +1287,31 @@ def init_db():
         )
     """)
 
+    # Client risk assessments — quantitative (ALE/FAIR-style) onboarding scoring
+    # that produces a risk score, an annual loss exposure ($), and a recommended
+    # monthly price. One current assessment per client (upserted).
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS risk_assessments (
+            {id_col},
+            {ts_col},
+            client_id          INTEGER NOT NULL,
+            analyst_id         INTEGER,
+            industry           TEXT    NOT NULL DEFAULT 'other',
+            employees          INTEGER NOT NULL DEFAULT 0,
+            annual_revenue     REAL    NOT NULL DEFAULT 0,
+            records            INTEGER NOT NULL DEFAULT 0,
+            downtime_cost_hr   REAL    NOT NULL DEFAULT 0,
+            controls_json      TEXT    NOT NULL DEFAULT '{{}}',
+            risk_score         INTEGER NOT NULL DEFAULT 0,
+            grade              TEXT    NOT NULL DEFAULT '',
+            ale                REAL    NOT NULL DEFAULT 0,
+            sle                REAL    NOT NULL DEFAULT 0,
+            aro                REAL    NOT NULL DEFAULT 0,
+            recommended_monthly REAL   NOT NULL DEFAULT 0,
+            UNIQUE(client_id)
+        )
+    """)
+
     # ── SIEM tables ────────────────────────────────────────────────────────────
     # Normalised event store — one row per ingested log event from any source.
     db_run(f"""
@@ -2226,6 +2251,108 @@ def report_pdf(report_id):
         security_log.error(f"PDF_GENERATION_ERROR report_id={report_id} error={exc}")
         flash(f"PDF generation failed: {exc}", "danger")
         return redirect(url_for("report_detail", report_id=report_id))
+
+
+# ── Client Risk Assessment (quantitative ALE / FAIR-style onboarding scoring) ──
+# Produces a risk score, an annual loss exposure (ALE $), and a recommended
+# monthly price (a % of the ALE). Grounded in SMB breach/ransomware benchmarks.
+RISK_CONTROLS = [
+    ("mfa",        "Multi-factor authentication on all accounts"),
+    ("backups",    "Regular, tested backups"),
+    ("edr",        "Endpoint protection / EDR / antivirus"),
+    ("training",   "Security awareness training"),
+    ("firewall",   "Firewall configured and active"),
+    ("patching",   "Routine patch / update management"),
+    ("ir_plan",    "Documented incident response plan"),
+    ("encryption", "Encryption of sensitive data at rest"),
+]
+
+# Per-industry profile: data-sensitivity factor + baseline annual attack rate.
+RISK_INDUSTRIES = {
+    "cannabis":              {"label": "Cannabis / Dispensary",  "factor": 1.2, "base_aro": 0.50},
+    "healthcare":            {"label": "Healthcare / Medical",   "factor": 1.5, "base_aro": 0.50},
+    "legal":                 {"label": "Legal / Law Firm",       "factor": 1.2, "base_aro": 0.40},
+    "financial":             {"label": "Financial / Accounting", "factor": 1.3, "base_aro": 0.50},
+    "retail":                {"label": "Retail / E-commerce",    "factor": 1.0, "base_aro": 0.35},
+    "hospitality":           {"label": "Hospitality",            "factor": 0.9, "base_aro": 0.30},
+    "professional_services": {"label": "Professional Services",  "factor": 1.0, "base_aro": 0.35},
+    "other":                 {"label": "Other / General",        "factor": 1.0, "base_aro": 0.35},
+}
+
+RISK_TARGET_PCT = 0.06    # recommended annual price as a % of ALE
+RISK_PRICE_MIN  = 300     # monthly price floor
+RISK_PRICE_MAX  = 2500    # monthly price ceiling
+
+
+def _risk_base_by_size(employees):
+    """Benchmark-anchored base incident cost by company size (SMB breach ranges)."""
+    if employees < 10:  return 60000
+    if employees < 50:  return 150000
+    if employees < 250: return 500000
+    return 1000000
+
+
+def _compute_risk_assessment(industry, employees, annual_revenue, records,
+                             downtime_cost_hr, controls):
+    """Quantitative risk score -> annual loss exposure (ALE) -> recommended price.
+
+    controls: dict of {control_key: bool}. Returns a dict with score, grade, ALE,
+    SLE, ARO, EF, recommended monthly price, and a breakdown.
+    """
+    ind      = RISK_INDUSTRIES.get(industry, RISK_INDUSTRIES["other"])
+    total    = len(RISK_CONTROLS)
+    in_place = sum(1 for k, _ in RISK_CONTROLS if controls.get(k))
+    missing  = total - in_place
+    gap      = missing / total if total else 0.0
+
+    # Asset Value at Risk — worst-case single-incident impact
+    records_factor = 1 + min(1.0, (records or 0) / 50000.0)
+    asset_value = (_risk_base_by_size(employees) * ind["factor"] * records_factor
+                   + (downtime_cost_hr or 0) * 40)
+
+    ef  = 0.15 + 0.70 * gap                        # exposure factor (control gaps)
+    sle = asset_value * ef                          # single loss expectancy
+    aro = min(1.0, ind["base_aro"] * (1 + gap))     # annualized rate of occurrence
+    ale = sle * aro                                 # annual loss exposure ($/yr)
+
+    impact_ratio = min(1.0, ale / (annual_revenue * 0.10)) if annual_revenue else 1.0
+    score = round(100 * (0.45 * gap + 0.30 * aro + 0.25 * impact_ratio))
+    score = max(0, min(100, score))
+
+    if   score >= 85: grade = "F"
+    elif score >= 65: grade = "D"
+    elif score >= 45: grade = "C"
+    elif score >= 25: grade = "B"
+    else:             grade = "A"
+
+    monthly = ale * RISK_TARGET_PCT / 12
+    monthly = int(max(RISK_PRICE_MIN, min(RISK_PRICE_MAX, round(monthly / 50) * 50)))
+
+    return {
+        "score": score, "grade": grade, "ef": round(ef, 2), "sle": round(sle),
+        "aro": round(aro, 2), "ale": round(ale), "asset_value": round(asset_value),
+        "recommended_monthly": monthly, "in_place": in_place, "missing": missing,
+        "total_controls": total,
+        "protection_pct": round((monthly * 12 / ale) * 100, 1) if ale else 0,
+    }
+
+
+_RISK_GRADE_COLORS = {"A": "#00b432", "B": "#8fce00", "C": "#ff9900", "D": "#ff6a00", "F": "#ff4444"}
+
+def _client_risk_map():
+    """client_id -> {grade, color, recommended_monthly} for saved assessments,
+    for the at-a-glance chips in the Control Room client list."""
+    try:
+        rows = db_fetchall("SELECT client_id, grade, recommended_monthly FROM risk_assessments")
+    except Exception:
+        return {}
+    return {
+        r["client_id"]: {
+            "grade": r["grade"],
+            "recommended_monthly": r["recommended_monthly"],
+            "color": _RISK_GRADE_COLORS.get(r["grade"], "#888"),
+        } for r in rows
+    }
 
 
 # ── CISSP Domain catalogue ───────────────────────────────────────────────────
@@ -3674,6 +3801,7 @@ def control_room():
         ransomware_score=ransomware_score,
         login_rate_preset=_get_app_setting("login_rate_preset", LOGIN_RATE_DEFAULT),
         login_rate_presets=LOGIN_RATE_PRESETS,
+        client_risk=_client_risk_map(),
         now=datetime.utcnow(),
     )
 
@@ -5277,6 +5405,82 @@ def delete_client(client_id):
     security_log.info(f"CLIENT_DELETED id={client_id} username={client['username']} by={session.get('username','')}")
     flash(f"Client '{client['username']}' and their data have been removed.", "success")
     return redirect(url_for("control_room"))
+
+
+@app.route("/analyst/client/<int:client_id>/risk-assessment", methods=["GET", "POST"])
+@analyst_required
+def risk_assessment(client_id):
+    """Quantitative onboarding risk assessment for a client — computes a risk
+    score, annual loss exposure (ALE), and a recommended monthly price."""
+    import json as _json
+    client = db_fetchone(
+        f"SELECT id, username, business_name, industry FROM users WHERE id = {PH} AND role = 'client'",
+        (client_id,),
+    )
+    if not client:
+        abort(404)
+
+    result = None
+    if request.method == "POST":
+        f = request.form
+        def _num(name, default=0):
+            try:
+                return float(str(f.get(name, default)).replace(",", "").strip() or default)
+            except Exception:
+                return float(default)
+        industry         = (f.get("industry") or "other").strip()
+        employees        = int(_num("employees"))
+        annual_revenue   = _num("annual_revenue")
+        records          = int(_num("records"))
+        downtime_cost_hr = _num("downtime_cost_hr")
+        controls = {k: (f.get("ctrl_" + k) == "on") for k, _ in RISK_CONTROLS}
+
+        result = _compute_risk_assessment(industry, employees, annual_revenue,
+                                          records, downtime_cost_hr, controls)
+
+        # Upsert the assessment (one current per client)
+        existing = db_fetchone(f"SELECT id FROM risk_assessments WHERE client_id = {PH}", (client_id,))
+        cols = (industry, employees, annual_revenue, records, downtime_cost_hr,
+                _json.dumps(controls), result["score"], result["grade"], result["ale"],
+                result["sle"], result["aro"], result["recommended_monthly"])
+        if existing:
+            db_run(
+                f"UPDATE risk_assessments SET industry={PH}, employees={PH}, annual_revenue={PH}, "
+                f"records={PH}, downtime_cost_hr={PH}, controls_json={PH}, risk_score={PH}, grade={PH}, "
+                f"ale={PH}, sle={PH}, aro={PH}, recommended_monthly={PH}, analyst_id={PH} WHERE client_id={PH}",
+                cols + (session.get("user_id"), client_id),
+            )
+        else:
+            db_run(
+                f"INSERT INTO risk_assessments (client_id, industry, employees, annual_revenue, records, "
+                f"downtime_cost_hr, controls_json, risk_score, grade, ale, sle, aro, recommended_monthly, analyst_id) "
+                f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+                (client_id,) + cols + (session.get("user_id"),),
+            )
+        security_log.info(f"RISK_ASSESSMENT client_id={client_id} score={result['score']} ale={result['ale']} by={session.get('username','')}")
+        flash("Risk assessment saved.", "success")
+
+    # Load the saved assessment (for GET, or to re-render after POST)
+    saved = db_fetchone(f"SELECT * FROM risk_assessments WHERE client_id = {PH}", (client_id,))
+    controls_state = {}
+    if saved:
+        try:
+            controls_state = _json.loads(saved["controls_json"])
+        except Exception:
+            controls_state = {}
+        if result is None:
+            result = _compute_risk_assessment(
+                saved["industry"], saved["employees"], saved["annual_revenue"],
+                saved["records"], saved["downtime_cost_hr"], controls_state,
+            )
+
+    return render_template(
+        "risk_assessment.html",
+        client=client, saved=saved, result=result,
+        controls_state=controls_state,
+        risk_controls=RISK_CONTROLS, risk_industries=RISK_INDUSTRIES,
+        role=session.get("role", "client"),
+    )
 
 
 @app.route("/analyst/client/<int:client_id>/integration")

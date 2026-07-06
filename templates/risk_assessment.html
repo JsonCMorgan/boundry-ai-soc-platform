@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Boundry.AI — Risk Assessment: {{ client.username }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; }
+        .topbar { background: #12151f; border-bottom: 2px solid #00b43233; padding: 14px 32px;
+            display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #00b432; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 20px; font-size: 0.85em; }
+        .topbar nav a:hover { color: #00b432; }
+        .main { max-width: 1000px; margin: 0 auto; padding: 32px 24px 80px; }
+        .page-header h1 { font-size: 1.5em; color: #fff; margin: 0 0 4px; }
+        .page-header p { color: #888; font-size: 0.88em; margin: 0; }
+
+        .panel { background: #12151f; border: 1px solid #1e2235; border-radius: 8px; padding: 24px 26px; margin-top: 24px; }
+        .panel-title { font-size: 1.05em; font-weight: 700; color: #eee; margin: 0 0 16px; }
+
+        /* Results */
+        .result-grid { display: grid; grid-template-columns: 160px 1fr; gap: 28px; align-items: center; }
+        @media (max-width: 640px) { .result-grid { grid-template-columns: 1fr; } }
+        .score-ring { text-align: center; }
+        .score-num { font-size: 3.4em; font-weight: 800; line-height: 1; }
+        .grade-badge { display: inline-block; margin-top: 6px; padding: 3px 16px; border-radius: 16px;
+            font-size: 1.1em; font-weight: 800; color: #000; }
+        .score-lbl { font-size: 0.72em; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .headline { display: flex; gap: 28px; flex-wrap: wrap; }
+        .headline-item { }
+        .headline-val { font-size: 1.9em; font-weight: 800; color: #fff; line-height: 1; }
+        .headline-val.money-loss { color: #ff6a00; }
+        .headline-val.money-price { color: #00b432; }
+        .headline-lbl { font-size: 0.72em; color: #777; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .pitch { margin-top: 18px; font-size: 0.9em; color: #bbb; line-height: 1.6;
+            background: #0a1a0e; border: 1px solid #1a4a2a; border-left: 4px solid #00b432; border-radius: 6px; padding: 12px 16px; }
+        .pitch strong { color: #00ff88; }
+        .breakdown { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px; font-size: 0.78em; color: #666; }
+        .breakdown span strong { color: #aaa; }
+
+        /* Form */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+        label { display: block; font-size: 0.78em; color: #999; margin-bottom: 5px; }
+        input[type=number], input[type=text], select {
+            width: 100%; padding: 9px 11px; background: #0b0e17; border: 1px solid #2a3040;
+            border-radius: 5px; color: #eee; font-size: 0.9em; }
+        input:focus, select:focus { outline: none; border-color: #00b43288; }
+        .hint { font-size: 0.7em; color: #555; margin-top: 3px; }
+
+        .controls-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        @media (max-width: 640px) { .controls-list { grid-template-columns: 1fr; } }
+        .ctrl-item { display: flex; align-items: center; gap: 9px; background: #0e1119; border: 1px solid #1e2235;
+            border-radius: 6px; padding: 9px 12px; font-size: 0.82em; color: #bbb; cursor: pointer; }
+        .ctrl-item input { width: 16px; height: 16px; accent-color: #00b432; }
+
+        .btn { margin-top: 20px; padding: 11px 24px; background: #00b432; color: #000; font-weight: 700;
+            border: none; border-radius: 6px; font-size: 0.92em; cursor: pointer; }
+        .btn:hover { background: #00d13a; }
+        .section-lbl { font-size: 0.75em; color: #556; text-transform: uppercase; letter-spacing: 0.06em; margin: 22px 0 8px; }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <span class="topbar-brand">Boundry.AI — Risk Assessment</span>
+    <nav>
+        <a href="{{ url_for('control_room') }}">← Control Room</a>
+        <a href="{{ url_for('analyst_integration', client_id=client.id) }}">🔧 Integration</a>
+        <a href="/logout" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;">🚪 Log Out</a>
+    </nav>
+</nav>
+
+<div class="main">
+
+    <div class="page-header">
+        <h1>📊 Risk Assessment — {{ client.business_name or client.username }}</h1>
+        <p>Quantitative risk scoring → annual loss exposure → recommended monthly price. Fill this in during onboarding to size the engagement.</p>
+    </div>
+
+    {% if result %}
+    {% set gcolor = {'A':'#00b432','B':'#8fce00','C':'#ff9900','D':'#ff6a00','F':'#ff4444'}[result.grade] %}
+    <div class="panel">
+        <div class="result-grid">
+            <div class="score-ring">
+                <div class="score-num" style="color:{{ gcolor }};">{{ result.score }}</div>
+                <span class="grade-badge" style="background:{{ gcolor }};">{{ result.grade }}</span>
+                <div class="score-lbl">Risk Score / 100</div>
+            </div>
+            <div>
+                <div class="headline">
+                    <div class="headline-item">
+                        <div class="headline-val money-loss">${{ "{:,.0f}".format(result.ale) }}<span style="font-size:0.45em;color:#888;">/yr</span></div>
+                        <div class="headline-lbl">Annual Loss Exposure (ALE)</div>
+                    </div>
+                    <div class="headline-item">
+                        <div class="headline-val money-price">${{ "{:,.0f}".format(result.recommended_monthly) }}<span style="font-size:0.45em;color:#888;">/mo</span></div>
+                        <div class="headline-lbl">Recommended Retainer</div>
+                    </div>
+                </div>
+                <div class="pitch">
+                    This client is exposed to roughly <strong>${{ "{:,.0f}".format(result.ale) }}/year</strong> in expected loss.
+                    Boundry.AI protection at <strong>${{ "{:,.0f}".format(result.recommended_monthly) }}/mo</strong>
+                    (${{ "{:,.0f}".format(result.recommended_monthly * 12) }}/yr) covers that risk for just
+                    <strong>{{ result.protection_pct }}%</strong> of what they stand to lose.
+                </div>
+                <div class="breakdown">
+                    <span><strong>SLE:</strong> ${{ "{:,.0f}".format(result.sle) }}</span>
+                    <span><strong>ARO:</strong> {{ result.aro }}/yr</span>
+                    <span><strong>Exposure factor:</strong> {{ result.ef }}</span>
+                    <span><strong>Controls in place:</strong> {{ result.in_place }}/{{ result.total_controls }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="POST" class="panel">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="panel-title">{% if saved %}Update{% else %}New{% endif %} Assessment</div>
+
+        <div class="section-lbl">Business Profile</div>
+        <div class="form-grid">
+            <div>
+                <label>Industry</label>
+                <select name="industry">
+                    {% for key, ind in risk_industries.items() %}
+                    <option value="{{ key }}" {% if (saved.industry if saved else client.industry) == key %}selected{% endif %}>{{ ind.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label># Employees</label>
+                <input type="number" name="employees" min="0" value="{{ saved.employees if saved else '' }}" placeholder="e.g. 30">
+            </div>
+            <div>
+                <label>Annual Revenue ($)</label>
+                <input type="number" name="annual_revenue" min="0" value="{{ saved.annual_revenue|int if saved else '' }}" placeholder="e.g. 4000000">
+            </div>
+            <div>
+                <label>Sensitive Records Held (PII / PCI / PHI)</label>
+                <input type="number" name="records" min="0" value="{{ saved.records if saved else '' }}" placeholder="e.g. 15000">
+                <div class="hint">Customer / patient records with personal, payment, or health data.</div>
+            </div>
+            <div>
+                <label>Estimated Downtime Cost ($/hour)</label>
+                <input type="number" name="downtime_cost_hr" min="0" value="{{ saved.downtime_cost_hr|int if saved else '' }}" placeholder="e.g. 5000">
+                <div class="hint">SMB benchmark: $2,000–$10,000/hr. Estimate from lost revenue + idle staff.</div>
+            </div>
+        </div>
+
+        <div class="section-lbl">Current Security Controls — check the ones they already have</div>
+        <div class="controls-list">
+            {% for key, label in risk_controls %}
+            <label class="ctrl-item">
+                <input type="checkbox" name="ctrl_{{ key }}" {% if controls_state.get(key) %}checked{% endif %}>
+                {{ label }}
+            </label>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn">{% if saved %}Recalculate & Save{% else %}Calculate Risk & Price{% endif %} →</button>
+    </form>
+
+</div>
+</body>
+</html>

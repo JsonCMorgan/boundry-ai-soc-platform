@@ -187,7 +187,7 @@
         <a href="{{ url_for('account') }}">Account</a>
         {% endif %}
         <a href="{{ url_for('compliance') }}" class="active">Compliance</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
+        <a href="{{ url_for('logout') }}" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;">🚪 Log Out</a>
     </nav>
     {% if role == 'analyst' %}
     <form action="/set-mode" method="post" style="margin:0 0 0 8px;">

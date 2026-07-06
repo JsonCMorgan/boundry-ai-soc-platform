@@ -19,6 +19,7 @@ import siem_collector
 import spl_engine
 import splunk_forwarder
 import vpn_monitor
+import security_acronyms
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect, generate_csrf
@@ -6445,6 +6446,41 @@ def _cissp_readiness_score(analyst_id):
 
 
 # ── CISSP Routes ─────────────────────────────────────────────────────────────
+
+@app.route("/glossary")
+@analyst_required
+def glossary():
+    """Security acronym index — a study reference grouped by category."""
+    return render_template(
+        "glossary.html",
+        grouped=security_acronyms.acronyms_by_category(),
+        total=len(security_acronyms.ACRONYMS),
+        role=session.get("role", "client"),
+        ops_mode=session.get("analyst_mode", False),
+    )
+
+
+@app.route("/api/acronyms")
+@login_required
+def api_acronyms():
+    """Acronym map (abbr -> {full, def}) for the site-wide hover tooltips.
+    Available to any logged-in user so tooltips work on every page."""
+    return jsonify({e["abbr"]: {"full": e["full"], "def": e["def"]}
+                    for e in security_acronyms.ACRONYMS})
+
+
+@app.route("/glossary/quiz")
+@analyst_required
+def glossary_quiz():
+    """Multiple-choice acronym drill — self-contained client-side quiz."""
+    import json as _json
+    return render_template(
+        "glossary_quiz.html",
+        acronyms_json=Markup(_json.dumps(security_acronyms.ACRONYMS)),
+        total=len(security_acronyms.ACRONYMS),
+        role=session.get("role", "client"),
+    )
+
 
 @app.route("/cissp")
 @analyst_required

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — Acronym Quiz</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; }
+        .topbar { background: #12151f; border-bottom: 2px solid #9944ee33; padding: 14px 32px;
+            display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+        .topbar-brand { font-size: 1.1em; font-weight: bold; color: #9944ee; }
+        .topbar nav a { color: #666; text-decoration: none; margin-left: 20px; font-size: 0.85em; }
+        .topbar nav a:hover { color: #bb77ff; }
+
+        .main { max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; }
+        h1 { font-size: 1.4em; color: #fff; margin: 0 0 20px; }
+
+        .stats-bar { display: flex; gap: 14px; margin-bottom: 24px; flex-wrap: wrap; }
+        .stat { background: #12151f; border: 1px solid #1e2235; border-radius: 8px; padding: 12px 18px; text-align: center; min-width: 84px; }
+        .stat .val { font-size: 1.5em; font-weight: 800; }
+        .stat .lbl { font-size: 0.68em; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+        .card { background: #12151f; border: 1px solid #1e2235; border-radius: 10px; padding: 28px 26px; }
+        .q-prompt { font-size: 0.78em; color: #777; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+        .q-text { font-size: 1.5em; font-weight: 800; color: #fff; margin-bottom: 22px; line-height: 1.3; }
+        .q-text .hi { color: #bb77ff; font-family: monospace; }
+
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        .opt { text-align: left; background: #0b0e17; border: 1px solid #2a2d3a; border-radius: 7px;
+            padding: 13px 16px; font-size: 0.92em; color: #ccc; cursor: pointer; transition: all 0.12s; }
+        .opt:hover:not(:disabled) { border-color: #9944ee88; background: #161923; }
+        .opt:disabled { cursor: default; }
+        .opt.correct { border-color: #00b432; background: #0a1a0a; color: #00ff41; }
+        .opt.wrong   { border-color: #ff4444; background: #1a0a0a; color: #ff8888; }
+
+        .feedback { margin-top: 18px; padding: 14px 16px; border-radius: 7px; font-size: 0.86em; line-height: 1.55; display: none; }
+        .feedback.show { display: block; }
+        .feedback.ok  { background: #0a1a0e; border-left: 4px solid #00b432; }
+        .feedback.no  { background: #1a0a0a; border-left: 4px solid #ff4444; }
+        .feedback strong { color: #fff; }
+        .feedback .def { color: #999; margin-top: 6px; }
+
+        .btn-next { margin-top: 16px; background: #9944ee; color: #fff; border: none; padding: 11px 24px;
+            border-radius: 6px; font-size: 0.9em; font-weight: 700; cursor: pointer; display: none; }
+        .btn-next.show { display: inline-block; }
+        .btn-next:hover { background: #aa55ff; }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <span class="topbar-brand">🎯 Acronym Quiz</span>
+    <nav>
+        <a href="{{ url_for('glossary') }}">← Glossary</a>
+        <a href="{{ url_for('cissp_hub') }}">📘 CISSP</a>
+        <a href="/logout" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;">🚪 Log Out</a>
+    </nav>
+</nav>
+
+<div class="main">
+    <h1>Acronym Quiz</h1>
+
+    <div class="stats-bar">
+        <div class="stat"><div class="val" id="s-att" style="color:#bb77ff;">0</div><div class="lbl">Attempted</div></div>
+        <div class="stat"><div class="val" id="s-cor" style="color:#00b432;">0</div><div class="lbl">Correct</div></div>
+        <div class="stat"><div class="val" id="s-pct" style="color:#ddd;">—</div><div class="lbl">Accuracy</div></div>
+        <div class="stat"><div class="val" id="s-streak" style="color:#ff9900;">0</div><div class="lbl">🔥 Streak</div></div>
+    </div>
+
+    <div class="card">
+        <div class="q-prompt" id="q-prompt">Question</div>
+        <div class="q-text" id="q-text">—</div>
+        <div class="options" id="options"></div>
+        <div class="feedback" id="feedback"></div>
+        <button class="btn-next" id="btn-next" onclick="nextQuestion()">Next Question →</button>
+    </div>
+</div>
+
+<script>
+    var ACRONYMS = {{ acronyms_json }};
+    var SESSION = { att: 0, cor: 0, streak: 0 };
+    var current = null, answered = false;
+
+    function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function nextQuestion() {
+        answered = false;
+        var answer = ACRONYMS[Math.floor(Math.random() * ACRONYMS.length)];
+        // 70% "what does X stand for?" (options = full phrases), else "which acronym means Y?"
+        var mode = Math.random() < 0.7 ? 'expand' : 'shorten';
+        var key  = mode === 'expand' ? 'full' : 'abbr';
+
+        // 3 distractors with a distinct value for the answered field
+        var pool = ACRONYMS.filter(function(a) { return a[key] !== answer[key]; });
+        shuffle(pool);
+        var opts = [answer].concat(pool.slice(0, 3));
+        shuffle(opts);
+        current = { answer: answer, mode: mode, key: key, opts: opts };
+
+        var prompt = document.getElementById('q-prompt');
+        var qtext  = document.getElementById('q-text');
+        if (mode === 'expand') {
+            prompt.textContent = 'What does this stand for?';
+            qtext.innerHTML = '<span class="hi">' + esc(answer.abbr) + '</span>';
+        } else {
+            prompt.textContent = 'Which acronym means…';
+            qtext.innerHTML = esc(answer.full);
+        }
+
+        var box = document.getElementById('options');
+        box.innerHTML = '';
+        opts.forEach(function(o) {
+            var b = document.createElement('button');
+            b.className = 'opt';
+            b.textContent = o[key];
+            b.onclick = function() { choose(o, b); };
+            box.appendChild(b);
+        });
+        document.getElementById('feedback').className = 'feedback';
+        document.getElementById('btn-next').className = 'btn-next';
+    }
+
+    function choose(opt, btn) {
+        if (answered) return;
+        answered = true;
+        var correct = opt[current.key] === current.answer[current.key];
+        // disable + colour all
+        var btns = document.querySelectorAll('.opt');
+        btns.forEach(function(b) {
+            b.disabled = true;
+            if (b.textContent === current.answer[current.key]) b.classList.add('correct');
+        });
+        if (!correct) btn.classList.add('wrong');
+
+        SESSION.att++;
+        if (correct) { SESSION.cor++; SESSION.streak++; } else { SESSION.streak = 0; }
+        updateStats();
+
+        var fb = document.getElementById('feedback');
+        fb.className = 'feedback show ' + (correct ? 'ok' : 'no');
+        fb.innerHTML = (correct ? '✓ Correct! ' : '✗ Not quite. ') +
+            '<strong>' + esc(current.answer.abbr) + '</strong> = ' + esc(current.answer.full) +
+            '<div class="def">' + esc(current.answer.def) + '</div>';
+        document.getElementById('btn-next').className = 'btn-next show';
+    }
+
+    function updateStats() {
+        document.getElementById('s-att').textContent = SESSION.att;
+        document.getElementById('s-cor').textContent = SESSION.cor;
+        document.getElementById('s-streak').textContent = SESSION.streak;
+        document.getElementById('s-pct').textContent = SESSION.att ? Math.round(SESSION.cor / SESSION.att * 100) + '%' : '—';
+    }
+
+    nextQuestion();
+</script>
+
+</body>
+</html>

@@ -1423,8 +1423,21 @@ def init_db():
             ("demo", _demo_pw.decode(), _demo_key),
         )
         demo_user = db_fetchone(f"SELECT id FROM users WHERE username = {PH}", ("demo",))
-    if demo_user:
-        _seed_demo_reports(demo_user["id"])
+
+    # Seed the sample reports under the SHOWCASE account so the demo experience is
+    # populated. On Railway, DEMO_USERNAME creates a role='demo' account (e.g. DemoGod)
+    # whose Control Room sandbox only shows ITS OWN data — so the samples must be owned
+    # by it or the demo dashboard looks empty. Locally (no role='demo' account) the
+    # public /demo route uses the 'demo' client account, so seed there instead.
+    showcase   = db_fetchone("SELECT id FROM users WHERE role = 'demo' ORDER BY id LIMIT 1")
+    seed_target = showcase or demo_user
+    if seed_target:
+        # If we're seeding under the role='demo' showcase account, clear any samples
+        # previously seeded under the 'demo' client account so they don't appear twice
+        # in the analyst's global report list.
+        if showcase and demo_user and demo_user["id"] != seed_target["id"]:
+            db_run(f"DELETE FROM reports WHERE owner_id = {PH}", (demo_user["id"],))
+        _seed_demo_reports(seed_target["id"])
 
 
 # --- Password validation helper ---

@@ -147,8 +147,9 @@
 <nav class="topbar">
     <a href="{{ url_for('control_room') }}" class="topbar-brand">Boundry<span>.AI</span></a>
     <div class="topbar-nav">
-        <a href="{{ url_for('control_room') }}">← Control Room</a>
-        <a href="{{ url_for('logout') }}" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;">🚪 Log Out</a>
+        <a href="{{ url_for('daily_log') }}" class="active">📓 Daily Log</a>
+        {% include "_navmenu.html" %}
+        <a href="{{ url_for('logout') }}" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;margin-left:16px;">🚪 Log Out</a>
     </div>
 </nav>
 

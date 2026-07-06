@@ -378,19 +378,11 @@
             <strong>{{ session['username'] }}</strong>
         </div>
         <nav>
-            <a href="/control-room">🖥 Control Room</a>
             <a href="/siem" class="active">📡 SIEM</a>
             <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
-            <a href="/compliance" style="color:#f39c12;">📋 Compliance</a>
-            {% if user_role == 'analyst' %}
-            {% if not ops_mode %}
-            <a href="/cissp" style="color:#9944ee;">📘 CISSP</a>
-            <a href="/profile" style="color:#ffd700;">⚔️ Profile</a>
-            {% endif %}
-            {% else %}
-            <a href="/account">Account</a>
-            {% endif %}
-            <a href="/logout" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;">🚪 Log Out</a>
+            {% include "_navmenu.html" %}
+            {% if user_role != 'analyst' %}<a href="/account">Account</a>{% endif %}
+            <a href="/logout" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;margin-left:16px;">🚪 Log Out</a>
         </nav>
         {% if user_role == 'analyst' %}
         <form action="/set-mode" method="post" style="margin:0;">

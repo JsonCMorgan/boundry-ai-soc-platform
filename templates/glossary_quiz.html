@@ -53,8 +53,8 @@
     <span class="topbar-brand">🎯 Acronym Quiz</span>
     <nav>
         <a href="{{ url_for('glossary') }}">← Glossary</a>
-        <a href="{{ url_for('cissp_hub') }}">📘 CISSP</a>
-        <a href="/logout" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;">🚪 Log Out</a>
+        {% include "_navmenu.html" %}
+        <a href="/logout" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;margin-left:16px;">🚪 Log Out</a>
     </nav>
 </nav>
 

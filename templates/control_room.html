@@ -1118,29 +1118,7 @@
                 <strong>{{ session['username'] }}</strong>
             </span>
             <nav>
-                {% if user_role == 'analyst' and not ops_mode %}
-                <span class="nav-menu">
-                    <span class="nav-trigger" style="color:#9944ee;">🎓 Training ▾</span>
-                    <span class="nav-dropdown">
-                        <a href="/training"  style="color:#00b432;">🎓 SOC Training</a>
-                        <a href="/cissp"     style="color:#9944ee;">📘 CISSP</a>
-                        <a href="/glossary"  style="color:#bb77ff;">📖 Glossary</a>
-                        <a href="/scorecard" style="color:#888;">📊 Scorecard</a>
-                        <a href="/profile"   style="color:#ffd700;">⚔️ Profile</a>
-                    </span>
-                </span>
-                {% endif %}
-                <span class="nav-menu">
-                    <span class="nav-trigger" style="color:#00d4ff;">🛡️ Operations ▾</span>
-                    <span class="nav-dropdown">
-                        <a href="/siem"       style="color:#00d4ff;">📡 SIEM</a>
-                        <a href="/siem/query" style="color:#00d4ff;">🔎 SPL Query</a>
-                        <a href="/playbooks"  style="color:#ff9900;">📋 Playbooks</a>
-                        <a href="/compliance" style="color:#f39c12;">📊 Compliance</a>
-                        {% if user_role == 'analyst' %}<a href="/reports" style="color:#cc4444;">📄 Reports</a>{% endif %}
-                    </span>
-                </span>
-                <a href="/daily-log" style="color:#f59e0b; font-weight:bold;">📓 Daily Log</a>
+                {% include "_navmenu.html" %}
                 {% if user_role != 'analyst' %}<a href="/account">Account</a>{% endif %}
                 <a href="/logout" style="color:#ff8888; font-weight:bold; border:1px solid #662222;
                    background:#2a0d0d; padding:4px 12px; border-radius:5px; margin-left:16px;">

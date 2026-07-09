@@ -1130,10 +1130,10 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if ops_mode %}
                 <input type="hidden" name="mode" value="study">
-                <button type="submit" title="Switch to Study Mode" style="background:#1a2a3a;border:1px solid #00d4ff88;color:#00d4ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⚡ Live Ops</button>
+                <button type="submit" title="Switch to Study Mode (show CISSP, XP, study notes)" style="background:#1a0a2e;border:1px solid #9944ee88;color:#bb77ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">📘 Switch to Study Mode</button>
                 {% else %}
                 <input type="hidden" name="mode" value="ops">
-                <button type="submit" title="Switch to Live Ops Mode" style="background:#1a0a2e;border:1px solid #9944ee88;color:#bb77ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">📘 Study</button>
+                <button type="submit" title="Switch to Live Ops Mode (clean pro view, no study scaffolding)" style="background:#1a2a3a;border:1px solid #00d4ff88;color:#00d4ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⚡ Switch to Live Ops</button>
                 {% endif %}
             </form>
             {% endif %}

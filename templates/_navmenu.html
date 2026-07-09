@@ -2,7 +2,7 @@
    Driven by the session (role + analyst_mode) so no per-route vars are needed.
    Pages keep their own contextual links; this provides the cross-page nav. #}
 {% set _role = session.get('role') %}
-{% set _ops  = session.get('analyst_mode') %}
+{% set _ops  = session.get('analyst_mode', 'study') == 'ops' %}
 <style>
 .bnav-menu { position: relative; display: inline-block; margin-left: 20px; }
 .bnav-trigger { color: #999; font-size: 0.85em; cursor: pointer; user-select: none; padding: 6px 0; transition: color 0.15s; }

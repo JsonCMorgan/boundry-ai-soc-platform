@@ -147,9 +147,23 @@ _ACRONYMS = [
     ("SaaS", "Software as a Service", "Software delivered over the internet on subscription.", "general"),
 ]
 
+# Optional cache of LLM-generated letter-matching distractors:
+#   { "SIEM": ["Security Incident and Event Monitoring", ...], ... }
+# Produced by generate_acronym_distractors.py. If absent, the quiz falls back to
+# assembling distractors at runtime.
+import os as _os, json as _json
+_DISTRACTORS = {}
+_dpath = _os.path.join(_os.path.dirname(__file__), "acronym_distractors.json")
+try:
+    if _os.path.exists(_dpath):
+        _DISTRACTORS = _json.load(open(_dpath, encoding="utf-8"))
+except Exception:
+    _DISTRACTORS = {}
+
 # Public list of dicts for templates/JSON.
 ACRONYMS = [
-    {"abbr": a, "full": f, "def": d, "cat": c}
+    {"abbr": a, "full": f, "def": d, "cat": c,
+     "distractors": _DISTRACTORS.get(a, [])}
     for (a, f, d, c) in _ACRONYMS
 ]
 

@@ -1326,6 +1326,18 @@ def init_db():
         )
     """)
 
+    # Per-acronym performance — powers adaptive weighting + per-category accuracy.
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS acronym_stats (
+            {id_col},
+            user_id   INTEGER NOT NULL,
+            abbr      TEXT    NOT NULL,
+            seen      INTEGER NOT NULL DEFAULT 0,
+            correct   INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(user_id, abbr)
+        )
+    """)
+
     # ── SIEM tables ────────────────────────────────────────────────────────────
     # Normalised event store — one row per ingested log event from any source.
     db_run(f"""
@@ -6482,7 +6494,8 @@ def api_acronyms():
                     for e in security_acronyms.ACRONYMS})
 
 
-ACRONYM_QUIZ_LEN = 25   # questions per tracked acronym quiz
+ACRONYM_QUIZ_LEN    = 25   # questions per tracked acronym quiz
+ACRONYM_DEFINE_TAIL = 5    # last N questions are definition-based
 
 
 def _quiz_stats(user_id, quiz_type):
@@ -6504,17 +6517,52 @@ def _quiz_stats(user_id, quiz_type):
     }
 
 
+def _acronym_stats_map(user_id):
+    """{abbr: {'seen': n, 'correct': n}} — drives adaptive weighting in the quiz."""
+    rows = db_fetchall(
+        f"SELECT abbr, seen, correct FROM acronym_stats WHERE user_id = {PH}",
+        (user_id,),
+    )
+    return {r["abbr"]: {"seen": r["seen"], "correct": r["correct"]} for r in rows}
+
+
+def _category_accuracy(user_id):
+    """Per-category accuracy from acronym_stats, weakest category first."""
+    stats  = _acronym_stats_map(user_id)
+    cat_of = {e["abbr"]: e["cat"] for e in security_acronyms.ACRONYMS}
+    agg = {}
+    for abbr, s in stats.items():
+        cat = cat_of.get(abbr)
+        if not cat:
+            continue
+        a = agg.setdefault(cat, {"seen": 0, "correct": 0})
+        a["seen"]    += s["seen"]
+        a["correct"] += s["correct"]
+    out = []
+    for key, label in security_acronyms.ACRONYM_CATEGORIES.items():
+        a = agg.get(key)
+        if a and a["seen"]:
+            out.append({"label": label, "seen": a["seen"], "correct": a["correct"],
+                        "pct": round(a["correct"] / a["seen"] * 100)})
+    out.sort(key=lambda x: x["pct"])
+    return out
+
+
 @app.route("/glossary/quiz")
 @analyst_required
 def glossary_quiz():
     """Multiple-choice acronym drill — 25-question tracked quiz with progress history."""
     import json as _json
+    uid = session["user_id"]
     return render_template(
         "glossary_quiz.html",
         acronyms_json=Markup(_json.dumps(security_acronyms.ACRONYMS)),
+        acr_stats_json=Markup(_json.dumps(_acronym_stats_map(uid))),
         total=len(security_acronyms.ACRONYMS),
         quiz_len=ACRONYM_QUIZ_LEN,
-        stats=_quiz_stats(session["user_id"], "acronym"),
+        define_tail=ACRONYM_DEFINE_TAIL,
+        stats=_quiz_stats(uid, "acronym"),
+        category_accuracy=_category_accuracy(uid),
         role=session.get("role", "client"),
     )
 
@@ -6522,19 +6570,37 @@ def glossary_quiz():
 @app.route("/glossary/quiz/complete", methods=["POST"])
 @analyst_required
 def glossary_quiz_complete():
-    """Log a finished acronym quiz and return updated progress stats."""
-    data     = request.get_json(silent=True) or {}
-    correct  = max(0, min(ACRONYM_QUIZ_LEN, int(data.get("correct", 0))))
-    total    = ACRONYM_QUIZ_LEN
-    score    = round(correct / total * 100) if total else 0
-    prev     = _quiz_stats(session["user_id"], "acronym")   # stats BEFORE this quiz
+    """Log a finished acronym quiz + per-acronym results; return updated progress."""
+    data    = request.get_json(silent=True) or {}
+    results = data.get("results") or []   # [{"abbr": "SIEM", "correct": true}, ...]
+    uid     = session["user_id"]
+
+    valid = {e["abbr"] for e in security_acronyms.ACRONYMS}
+    for r in results:
+        abbr = str(r.get("abbr", ""))
+        if abbr not in valid:
+            continue
+        corr = 1 if r.get("correct") else 0
+        existing = db_fetchone(f"SELECT id FROM acronym_stats WHERE user_id={PH} AND abbr={PH}", (uid, abbr))
+        if existing:
+            db_run(f"UPDATE acronym_stats SET seen=seen+1, correct=correct+{PH} WHERE user_id={PH} AND abbr={PH}",
+                   (corr, uid, abbr))
+        else:
+            db_run(f"INSERT INTO acronym_stats (user_id, abbr, seen, correct) VALUES ({PH},{PH},1,{PH})",
+                   (uid, abbr, corr))
+
+    correct = (sum(1 for r in results if r.get("correct")) if results
+               else max(0, min(ACRONYM_QUIZ_LEN, int(data.get("correct", 0)))))
+    total   = ACRONYM_QUIZ_LEN
+    score   = round(correct / total * 100) if total else 0
+    prev    = _quiz_stats(uid, "acronym")
     db_run(
         f"INSERT INTO quiz_results (user_id, quiz_type, questions, correct, score_pct) "
         f"VALUES ({PH},{PH},{PH},{PH},{PH})",
-        (session["user_id"], "acronym", total, correct, score),
+        (uid, "acronym", total, correct, score),
     )
     security_log.info(f"QUIZ_DONE type=acronym user={session.get('username','')} score={score}")
-    stats = _quiz_stats(session["user_id"], "acronym")       # includes this quiz
+    stats = _quiz_stats(uid, "acronym")
     return jsonify({
         "score": score, "correct": correct, "total": total,
         "stats": stats,
@@ -6547,9 +6613,11 @@ def glossary_quiz_complete():
 @analyst_required
 def glossary_quiz_history():
     """Return the quiz progress panel (partial HTML) for live refresh after a quiz."""
+    uid = session["user_id"]
     return render_template(
         "_quiz_history.html",
-        stats=_quiz_stats(session["user_id"], "acronym"),
+        stats=_quiz_stats(uid, "acronym"),
+        category_accuracy=_category_accuracy(uid),
         quiz_len=ACRONYM_QUIZ_LEN,
     )
 

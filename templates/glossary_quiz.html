@@ -122,6 +122,7 @@
         <div class="score-sub" id="d-sub">—</div>
         <div class="compare" id="d-compare"></div>
         <div id="d-best"></div>
+        <div id="d-misses"></div>
         <button class="btn-restart" onclick="restart()">🎯 Start New Quiz</button>
     </div>
 
@@ -136,46 +137,114 @@
 
 <script>
     var ACRONYMS = {{ acronyms_json }};
+    var ACR_STATS = {{ acr_stats_json }};   // {abbr: {seen, correct}}
     var QUIZ_LEN = {{ quiz_len }};
+    var DEFINE_TAIL = {{ define_tail }};     // last N questions are definition-based
     var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-    var SESSION = { num: 0, cor: 0, streak: 0 };
+    var SESSION = { num: 0, cor: 0, streak: 0, misses: [], results: [], used: {} };
     var current = null, answered = false;
 
     function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
     function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+    // Word bank (by first letter) from all real expansions — fallback distractors.
+    var WORDBANK = {};
+    ACRONYMS.forEach(function(a) {
+        a.full.split(/\s+/).forEach(function(w) {
+            var c = w[0] ? w[0].toUpperCase() : '';
+            if (/[A-Z]/.test(c)) { (WORDBANK[c] = WORDBANK[c] || []); if (WORDBANK[c].indexOf(w) < 0) WORDBANK[c].push(w); }
+        });
+    });
+
+    // Adaptive weighting: unseen or frequently-missed acronyms show more often.
+    function weightFor(a) {
+        var s = ACR_STATS[a.abbr];
+        if (!s || !s.seen) return 3;
+        var acc = s.correct / s.seen;
+        if (acc < 0.5) return 4;
+        if (acc < 0.8) return 2;
+        return 1;
+    }
+    function pickAcronym() {
+        var pool = ACRONYMS.filter(function(a) { return !SESSION.used[a.abbr]; });
+        if (!pool.length) pool = ACRONYMS.slice();
+        var weighted = [];
+        pool.forEach(function(a) { var w = weightFor(a); for (var i = 0; i < w; i++) weighted.push(a); });
+        return weighted[Math.floor(Math.random() * weighted.length)];
+    }
+
+    function fakeExpansion(abbr) {
+        return abbr.replace(/[^A-Za-z]/g, '').split('').map(function(L) {
+            var bank = WORDBANK[L.toUpperCase()];
+            return (bank && bank.length) ? bank[Math.floor(Math.random() * bank.length)] : L;
+        }).join(' ');
+    }
+    function expandDistractors(answer) {
+        if (answer.distractors && answer.distractors.length >= 3) {
+            return shuffle(answer.distractors.slice()).slice(0, 3);
+        }
+        var out = [], guard = 0;
+        while (out.length < 3 && guard++ < 50) {
+            var f = fakeExpansion(answer.abbr);
+            if (f !== answer.full && out.indexOf(f) < 0) out.push(f);
+        }
+        while (out.length < 3) out.push(fakeExpansion(answer.abbr));
+        return out;
+    }
+    function otherAbbrs(answer, n) {
+        var same = ACRONYMS.filter(function(a) { return a.cat === answer.cat && a.abbr !== answer.abbr; });
+        shuffle(same);
+        var picks = same.slice(0, n);
+        if (picks.length < n) {
+            var rest = ACRONYMS.filter(function(a) { return a.abbr !== answer.abbr && picks.indexOf(a) < 0; });
+            shuffle(rest);
+            picks = picks.concat(rest.slice(0, n - picks.length));
+        }
+        return picks.map(function(a) { return a.abbr; });
+    }
+
     function nextQuestion() {
         if (SESSION.num >= QUIZ_LEN) { finishQuiz(); return; }
         SESSION.num++;
         answered = false;
-        var answer = ACRONYMS[Math.floor(Math.random() * ACRONYMS.length)];
-        var mode = Math.random() < 0.7 ? 'expand' : 'shorten';
-        var key  = mode === 'expand' ? 'full' : 'abbr';
-        var pool = ACRONYMS.filter(function(a) { return a[key] !== answer[key]; });
-        shuffle(pool);
-        var opts = [answer].concat(pool.slice(0, 3));
-        shuffle(opts);
-        current = { answer: answer, mode: mode, key: key };
+        var answer = pickAcronym();
+        SESSION.used[answer.abbr] = true;
 
-        document.getElementById('prog-count').textContent = 'Question ' + SESSION.num + ' / ' + QUIZ_LEN;
-        document.getElementById('prog-fill').style.width = ((SESSION.num - 1) / QUIZ_LEN * 100) + '%';
+        var isDefine = SESSION.num > (QUIZ_LEN - DEFINE_TAIL);
+        var mode = isDefine ? 'define' : (Math.random() < 0.7 ? 'expand' : 'shorten');
+        var opts, correctText, promptText, qtextHtml;
 
-        var prompt = document.getElementById('q-prompt');
-        var qtext  = document.getElementById('q-text');
         if (mode === 'expand') {
-            prompt.textContent = 'What does this stand for?';
-            qtext.innerHTML = '<span class="hi">' + esc(answer.abbr) + '</span>';
+            correctText = answer.full;
+            opts = expandDistractors(answer).concat([answer.full]);
+            promptText = 'What does this stand for?';
+            qtextHtml = '<span class="hi">' + esc(answer.abbr) + '</span>';
+        } else if (mode === 'shorten') {
+            correctText = answer.abbr;
+            opts = otherAbbrs(answer, 3).concat([answer.abbr]);
+            promptText = 'Which acronym means…';
+            qtextHtml = esc(answer.full);
         } else {
-            prompt.textContent = 'Which acronym means…';
-            qtext.innerHTML = esc(answer.full);
+            correctText = answer.abbr;
+            opts = otherAbbrs(answer, 3).concat([answer.abbr]);
+            promptText = 'Which acronym is described below?';
+            qtextHtml = '<span style="font-size:0.62em;color:#cdd;font-weight:400;line-height:1.5;">' + esc(answer.def) + '</span>';
         }
+        shuffle(opts);
+        current = { answer: answer, mode: mode, correctText: correctText };
+
+        document.getElementById('prog-count').textContent = 'Question ' + SESSION.num + ' / ' + QUIZ_LEN
+            + (isDefine ? '  ·  definition round' : '');
+        document.getElementById('prog-fill').style.width = ((SESSION.num - 1) / QUIZ_LEN * 100) + '%';
+        document.getElementById('q-prompt').textContent = promptText;
+        document.getElementById('q-text').innerHTML = qtextHtml;
 
         var box = document.getElementById('options');
         box.innerHTML = '';
         opts.forEach(function(o) {
             var b = document.createElement('button');
             b.className = 'opt';
-            b.textContent = o[key];
+            b.textContent = o;
             b.onclick = function() { choose(o, b); };
             box.appendChild(b);
         });
@@ -183,17 +252,20 @@
         document.getElementById('btn-next').className = 'btn-next';
     }
 
-    function choose(opt, btn) {
+    function choose(optText, btn) {
         if (answered) return;
         answered = true;
-        var correct = opt[current.key] === current.answer[current.key];
+        var correct = (optText === current.correctText);
         document.querySelectorAll('.opt').forEach(function(b) {
             b.disabled = true;
-            if (b.textContent === current.answer[current.key]) b.classList.add('correct');
+            if (b.textContent === current.correctText) b.classList.add('correct');
         });
         if (!correct) btn.classList.add('wrong');
 
-        if (correct) { SESSION.cor++; SESSION.streak++; } else { SESSION.streak = 0; }
+        if (correct) { SESSION.cor++; SESSION.streak++; }
+        else { SESSION.streak = 0; SESSION.misses.push(current.answer); }
+        SESSION.results.push({ abbr: current.answer.abbr, correct: correct });
+
         document.getElementById('prog-streak').textContent = '🔥 ' + SESSION.streak;
         document.getElementById('prog-fill').style.width = (SESSION.num / QUIZ_LEN * 100) + '%';
 
@@ -212,7 +284,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrf },
             credentials: 'same-origin',
-            body: JSON.stringify({ correct: SESSION.cor }),
+            body: JSON.stringify({ results: SESSION.results }),
         })
         .then(function(r) { return r.json(); })
         .then(function(d) { showDone(d); })
@@ -250,7 +322,25 @@
         } else {
             cmp.innerHTML = '<span class="trend-flat">Score saved.</span>';
         }
-        // Refresh the history panel
+
+        // Review your misses
+        var mhtml = '';
+        if (SESSION.misses.length) {
+            mhtml = '<div style="text-align:left;max-width:540px;margin:24px auto 0;">'
+                  + '<div class="q-prompt" style="color:#ff8888;">📋 Review these ' + SESSION.misses.length + ' you missed</div>';
+            SESSION.misses.forEach(function(m) {
+                mhtml += '<div style="padding:9px 0;border-bottom:1px solid #14171f;font-size:0.86em;">'
+                      + '<b style="color:#bb77ff;font-family:monospace;">' + esc(m.abbr) + '</b> — '
+                      + '<span style="color:#ddd;">' + esc(m.full) + '</span>'
+                      + '<div style="color:#888;margin-top:2px;">' + esc(m.def) + '</div></div>';
+            });
+            mhtml += '</div>';
+        } else {
+            mhtml = '<div style="color:#00ff41;margin-top:20px;font-weight:700;">🎉 Perfect run — no misses!</div>';
+        }
+        document.getElementById('d-misses').innerHTML = mhtml;
+
+        // Refresh the history panel (scores + per-category accuracy)
         fetch('{{ url_for("glossary_quiz_history") }}', { credentials: 'same-origin' })
             .then(function(r) { return r.ok ? r.text() : null; })
             .then(function(h) { if (h) document.getElementById('history-body').innerHTML = h; })
@@ -258,7 +348,7 @@
     }
 
     function restart() {
-        SESSION = { num: 0, cor: 0, streak: 0 };
+        SESSION = { num: 0, cor: 0, streak: 0, misses: [], results: [], used: {} };
         document.getElementById('done').className = 'card done';
         document.getElementById('quiz-area').style.display = '';
         document.getElementById('prog-streak').textContent = '🔥 0';

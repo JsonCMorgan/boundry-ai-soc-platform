@@ -1,0 +1,20 @@
+{# Quiz progress history — summary stats + recent scores. Expects `stats`. #}
+{% if stats and stats.count %}
+<div class="hsummary">
+    <div class="hstat"><div class="v" style="color:#bb77ff;">{{ stats.count }}</div><div class="l">Quizzes</div></div>
+    <div class="hstat"><div class="v" style="color:#00b432;">{{ stats.average }}%</div><div class="l">Average</div></div>
+    <div class="hstat"><div class="v" style="color:#ffcc00;">{{ stats.best }}%</div><div class="l">Best</div></div>
+    <div class="hstat"><div class="v" style="color:#ddd;">{{ stats.last }}%</div><div class="l">Last</div></div>
+</div>
+{% for q in stats.recent %}
+{% set sc = q.score_pct %}
+{% set col = '#00ff41' if sc >= 85 else ('#8fce00' if sc >= 70 else ('#ff9900' if sc >= 50 else '#ff6a00')) %}
+<div class="hrow">
+    <span class="hdate">{{ (q.created_at|string)[:16] }}</span>
+    <div class="hbar-track"><div class="hbar-fill" style="width:{{ sc }}%;background:{{ col }};"></div></div>
+    <span class="hscore" style="color:{{ col }};">{{ sc }}%</span>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-hist">No quizzes completed yet — finish your first {{ quiz_len or 25 }}-question quiz to start tracking your progress.</div>
+{% endif %}

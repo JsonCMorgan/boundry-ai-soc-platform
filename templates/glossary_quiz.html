@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Boundry.AI — Acronym Quiz</title>
     <style>
         * { box-sizing: border-box; }
@@ -14,12 +15,15 @@
         .topbar nav a:hover { color: #bb77ff; }
 
         .main { max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; }
-        h1 { font-size: 1.4em; color: #fff; margin: 0 0 20px; }
+        h1 { font-size: 1.4em; color: #fff; margin: 0 0 6px; }
+        .sub { color: #777; font-size: 0.85em; margin: 0 0 20px; }
 
-        .stats-bar { display: flex; gap: 14px; margin-bottom: 24px; flex-wrap: wrap; }
-        .stat { background: #12151f; border: 1px solid #1e2235; border-radius: 8px; padding: 12px 18px; text-align: center; min-width: 84px; }
-        .stat .val { font-size: 1.5em; font-weight: 800; }
-        .stat .lbl { font-size: 0.68em; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+        /* Progress bar for the current quiz */
+        .prog-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+        .prog-count { font-size: 0.85em; color: #999; white-space: nowrap; font-weight: 700; }
+        .prog-track { flex: 1; height: 8px; background: #1a1d2e; border-radius: 4px; overflow: hidden; }
+        .prog-fill  { height: 100%; background: linear-gradient(90deg,#9944ee,#00d4ff); width: 0%; transition: width 0.3s; }
+        .prog-streak { font-size: 0.8em; color: #ff9900; white-space: nowrap; }
 
         .card { background: #12151f; border: 1px solid #1e2235; border-radius: 10px; padding: 28px 26px; }
         .q-prompt { font-size: 0.78em; color: #777; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
@@ -45,6 +49,38 @@
             border-radius: 6px; font-size: 0.9em; font-weight: 700; cursor: pointer; display: none; }
         .btn-next.show { display: inline-block; }
         .btn-next:hover { background: #aa55ff; }
+
+        /* Completion screen */
+        .done { display: none; text-align: center; }
+        .done.show { display: block; }
+        .done .score { font-size: 4em; font-weight: 800; line-height: 1; }
+        .done .score-sub { font-size: 0.9em; color: #888; margin-top: 4px; }
+        .done .compare { margin: 22px auto 0; max-width: 460px; font-size: 0.92em; color: #ccc; line-height: 1.7;
+            background: #0e1119; border: 1px solid #1e2235; border-radius: 8px; padding: 16px 20px; }
+        .done .compare b { color: #fff; }
+        .done .trend-up   { color: #00ff41; font-weight: 700; }
+        .done .trend-down { color: #ff8888; font-weight: 700; }
+        .done .trend-flat { color: #cc8800; font-weight: 700; }
+        .done .best-badge { display: inline-block; margin-top: 12px; background: #2a1a00; color: #ffcc00;
+            border: 1px solid #665500; border-radius: 16px; padding: 4px 16px; font-weight: 700; font-size: 0.85em; }
+        .btn-restart { margin-top: 24px; background: #9944ee; color: #fff; border: none; padding: 12px 28px;
+            border-radius: 7px; font-size: 0.95em; font-weight: 700; cursor: pointer; }
+        .btn-restart:hover { background: #aa55ff; }
+
+        /* History */
+        .history { margin-top: 34px; }
+        .history h2 { font-size: 0.8em; color: #666; text-transform: uppercase; letter-spacing: 0.06em;
+            border-bottom: 1px solid #1e2235; padding-bottom: 8px; margin: 0 0 14px; }
+        .hsummary { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .hstat { background: #12151f; border: 1px solid #1e2235; border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 88px; }
+        .hstat .v { font-size: 1.4em; font-weight: 800; }
+        .hstat .l { font-size: 0.66em; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+        .hrow { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid #14171f; font-size: 0.84em; }
+        .hrow .hdate { color: #777; width: 130px; }
+        .hbar-track { flex: 1; height: 8px; background: #1a1d2e; border-radius: 4px; overflow: hidden; }
+        .hbar-fill { height: 100%; border-radius: 4px; }
+        .hrow .hscore { width: 44px; text-align: right; font-weight: 700; color: #ccc; }
+        .empty-hist { color: #555; font-size: 0.85em; }
     </style>
 </head>
 <body>
@@ -60,44 +96,69 @@
 
 <div class="main">
     <h1>Acronym Quiz</h1>
+    <p class="sub">{{ quiz_len }} questions per quiz. Finish to log your score and track your progress over time.</p>
 
-    <div class="stats-bar">
-        <div class="stat"><div class="val" id="s-att" style="color:#bb77ff;">0</div><div class="lbl">Attempted</div></div>
-        <div class="stat"><div class="val" id="s-cor" style="color:#00b432;">0</div><div class="lbl">Correct</div></div>
-        <div class="stat"><div class="val" id="s-pct" style="color:#ddd;">—</div><div class="lbl">Accuracy</div></div>
-        <div class="stat"><div class="val" id="s-streak" style="color:#ff9900;">0</div><div class="lbl">🔥 Streak</div></div>
+    <!-- Active quiz -->
+    <div id="quiz-area">
+        <div class="prog-wrap">
+            <span class="prog-count" id="prog-count">Question 1 / {{ quiz_len }}</span>
+            <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+            <span class="prog-streak" id="prog-streak">🔥 0</span>
+        </div>
+
+        <div class="card">
+            <div class="q-prompt" id="q-prompt">Question</div>
+            <div class="q-text" id="q-text">—</div>
+            <div class="options" id="options"></div>
+            <div class="feedback" id="feedback"></div>
+            <button class="btn-next" id="btn-next" onclick="nextQuestion()">Next Question →</button>
+        </div>
     </div>
 
-    <div class="card">
-        <div class="q-prompt" id="q-prompt">Question</div>
-        <div class="q-text" id="q-text">—</div>
-        <div class="options" id="options"></div>
-        <div class="feedback" id="feedback"></div>
-        <button class="btn-next" id="btn-next" onclick="nextQuestion()">Next Question →</button>
+    <!-- Completion screen -->
+    <div class="card done" id="done">
+        <div class="q-prompt">Quiz Complete</div>
+        <div class="score" id="d-score">—</div>
+        <div class="score-sub" id="d-sub">—</div>
+        <div class="compare" id="d-compare"></div>
+        <div id="d-best"></div>
+        <button class="btn-restart" onclick="restart()">🎯 Start New Quiz</button>
+    </div>
+
+    <!-- History -->
+    <div class="history">
+        <h2>Your Progress</h2>
+        <div id="history-body">
+            {% include "_quiz_history.html" %}
+        </div>
     </div>
 </div>
 
 <script>
     var ACRONYMS = {{ acronyms_json }};
-    var SESSION = { att: 0, cor: 0, streak: 0 };
+    var QUIZ_LEN = {{ quiz_len }};
+    var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    var SESSION = { num: 0, cor: 0, streak: 0 };
     var current = null, answered = false;
 
     function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
     function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
     function nextQuestion() {
+        if (SESSION.num >= QUIZ_LEN) { finishQuiz(); return; }
+        SESSION.num++;
         answered = false;
         var answer = ACRONYMS[Math.floor(Math.random() * ACRONYMS.length)];
-        // 70% "what does X stand for?" (options = full phrases), else "which acronym means Y?"
         var mode = Math.random() < 0.7 ? 'expand' : 'shorten';
         var key  = mode === 'expand' ? 'full' : 'abbr';
-
-        // 3 distractors with a distinct value for the answered field
         var pool = ACRONYMS.filter(function(a) { return a[key] !== answer[key]; });
         shuffle(pool);
         var opts = [answer].concat(pool.slice(0, 3));
         shuffle(opts);
-        current = { answer: answer, mode: mode, key: key, opts: opts };
+        current = { answer: answer, mode: mode, key: key };
+
+        document.getElementById('prog-count').textContent = 'Question ' + SESSION.num + ' / ' + QUIZ_LEN;
+        document.getElementById('prog-fill').style.width = ((SESSION.num - 1) / QUIZ_LEN * 100) + '%';
 
         var prompt = document.getElementById('q-prompt');
         var qtext  = document.getElementById('q-text');
@@ -126,31 +187,82 @@
         if (answered) return;
         answered = true;
         var correct = opt[current.key] === current.answer[current.key];
-        // disable + colour all
-        var btns = document.querySelectorAll('.opt');
-        btns.forEach(function(b) {
+        document.querySelectorAll('.opt').forEach(function(b) {
             b.disabled = true;
             if (b.textContent === current.answer[current.key]) b.classList.add('correct');
         });
         if (!correct) btn.classList.add('wrong');
 
-        SESSION.att++;
         if (correct) { SESSION.cor++; SESSION.streak++; } else { SESSION.streak = 0; }
-        updateStats();
+        document.getElementById('prog-streak').textContent = '🔥 ' + SESSION.streak;
+        document.getElementById('prog-fill').style.width = (SESSION.num / QUIZ_LEN * 100) + '%';
 
         var fb = document.getElementById('feedback');
         fb.className = 'feedback show ' + (correct ? 'ok' : 'no');
         fb.innerHTML = (correct ? '✓ Correct! ' : '✗ Not quite. ') +
             '<strong>' + esc(current.answer.abbr) + '</strong> = ' + esc(current.answer.full) +
             '<div class="def">' + esc(current.answer.def) + '</div>';
-        document.getElementById('btn-next').className = 'btn-next show';
+        var nb = document.getElementById('btn-next');
+        nb.textContent = (SESSION.num >= QUIZ_LEN) ? 'See Results →' : 'Next Question →';
+        nb.className = 'btn-next show';
     }
 
-    function updateStats() {
-        document.getElementById('s-att').textContent = SESSION.att;
-        document.getElementById('s-cor').textContent = SESSION.cor;
-        document.getElementById('s-streak').textContent = SESSION.streak;
-        document.getElementById('s-pct').textContent = SESSION.att ? Math.round(SESSION.cor / SESSION.att * 100) + '%' : '—';
+    function finishQuiz() {
+        fetch('{{ url_for("glossary_quiz_complete") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrf },
+            credentials: 'same-origin',
+            body: JSON.stringify({ correct: SESSION.cor }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) { showDone(d); })
+        .catch(function() { showDone(null); });
+    }
+
+    function trend(delta, label) {
+        if (delta > 0)  return '<span class="trend-up">▲ ' + delta + ' pts above ' + label + '</span>';
+        if (delta < 0)  return '<span class="trend-down">▼ ' + Math.abs(delta) + ' pts below ' + label + '</span>';
+        return '<span class="trend-flat">— on par with ' + label + '</span>';
+    }
+
+    function showDone(d) {
+        document.getElementById('quiz-area').style.display = 'none';
+        var done = document.getElementById('done');
+        done.className = 'card done show';
+        var score = d ? d.score : Math.round(SESSION.cor / QUIZ_LEN * 100);
+        var colour = score >= 85 ? '#00ff41' : (score >= 70 ? '#8fce00' : (score >= 50 ? '#ff9900' : '#ff6a00'));
+        document.getElementById('d-score').textContent = score + '%';
+        document.getElementById('d-score').style.color = colour;
+        document.getElementById('d-sub').textContent = (d ? d.correct : SESSION.cor) + ' of ' + QUIZ_LEN + ' correct';
+
+        var cmp = document.getElementById('d-compare');
+        if (d && d.stats) {
+            var html = '<b>' + d.stats.count + '</b> quiz' + (d.stats.count === 1 ? '' : 'zes') + ' logged &nbsp;·&nbsp; ' +
+                       'Average <b>' + d.stats.average + '%</b> &nbsp;·&nbsp; Best <b>' + d.stats.best + '%</b>';
+            if (d.prev_average !== null && d.prev_average !== undefined) {
+                html += '<br>' + trend(score - d.prev_average, 'your average');
+            } else {
+                html += '<br><span class="trend-flat">First quiz logged — your baseline is set!</span>';
+            }
+            cmp.innerHTML = html;
+            document.getElementById('d-best').innerHTML =
+                (d.is_best ? '<span class="best-badge">🏆 New personal best!</span>' : '');
+        } else {
+            cmp.innerHTML = '<span class="trend-flat">Score saved.</span>';
+        }
+        // Refresh the history panel
+        fetch('{{ url_for("glossary_quiz_history") }}', { credentials: 'same-origin' })
+            .then(function(r) { return r.ok ? r.text() : null; })
+            .then(function(h) { if (h) document.getElementById('history-body').innerHTML = h; })
+            .catch(function() {});
+    }
+
+    function restart() {
+        SESSION = { num: 0, cor: 0, streak: 0 };
+        document.getElementById('done').className = 'card done';
+        document.getElementById('quiz-area').style.display = '';
+        document.getElementById('prog-streak').textContent = '🔥 0';
+        nextQuestion();
     }
 
     nextQuestion();

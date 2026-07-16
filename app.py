@@ -1313,6 +1313,19 @@ def init_db():
         )
     """)
 
+    # Completed quiz results — one row per finished quiz, for progress tracking.
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS quiz_results (
+            {id_col},
+            {ts_col},
+            user_id    INTEGER NOT NULL,
+            quiz_type  TEXT    NOT NULL DEFAULT 'acronym',
+            questions  INTEGER NOT NULL DEFAULT 0,
+            correct    INTEGER NOT NULL DEFAULT 0,
+            score_pct  INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
     # ── SIEM tables ────────────────────────────────────────────────────────────
     # Normalised event store — one row per ingested log event from any source.
     db_run(f"""
@@ -6469,16 +6482,75 @@ def api_acronyms():
                     for e in security_acronyms.ACRONYMS})
 
 
+ACRONYM_QUIZ_LEN = 25   # questions per tracked acronym quiz
+
+
+def _quiz_stats(user_id, quiz_type):
+    """Progress stats for a user's completed quizzes of one type."""
+    rows = db_fetchall(
+        f"SELECT score_pct, correct, questions, created_at FROM quiz_results "
+        f"WHERE user_id = {PH} AND quiz_type = {PH} ORDER BY id DESC LIMIT 30",
+        (user_id, quiz_type),
+    )
+    if not rows:
+        return {"count": 0, "average": None, "best": None, "last": None, "recent": []}
+    scores = [r["score_pct"] for r in rows]
+    return {
+        "count":   len(scores),
+        "average": round(sum(scores) / len(scores)),
+        "best":    max(scores),
+        "last":    scores[0],
+        "recent":  [dict(r) for r in rows][:12],   # newest first
+    }
+
+
 @app.route("/glossary/quiz")
 @analyst_required
 def glossary_quiz():
-    """Multiple-choice acronym drill — self-contained client-side quiz."""
+    """Multiple-choice acronym drill — 25-question tracked quiz with progress history."""
     import json as _json
     return render_template(
         "glossary_quiz.html",
         acronyms_json=Markup(_json.dumps(security_acronyms.ACRONYMS)),
         total=len(security_acronyms.ACRONYMS),
+        quiz_len=ACRONYM_QUIZ_LEN,
+        stats=_quiz_stats(session["user_id"], "acronym"),
         role=session.get("role", "client"),
+    )
+
+
+@app.route("/glossary/quiz/complete", methods=["POST"])
+@analyst_required
+def glossary_quiz_complete():
+    """Log a finished acronym quiz and return updated progress stats."""
+    data     = request.get_json(silent=True) or {}
+    correct  = max(0, min(ACRONYM_QUIZ_LEN, int(data.get("correct", 0))))
+    total    = ACRONYM_QUIZ_LEN
+    score    = round(correct / total * 100) if total else 0
+    prev     = _quiz_stats(session["user_id"], "acronym")   # stats BEFORE this quiz
+    db_run(
+        f"INSERT INTO quiz_results (user_id, quiz_type, questions, correct, score_pct) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (session["user_id"], "acronym", total, correct, score),
+    )
+    security_log.info(f"QUIZ_DONE type=acronym user={session.get('username','')} score={score}")
+    stats = _quiz_stats(session["user_id"], "acronym")       # includes this quiz
+    return jsonify({
+        "score": score, "correct": correct, "total": total,
+        "stats": stats,
+        "prev_average": prev["average"], "prev_last": prev["last"],
+        "is_best": stats["best"] == score and prev["count"] > 0 and score > (prev["best"] or 0),
+    })
+
+
+@app.route("/glossary/quiz/history")
+@analyst_required
+def glossary_quiz_history():
+    """Return the quiz progress panel (partial HTML) for live refresh after a quiz."""
+    return render_template(
+        "_quiz_history.html",
+        stats=_quiz_stats(session["user_id"], "acronym"),
+        quiz_len=ACRONYM_QUIZ_LEN,
     )
 
 

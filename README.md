@@ -1,5 +1,18 @@
 # Boundry.AI — SOC Operations Platform
 
+## For hiring managers (employer skim)
+
+This repo is portfolio practice for **junior SOC / security operations** skills: alert triage, investigation notes, incident-style reporting, and SIEM-like event handling.
+
+- Builder: Jason Morgan (GTA, Canada) · ISC² CC · York Advanced Cyber Security
+- Day-job proof: L1/L2 client support and triage (Legal Aid Ontario) + long-form technical customer ops
+- How to read this: treat Boundry.AI as an **independent practice platform**, not a vendor pitch
+
+LinkedIn: https://www.linkedin.com/in/jason-morgan-110656289/
+
+---
+
+
 So here's what Boundry.AI actually is. I'm building a Security Company for the businesses everyone else writes off as too small to bother with — the dispensaries, the clinics, the law firms. They handle sensitive data every single day, they're legally on the hook for it, and yet the enterprise security shops won't give them the time of day. I've always wanted to fight for the little guy, and now I've got my arsenal ready.
 
 Now, my roots are in physical security — almost ten years working the door at bars and venues. But I didn't stop at the door. I earned my Cybersecurity degree from York University in Ontario in 2024, and I'm ISC(2) certified. So I'm not just some bouncer who bought a computer — I'm a full-fledged Security Professional who can handle a threat whether it walks through the front door or comes through the firewall. A Bouncer and a SOC Analyst really do the same job. You read the room, you spot the problem before it becomes an incident, and you stay calm and move fast when it does. The difference now is I've got the education, the certification, and a real arsenal behind me — not just my hands and my read on people.

@@ -30,6 +30,8 @@ Click any row (not the ✕ dismiss button). Actions:
 
 Related events (24h, same IP or type) appear at the bottom of the drawer.
 
+The drawer **Observables** strip lists entities (IPs from columns and alert text, user, host, type). Copy the primary IOC or jump to SOC Floor for local enrich lookup.
+
 ## APIs
 
 | Method | Path | Purpose |
@@ -41,6 +43,10 @@ Related events (24h, same IP or type) appear at the bottom of the drawer.
 
 - `/soc?open=siem:<event_id>` — creates or resumes ticket, then URL becomes `/soc?case=<id>`.
 - MEDIUM/LOW events are not on the default SOC queue; ticket from the SIEM drawer instead.
+
+## Observables on tickets (enterprise-style)
+
+When a ticket is opened from a SIEM event, **Ticket workspace** shows an **Observables** panel (IPs, user, host, event type) with **Copy** / **Enrich**, plus links to SIEM and SPL. The enrich box pre-fills the primary IP. **Evidence / IOC** gets a starter line when empty. Enrichment results show a verdict card (local stub) and append to Evidence / IOC.
 
 ## Manual smoke
 

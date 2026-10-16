@@ -48,6 +48,7 @@ def test_siem_event_detail_ok(analyst_client, client):
     data = resp.get_json()
     assert data["ok"] is True
     assert data["event"]["id"] == eid
+    assert data["observables"]["primary_ioc"] == "203.0.113.10"
     assert data["event"]["spl_hint"]
     assert "203.0.113.10" in data["event"]["spl_hint"]
 
@@ -87,3 +88,22 @@ def test_soc_open_case_idempotent_for_siem(analyst_client, client):
 
     detail = analyst_client.get(f"/api/siem/events/{eid}").get_json()
     assert detail["event"]["existing_case"]["id"] == d1["case"]["id"]
+
+
+def test_observables_from_siem_description(client):
+    """IPs embedded in description appear when src_ip column is empty."""
+    import app as app_module
+    import soc_lab
+
+    app_module.db_run(
+        f"INSERT INTO siem_events (created_at, source, event_id, event_type, severity, "
+        f"description, dismissed) VALUES (datetime('now'), 'flask_app', 'sim', 'sql injection', "
+        f"'HIGH', {app_module.PH}, 0)",
+        ("Simulated search user=admin from 192.0.2.55 — payload",),
+    )
+    row = app_module.db_fetchone("SELECT id FROM siem_events ORDER BY id DESC LIMIT 1")
+    obs = soc_lab.observables_for_ticket(
+        app_module.db_fetchone, "siem", str(row["id"]), ph=app_module.PH
+    )
+    assert obs["primary_ioc"] == "192.0.2.55"
+    assert any(e["value"] == "192.0.2.55" for e in obs["entities"])

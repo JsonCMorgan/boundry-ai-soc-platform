@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
@@ -697,6 +698,116 @@ def add_ticket_comment(
     }
 
 
+_IPV4_IN_TEXT = re.compile(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b")
+
+
+def _spl_hint_from_event(event: dict[str, Any]) -> str:
+    """One-line SPL-lite hint for pivoting on a SIEM row."""
+    parts: list[str] = []
+    et = (event.get("event_type") or "").strip()
+    ip = (event.get("src_ip") or "").strip()
+    if et:
+        parts.append(f'event_type="{et}"')
+    if ip:
+        parts.append(f'src_ip="{ip}"')
+    return " ".join(parts) if parts else "*"
+
+
+def _ips_from_text(text: str) -> list[str]:
+    """Extract unique IPv4 literals from alert text (deduped, order preserved)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for m in _IPV4_IN_TEXT.finditer(text or ""):
+        ip = m.group(1)
+        if ip not in seen:
+            seen.add(ip)
+            out.append(ip)
+    return out
+
+
+def observables_for_ticket(
+    db_fetchone: Callable,
+    source: str,
+    source_id: str,
+    *,
+    detail: str = "",
+    ph: str = "?",
+) -> dict[str, Any]:
+    """
+    Entity-style observables for SOC ticket workspace (Sentinel / ES-like).
+
+    Returns structured entities, primary IOC for enrich prefill, SPL hint, and
+    an evidence draft when the ticket has no enrich_notes yet.
+    """
+    source = (source or "").strip().lower()
+    source_id = str(source_id or "").strip()
+    entities: list[dict[str, str]] = []
+    primary_ioc = ""
+    spl_hint = "*"
+    siem_event_id: int | None = None
+    simulated = False
+
+    if source == "siem" and source_id.isdigit():
+        row = db_fetchone(
+            f"SELECT id, source, event_type, severity, host, user_account, "
+            f"src_ip, dst_ip, description, COALESCE(simulated, 0) AS simulated "
+            f"FROM siem_events WHERE id = {ph}",
+            (int(source_id),),
+        )
+        if row:
+            siem_event_id = int(row["id"])
+            simulated = bool(int(row.get("simulated") or 0))
+            spl_hint = _spl_hint_from_event(row)
+            if row.get("src_ip"):
+                entities.append({"kind": "ip", "label": "Source IP", "value": row["src_ip"]})
+                primary_ioc = row["src_ip"]
+            if row.get("dst_ip"):
+                entities.append({"kind": "ip", "label": "Dest IP", "value": row["dst_ip"]})
+            if row.get("user_account"):
+                entities.append({"kind": "user", "label": "User", "value": row["user_account"]})
+            if row.get("host"):
+                entities.append({"kind": "host", "label": "Host", "value": row["host"]})
+            if row.get("event_type"):
+                entities.append({"kind": "event_type", "label": "Event type", "value": row["event_type"]})
+            desc = row.get("description") or detail or ""
+            for ip in _ips_from_text(desc):
+                if ip != (row.get("src_ip") or "") and not any(
+                    e.get("kind") == "ip" and e.get("value") == ip for e in entities
+                ):
+                    entities.append({"kind": "ip", "label": "IP (from text)", "value": ip})
+                    if not primary_ioc:
+                        primary_ioc = ip
+    elif source == "finding" and source_id.isdigit():
+        row = db_fetchone(
+            f"SELECT title, description FROM system_findings WHERE id = {ph}",
+            (int(source_id),),
+        )
+        blob = f"{(row or {}).get('title') or ''} {(row or {}).get('description') or ''} {detail}"
+        for ip in _ips_from_text(blob):
+            entities.append({"kind": "ip", "label": "IP", "value": ip})
+            if not primary_ioc:
+                primary_ioc = ip
+    else:
+        for ip in _ips_from_text(detail):
+            entities.append({"kind": "ip", "label": "IP", "value": ip})
+            if not primary_ioc:
+                primary_ioc = ip
+
+    parts = [f"{e['label']}: {e['value']}" for e in entities[:6]]
+    evidence_draft = ""
+    if parts:
+        evidence_draft = "Observables from alert: " + "; ".join(parts) + ". Enrich pending."
+
+    return {
+        "entities": entities,
+        "primary_ioc": primary_ioc,
+        "spl_hint": spl_hint,
+        "siem_event_id": siem_event_id,
+        "simulated": simulated,
+        "evidence_draft": evidence_draft,
+    }
+
+
 def get_case_bundle(
     db_fetchone: Callable,
     db_fetchall: Callable,
@@ -711,10 +822,31 @@ def get_case_bundle(
     )
     if not row:
         return {"ok": False, "error": "Ticket not found"}
+    pub = _public_case(row)
+    obs = observables_for_ticket(
+        db_fetchone,
+        pub.get("source") or "",
+        str(pub.get("source_id") or ""),
+        detail=pub.get("detail") or "",
+        ph=ph,
+    )
+    item = {
+        "title": pub.get("title"),
+        "detail": pub.get("detail"),
+        "client_tag": pub.get("client_tag"),
+        "severity": pub.get("severity"),
+        "is_practice": pub.get("is_practice"),
+        "src_ip": obs.get("primary_ioc") or "",
+        "href_siem": "/siem",
+        "href_spl": "/siem/query",
+        "href_findings": "/scan/findings",
+    }
     return {
         "ok": True,
-        "case": _public_case(row),
+        "case": pub,
         "timeline": get_ticket_timeline(db_fetchall, case_id, ph=ph),
+        "observables": obs,
+        "context": context_for_item(item),
     }
 
 

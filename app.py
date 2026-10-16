@@ -4221,6 +4221,17 @@ def api_soc_cases_open():
                 (int(c["source_id"]),),
             )
             item["src_ip"] = (ev or {}).get("src_ip") or ""
+        result["observables"] = soc_lab.observables_for_ticket(
+            db_fetchone,
+            c.get("source") or "",
+            str(c.get("source_id") or ""),
+            detail=c.get("detail") or "",
+            ph=PH,
+        )
+        if not (c.get("enrich_notes") or "").strip() and result["observables"].get(
+            "evidence_draft"
+        ):
+            result["observables"]["suggest_evidence"] = result["observables"]["evidence_draft"]
         result["context"] = soc_lab.context_for_item(item)
         result["timeline"] = soc_lab.get_ticket_timeline(
             db_fetchall, int(c["id"]), ph=PH,
@@ -14200,7 +14211,18 @@ def api_siem_event_detail(event_id: int):
     event["existing_case"] = _siem_open_case_for_event(event_id)
     event["on_soc_queue_default"] = (row.get("severity") or "").upper() in ("HIGH", "CRITICAL")
 
-    return jsonify({"ok": True, "event": event, "correlated_finding": finding})
+    observables = soc_lab.observables_for_ticket(
+        db_fetchone, "siem", str(event_id), ph=PH
+    )
+
+    return jsonify(
+        {
+            "ok": True,
+            "event": event,
+            "correlated_finding": finding,
+            "observables": observables,
+        }
+    )
 
 
 @app.route("/api/siem/events/<int:event_id>/related")

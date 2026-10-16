@@ -122,6 +122,38 @@
       background: var(--ops-bg); border: 1px solid var(--ops-border);
       border-radius: 5px; padding: 8px; display: none;
     }
+    .obs-panel {
+      margin: 10px 0 12px; padding: 10px 12px;
+      background: var(--ops-bg); border: 1px solid var(--ops-border);
+      border-radius: 6px;
+    }
+    .obs-title {
+      font-size: 0.68em; font-weight: 800; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--ops-accent); margin-bottom: 8px;
+    }
+    .obs-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .obs-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72em; padding: 4px 8px; border-radius: 4px;
+      border: 1px solid var(--ops-border); background: var(--ops-surface);
+      font-family: var(--ops-mono);
+    }
+    .obs-chip .lbl { color: var(--ops-dim); font-family: inherit; font-size: 0.92em; }
+    .obs-chip button {
+      background: none; border: none; color: var(--ops-accent);
+      cursor: pointer; font-size: 0.85em; padding: 0 2px;
+    }
+    .obs-links { margin-top: 8px; font-size: 0.72em; }
+    .obs-links a { color: var(--ops-accent); margin-right: 10px; }
+    .enrich-result-card {
+      margin-top: 8px; padding: 8px 10px; border-radius: 5px;
+      border: 1px solid var(--ops-border); background: var(--ops-bg);
+      font-size: 0.78em; line-height: 1.45;
+    }
+    .enrich-result-card .verdict { font-weight: 800; text-transform: uppercase; }
+    .verdict-malicious, .verdict-suspicious { color: #ff8866; }
+    .verdict-benign { color: #6fcf97; }
+    .verdict-unknown { color: var(--ops-muted); }
     .shift-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .shift-bar .status { font-size: 0.75em; color: var(--ops-muted); }
     .modal-bg {
@@ -194,6 +226,12 @@
         <div class="case-title" id="case-title"></div>
         <p class="case-detail" id="case-detail"></p>
 
+        <div id="observables-panel" class="obs-panel" style="display:none;">
+          <div class="obs-title">Observables</div>
+          <div class="obs-grid" id="observables-grid"></div>
+          <div class="obs-links" id="observables-links"></div>
+        </div>
+
         <div class="actions" id="state-actions"></div>
 
         <div id="ticket-console"></div>
@@ -204,11 +242,12 @@
           <button type="button" class="ops-btn ops-btn-dim" id="btn-soar" onclick="openSoar()">Open SOAR</button>
           <button type="button" class="ops-btn ops-btn-dim" id="btn-resolve" onclick="resolveFinding()">Resolve finding</button>
         </div>
-        <label style="display:block;font-size:0.72em;color:var(--ops-muted);margin:10px 0 4px;">Quick IOC enrich (local stub)</label>
+        <label style="display:block;font-size:0.72em;color:var(--ops-muted);margin:10px 0 4px;">IOC enrichment (local stub)</label>
         <div class="enrich-row">
-          <input id="ioc" placeholder="IP / domain / hash">
+          <input id="ioc" placeholder="Primary observable pre-filled when available">
           <button type="button" class="ops-btn ops-btn-dim" onclick="enrich()">Lookup</button>
         </div>
+        <div id="enrich-card" class="enrich-result-card" style="display:none;"></div>
         <pre class="enrich-out" id="enrich-out"></pre>
 
         <div class="work-notes">
@@ -413,6 +452,60 @@
     openCase();
   }
 
+  var lastObservables = null;
+
+  function renderObservables(obs) {
+    lastObservables = obs || null;
+    var panel = document.getElementById('observables-panel');
+    var grid = document.getElementById('observables-grid');
+    var links = document.getElementById('observables-links');
+    if (!panel || !grid) return;
+    var entities = (obs && obs.entities) || [];
+    if (!entities.length) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+    grid.innerHTML = entities.map(function (e) {
+      var enrichBtn = (e.kind === 'ip' || e.kind === 'domain')
+        ? '<button type="button" title="Enrich" onclick="prefillEnrich(' + JSON.stringify(e.value) + ')">Enrich</button>'
+        : '';
+      var copyBtn = '<button type="button" title="Copy" onclick="copyText(' + JSON.stringify(e.value) + ')">Copy</button>';
+      return '<span class="obs-chip"><span class="lbl">' + esc(e.label) + '</span> ' +
+        esc(e.value) + copyBtn + enrichBtn + '</span>';
+    }).join('');
+    var siemId = obs.siem_event_id;
+    var spl = obs.spl_hint || '';
+    var hrefSiem = siemId ? ('/siem?event=' + siemId) : '/siem';
+    var hrefSpl = spl ? ('/siem/query?q=' + encodeURIComponent(spl)) : '/siem/query';
+    links.innerHTML =
+      '<a href="' + esc(hrefSiem) + '">Open in SIEM</a>' +
+      '<a href="' + esc(hrefSpl) + '">Investigate in SPL</a>' +
+      (obs.simulated ? '<span style="color:#ffb366;">Simulated origin</span>' : '');
+    var iocEl = document.getElementById('ioc');
+    if (iocEl && obs.primary_ioc && !iocEl.dataset.userEdited) {
+      iocEl.value = obs.primary_ioc;
+    }
+  }
+
+  function copyText(t) {
+    if (!t) return;
+    navigator.clipboard.writeText(String(t)).catch(function () {});
+  }
+
+  function prefillEnrich(val) {
+    var iocEl = document.getElementById('ioc');
+    if (iocEl) {
+      iocEl.value = val;
+      iocEl.dataset.userEdited = '1';
+      enrich();
+    }
+  }
+
+  document.getElementById('ioc').addEventListener('input', function () {
+    this.dataset.userEdited = '1';
+  });
+
   function renderContext(ctx) {
     if (!ctx) {
       document.getElementById('ctx').innerHTML = '<div class="empty">Context appears when you select an alert.</div>';
@@ -450,7 +543,7 @@
     consoleMounted = true;
   }
 
-  function renderCase(c, item) {
+  function renderCase(c, item, observables, suggestEvidence) {
     document.getElementById('case-empty').style.display = 'none';
     document.getElementById('case-panel').style.display = 'block';
     document.getElementById('ticket-no').textContent = c.ticket_no || ('#' + c.id);
@@ -466,13 +559,20 @@
     document.getElementById('case-meta').textContent =
       (c.client_tag || '') + (c.sla_due_at ? ' · SLA ' + c.sla_due_at : '');
     document.getElementById('case-detail').textContent = c.detail || (item && item.detail) || '';
+    var evidence = c.enrich_notes || '';
+    if (!evidence.trim() && suggestEvidence) {
+      evidence = suggestEvidence;
+    } else if (!evidence.trim() && observables && observables.evidence_draft) {
+      evidence = observables.evidence_draft;
+    }
     mountConsole({
       priority: priorityFromInt(c.priority || 3),
       disposition: c.disposition || '',
       what_happened: c.summary || '',
-      evidence: c.enrich_notes || '',
+      evidence: evidence,
       next_action: c.next_action || ''
     });
+    renderObservables(observables);
     document.getElementById('btn-soar').style.display = (c.source === 'finding') ? '' : 'none';
     document.getElementById('btn-resolve').style.display = (c.source === 'finding') ? '' : 'none';
     renderStateActions();
@@ -481,7 +581,9 @@
   function applyCaseResult(d) {
     if (!d.ok) { alert(d.error || 'Failed'); return false; }
     currentCase = d.case;
-    renderCase(currentCase, selected);
+    var sug = (d.observables && d.observables.suggest_evidence) || null;
+    renderCase(currentCase, selected, d.observables, sug);
+    if (d.context) renderContext(d.context);
     if (d.timeline) renderTimeline(d.timeline);
     return true;
   }
@@ -656,7 +758,12 @@
         fetch('/api/soc/cases/' + currentCase.id)
           .then(function (r) { return r.json(); })
           .then(function (b) {
-            if (b.ok) { currentCase = b.case; renderCase(currentCase, selected); renderTimeline(b.timeline || []); }
+            if (b.ok) {
+              currentCase = b.case;
+              renderCase(currentCase, selected, b.observables, null);
+              renderTimeline(b.timeline || []);
+              renderObservables(b.observables);
+            }
           });
         window.open('/soar?id=' + d.incident_id, '_blank');
       });
@@ -684,10 +791,26 @@
     })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        var el = document.getElementById('enrich-out');
-        el.style.display = 'block';
-        if (!d.ok) { el.textContent = d.error || 'Lookup failed'; return; }
-        el.textContent = JSON.stringify(d, null, 2);
+        var raw = document.getElementById('enrich-out');
+        var card = document.getElementById('enrich-card');
+        if (!d.ok) {
+          if (card) { card.style.display = 'block'; card.textContent = d.error || 'Lookup failed'; }
+          return;
+        }
+        if (card) {
+          card.style.display = 'block';
+          var v = (d.verdict || 'unknown').toLowerCase();
+          card.innerHTML =
+            '<div><span class="verdict verdict-' + esc(v) + '">' + esc(d.verdict || 'unknown') + '</span>' +
+            (d.score != null ? ' · score ' + esc(String(d.score)) : '') +
+            (d.geo ? ' · ' + esc(d.geo) : '') + '</div>' +
+            '<div style="margin-top:4px;color:var(--ops-muted);">' + esc(d.summary || '') + '</div>' +
+            (d.tags && d.tags.length ? '<div style="margin-top:4px;font-size:0.85em;">Tags: ' + esc(d.tags.join(', ')) + '</div>' : '');
+        }
+        if (raw) {
+          raw.style.display = 'block';
+          raw.textContent = JSON.stringify(d, null, 2);
+        }
         var fields = TicketFields.collect();
         var line = 'IOC ' + (d.ioc || ioc) + ': ' + (d.verdict || '?') +
           (d.summary ? '. ' + d.summary : '');
@@ -717,7 +840,8 @@
       client_tag: currentCase.client_tag,
       severity: currentCase.severity
     };
-    renderCase(currentCase, selected);
+    var sug = (d.observables && d.observables.suggest_evidence) || null;
+    renderCase(currentCase, selected, d.observables, sug);
     renderTimeline(d.timeline || []);
     renderContext(d.context || soc_lab_context_stub(currentCase));
     history.replaceState(null, '', '/soc?case=' + currentCase.id);
@@ -750,9 +874,10 @@
           client_tag: currentCase.client_tag,
           severity: currentCase.severity
         };
-        renderCase(currentCase, selected);
+        renderCase(currentCase, selected, d.observables, null);
         renderTimeline(d.timeline || []);
         renderContext(d.context || soc_lab_context_stub(currentCase));
+        renderObservables(d.observables);
       });
   }
 

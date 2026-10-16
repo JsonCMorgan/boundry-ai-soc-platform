@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>SOAR — Boundry.AI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0e14; color: #cdd6e0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace; min-height: 100vh; }
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+            background: #0f1923; border-bottom: 1px solid #1e3045; flex-wrap: wrap; }
+  .topbar .logo { font-weight: 800; font-size: 15px; color: #ff9900; letter-spacing: 1px; }
+  .topbar a { color: #7a9ab0; text-decoration: none; font-size: 13px; }
+  .topbar a:hover { color: #ff9900; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 1.4em; color: #fff; margin-bottom: 6px; }
+  .sub { color: #7a9ab0; font-size: 0.85em; margin-bottom: 22px; line-height: 1.5; }
+
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat { background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+          padding: 14px 18px; min-width: 120px; text-align: center; }
+  .stat .v { font-size: 1.6em; font-weight: 800; color: #ff9900; }
+  .stat .l { font-size: 0.7em; color: #7a9ab0; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel { background: #131d28; border: 1px solid #1e3045; border-radius: 8px; overflow: hidden; }
+  .panel-h { padding: 12px 16px; background: #0f1923; border-bottom: 1px solid #1e3045;
+             font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.07em; color: #7a9ab0; }
+
+  .inc-list { max-height: 70vh; overflow-y: auto; }
+  .inc-item { display: block; padding: 12px 14px; border-bottom: 1px solid #1a2533;
+              text-decoration: none; color: inherit; transition: background 0.12s; }
+  .inc-item:hover { background: #172230; }
+  .inc-item.active { background: #1a2838; border-left: 3px solid #ff9900; }
+  .inc-title { font-size: 0.88em; color: #e0e6ed; font-weight: 700; line-height: 1.35; }
+  .inc-meta { font-size: 0.72em; color: #7a9ab0; margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .sev { font-weight: 800; font-size: 0.7em; padding: 1px 6px; border-radius: 3px; }
+  .sev-CRITICAL { background: #2a0d0d; color: #ff4444; border: 1px solid #662222; }
+  .sev-HIGH { background: #2a1a00; color: #ff8c00; border: 1px solid #664400; }
+  .sev-MEDIUM { background: #2a2a0d; color: #ffcc00; border: 1px solid #665500; }
+  .badge-pending { background: #2a1a00; color: #ffcc00; border: 1px solid #665500;
+                   padding: 1px 6px; border-radius: 3px; font-weight: 700; }
+
+  .detail { padding: 18px 20px; }
+  .detail h2 { font-size: 1.1em; color: #fff; margin-bottom: 8px; }
+  .detail .meta-row { font-size: 0.8em; color: #7a9ab0; margin-bottom: 14px; line-height: 1.6; }
+  .detail .meta-row a { color: #00d4ff; }
+  .box { background: #0a0e14; border: 1px solid #1e3045; border-radius: 6px;
+         padding: 12px 14px; margin-bottom: 14px; font-size: 0.84em; line-height: 1.55; color: #9ab; }
+  .box strong { color: #cdd6e0; }
+  .box.triage { border-left: 3px solid #9944ee; }
+  .box.playbook { border-left: 3px solid #ff9900; }
+
+  .actions { display: flex; flex-direction: column; gap: 10px; }
+  .action { background: #0f1923; border: 1px solid #1e3045; border-radius: 7px; padding: 12px 14px; }
+  .action-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+  .action-label { font-size: 0.9em; font-weight: 700; color: #e0e6ed; }
+  .action-type { font-size: 0.7em; color: #556; font-family: monospace; margin-top: 2px; }
+  .st { font-size: 0.7em; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+  .st-pending { background: #2a1a00; color: #ffcc00; }
+  .st-approved { background: #1a2a1a; color: #88cc88; }
+  .st-executed { background: #0a1a0a; color: #00ff88; }
+  .st-failed { background: #2a0d0d; color: #ff6666; }
+  .st-rejected { background: #1a1a1a; color: #666; }
+  .action-result { margin-top: 10px; font-size: 0.8em; color: #8899aa; white-space: pre-wrap;
+                   background: #0a0e14; border-radius: 4px; padding: 8px 10px; max-height: 160px; overflow-y: auto; }
+  .action-btns { display: flex; gap: 8px; margin-top: 10px; }
+  .btn { border: none; border-radius: 5px; padding: 7px 14px; font-size: 0.8em; font-weight: 800; cursor: pointer; }
+  .btn-approve { background: #00b432; color: #000; }
+  .btn-reject { background: transparent; color: #ff8888; border: 1px solid #662222; }
+  .btn-close { background: #1e3045; color: #cdd6e0; margin-top: 16px; }
+  .btn:hover { opacity: 0.9; }
+  .empty { padding: 40px 20px; text-align: center; color: #556; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">⚡ SOAR</span>
+  <a href="/control-room">Control Room</a>
+  <a href="/siem">SIEM</a>
+  <a href="/playbooks">Playbooks</a>
+  <a href="/soar" style="color:#ff9900;">SOAR</a>
+  {% include "_navmenu.html" %}
+  <div class="topbar-right">
+    {% if player %}
+    <span style="font-size:12px;color:#7a9ab0;">{{ player.level_icon }} Lv.{{ player.level }}</span>
+    {% endif %}
+    <a href="/logout" style="color:#ff8888;">Log Out</a>
+  </div>
+</div>
+
+<main>
+  <h1>Security Orchestration</h1>
+  <p class="sub">
+    HIGH/CRITICAL SIEM findings auto-open incidents, attach IR playbooks, and propose response actions.
+    Safe local steps run automatically; destructive steps wait for your approval.
+    {% if soar_enabled == '0' %}<strong style="color:#ff6666;">SOAR is currently DISABLED (soar_enabled=0).</strong>{% endif %}
+  </p>
+
+  <div class="stats">
+    <div class="stat"><div class="v">{{ stats.open }}</div><div class="l">Open</div></div>
+    <div class="stat"><div class="v" style="color:#ffcc00;">{{ stats.pending_approvals }}</div><div class="l">Awaiting Approval</div></div>
+    <div class="stat"><div class="v" style="color:#00d4ff;">{{ stats.opened_today }}</div><div class="l">Opened Today</div></div>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="panel-h">Incidents</div>
+      <div class="inc-list">
+        {% if not incidents %}
+        <div class="empty">No SOAR incidents yet.<br>Trigger a HIGH/CRITICAL SIEM correlation to open one.</div>
+        {% endif %}
+        {% for inc in incidents %}
+        <a class="inc-item {% if selected and selected.id == inc.id %}active{% endif %}"
+           href="/soar?id={{ inc.id }}">
+          <div class="inc-title">{{ inc.title }}</div>
+          <div class="inc-meta">
+            <span class="sev sev-{{ inc.severity }}">{{ inc.severity }}</span>
+            <span>{{ inc.status }}</span>
+            {% if inc.pending_count %}<span class="badge-pending">{{ inc.pending_count }} pending</span>{% endif %}
+            {% if inc.playbook_id %}<span>📋 {{ inc.playbook_id }}</span>{% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">Incident Detail</div>
+      {% if not selected %}
+      <div class="empty">Select an incident from the left.</div>
+      {% else %}
+      <div class="detail">
+        <h2>{{ selected.title }}</h2>
+        <div class="meta-row">
+          <span class="sev sev-{{ selected.severity }}">{{ selected.severity }}</span>
+          · status <strong style="color:#fff;">{{ selected.status }}</strong>
+          {% if selected.mitre_id %} · <a href="/mitre/{{ selected.mitre_id }}">{{ selected.mitre_id }}</a>{% endif %}
+          {% if selected.finding_id %} · <a href="/scan/findings#f{{ selected.finding_id }}">finding #{{ selected.finding_id }}</a>{% endif %}
+          {% if selected.group_value %} · group <code>{{ selected.group_value }}</code>{% endif %}
+          <br>opened {{ selected.created_at }}
+        </div>
+
+        {% if selected.summary %}
+        <div class="box"><strong>Summary</strong><br>{{ selected.summary[:800] }}{% if selected.summary|length > 800 %}…{% endif %}</div>
+        {% endif %}
+
+        {% if selected.ai_triage_snapshot %}
+        <div class="box triage"><strong>AI Triage</strong><br>{{ selected.ai_triage_snapshot[:1200] }}{% if selected.ai_triage_snapshot|length > 1200 %}…{% endif %}</div>
+        {% endif %}
+
+        {% if selected.playbook_id %}
+        <div class="box playbook">
+          <strong>Playbook:</strong>
+          <a href="/playbooks/{{ selected.playbook_id }}" style="color:#ff9900;">{{ selected.playbook_title or selected.playbook_id }}</a>
+        </div>
+        {% endif %}
+
+        <div class="panel-h" style="margin: 8px -20px 12px; border-top:1px solid #1e3045;">Proposed Actions</div>
+        <div class="actions">
+          {% for a in selected.actions %}
+          <div class="action">
+            <div class="action-top">
+              <div>
+                <div class="action-label">{{ a.label }}</div>
+                <div class="action-type">{{ a.action_type }}{% if a.requires_approval %} · needs approval{% else %} · auto{% endif %}</div>
+              </div>
+              <span class="st st-{{ a.status }}">{{ a.status }}</span>
+            </div>
+            {% if a.result_text %}
+            <div class="action-result">{{ a.result_text }}</div>
+            {% endif %}
+            {% if a.status == 'pending' %}
+            <div class="action-btns">
+              <form method="post" action="/soar/actions/{{ a.id }}/approve" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-approve">Approve &amp; Run</button>
+              </form>
+              <form method="post" action="/soar/actions/{{ a.id }}/reject" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-reject">Reject</button>
+              </form>
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="empty">Actions still proposing… refresh in a few seconds.</div>
+          {% endfor %}
+        </div>
+
+        {% if selected.status not in ('closed', 'rejected') %}
+        <form method="post" action="/soar/incidents/{{ selected.id }}/close">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-close">Close Incident</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</main>
+
+<script src="/static/game.js"></script>
+<script src="/static/glossary.js" defer></script>
+</body>
+</html>

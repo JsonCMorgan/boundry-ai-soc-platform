@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>SOC Floor — Boundry Tickets</title>
+  {% include '_live_ops_shell.html' %}
+  <style>
+    .floor {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.05fr) minmax(360px, 1.5fr) minmax(220px, 0.85fr);
+      gap: 0;
+      min-height: calc(100vh - 96px);
+    }
+    @media (max-width: 1100px) { .floor { grid-template-columns: 1fr; } }
+    .pane {
+      border-right: 1px solid var(--ops-border);
+      padding: 12px 14px;
+      overflow: auto;
+      max-height: calc(100vh - 96px);
+    }
+    .pane:last-child { border-right: none; }
+    .pane h2 {
+      margin: 0 0 10px;
+      font-size: 0.78em;
+      color: var(--ops-accent);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+    .filters { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .chip {
+      border: 1px solid var(--ops-border);
+      background: var(--ops-surface);
+      color: var(--ops-muted);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.72em;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .chip.on {
+      border-color: color-mix(in srgb, var(--ops-accent) 50%, transparent);
+      color: var(--ops-accent);
+      background: color-mix(in srgb, var(--ops-accent) 10%, transparent);
+    }
+    .q-table { width: 100%; border-collapse: collapse; font-size: 0.78em; }
+    .q-table th {
+      text-align: left; color: var(--ops-dim); font-size: 0.68em;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--ops-border); padding: 4px 6px; font-weight: 700;
+    }
+    .q-table td {
+      border-bottom: 1px solid #131d28; padding: 7px 6px; vertical-align: top; cursor: pointer;
+    }
+    .q-table tr:hover td { background: var(--ops-surface); }
+    .q-table tr.sel td { background: #132838; }
+    .q-table tr.practice td:first-child { box-shadow: inset 3px 0 0 var(--ops-practice); }
+    .q-table tr.real td:first-child { box-shadow: inset 3px 0 0 var(--ops-ok); }
+    .q-title { color: #fff; font-weight: 600; line-height: 1.3; }
+    .empty { color: var(--ops-dim); font-size: 0.8em; line-height: 1.45; padding: 12px 0; }
+    .ticket-head {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px;
+    }
+    .tno {
+      font-family: var(--ops-mono); color: var(--ops-accent);
+      font-weight: 800; font-size: 0.95em;
+    }
+    .prio { font-family: var(--ops-mono); font-size: 0.75em; color: var(--ops-muted); }
+    .case-title { color: #fff; font-size: 1em; font-weight: 700; margin: 4px 0 6px; }
+    .case-detail {
+      font-size: 0.8em; color: var(--ops-muted); line-height: 1.45;
+      margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--ops-border);
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .work-notes {
+      margin-top: 16px; border-top: 1px solid var(--ops-border); padding-top: 12px;
+    }
+    .work-notes h3 {
+      margin: 0 0 8px; font-size: 0.72em; color: var(--ops-muted);
+      text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800;
+    }
+    .tev {
+      border-left: 2px solid var(--ops-border);
+      padding: 6px 0 8px 10px; margin-bottom: 4px;
+      font-size: 0.78em; line-height: 1.4;
+    }
+    .tev .when { font-family: var(--ops-mono); color: var(--ops-dim); font-size: 0.88em; }
+    .badge {
+      display: inline-block; font-size: 0.65em; font-weight: 800; padding: 1px 6px;
+      border-radius: 3px; margin-right: 4px; text-transform: uppercase;
+    }
+    .badge-human { background: #00d4ff22; color: #00d4ff; }
+    .badge-agent_proposed { background: #ff990022; color: #ff9900; }
+    .badge-system { background: #1e3045; color: #7a9ab0; }
+    .composer textarea {
+      width: 100%; background: var(--ops-bg); border: 1px solid var(--ops-border);
+      color: var(--ops-text); border-radius: 5px; padding: 8px;
+      font-family: inherit; font-size: 0.8em; min-height: 48px; resize: vertical;
+    }
+    .ctx-card {
+      background: var(--ops-surface); border: 1px solid var(--ops-border);
+      border-radius: 6px; padding: 10px; margin-bottom: 10px;
+      font-size: 0.8em; line-height: 1.45;
+    }
+    .ctx-card a { color: var(--ops-accent); font-weight: 600; }
+    .bridge {
+      display: block; margin: 6px 0; padding: 8px; border: 1px solid var(--ops-border);
+      border-radius: 5px; text-decoration: none; color: var(--ops-text); font-size: 0.75em;
+    }
+    .bridge:hover { border-color: #a78bfa66; color: #a78bfa; }
+    .bridge.sug { border-color: #a78bfa44; background: #a78bfa10; }
+    .enrich-row { display: flex; gap: 6px; margin-top: 8px; }
+    .enrich-row input {
+      flex: 1; background: var(--ops-bg); border: 1px solid var(--ops-border);
+      color: var(--ops-text); border-radius: 5px; padding: 8px;
+      font-family: var(--ops-mono); font-size: 0.78em;
+    }
+    .enrich-out {
+      margin-top: 8px; font-size: 0.72em; color: var(--ops-muted);
+      white-space: pre-wrap; font-family: var(--ops-mono);
+      background: var(--ops-bg); border: 1px solid var(--ops-border);
+      border-radius: 5px; padding: 8px; display: none;
+    }
+    .shift-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .shift-bar .status { font-size: 0.75em; color: var(--ops-muted); }
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: #000a;
+      align-items: center; justify-content: center; z-index: 50;
+    }
+    .modal-bg.show { display: flex; }
+    .modal {
+      background: var(--ops-surface); border: 1px solid var(--ops-border);
+      border-radius: 8px; padding: 18px; width: min(480px, 92vw);
+    }
+    .modal textarea {
+      width: 100%; background: var(--ops-bg); border: 1px solid var(--ops-border);
+      color: var(--ops-text); border-radius: 5px; padding: 8px;
+      font-family: inherit; font-size: 0.8em; min-height: 80px;
+    }
+    details.training-bridges summary {
+      cursor: pointer; color: #a78bfa; font-weight: 700; font-size: 0.78em;
+    }
+  </style>
+</head>
+<body class="ops-shell">
+  <div class="ops-topbar">
+    <div>
+      <span class="ops-brand">SOC Floor</span>
+      <span style="font-size:0.72em;color:var(--ops-dim);">Boundry Tickets (local)</span>
+      <a href="/soc" class="ops-active">Floor</a>
+      <a href="/soc/tickets">Tickets</a>
+      <a href="/control-room">Control Room</a>
+      <a href="/siem">SIEM</a>
+      <a href="/soar">SOAR</a>
+      {% include "_navmenu.html" %}
+    </div>
+    <div class="shift-bar">
+      <div id="ops-presence"></div>
+      <span class="status" id="shift-status">Shift: not started</span>
+      <button type="button" class="ops-btn ops-btn-ok" id="btn-start" onclick="startShift()">Start Live Shift</button>
+      <button type="button" class="ops-btn ops-btn-dim" id="btn-inject" onclick="injectPractice()">+ Practice</button>
+      <button type="button" class="ops-btn ops-btn-warn" id="btn-end" onclick="showEndModal()" disabled>End Shift</button>
+    </div>
+  </div>
+  <div class="ops-status-strip" id="ops-strip"></div>
+  {% include '_ops_presence.html' %}
+
+  <div class="floor">
+    <div class="pane">
+      <h2>Alert queue</h2>
+      <div class="filters">
+        <span class="chip on" data-lane="all" onclick="setLane('all')">All</span>
+        <span class="chip" data-lane="real" onclick="setLane('real')">Real</span>
+        <span class="chip" data-lane="practice" onclick="setLane('practice')">Practice</span>
+      </div>
+      <div id="queue"></div>
+    </div>
+
+    <div class="pane">
+      <h2>Ticket workspace</h2>
+      <div id="case-empty" class="empty">
+        Select an alert from the queue to open a Boundry Ticket.
+        Start a Live Shift when you want handoff notes and shift stats.
+      </div>
+      <div id="case-panel" style="display:none;">
+        <div class="ticket-head">
+          <span class="tno" id="ticket-no">BT-…</span>
+          <span class="ops-st ops-st-new" id="ticket-status">new</span>
+          <span class="prio" id="ticket-prio">P3</span>
+          <span id="case-lane"></span>
+          <span class="prio" id="case-meta"></span>
+        </div>
+        <div class="case-title" id="case-title"></div>
+        <p class="case-detail" id="case-detail"></p>
+
+        <div class="actions" id="state-actions"></div>
+
+        <div id="ticket-console"></div>
+
+        <div class="actions">
+          <button type="button" class="ops-btn" onclick="saveCase()">Save</button>
+          <button type="button" class="ops-btn ops-btn-ok" onclick="closeCase()">Close ticket</button>
+          <button type="button" class="ops-btn ops-btn-dim" id="btn-soar" onclick="openSoar()">Open SOAR</button>
+          <button type="button" class="ops-btn ops-btn-dim" id="btn-resolve" onclick="resolveFinding()">Resolve finding</button>
+        </div>
+        <label style="display:block;font-size:0.72em;color:var(--ops-muted);margin:10px 0 4px;">Quick IOC enrich (local stub)</label>
+        <div class="enrich-row">
+          <input id="ioc" placeholder="IP / domain / hash">
+          <button type="button" class="ops-btn ops-btn-dim" onclick="enrich()">Lookup</button>
+        </div>
+        <pre class="enrich-out" id="enrich-out"></pre>
+
+        <div class="work-notes">
+          <h3>Work notes</h3>
+          <div id="timeline" class="empty">No events yet.</div>
+          <div class="composer" style="margin-top:10px;">
+            <textarea id="comment" placeholder="Add a work note…"></textarea>
+            <button type="button" class="ops-btn ops-btn-dim" style="margin-top:8px;" onclick="addComment()">Post note</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane">
+      <h2>Context</h2>
+      <div id="ctx" class="empty">Context appears when you select an alert.</div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="end-modal">
+    <div class="modal">
+      <h3 style="margin:0 0 8px;color:#fff;">End Live Shift</h3>
+      <p style="font-size:0.78em;color:var(--ops-muted);">
+        Handoff: what you closed, what stays open, next action, client/severity cue.
+      </p>
+      <textarea id="handoff" placeholder="Closed X as FP. Open: Contoso HIGH spray — next: verify MFA reset. SLA 20m."></textarea>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button type="button" class="ops-btn ops-btn-warn" onclick="endShift()">Confirm end</button>
+        <button type="button" class="ops-btn ops-btn-dim" onclick="hideEndModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="esc-modal">
+    <div class="modal">
+      <h3 style="margin:0 0 8px;color:#fff;">Escalate ticket</h3>
+      <p style="font-size:0.78em;color:var(--ops-muted);">
+        Ticket stays open in Escalated. Note who needs it, what you did, and why.
+      </p>
+      <textarea id="esc-note" placeholder="Escalate to Tier-2: Harbor ransomware indicators…"></textarea>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button type="button" class="ops-btn ops-btn-warn" onclick="confirmEscalate()">Escalate</button>
+        <button type="button" class="ops-btn ops-btn-dim" onclick="hideEscModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  {% include '_ticket_field_console.html' %}
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+  var TICKET_FIELDS = {{ ticket_fields | tojson }};
+  var OPS_STRIP = {{ ops_strip | default({}) | tojson }};
+  var lane = 'all';
+  var queue = [];
+  var selected = null;
+  var currentCase = null;
+  var timeline = [];
+  var shift = {{ active_shift | default(none) | tojson }};
+  var consoleMounted = false;
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+  function headers() {
+    return { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF };
+  }
+  function priorityFromInt(n) {
+    var v = parseInt(n, 10);
+    if (isNaN(v) || v < 1) v = 3;
+    if (v > 5) v = 5;
+    return 'p' + v;
+  }
+  function priorityToInt(pid) {
+    var m = String(pid || 'p3').toLowerCase().replace(/^p/, '');
+    var v = parseInt(m, 10);
+    if (isNaN(v) || v < 1) v = 3;
+    if (v > 5) v = 5;
+    return v;
+  }
+
+  function refreshStrip() {
+    var data = Object.assign({}, OPS_STRIP || {});
+    if (shift && shift.active) {
+      data.shift_active = true;
+      data.shift_id = shift.id;
+    } else {
+      data.shift_active = false;
+      data.shift_id = null;
+    }
+    OpsShell.renderStatusStrip('#ops-strip', data);
+  }
+
+  function renderShift() {
+    var el = document.getElementById('shift-status');
+    var endBtn = document.getElementById('btn-end');
+    if (shift && shift.active) {
+      el.textContent = 'Shift #' + shift.id + ' · ' + (shift.started_at || '');
+      endBtn.disabled = false;
+    } else {
+      el.textContent = 'Shift: not started';
+      endBtn.disabled = true;
+    }
+    refreshStrip();
+  }
+
+  function setLane(l) {
+    lane = l;
+    document.querySelectorAll('.chip[data-lane]').forEach(function (c) {
+      c.classList.toggle('on', c.getAttribute('data-lane') === l);
+    });
+    loadQueue();
+  }
+
+  function slaClass(due) {
+    if (!due) return '';
+    try {
+      var t = Date.parse(due.replace(' ', 'T') + 'Z');
+      if (!isNaN(t) && t < Date.now()) return 'over';
+    } catch (e) {}
+    return '';
+  }
+
+  function actorBadge(kind) {
+    var k = kind || 'human';
+    var label = k === 'agent_proposed' ? 'Agent proposed' : (k === 'system' ? 'System' : 'Human');
+    return '<span class="badge badge-' + esc(k) + '">' + label + '</span>';
+  }
+
+  function renderTimeline(events) {
+    timeline = events || [];
+    var box = document.getElementById('timeline');
+    if (!timeline.length) {
+      box.className = 'empty';
+      box.textContent = 'No work notes yet.';
+      return;
+    }
+    box.className = '';
+    box.innerHTML = timeline.map(function (e) {
+      return '<div class="tev">' +
+        actorBadge(e.actor_kind) +
+        '<b>' + esc(e.event_type) + '</b> ' +
+        '<span class="when">' + esc(e.created_at) + '</span><br>' +
+        esc(e.body || '') +
+        '</div>';
+    }).join('');
+  }
+
+  function canGo(to) {
+    if (!currentCase) return false;
+    var allowed = currentCase.allowed_transitions || [];
+    return allowed.indexOf(to) >= 0;
+  }
+
+  function renderStateActions() {
+    var box = document.getElementById('state-actions');
+    if (!currentCase) { box.innerHTML = ''; return; }
+    var html = '';
+    if (canGo('working')) {
+      html += '<button type="button" class="ops-btn ops-btn-ok" onclick="transitionTo(\'working\')">Start work / Resume</button>';
+    }
+    if (canGo('waiting')) {
+      html += '<button type="button" class="ops-btn ops-btn-dim" onclick="transitionTo(\'waiting\')">Waiting</button>';
+    }
+    if (canGo('escalated')) {
+      html += '<button type="button" class="ops-btn ops-btn-warn" onclick="showEscModal()">Escalate</button>';
+    }
+    box.innerHTML = html || '<span class="prio">No state moves available.</span>';
+  }
+
+  function renderQueue() {
+    var box = document.getElementById('queue');
+    if (!queue.length) {
+      box.innerHTML = '<div class="empty">Queue empty for this filter. Inject practice alerts or wait for real HIGH/CRITICAL SIEM / open findings.</div>';
+      return;
+    }
+    var rows = queue.map(function (item, idx) {
+      var cls = item.is_practice ? 'practice' : 'real';
+      var sel = (selected && selected.queue_key === item.queue_key) ? ' sel' : '';
+      var sla = item.sla_due_at
+        ? '<span class="ops-sla ' + slaClass(item.sla_due_at) + '">' + esc(item.sla_due_at) + '</span>'
+        : '—';
+      return '<tr class="' + cls + sel + '" onclick="selectItem(' + idx + ')">' +
+        '<td><span class="ops-sev ops-sev-' + esc(item.severity) + '">' + esc(item.severity) + '</span></td>' +
+        '<td>' + esc(item.client_tag || '') + '</td>' +
+        '<td><div class="q-title">' + esc(item.title) + '</div></td>' +
+        '<td>' + sla + '</td>' +
+        '<td><span class="ops-badge ' + (item.is_practice ? 'ops-lane-practice' : 'ops-lane-real') + '">' +
+          (item.is_practice ? 'Practice' : 'Real') + '</span></td>' +
+        '</tr>';
+    }).join('');
+    box.innerHTML =
+      '<table class="q-table"><thead><tr>' +
+      '<th>Sev</th><th>Client</th><th>Title</th><th>SLA</th><th>Lane</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function selectItem(idx) {
+    selected = queue[idx];
+    renderQueue();
+    openCase();
+  }
+
+  function renderContext(ctx) {
+    if (!ctx) {
+      document.getElementById('ctx').innerHTML = '<div class="empty">Context appears when you select an alert.</div>';
+      return;
+    }
+    var bridges = (ctx.career_bridges || []).map(function (b) {
+      var sug = (ctx.suggested_bridge_ids || []).indexOf(b.id) >= 0 ? ' sug' : '';
+      return '<a class="bridge' + sug + '" href="' + esc(b.href) + '"><b>' + esc(b.label) + '</b><br>' + esc(b.why) + '</a>';
+    }).join('');
+    var laneBadge = ctx.banner && String(ctx.banner).toLowerCase().indexOf('practice') >= 0
+      ? '<span class="ops-badge ops-lane-practice">Practice</span>'
+      : '<span class="ops-badge ops-lane-real">Real</span>';
+    document.getElementById('ctx').innerHTML =
+      '<div class="ctx-card"><b style="color:#fff;">' + esc(ctx.banner) + '</b><br>' +
+      laneBadge + '<br>' +
+      'Client: <b>' + esc(ctx.client_tag) + '</b><br>' +
+      'Severity: <span class="ops-sev ops-sev-' + esc(ctx.severity) + '">' + esc(ctx.severity) + '</span></div>' +
+      '<div class="ctx-card">' +
+      '<a href="' + esc(ctx.siem_href) + '">SIEM</a> · ' +
+      '<a href="' + esc(ctx.spl_href) + '">SPL</a> · ' +
+      '<a href="' + esc(ctx.findings_href) + '">Findings</a> · ' +
+      '<a href="' + esc(ctx.playbook_href) + '">Playbooks</a> · ' +
+      '<a href="/soc/tickets">All tickets</a></div>' +
+      (bridges
+        ? '<details class="training-bridges ctx-card"><summary>Training bridges</summary>' + bridges + '</details>'
+        : '');
+  }
+
+  function mountConsole(seed) {
+    TicketFields.mount('#ticket-console', {
+      fields: TICKET_FIELDS || [],
+      seed: seed || {},
+      showSeedBtn: false
+    });
+    consoleMounted = true;
+  }
+
+  function renderCase(c, item) {
+    document.getElementById('case-empty').style.display = 'none';
+    document.getElementById('case-panel').style.display = 'block';
+    document.getElementById('ticket-no').textContent = c.ticket_no || ('#' + c.id);
+    var st = c.status || 'new';
+    var stEl = document.getElementById('ticket-status');
+    stEl.textContent = st;
+    stEl.className = 'ops-st ops-st-' + st;
+    document.getElementById('ticket-prio').textContent = 'P' + (c.priority || 3);
+    document.getElementById('case-title').textContent = c.title || (item && item.title) || '';
+    document.getElementById('case-lane').innerHTML = c.is_practice
+      ? '<span class="ops-badge ops-lane-practice">Practice</span>'
+      : '<span class="ops-badge ops-lane-real">Real</span>';
+    document.getElementById('case-meta').textContent =
+      (c.client_tag || '') + (c.sla_due_at ? ' · SLA ' + c.sla_due_at : '');
+    document.getElementById('case-detail').textContent = c.detail || (item && item.detail) || '';
+    mountConsole({
+      priority: priorityFromInt(c.priority || 3),
+      disposition: c.disposition || '',
+      what_happened: c.summary || '',
+      evidence: c.enrich_notes || '',
+      next_action: c.next_action || ''
+    });
+    document.getElementById('btn-soar').style.display = (c.source === 'finding') ? '' : 'none';
+    document.getElementById('btn-resolve').style.display = (c.source === 'finding') ? '' : 'none';
+    renderStateActions();
+  }
+
+  function applyCaseResult(d) {
+    if (!d.ok) { alert(d.error || 'Failed'); return false; }
+    currentCase = d.case;
+    renderCase(currentCase, selected);
+    if (d.timeline) renderTimeline(d.timeline);
+    return true;
+  }
+
+  function loadQueue() {
+    fetch('/api/soc/queue?lane=' + encodeURIComponent(lane))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        queue = d.items || [];
+        renderQueue();
+      });
+  }
+
+  function startShift() {
+    fetch('/api/soc/shift/start', { method: 'POST', headers: headers(), body: '{}' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) { alert(d.error || 'Could not start shift'); return; }
+        shift = d.shift;
+        renderShift();
+        loadQueue();
+      });
+  }
+
+  function injectPractice() {
+    fetch('/api/soc/practice/inject', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ count: 5 })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) { alert(d.error || 'Inject failed'); return; }
+        loadQueue();
+      });
+  }
+
+  function showEndModal() { document.getElementById('end-modal').classList.add('show'); }
+  function hideEndModal() { document.getElementById('end-modal').classList.remove('show'); }
+  function showEscModal() { document.getElementById('esc-modal').classList.add('show'); }
+  function hideEscModal() { document.getElementById('esc-modal').classList.remove('show'); }
+
+  function endShift() {
+    var note = document.getElementById('handoff').value || '';
+    fetch('/api/soc/shift/end', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ handoff_note: note })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) { alert(d.error || 'End failed'); return; }
+        shift = null;
+        hideEndModal();
+        renderShift();
+        var rub = d.handoff_rubric || (d.stats || {}).handoff_rubric || {};
+        var tip = (rub.tips && rub.tips[0]) ? (' Tip: ' + rub.tips[0]) : '';
+        alert(
+          'Shift ended. Closed: ' + ((d.stats || {}).closed || 0) +
+          ', left open: ' + ((d.stats || {}).left_open || 0) +
+          '. Handoff grade: ' + (rub.score != null ? rub.score : '?') + '/100. ' +
+          (rub.summary || '') + tip
+        );
+      });
+  }
+
+  function openCase() {
+    if (!selected) return;
+    fetch('/api/soc/cases/open', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ source: selected.source, source_id: selected.source_id })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!applyCaseResult(d)) return;
+        renderContext(d.context);
+        if (!d.timeline) renderTimeline([]);
+      });
+  }
+
+  function casePayload() {
+    var fields = consoleMounted ? TicketFields.collect() : {};
+    return {
+      summary: fields.what_happened || '',
+      next_action: fields.next_action || '',
+      enrich_notes: fields.evidence || '',
+      disposition: fields.disposition || '',
+      priority: priorityToInt(fields.priority)
+    };
+  }
+
+  function saveCase() {
+    if (!currentCase) return;
+    fetch('/api/soc/cases/' + currentCase.id, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify(casePayload())
+    })
+      .then(function (r) { return r.json(); })
+      .then(applyCaseResult);
+  }
+
+  function transitionTo(to, note) {
+    if (!currentCase) return;
+    var body = casePayload();
+    body.to = to;
+    if (note) body.note = note;
+    fetch('/api/soc/cases/' + currentCase.id + '/transition', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify(body)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!applyCaseResult(d)) return;
+        if (to === 'closed') {
+          currentCase = null;
+          selected = null;
+          document.getElementById('case-panel').style.display = 'none';
+          document.getElementById('case-empty').style.display = 'block';
+          renderContext(null);
+          loadQueue();
+        }
+      });
+  }
+
+  function confirmEscalate() {
+    var note = document.getElementById('esc-note').value || '';
+    hideEscModal();
+    transitionTo('escalated', note);
+  }
+
+  function closeCase() {
+    if (!currentCase) return;
+    var body = casePayload();
+    fetch('/api/soc/cases/' + currentCase.id + '/close', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify(body)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) { alert(d.error || 'Close failed'); return; }
+        currentCase = null;
+        selected = null;
+        document.getElementById('case-panel').style.display = 'none';
+        document.getElementById('case-empty').style.display = 'block';
+        renderContext(null);
+        loadQueue();
+      });
+  }
+
+  function addComment() {
+    if (!currentCase) return;
+    var body = document.getElementById('comment').value || '';
+    fetch('/api/soc/cases/' + currentCase.id + '/comment', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ body: body })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) { alert(d.error || 'Comment failed'); return; }
+        document.getElementById('comment').value = '';
+        if (d.timeline) renderTimeline(d.timeline);
+      });
+  }
+
+  function openSoar() {
+    if (!currentCase || currentCase.source !== 'finding') return;
+    fetch('/api/soar/incidents/from-finding/' + currentCase.source_id, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ case_id: currentCase.id })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { alert(d.error); return; }
+        fetch('/api/soc/cases/' + currentCase.id)
+          .then(function (r) { return r.json(); })
+          .then(function (b) {
+            if (b.ok) { currentCase = b.case; renderCase(currentCase, selected); renderTimeline(b.timeline || []); }
+          });
+        window.open('/soar?id=' + d.incident_id, '_blank');
+      });
+  }
+
+  function resolveFinding() {
+    if (!currentCase || currentCase.source !== 'finding') return;
+    fetch('/api/soc/cases/' + currentCase.id + '/resolve-finding', {
+      method: 'POST', headers: headers(), body: '{}'
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) { alert(d.error || 'Resolve failed'); return; }
+        loadQueue();
+      });
+  }
+
+  function enrich() {
+    var ioc = document.getElementById('ioc').value || '';
+    var payload = { ioc: ioc };
+    if (currentCase) payload.case_id = currentCase.id;
+    fetch('/api/soc/enrich', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var el = document.getElementById('enrich-out');
+        el.style.display = 'block';
+        if (!d.ok) { el.textContent = d.error || 'Lookup failed'; return; }
+        el.textContent = JSON.stringify(d, null, 2);
+        var fields = TicketFields.collect();
+        var line = 'IOC ' + (d.ioc || ioc) + ': ' + (d.verdict || '?') +
+          (d.summary ? '. ' + d.summary : '');
+        fields.evidence = (fields.evidence ? fields.evidence + '\n' : '') + line;
+        TicketFields.setValues({ evidence: fields.evidence });
+        if (d.timeline) renderTimeline(d.timeline);
+      });
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  var deepCase = params.get('case');
+  var openParam = params.get('open');
+
+  function finishDeepLinkCase(d, itemSource, itemSourceId) {
+    if (!d.ok || !d.case) {
+      alert(d.error || 'Could not open ticket');
+      return;
+    }
+    currentCase = d.case;
+    selected = {
+      source: itemSource || currentCase.source,
+      source_id: itemSourceId || currentCase.source_id,
+      queue_key: (itemSource || currentCase.source) + ':' + (itemSourceId || currentCase.source_id),
+      title: currentCase.title,
+      detail: currentCase.detail,
+      is_practice: currentCase.is_practice,
+      client_tag: currentCase.client_tag,
+      severity: currentCase.severity
+    };
+    renderCase(currentCase, selected);
+    renderTimeline(d.timeline || []);
+    renderContext(d.context || soc_lab_context_stub(currentCase));
+    history.replaceState(null, '', '/soc?case=' + currentCase.id);
+    loadQueue();
+  }
+
+  if (openParam && openParam.indexOf(':') > 0) {
+    var openParts = openParam.split(':');
+    var openSource = openParts[0];
+    var openSourceId = openParts.slice(1).join(':');
+    fetch('/api/soc/cases/open', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ source: openSource, source_id: openSourceId })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { finishDeepLinkCase(d, openSource, openSourceId); });
+  } else if (deepCase) {
+    fetch('/api/soc/cases/' + deepCase)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) return;
+        currentCase = d.case;
+        selected = {
+          source: currentCase.source,
+          source_id: currentCase.source_id,
+          queue_key: currentCase.source + ':' + currentCase.source_id,
+          title: currentCase.title,
+          detail: currentCase.detail,
+          is_practice: currentCase.is_practice,
+          client_tag: currentCase.client_tag,
+          severity: currentCase.severity
+        };
+        renderCase(currentCase, selected);
+        renderTimeline(d.timeline || []);
+        renderContext(d.context || soc_lab_context_stub(currentCase));
+      });
+  }
+
+  function soc_lab_context_stub(c) {
+    return {
+      banner: c.is_practice ? 'Practice client traffic — not your machine.' : 'Real Boundry host telemetry / findings.',
+      client_tag: c.client_tag,
+      severity: c.severity,
+      siem_href: '/siem',
+      spl_href: '/siem/query',
+      findings_href: '/scan/findings',
+      playbook_href: '/playbooks',
+      career_bridges: [],
+      suggested_bridge_ids: []
+    };
+  }
+
+  renderShift();
+  loadQueue();
+  if (window.OpsPresence) OpsPresence.mount('#ops-presence');
+  </script>
+</body>
+</html>

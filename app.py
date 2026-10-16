@@ -19,7 +19,36 @@ import siem_collector
 import spl_engine
 import splunk_forwarder
 import vpn_monitor
+import soar_engine
 import security_acronyms
+import cissp_visuals
+import cissp_lessons
+import career_lab
+import career_skills
+import comms_lab
+import soar_career_lab
+import oversight_lab
+import tune_lab
+import metrics_lab
+import automation_lab
+import policy_lab
+import email_lab
+import edr_lab
+import log_lab
+import intel_lab
+import net_lab
+import net_learn
+import vuln_lab
+import sentinel_lab
+import entra_lab
+import spl_learn
+import kql_learn
+import secplus_learn
+import career_tutor
+import career_instances
+import interview_gym
+import interview_variants
+import soc_lab
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect, generate_csrf
@@ -525,6 +554,7 @@ def _inject_globals():
         "user_role":        role,            # Raw role string for precise nav guards
         "origin_sim_label": "Demo" if client else "Sim",
         "ops_mode":         ops_mode,        # Analyst Live Ops view (no study notes/XP)
+        "jargon_terms":     security_acronyms.hover_payload(),
     }
 
 # --- Security logging (feeds into Splunk / Railway logs) ---
@@ -1213,6 +1243,59 @@ def init_db():
             scan_type      TEXT    NOT NULL DEFAULT 'machine'
         )
     """)
+    # M2: logical tenant tags (client_id) — prefer tags over DB-per-client for now
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS mssp_tenants (
+            {id_col},
+            client_id   TEXT NOT NULL UNIQUE,
+            display_name TEXT NOT NULL DEFAULT '',
+            tier        TEXT NOT NULL DEFAULT 'Silver',
+            is_practice INTEGER NOT NULL DEFAULT 0,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    for _tid, _tname, _ttier, _prac in (
+        ("boundry_self", "Boundry self / personal net", "Gold", 0),
+        ("contoso", "Contoso", "Gold", 1),
+        ("northpeak", "NorthPeak", "Silver", 1),
+        ("harbor", "Harbor Logistics", "Bronze", 1),
+    ):
+        try:
+            db_run(
+                f"INSERT OR IGNORE INTO mssp_tenants (client_id, display_name, tier, is_practice) "
+                f"VALUES ({PH}, {PH}, {PH}, {PH})",
+                (_tid, _tname, _ttier, _prac),
+            )
+        except Exception:
+            pass
+    try:
+        _sf_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(system_findings)")]
+        if "client_id" not in _sf_cols:
+            db_run(
+                "ALTER TABLE system_findings ADD COLUMN client_id TEXT NOT NULL DEFAULT 'boundry_self'"
+            )
+    except Exception:
+        try:
+            db_run(
+                "ALTER TABLE system_findings ADD COLUMN IF NOT EXISTS client_id "
+                "TEXT NOT NULL DEFAULT 'boundry_self'"
+            )
+        except Exception:
+            pass
+    try:
+        _se_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(siem_events)")]
+        if "client_id" not in _se_cols:
+            db_run(
+                "ALTER TABLE siem_events ADD COLUMN client_id TEXT NOT NULL DEFAULT 'boundry_self'"
+            )
+    except Exception:
+        try:
+            db_run(
+                "ALTER TABLE siem_events ADD COLUMN IF NOT EXISTS client_id "
+                "TEXT NOT NULL DEFAULT 'boundry_self'"
+            )
+        except Exception:
+            pass
 
     # CISSP Flashcards — spaced-repetition deck (one card per row)
     db_run(f"""
@@ -1338,6 +1421,44 @@ def init_db():
         )
     """)
 
+    # ── SOAR (Security Orchestration, Automation and Response) ───────────────
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS soar_incidents (
+            {id_col},
+            {ts_col},
+            finding_id          INTEGER,
+            title               TEXT    NOT NULL DEFAULT '',
+            severity            TEXT    NOT NULL DEFAULT 'HIGH',
+            status              TEXT    NOT NULL DEFAULT 'open',
+            playbook_id         TEXT    NOT NULL DEFAULT '',
+            playbook_title      TEXT    NOT NULL DEFAULT '',
+            event_type          TEXT    NOT NULL DEFAULT '',
+            mitre_id            TEXT    NOT NULL DEFAULT '',
+            group_value         TEXT    NOT NULL DEFAULT '',
+            summary             TEXT    NOT NULL DEFAULT '',
+            ai_triage_snapshot  TEXT    NOT NULL DEFAULT '',
+            assigned_to         TEXT    NOT NULL DEFAULT '',
+            resolved_at         TEXT
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS soar_actions (
+            {id_col},
+            {ts_col},
+            incident_id         INTEGER NOT NULL,
+            action_type         TEXT    NOT NULL DEFAULT '',
+            label               TEXT    NOT NULL DEFAULT '',
+            requires_approval   INTEGER NOT NULL DEFAULT 1,
+            status              TEXT    NOT NULL DEFAULT 'pending',
+            params_json         TEXT    NOT NULL DEFAULT '{{}}',
+            approved_by         TEXT    NOT NULL DEFAULT '',
+            approved_at         TEXT,
+            executed_at         TEXT,
+            executed_by         TEXT    NOT NULL DEFAULT '',
+            result_text         TEXT    NOT NULL DEFAULT ''
+        )
+    """)
+
     # ── SIEM tables ────────────────────────────────────────────────────────────
     # Normalised event store — one row per ingested log event from any source.
     db_run(f"""
@@ -1424,6 +1545,428 @@ def init_db():
             added_by       TEXT NOT NULL DEFAULT ''
         )
     """)
+
+    # ── Career Lab (GTA SOC hire path) ────────────────────────────────────────
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_portfolio_cases (
+            {id_col},
+            analyst_id        INTEGER NOT NULL,
+            title             TEXT    NOT NULL DEFAULT '',
+            track_id          TEXT    NOT NULL DEFAULT '',
+            summary           TEXT    NOT NULL DEFAULT '',
+            tools_used        TEXT    NOT NULL DEFAULT '',
+            mitre_techniques  TEXT    NOT NULL DEFAULT '',
+            disposition       TEXT    NOT NULL DEFAULT '',
+            source_type       TEXT    NOT NULL DEFAULT 'manual',
+            source_id         INTEGER,
+            include_in_export INTEGER NOT NULL DEFAULT 1,
+            created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_shift_sessions (
+            {id_col},
+            analyst_id     INTEGER NOT NULL,
+            mode           TEXT    NOT NULL DEFAULT 'quick',
+            status         TEXT    NOT NULL DEFAULT 'active',
+            alerts_json    TEXT    NOT NULL DEFAULT '[]',
+            answers_json   TEXT    NOT NULL DEFAULT '[]',
+            score_pct      INTEGER,
+            points         INTEGER,
+            max_points     INTEGER,
+            started_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+            completed_at   TEXT
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_email_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            sample_id    TEXT    NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_edr_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            case_id      TEXT    NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_logs_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            drill_id     TEXT    NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_intel_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            case_id      TEXT    NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_comms_attempts (
+            {id_col},
+            analyst_id    INTEGER NOT NULL,
+            scenario_id   TEXT    NOT NULL,
+            score_pct     INTEGER NOT NULL DEFAULT 0,
+            passed        INTEGER NOT NULL DEFAULT 0,
+            draft_text    TEXT    NOT NULL DEFAULT '',
+            created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    for _fp_table in (
+        "career_soar_attempts",
+        "career_oversight_attempts",
+        "career_tune_attempts",
+        "career_automation_attempts",
+        "career_metrics_attempts",
+        "career_policy_attempts",
+    ):
+        db_run(f"""
+            CREATE TABLE IF NOT EXISTS {_fp_table} (
+                {id_col},
+                analyst_id   INTEGER NOT NULL,
+                scenario_id  TEXT    NOT NULL,
+                score_pct    INTEGER NOT NULL DEFAULT 0,
+                passed       INTEGER NOT NULL DEFAULT 0,
+                answers_json TEXT    NOT NULL DEFAULT '{{}}',
+                created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_net_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            drill_id     TEXT    NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_net_progress (
+            {id_col},
+            analyst_id     INTEGER NOT NULL,
+            lesson_id      TEXT    NOT NULL,
+            lesson_done    INTEGER NOT NULL DEFAULT 0,
+            practice_ok    INTEGER NOT NULL DEFAULT 0,
+            practice_total INTEGER NOT NULL DEFAULT 0,
+            practice_ids   TEXT    NOT NULL DEFAULT '[]',
+            updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(analyst_id, lesson_id)
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_net_quiz (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            lesson_id    TEXT    NOT NULL DEFAULT '',
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            correct      INTEGER NOT NULL DEFAULT 0,
+            total        INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_vuln_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            case_id      TEXT    NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_sentinel_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            case_id      TEXT    NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_entra_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            case_id      TEXT    NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_spl_progress (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            lesson_id    TEXT    NOT NULL,
+            lesson_done  INTEGER NOT NULL DEFAULT 0,
+            practice_ok  INTEGER NOT NULL DEFAULT 0,
+            practice_total INTEGER NOT NULL DEFAULT 0,
+            practice_ids TEXT    NOT NULL DEFAULT '[]',
+            updated_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(analyst_id, lesson_id)
+        )
+    """)
+    if not DATABASE_URL:
+        _spl_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(career_spl_progress)")]
+        if "practice_ids" not in _spl_cols:
+            db_run("ALTER TABLE career_spl_progress ADD COLUMN practice_ids TEXT NOT NULL DEFAULT '[]'")
+    else:
+        db_run("ALTER TABLE career_spl_progress ADD COLUMN IF NOT EXISTS practice_ids TEXT NOT NULL DEFAULT '[]'")
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_spl_quiz (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            correct      INTEGER NOT NULL DEFAULT 0,
+            total        INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_interview_progress (
+            {id_col},
+            analyst_id     INTEGER NOT NULL,
+            scenario_id    TEXT    NOT NULL,
+            guided_done    INTEGER NOT NULL DEFAULT 0,
+            coached_done   INTEGER NOT NULL DEFAULT 0,
+            live_done      INTEGER NOT NULL DEFAULT 0,
+            live_best      INTEGER NOT NULL DEFAULT 0,
+            updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(analyst_id, scenario_id)
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_interview_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            scenario_id  TEXT    NOT NULL,
+            mode         TEXT    NOT NULL,
+            score_pct    INTEGER,
+            answers_json TEXT    NOT NULL DEFAULT '{{}}',
+            feedback     TEXT    NOT NULL DEFAULT '',
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_interview_instances (
+            id           TEXT    PRIMARY KEY,
+            analyst_id   INTEGER NOT NULL,
+            parent_id    TEXT    NOT NULL,
+            source       TEXT    NOT NULL,
+            label        TEXT    NOT NULL DEFAULT '',
+            variant_key  TEXT    NOT NULL DEFAULT '',
+            payload      TEXT    NOT NULL,
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    # Live SOC Floor — hybrid real + practice queue / cases / shifts
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS soc_shift_sessions (
+            {id_col},
+            analyst_id    INTEGER NOT NULL,
+            started_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+            ended_at      TEXT,
+            handoff_note  TEXT    NOT NULL DEFAULT '',
+            stats_json    TEXT    NOT NULL DEFAULT '{{}}'
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS soc_practice_events (
+            {id_col},
+            client_tag             TEXT NOT NULL DEFAULT '',
+            client_id              TEXT NOT NULL DEFAULT '',
+            title                  TEXT NOT NULL DEFAULT '',
+            severity               TEXT NOT NULL DEFAULT 'MEDIUM',
+            detail                 TEXT NOT NULL DEFAULT '',
+            source_label           TEXT NOT NULL DEFAULT '',
+            hint                   TEXT NOT NULL DEFAULT '',
+            mitre                  TEXT NOT NULL DEFAULT '',
+            expected_disposition   TEXT NOT NULL DEFAULT '',
+            sla_due_at             TEXT,
+            status                 TEXT NOT NULL DEFAULT 'open',
+            created_at             TEXT NOT NULL DEFAULT (datetime('now')),
+            closed_at              TEXT
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS soc_cases (
+            {id_col},
+            source            TEXT NOT NULL DEFAULT '',
+            source_id         TEXT NOT NULL DEFAULT '',
+            client_tag        TEXT NOT NULL DEFAULT '',
+            severity          TEXT NOT NULL DEFAULT 'MEDIUM',
+            status            TEXT NOT NULL DEFAULT 'new',
+            title             TEXT NOT NULL DEFAULT '',
+            detail            TEXT NOT NULL DEFAULT '',
+            summary           TEXT NOT NULL DEFAULT '',
+            next_action       TEXT NOT NULL DEFAULT '',
+            enrich_notes      TEXT NOT NULL DEFAULT '',
+            disposition       TEXT NOT NULL DEFAULT '',
+            sla_due_at        TEXT,
+            analyst_id        INTEGER NOT NULL,
+            shift_id          INTEGER,
+            soar_incident_id  INTEGER,
+            ticket_no         TEXT NOT NULL DEFAULT '',
+            priority          INTEGER NOT NULL DEFAULT 3,
+            escalated_at      TEXT,
+            escalate_note     TEXT NOT NULL DEFAULT '',
+            created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+            closed_at         TEXT
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS soc_ticket_events (
+            {id_col},
+            case_id      INTEGER NOT NULL,
+            actor_kind   TEXT NOT NULL DEFAULT 'human',
+            event_type   TEXT NOT NULL DEFAULT '',
+            body         TEXT NOT NULL DEFAULT '',
+            created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    # Boundry Tickets migrations (existing DBs)
+    if not DATABASE_URL:
+        _soc_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(soc_cases)")]
+        if "ticket_no" not in _soc_cols:
+            db_run("ALTER TABLE soc_cases ADD COLUMN ticket_no TEXT NOT NULL DEFAULT ''")
+        if "priority" not in _soc_cols:
+            db_run("ALTER TABLE soc_cases ADD COLUMN priority INTEGER NOT NULL DEFAULT 3")
+        if "escalated_at" not in _soc_cols:
+            db_run("ALTER TABLE soc_cases ADD COLUMN escalated_at TEXT")
+        if "escalate_note" not in _soc_cols:
+            db_run("ALTER TABLE soc_cases ADD COLUMN escalate_note TEXT NOT NULL DEFAULT ''")
+    else:
+        db_run("ALTER TABLE soc_cases ADD COLUMN IF NOT EXISTS ticket_no TEXT NOT NULL DEFAULT ''")
+        db_run("ALTER TABLE soc_cases ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 3")
+        db_run("ALTER TABLE soc_cases ADD COLUMN IF NOT EXISTS escalated_at TEXT")
+        db_run("ALTER TABLE soc_cases ADD COLUMN IF NOT EXISTS escalate_note TEXT NOT NULL DEFAULT ''")
+    try:
+        db_run("UPDATE soc_cases SET status = 'new' WHERE status = 'open'")
+    except Exception:
+        pass
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_kql_progress (
+            {id_col},
+            analyst_id     INTEGER NOT NULL,
+            lesson_id      TEXT    NOT NULL,
+            lesson_done    INTEGER NOT NULL DEFAULT 0,
+            practice_ok    INTEGER NOT NULL DEFAULT 0,
+            practice_total INTEGER NOT NULL DEFAULT 0,
+            practice_ids   TEXT    NOT NULL DEFAULT '[]',
+            updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(analyst_id, lesson_id)
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_kql_quiz (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            lesson_id    TEXT    NOT NULL DEFAULT '',
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            correct      INTEGER NOT NULL DEFAULT 0,
+            total        INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    # Per-lesson KQL quizzes — migrate older single-track quiz rows.
+    if not DATABASE_URL:
+        _kql_quiz_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(career_kql_quiz)")]
+        if "lesson_id" not in _kql_quiz_cols:
+            db_run("ALTER TABLE career_kql_quiz ADD COLUMN lesson_id TEXT NOT NULL DEFAULT ''")
+    else:
+        db_run("ALTER TABLE career_kql_quiz ADD COLUMN IF NOT EXISTS lesson_id TEXT NOT NULL DEFAULT ''")
+
+    # Phase 1 micro-lessons: rebuild Sec+ progress/quiz if still domain-keyed (UNIQUE on domain_id).
+    # Old fat-domain progress is obsolete; lesson_id is the new key.
+    _sp_rebuild = False
+    if not DATABASE_URL:
+        _sp_prog_cols = [
+            r["name"] for r in db_fetchall("PRAGMA table_info(career_secplus_progress)")
+        ]
+        if _sp_prog_cols and "lesson_id" not in _sp_prog_cols:
+            _sp_rebuild = True
+        elif _sp_prog_cols:
+            # Detect old UNIQUE(analyst_id, domain_id) via sample insert pattern:
+            # if table exists but has no rows with lesson_id set and has domain_id rows, rebuild.
+            _sample = db_fetchone(
+                "SELECT lesson_id, domain_id FROM career_secplus_progress LIMIT 1"
+            )
+            if _sample is not None and not (_sample.get("lesson_id") or "").strip():
+                # Could be empty table with new schema OR old rows — check index uniqueness name.
+                _idxs = db_fetchall("PRAGMA index_list(career_secplus_progress)")
+                for _ix in _idxs:
+                    if not _ix.get("unique"):
+                        continue
+                    _ixinfo = db_fetchall(f"PRAGMA index_info({_ix['name']})")
+                    _ixcols = [c["name"] for c in _ixinfo]
+                    if _ixcols == ["analyst_id", "domain_id"]:
+                        _sp_rebuild = True
+                        break
+    if _sp_rebuild:
+        db_run("DROP TABLE IF EXISTS career_secplus_progress")
+        db_run("DROP TABLE IF EXISTS career_secplus_quiz")
+
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_secplus_progress (
+            {id_col},
+            analyst_id     INTEGER NOT NULL,
+            lesson_id      TEXT    NOT NULL DEFAULT '',
+            domain_id      TEXT    NOT NULL DEFAULT '',
+            lesson_done    INTEGER NOT NULL DEFAULT 0,
+            practice_ok    INTEGER NOT NULL DEFAULT 0,
+            practice_total INTEGER NOT NULL DEFAULT 0,
+            practice_ids   TEXT    NOT NULL DEFAULT '[]',
+            pbq_ok         INTEGER NOT NULL DEFAULT 0,
+            updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(analyst_id, lesson_id)
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS career_secplus_quiz (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            lesson_id    TEXT    NOT NULL DEFAULT '',
+            domain_id    TEXT    NOT NULL DEFAULT '',
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            correct      INTEGER NOT NULL DEFAULT 0,
+            total        INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    if DATABASE_URL:
+        db_run("ALTER TABLE career_secplus_progress ADD COLUMN IF NOT EXISTS lesson_id TEXT NOT NULL DEFAULT ''")
+        db_run("ALTER TABLE career_secplus_quiz ADD COLUMN IF NOT EXISTS lesson_id TEXT NOT NULL DEFAULT ''")
 
     # Persisted app settings (key/value) — e.g. the adjustable login rate limit.
     db_run(f"""
@@ -1537,6 +2080,52 @@ def analyst_required(f):
     return decorated
 
 
+_PRESENCE_EVENT_TYPES = (
+    "analyst_presence_arrived",
+    "analyst_presence_away",
+    "analyst_session_start",
+    "analyst_session_end",
+)
+
+
+def _log_analyst_presence(
+    kind: str,
+    *,
+    username: str,
+    user_id: int | None = None,
+    src_ip: str = "",
+) -> None:
+    """Write a desk-presence or Boundry-session marker into local SIEM."""
+    import time as _time
+    kind_l = (kind or "").strip().lower()
+    type_map = {
+        "arrived": ("analyst_presence_arrived", "Analyst marked Arrived (desk presence)."),
+        "away": ("analyst_presence_away", "Analyst marked Away (desk presence)."),
+        "session_start": ("analyst_session_start", "Boundry analyst session started."),
+        "session_end": ("analyst_session_end", "Boundry analyst session ended (logout)."),
+    }
+    if kind_l not in type_map:
+        return
+    event_type, base_desc = type_map[kind_l]
+    uname = (username or "").strip() or "unknown"
+    ip = (src_ip or "").strip()
+    try:
+        siem_collector.ingest_event(
+            source="flask_app",
+            event_id=f"PRES-{kind_l}-{_time.time_ns()}",
+            event_type=event_type,
+            severity="INFO",
+            host="localhost",
+            user=uname,
+            src_ip=ip,
+            description=f"{base_desc} user={uname}" + (f" ip={ip}" if ip else ""),
+            raw={"kind": kind_l, "user_id": user_id, "username": uname},
+            simulated=0,
+        )
+    except Exception as exc:
+        security_log.warning(f"PRESENCE_LOG_FAILED kind={kind_l} user={uname} error={exc}")
+
+
 def dashboard_required(f):
     """Allow analyst and demo roles — full operational view.
     Blocks client-portal accounts (reports-only) from the ops dashboard."""
@@ -1552,11 +2141,17 @@ def dashboard_required(f):
 
 @app.before_request
 def _client_mode_route_guard():
-    """Hard-block training/gamification routes for non-analyst roles."""
-    if session.get("role") in ("client", "demo"):
-        path = request.path
-        if path == "/profile" or path.startswith("/training") or path.startswith("/cissp"):
-            abort(404)
+    """M3: hard-block ops/training routes so demo/client cannot see real ops data."""
+    if session.get("role") not in ("client", "demo") and not session.get("is_demo"):
+        return None
+    path = request.path or "/"
+    if path.startswith("/static"):
+        return None
+    # Client/demo portal: reports (+ auth). Everything else ops/training is 404.
+    allowed_prefixes = ("/reports", "/logout", "/login", "/demo")
+    if path == "/" or any(path == p or path.startswith(p + "/") for p in allowed_prefixes):
+        return None
+    abort(404)
 
 
 # --- ROUTE 0: Demo (public — no login required) ---
@@ -1640,6 +2235,12 @@ def login():
             # Analyst + demo → Control Room (full ops dashboard)
             # Client → reports portal
             if session["role"] in ("analyst", "demo"):
+                _log_analyst_presence(
+                    "session_start",
+                    username=username,
+                    user_id=row["id"],
+                    src_ip=get_remote_address() or request.remote_addr or "",
+                )
                 return redirect(url_for("control_room"))
             return redirect(url_for("reports"))
         else:
@@ -1652,6 +2253,16 @@ def login():
 @app.route("/logout")
 def logout():
     """Clear the session and redirect to login."""
+    uname = session.get("username")
+    uid = session.get("user_id")
+    role = session.get("role")
+    if uname and role in ("analyst", "demo"):
+        _log_analyst_presence(
+            "session_end",
+            username=uname,
+            user_id=uid,
+            src_ip=get_remote_address() or request.remote_addr or "",
+        )
     session.clear()
     return redirect(url_for("login"))
 
@@ -1745,6 +2356,12 @@ def login_2fa():
             session["role"]     = role
             security_log.info(f"LOGIN_2FA_SUCCESS username={username} ip={request.remote_addr}")
             if role in ("analyst", "demo"):
+                _log_analyst_presence(
+                    "session_start",
+                    username=username,
+                    user_id=user_id,
+                    src_ip=get_remote_address() or request.remote_addr or "",
+                )
                 return redirect(url_for("control_room"))
             return redirect(url_for("reports"))
         else:
@@ -2808,6 +3425,46 @@ XP_REWARDS = {
     "daily_login":          15,   # First XP action of the day
     "streak_bonus":          5,   # Per-day streak multiplier (added once/day)
     "mitre_read":            5,   # Read a MITRE technique page
+    "shift_complete":       40,   # Finish a Career Lab shift simulator
+    "shift_bonus":          20,   # Shift score ≥ 80%
+    "portfolio_case":        5,   # Add a case to job portfolio
+    "spl_lesson":           15,   # Complete an SPL Learn lesson
+    "interview_guided":     12,   # Finish Guided walkthrough for one scenario
+    "interview_coached":    18,   # Finish Coached write-up for one scenario
+    "interview_live":       25,   # Complete a Live timed walkthrough
+    "interview_live_pass":  15,   # Bonus if Live score >= 70
+    "spl_practice":          8,   # Correct SPL practice answer
+    "spl_quiz":             40,   # Complete SPL Learn quiz
+    "spl_quiz_pass":        25,   # Score ≥ 70% on SPL quiz
+    "kql_lesson":           15,   # Complete a KQL Learn lesson
+    "kql_practice":          8,   # Correct KQL practice answer
+    "kql_quiz":             40,   # Complete KQL Learn quiz
+    "kql_quiz_pass":        25,   # Score ≥ 70% on KQL quiz
+    "secplus_lesson":       10,   # Complete a Security+ micro-lesson (Show me)
+    "secplus_practice":      6,   # Correct Security+ Help-me check
+    "secplus_pbq":           8,   # Correct Security+ Watch-me PBQ
+    "secplus_quiz":         20,   # Complete a Security+ per-lesson quiz
+    "secplus_quiz_pass":    15,   # Score ≥ 70% on a Security+ lesson quiz
+    "email_triage":        15,   # Submit an Email Triage Lab case
+    "email_triage_pass":   20,   # Pass Email Triage (≥70%)
+    "edr_triage":          15,   # Submit an EDR Console Lab case
+    "edr_triage_pass":     20,   # Pass EDR Console Lab (≥70%)
+    "logs_drill":          15,   # Submit a Log Source Lab drill
+    "logs_drill_pass":     20,   # Pass Log Source Lab (≥70%)
+    "intel_enrich":        15,   # Submit an IOC Enrichment Lab case
+    "intel_enrich_pass":   20,   # Pass IOC Enrichment (≥70%)
+    "net_lesson":          15,   # Complete a Net-for-SOC Show-me lesson
+    "net_practice":         8,   # Correct Net-for-SOC Help-me check
+    "net_quiz":            40,   # Complete a Net-for-SOC section quiz
+    "net_quiz_pass":       25,   # Score ≥ 70% on a Net-for-SOC lesson quiz
+    "net_drill":           15,   # Submit a Net-for-SOC Lab drill
+    "net_drill_pass":      20,   # Pass Net-for-SOC (≥70%)
+    "vuln_triage":         15,   # Submit a Vulnerability Queue case
+    "vuln_triage_pass":    20,   # Pass Vuln Queue (≥70%)
+    "sentinel_triage":     15,   # Submit a Sentinel Workspace Lab case
+    "sentinel_triage_pass": 20,  # Pass Sentinel Workspace Lab (≥70%)
+    "entra_triage":        15,   # Submit an Entra CA Lab case
+    "entra_triage_pass":   20,   # Pass Entra CA Lab (≥70%)
 }
 
 # Achievement badges — 20 total
@@ -3244,6 +3901,495 @@ def playbook_markdown(playbook_id):
     )
 
 
+# ── SOAR — Security Orchestration, Automation and Response ───────────────────
+
+@app.route("/soar")
+@analyst_required
+def soar_dashboard():
+    """SOAR queue — open incidents, pending approvals, playbook-linked actions."""
+    analyst_id = session["user_id"]
+    player = get_player_profile(analyst_id)
+    stats = soar_engine.stats()
+    incidents = soar_engine.list_incidents(limit=40)
+    # Attach pending counts for list cards
+    enriched = []
+    for inc in incidents:
+        detail = soar_engine.get_incident(inc["id"])
+        enriched.append(detail or dict(inc))
+    selected_id = request.args.get("id", type=int)
+    selected = soar_engine.get_incident(selected_id) if selected_id else None
+    if not selected and enriched:
+        # Prefer first with pending approvals
+        for e in enriched:
+            if e.get("pending_count"):
+                selected = e
+                break
+        if not selected:
+            selected = enriched[0]
+    return render_template(
+        "soar.html",
+        stats=stats,
+        incidents=enriched,
+        selected=selected,
+        player=player,
+        soar_enabled=_get_app_setting("soar_enabled", "1"),
+    )
+
+
+@app.route("/soar/actions/<int:action_id>/approve", methods=["POST"])
+@analyst_required
+def soar_approve_action(action_id):
+    """Approve and execute a pending SOAR action."""
+    result = soar_engine.approve_action(action_id, session.get("username", "analyst"))
+    security_log.info(
+        f"SOAR_APPROVE action={action_id} user={session.get('username')} ok={result.get('ok')}"
+    )
+    inc = db_fetchone(f"SELECT incident_id FROM soar_actions WHERE id = {PH}", (action_id,))
+    if result.get("ok") and inc and inc.get("incident_id"):
+        try:
+            soc_lab.note_soar_human_gate(
+                db_run, db_fetchone, int(inc["incident_id"]),
+                approved=True, actor=session.get("username", "analyst"), ph=PH,
+            )
+        except Exception:
+            pass
+    if request.accept_mimetypes.best == "application/json" or request.is_json:
+        return jsonify(result)
+    flash("Action approved and executed." if result.get("ok") else result.get("error", "Failed"),
+          "success" if result.get("ok") else "error")
+    return redirect(url_for("soar_dashboard", id=(inc or {}).get("incident_id")))
+
+
+@app.route("/soar/actions/<int:action_id>/reject", methods=["POST"])
+@analyst_required
+def soar_reject_action(action_id):
+    """Reject a pending SOAR action."""
+    data = request.get_json(silent=True) or {}
+    reason = data.get("reason") or request.form.get("reason", "")
+    result = soar_engine.reject_action(action_id, session.get("username", "analyst"), reason)
+    security_log.info(f"SOAR_REJECT action={action_id} user={session.get('username')}")
+    inc = db_fetchone(f"SELECT incident_id FROM soar_actions WHERE id = {PH}", (action_id,))
+    if result.get("ok") and inc and inc.get("incident_id"):
+        try:
+            soc_lab.note_soar_human_gate(
+                db_run, db_fetchone, int(inc["incident_id"]),
+                approved=False, actor=session.get("username", "analyst"),
+                reason=reason, ph=PH,
+            )
+        except Exception:
+            pass
+    if request.accept_mimetypes.best == "application/json" or request.is_json:
+        return jsonify(result)
+    flash("Action rejected.", "success")
+    return redirect(url_for("soar_dashboard", id=(inc or {}).get("incident_id")))
+
+
+@app.route("/soar/incidents/<int:incident_id>/close", methods=["POST"])
+@analyst_required
+def soar_close_incident(incident_id):
+    """Close a SOAR incident without requiring finding resolve."""
+    result = soar_engine.close_incident(incident_id, session.get("username", "analyst"))
+    security_log.info(f"SOAR_CLOSE incident={incident_id} user={session.get('username')}")
+    if request.accept_mimetypes.best == "application/json" or request.is_json:
+        return jsonify(result)
+    flash("Incident closed.", "success")
+    return redirect(url_for("soar_dashboard"))
+
+
+@app.route("/api/soar/incidents/from-finding/<int:finding_id>", methods=["POST"])
+@analyst_required
+def api_soar_from_finding(finding_id):
+    """Manually open a SOAR incident from any system_finding (force=True)."""
+    finding = db_fetchone(f"SELECT * FROM system_findings WHERE id = {PH}", (finding_id,))
+    if not finding:
+        return jsonify({"error": "Finding not found"}), 404
+    iid = soar_engine.open_incident_for_finding(finding_id, force=True)
+    if not iid:
+        return jsonify({"error": "Could not open incident (already open or SOAR disabled)"}), 400
+    security_log.info(
+        f"SOAR_MANUAL_OPEN finding={finding_id} incident={iid} user={session.get('username')}"
+    )
+    # Optional Boundry Ticket link (from SOC Floor)
+    data = request.get_json(silent=True) or {}
+    case_id = data.get("case_id")
+    analyst_id = session.get("user_id")
+    if case_id and analyst_id:
+        try:
+            soc_lab.link_soar_to_case(
+                db_run, db_fetchone, int(case_id), analyst_id, int(iid), ph=PH,
+            )
+        except Exception:
+            pass
+    return jsonify({"ok": True, "incident_id": iid})
+
+
+@app.route("/api/soar/stats")
+@analyst_required
+def api_soar_stats():
+    """JSON counters for Control Room widgets."""
+    return jsonify(soar_engine.stats())
+
+
+# --- Live SOC Floor (hybrid real + practice queue) ---
+
+@app.route("/soc")
+@analyst_required
+def soc_floor():
+    """Field-style SOC floor: alert queue, Boundry Tickets workspace, client context."""
+    import ticket_fields as _ticket_fields
+    analyst_id = session.get("user_id")
+    active = soc_lab.get_active_shift(db_fetchone, analyst_id, ph=PH) if analyst_id else None
+    strip = (
+        soc_lab.ops_status_strip(db_fetchone, analyst_id, ph=PH, active_shift=active)
+        if analyst_id
+        else {}
+    )
+    return render_template(
+        "soc_floor.html",
+        dispositions=soc_lab.DISPOSITIONS,
+        active_shift=active,
+        ops_strip=strip,
+        ticket_fields=_ticket_fields.fields_for_live_ops(),
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/soc/tickets")
+@analyst_required
+def soc_tickets_list():
+    """Boundry Tickets history / filter list."""
+    analyst_id = session.get("user_id")
+    status = (request.args.get("status") or "open").strip()
+    client = (request.args.get("client") or "").strip()
+    q = (request.args.get("q") or "").strip()
+    tickets = soc_lab.list_tickets(
+        db_fetchall, analyst_id,
+        status=status, client=client, q=q, ph=PH,
+    )
+    active = soc_lab.get_active_shift(db_fetchone, analyst_id, ph=PH) if analyst_id else None
+    strip = (
+        soc_lab.ops_status_strip(db_fetchone, analyst_id, ph=PH, active_shift=active)
+        if analyst_id
+        else {}
+    )
+    return render_template(
+        "soc_tickets.html",
+        tickets=tickets,
+        status=status,
+        client=client,
+        q=q,
+        ops_strip=strip,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/ops/presence", methods=["GET", "POST"])
+@analyst_required
+def api_ops_presence():
+    """Manual desk presence (Arrived/Away) + recent presence/session SIEM markers."""
+    username = session.get("username") or ""
+    user_id = session.get("user_id")
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        action = (data.get("action") or "").strip().lower()
+        if action not in ("arrived", "away"):
+            return jsonify({"ok": False, "error": "action must be arrived or away"}), 400
+        session["desk_presence"] = action
+        session["desk_presence_at"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        _log_analyst_presence(
+            action,
+            username=username,
+            user_id=user_id,
+            src_ip=get_remote_address() or request.remote_addr or "",
+        )
+        return jsonify({
+            "ok": True,
+            "presence": action,
+            "at": session["desk_presence_at"],
+        })
+
+    # GET — current session marker + recent SIEM rows for this analyst
+    placeholders = ",".join(PH for _ in _PRESENCE_EVENT_TYPES)
+    recent = db_fetchall(
+        f"SELECT id, created_at, event_type, severity, user_account, src_ip, description "
+        f"FROM siem_events WHERE event_type IN ({placeholders}) "
+        f"AND user_account = {PH} ORDER BY id DESC LIMIT 10",
+        (*_PRESENCE_EVENT_TYPES, username),
+    ) or []
+    return jsonify({
+        "ok": True,
+        "presence": session.get("desk_presence") or "unknown",
+        "at": session.get("desk_presence_at") or "",
+        "recent": recent,
+        "note": (
+            "Presence is what you mark plus Boundry login. "
+            "It is not Windows unlock."
+        ),
+    })
+
+
+@app.route("/api/soc/queue")
+@analyst_required
+def api_soc_queue():
+    """Unified Real + Practice alert queue."""
+    lane = (request.args.get("lane") or "all").strip().lower()
+    items = soc_lab.build_queue(db_fetchall, lane=lane, ph=PH)
+    return jsonify({"ok": True, "lane": lane, "items": items, "count": len(items)})
+
+
+@app.route("/api/soc/practice/inject", methods=["POST"])
+@analyst_required
+def api_soc_practice_inject():
+    """Inject synthetic practice-client alerts into the floor queue."""
+    data = request.get_json(silent=True) or {}
+    n = soc_lab.inject_practice_events(
+        db_run, count=int(data.get("count") or 5), ph=PH, db_fetchall=db_fetchall,
+    )
+    return jsonify({"ok": True, "injected": n})
+
+
+@app.route("/api/soc/shift/start", methods=["POST"])
+@analyst_required
+def api_soc_shift_start():
+    """Start Live Shift; seed practice alerts if practice lane is empty."""
+    analyst_id = session.get("user_id")
+    if not analyst_id:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+    result = soc_lab.start_shift(db_run, db_fetchone, analyst_id, ph=PH)
+    injected = 0
+    practice_open = db_fetchone(
+        "SELECT COUNT(*) AS c FROM soc_practice_events WHERE status = 'open'"
+    )
+    if int((practice_open or {}).get("c") or 0) < 3:
+        injected = soc_lab.inject_practice_events(
+            db_run, count=5, ph=PH, db_fetchall=db_fetchall,
+        )
+    result["injected"] = injected
+    return jsonify(result)
+
+
+@app.route("/api/soc/shift/end", methods=["POST"])
+@analyst_required
+def api_soc_shift_end():
+    """End Live Shift with handoff note."""
+    analyst_id = session.get("user_id")
+    data = request.get_json(silent=True) or {}
+    result = soc_lab.end_shift(
+        db_run, db_fetchone, db_fetchall, analyst_id,
+        handoff_note=data.get("handoff_note") or "",
+        ph=PH,
+    )
+    if result.get("ok"):
+        try:
+            award_xp(analyst_id, 40, "Live SOC shift complete", "soc")
+            rub = result.get("handoff_rubric") or {}
+            if int(rub.get("score") or 0) >= 75:
+                award_xp(analyst_id, 10, "Strong SOC handoff (G14)", "soc")
+        except Exception:
+            pass
+    return jsonify(result)
+
+
+@app.route("/api/soc/cases/open", methods=["POST"])
+@analyst_required
+def api_soc_cases_open():
+    """Open (or resume) a Boundry Ticket from a queue item."""
+    analyst_id = session.get("user_id")
+    data = request.get_json(silent=True) or {}
+    result = soc_lab.open_case(
+        db_run, db_fetchone, analyst_id,
+        source=data.get("source") or "",
+        source_id=str(data.get("source_id") or ""),
+        ph=PH,
+    )
+    if result.get("ok") and result.get("case"):
+        c = result["case"]
+        item = {
+            "title": c.get("title"),
+            "detail": c.get("detail"),
+            "client_tag": c.get("client_tag"),
+            "severity": c.get("severity"),
+            "is_practice": c.get("is_practice"),
+            "src_ip": "",
+            "href_siem": "/siem",
+            "href_spl": "/siem/query",
+            "href_findings": "/scan/findings",
+        }
+        if c.get("source") == "siem":
+            ev = db_fetchone(
+                f"SELECT src_ip FROM siem_events WHERE id = {PH}",
+                (int(c["source_id"]),),
+            )
+            item["src_ip"] = (ev or {}).get("src_ip") or ""
+        result["context"] = soc_lab.context_for_item(item)
+        result["timeline"] = soc_lab.get_ticket_timeline(
+            db_fetchall, int(c["id"]), ph=PH,
+        )
+    return jsonify(result)
+
+
+@app.route("/api/soc/cases/<int:case_id>", methods=["GET"])
+@analyst_required
+def api_soc_cases_get(case_id: int):
+    """Ticket + timeline bundle."""
+    analyst_id = session.get("user_id")
+    return jsonify(
+        soc_lab.get_case_bundle(db_fetchone, db_fetchall, case_id, analyst_id, ph=PH)
+    )
+
+
+@app.route("/api/soc/cases/<int:case_id>", methods=["POST"])
+@analyst_required
+def api_soc_cases_update(case_id: int):
+    """Update ticket hygiene fields."""
+    analyst_id = session.get("user_id")
+    data = request.get_json(silent=True) or {}
+    result = soc_lab.update_case(db_run, db_fetchone, case_id, analyst_id, data, ph=PH)
+    if result.get("ok"):
+        result["timeline"] = soc_lab.get_ticket_timeline(db_fetchall, case_id, ph=PH)
+    return jsonify(result)
+
+
+@app.route("/api/soc/cases/<int:case_id>/transition", methods=["POST"])
+@analyst_required
+def api_soc_cases_transition(case_id: int):
+    """Boundry Tickets state transition (working / waiting / escalated / closed)."""
+    analyst_id = session.get("user_id")
+    data = request.get_json(silent=True) or {}
+    result = soc_lab.transition_case(
+        db_run, db_fetchone, case_id, analyst_id,
+        to_status=data.get("to") or data.get("status") or "",
+        note=data.get("note") or "",
+        disposition=data.get("disposition"),
+        summary=data.get("summary"),
+        next_action=data.get("next_action"),
+        ph=PH,
+    )
+    if result.get("ok"):
+        result["timeline"] = soc_lab.get_ticket_timeline(db_fetchall, case_id, ph=PH)
+        if (data.get("to") or data.get("status") or "").lower() == "closed":
+            try:
+                award_xp(analyst_id, 15, "Boundry Ticket closed", "soc")
+            except Exception:
+                pass
+    return jsonify(result)
+
+
+@app.route("/api/soc/cases/<int:case_id>/comment", methods=["POST"])
+@analyst_required
+def api_soc_cases_comment(case_id: int):
+    """Add human comment to ticket timeline."""
+    analyst_id = session.get("user_id")
+    data = request.get_json(silent=True) or {}
+    result = soc_lab.add_ticket_comment(
+        db_run, db_fetchone, db_fetchall, case_id, analyst_id,
+        body=data.get("body") or data.get("comment") or "",
+        ph=PH,
+    )
+    return jsonify(result)
+
+
+@app.route("/api/soc/cases/<int:case_id>/close", methods=["POST"])
+@analyst_required
+def api_soc_cases_close(case_id: int):
+    """Close ticket with disposition + summary + next_action."""
+    analyst_id = session.get("user_id")
+    data = request.get_json(silent=True) or {}
+    result = soc_lab.close_case(
+        db_run, db_fetchone, case_id, analyst_id,
+        disposition=data.get("disposition") or "",
+        summary=data.get("summary") or "",
+        next_action=data.get("next_action") or "",
+        ph=PH,
+    )
+    if result.get("ok"):
+        result["timeline"] = soc_lab.get_ticket_timeline(db_fetchall, case_id, ph=PH)
+        try:
+            award_xp(analyst_id, 15, "Boundry Ticket closed", "soc")
+        except Exception:
+            pass
+    return jsonify(result)
+
+
+@app.route("/api/soc/cases/<int:case_id>/resolve-finding", methods=["POST"])
+@analyst_required
+def api_soc_resolve_finding(case_id: int):
+    """Mark linked system_finding resolved (real lane only)."""
+    analyst_id = session.get("user_id")
+    row = db_fetchone(
+        f"SELECT * FROM soc_cases WHERE id = {PH} AND analyst_id = {PH}",
+        (case_id, analyst_id),
+    )
+    if not row:
+        return jsonify({"ok": False, "error": "Ticket not found"})
+    if row.get("source") != "finding":
+        return jsonify({"ok": False, "error": "Only finding-sourced tickets can resolve a finding"})
+    db_run(
+        f"UPDATE system_findings SET resolved = 1, resolved_at = datetime('now') "
+        f"WHERE id = {PH}",
+        (int(row["source_id"]),),
+    )
+    try:
+        soc_lab.append_ticket_event(
+            db_run, case_id,
+            actor_kind="human",
+            event_type="finding_resolved",
+            body="Linked system finding marked resolved.",
+            ph=PH,
+        )
+    except Exception:
+        pass
+    return jsonify({"ok": True})
+
+
+@app.route("/api/soc/tickets")
+@analyst_required
+def api_soc_tickets():
+    """JSON ticket list for filters / floor widgets."""
+    analyst_id = session.get("user_id")
+    tickets = soc_lab.list_tickets(
+        db_fetchall, analyst_id,
+        status=(request.args.get("status") or "").strip(),
+        client=(request.args.get("client") or "").strip(),
+        q=(request.args.get("q") or "").strip(),
+        ph=PH,
+    )
+    return jsonify({"ok": True, "tickets": tickets, "count": len(tickets)})
+
+
+@app.route("/api/soc/enrich", methods=["POST"])
+@analyst_required
+def api_soc_enrich():
+    """Local IOC enrich stub for ticket workspace; logs to timeline when case_id set."""
+    data = request.get_json(silent=True) or {}
+    result = soc_lab.enrich_ioc(data.get("ioc") or "")
+    case_id = data.get("case_id")
+    analyst_id = session.get("user_id")
+    if result.get("ok") and case_id and analyst_id:
+        row = db_fetchone(
+            f"SELECT id FROM soc_cases WHERE id = {PH} AND analyst_id = {PH}",
+            (int(case_id), analyst_id),
+        )
+        if row:
+            try:
+                soc_lab.append_ticket_event(
+                    db_run, int(case_id),
+                    actor_kind="system",
+                    event_type="enrich",
+                    body=(
+                        f"IOC {result.get('ioc') or data.get('ioc')}: "
+                        f"{result.get('verdict') or '?'} — {result.get('summary') or ''}"
+                    )[:2000],
+                    ph=PH,
+                )
+                result["timeline"] = soc_lab.get_ticket_timeline(
+                    db_fetchall, int(case_id), ph=PH,
+                )
+            except Exception:
+                pass
+    return jsonify(result)
+
+
 # --- ROUTE 4c: MITRE ATT&CK Technique Detail Pages ---
 @app.route("/mitre/<technique_id>")
 @analyst_required
@@ -3267,6 +4413,3971 @@ def mitre_detail(technique_id):
         all_techniques=all_techniques,
         cissp_domains_for_technique=cissp_domains_for_technique,
     )
+
+
+# --- ROUTE 4c: GTA SOC Career Lab ---
+
+def _career_activity_counts(analyst_id: int) -> dict:
+    """Derive skill-track progress from existing Boundry activity + shift sims."""
+    siem_n = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM siem_events "
+        f"WHERE dismissed = 1 OR correlated_finding_id IS NOT NULL"
+    )
+    shift_alert_count = 0
+    done_shifts = db_fetchall(
+        f"SELECT alerts_json FROM career_shift_sessions "
+        f"WHERE analyst_id = {PH} AND status = 'complete'",
+        (analyst_id,),
+    )
+    for row in done_shifts:
+        shift_alert_count += len(career_lab.alerts_from_json(row.get("alerts_json")))
+
+    siem_base = int((siem_n or {}).get("c") or 0)
+    reports_all = db_fetchone(f"SELECT COUNT(*) AS c FROM reports")
+    training_n = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM training_attempts "
+        f"WHERE analyst_id = {PH} AND submitted_at IS NOT NULL",
+        (analyst_id,),
+    )
+    mitre_n = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM training_mitre_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    findings_n = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM system_findings WHERE resolved = 1"
+    )
+    soar_n = db_fetchone(f"SELECT COUNT(*) AS c FROM soar_incidents")
+    portfolio_n = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM career_portfolio_cases WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    auth_n = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM siem_events "
+        f"WHERE event_type LIKE '%logon%' OR event_type LIKE '%auth%' "
+        f"OR event_id IN ('4625','4624','4648','4720')"
+    )
+    shift_complete_n = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM career_shift_sessions "
+        f"WHERE analyst_id = {PH} AND status = 'complete'",
+        (analyst_id,),
+    )
+    interview_n = db_fetchone(
+        f"SELECT "
+        f"COALESCE(SUM(guided_done),0)+COALESCE(SUM(coached_done),0)+"
+        f"COALESCE(SUM(live_done),0) AS c "
+        f"FROM career_interview_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+
+    return {
+        "siem": siem_base + shift_alert_count + int((shift_complete_n or {}).get("c") or 0) * 2,
+        "ir": int((training_n or {}).get("c") or 0) + int((reports_all or {}).get("c") or 0),
+        "mitre": int((mitre_n or {}).get("c") or 0) + shift_alert_count // 2,
+        "endpoint": int((findings_n or {}).get("c") or 0),
+        "identity": int((auth_n or {}).get("c") or 0) // 5 + shift_alert_count // 3,
+        "automation": int((soar_n or {}).get("c") or 0),
+        "reporting": int((portfolio_n or {}).get("c") or 0) + min(15, int((reports_all or {}).get("c") or 0)),
+        "interview": int((interview_n or {}).get("c") or 0),
+    }
+
+
+@app.route("/career")
+@analyst_required
+def career_lab_hub():
+    """GTA SOC Career Skills Lab — tracks, readiness, shift entry, portfolio."""
+    analyst_id = session["user_id"]
+    counts = _career_activity_counts(analyst_id)
+    tracks = career_lab.compute_track_stats(counts)
+    readiness = career_lab.overall_readiness(tracks)
+
+    shift_rows = db_fetchall(
+        f"SELECT mode, score_pct, completed_at FROM career_shift_sessions "
+        f"WHERE analyst_id = {PH} AND status = 'complete' "
+        f"ORDER BY completed_at DESC LIMIT 8",
+        (analyst_id,),
+    )
+    shift_stats = db_fetchone(
+        f"SELECT COUNT(*) AS completed, "
+        f"COALESCE(AVG(score_pct), 0) AS avg_pct "
+        f"FROM career_shift_sessions WHERE analyst_id = {PH} AND status = 'complete'",
+        (analyst_id,),
+    )
+    portfolio_count = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM career_portfolio_cases WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    portfolio_mitre = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM career_portfolio_cases "
+        f"WHERE analyst_id = {PH} AND mitre_techniques IS NOT NULL "
+        f"AND TRIM(mitre_techniques) != ''",
+        (analyst_id,),
+    )
+
+    # SPL prove-it
+    spl_prog = db_fetchall(
+        f"SELECT lesson_id, lesson_done FROM career_spl_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    spl_done_n = sum(1 for r in spl_prog if r.get("lesson_done"))
+    spl_quiz_pass = db_fetchone(
+        f"SELECT 1 AS ok FROM career_spl_quiz "
+        f"WHERE analyst_id = {PH} AND passed = 1 LIMIT 1",
+        (analyst_id,),
+    )
+
+    # KQL prove-it — all lessons read + every section quiz passed
+    kql_prog = db_fetchall(
+        f"SELECT lesson_id, lesson_done FROM career_kql_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    kql_done_n = sum(1 for r in kql_prog if r.get("lesson_done"))
+    kql_quiz_passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_kql_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    kql_quiz_ids = set(kql_learn.lesson_ids())
+    kql_quizzes_done = len(kql_quiz_passed_ids & kql_quiz_ids)
+    kql_quizzes_total = len(kql_quiz_ids)
+    kql_quiz_pass = kql_quizzes_total > 0 and kql_quizzes_done >= kql_quizzes_total
+
+    # Security+ prove-it — N/micro-lesson quizzes ≥70% (domain green = all lessons in domain)
+    secplus_passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_secplus_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    secplus_ids = set(secplus_learn.lesson_ids())
+    secplus_passed_n = len(secplus_passed_ids & secplus_ids)
+    secplus_total = len(secplus_ids)
+    secplus_weak = secplus_learn.weakest_lesson(secplus_passed_ids & secplus_ids)
+    secplus_domains_green = len(secplus_learn.domains_fully_passed(secplus_passed_ids & secplus_ids))
+
+    # Net-for-SOC prove-it — Show-me done + every lesson quiz ≥70% (mirrors KQL)
+    net_prog = db_fetchall(
+        f"SELECT lesson_id, lesson_done FROM career_net_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    net_done_n = sum(1 for r in net_prog if r.get("lesson_done"))
+    net_quiz_passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_net_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    net_quiz_ids = set(net_learn.lesson_ids())
+    net_quizzes_done = len(net_quiz_passed_ids & net_quiz_ids)
+    net_quizzes_total = len(net_quiz_ids)
+    net_quiz_pass = net_quizzes_total > 0 and net_quizzes_done >= net_quizzes_total
+
+    # Interview prove-it
+    iv = db_fetchone(
+        f"SELECT "
+        f"COALESCE(SUM(guided_done),0) AS guided, "
+        f"COALESCE(SUM(coached_done),0) AS coached, "
+        f"COALESCE(SUM(live_done),0) AS live "
+        f"FROM career_interview_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+
+    shifts_n = int((shift_stats or {}).get("completed") or 0)
+    port_n = int((portfolio_count or {}).get("c") or 0)
+    prove_it_gates = career_lab.build_prove_it_gates(
+        spl_lessons_done=spl_done_n,
+        spl_lessons_total=len(spl_learn.LESSONS),
+        spl_quiz_passed=bool(spl_quiz_pass),
+        kql_lessons_done=kql_done_n,
+        kql_lessons_total=len(kql_learn.LESSONS),
+        kql_quiz_passed=bool(kql_quiz_pass),
+        kql_quizzes_done=kql_quizzes_done,
+        kql_quizzes_total=kql_quizzes_total,
+        secplus_lessons_passed=secplus_passed_n,
+        secplus_lessons_total=secplus_total,
+        secplus_domains_passed=secplus_domains_green,
+        secplus_domains_total=len(secplus_learn.DOMAINS),
+        net_lessons_done=net_done_n,
+        net_lessons_total=len(net_learn.LESSONS),
+        net_quiz_passed=bool(net_quiz_pass),
+        net_quizzes_done=net_quizzes_done,
+        net_quizzes_total=net_quizzes_total,
+        interview_guided=int((iv or {}).get("guided") or 0),
+        interview_coached=int((iv or {}).get("coached") or 0),
+        interview_live=int((iv or {}).get("live") or 0),
+        interview_total=len(interview_gym.SCENARIOS),
+        shifts_completed=shifts_n,
+        portfolio_count=port_n,
+        portfolio_with_mitre=int((portfolio_mitre or {}).get("c") or 0),
+    )
+
+    player = get_player_profile(analyst_id)
+    study_streak = int((player or {}).get("streak_days") or 0)
+    last_xp = ((player or {}).get("last_xp_date") or "")[:10]
+
+    return render_template(
+        "career.html",
+        tracks=tracks,
+        readiness=readiness,
+        shift_modes=career_lab.SHIFT_MODES,
+        recent_shifts=shift_rows,
+        shift_completed=shifts_n,
+        shift_avg=round(float((shift_stats or {}).get("avg_pct") or 0)),
+        portfolio_count=port_n,
+        study_streak=study_streak,
+        last_xp_date=last_xp,
+        today_drill=career_lab.point_saturday_secplus_cta(
+            career_lab.get_today_drill(),
+            secplus_weak,
+        ),
+        week_plan=career_lab.get_week_plan(),
+        prove_it_gates=prove_it_gates,
+        application_framing=career_lab.APPLICATION_FRAMING,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/skills")
+@analyst_required
+def career_skills_board():
+    """Job Skills board — proficient, building, and adjacent recommendations."""
+    analyst_id = session["user_id"]
+
+    secplus_passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_secplus_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    secplus_ids = set(secplus_learn.lesson_ids())
+    secplus_passed_n = len(secplus_passed_ids & secplus_ids)
+
+    spl_prog = db_fetchall(
+        f"SELECT lesson_id, lesson_done FROM career_spl_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    spl_done_n = sum(1 for r in spl_prog if r.get("lesson_done"))
+    spl_quiz_pass = bool(
+        db_fetchone(
+            f"SELECT 1 AS ok FROM career_spl_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 LIMIT 1",
+            (analyst_id,),
+        )
+    )
+
+    kql_quiz_passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_kql_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    kql_quiz_ids = set(kql_learn.lesson_ids())
+
+    net_quiz_passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_net_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    net_quiz_ids = set(net_learn.lesson_ids())
+
+    iv = db_fetchone(
+        f"SELECT "
+        f"COALESCE(SUM(guided_done),0) AS guided, "
+        f"COALESCE(SUM(coached_done),0) AS coached, "
+        f"COALESCE(SUM(live_done),0) AS live "
+        f"FROM career_interview_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    ) or {}
+
+    signals = career_skills.gather_signals(
+        db_fetchone,
+        db_fetchall,
+        PH,
+        analyst_id,
+        secplus_passed_n=secplus_passed_n,
+        secplus_total=max(len(secplus_ids), 1),
+        spl_lessons_done=spl_done_n,
+        spl_lessons_total=max(len(spl_learn.LESSONS), 1),
+        spl_quiz_passed=spl_quiz_pass,
+        kql_quizzes_done=len(kql_quiz_passed_ids & kql_quiz_ids),
+        kql_quizzes_total=max(len(kql_quiz_ids), 1),
+        net_quizzes_done=len(net_quiz_passed_ids & net_quiz_ids),
+        net_quizzes_total=max(len(net_quiz_ids), 1),
+        interview_guided=int(iv.get("guided") or 0),
+        interview_coached=int(iv.get("coached") or 0),
+        interview_live=int(iv.get("live") or 0),
+        interview_total=max(len(interview_gym.SCENARIOS), 1),
+    )
+    board = career_skills.build_skill_board(signals)
+    player = get_player_profile(analyst_id)
+    return render_template(
+        "career_skills.html",
+        board=board,
+        study_streak=int((player or {}).get("streak_days") or 0),
+        last_xp_date=((player or {}).get("last_xp_date") or "")[:10],
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/comms")
+@analyst_required
+def career_comms_hub():
+    """Comms Gym hub — G15 stakeholder note drills."""
+    analyst_id = session["user_id"]
+    rows = db_fetchall(
+        f"SELECT scenario_id, score_pct, passed FROM career_comms_attempts "
+        f"WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in rows or []:
+        sid = row.get("scenario_id")
+        if not sid:
+            continue
+        prev = best.get(sid)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[sid] = row
+    return render_template(
+        "career_comms.html",
+        track_title=comms_lab.TRACK_TITLE,
+        track_blurb=comms_lab.TRACK_BLURB,
+        primer=comms_lab.PRIMER,
+        scenarios=comms_lab.list_scenarios(),
+        best_by_id=best,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/comms/<scenario_id>")
+@analyst_required
+def career_comms_case(scenario_id: str):
+    """One Comms Gym draft scenario."""
+    sc = comms_lab.get_scenario(scenario_id)
+    if not sc:
+        abort(404)
+    audience_label = next(
+        (a["label"] for a in comms_lab.AUDIENCES if a["id"] == sc["audience"]),
+        sc["audience"],
+    )
+    return render_template(
+        "career_comms_case.html",
+        scenario=sc,
+        audience_label=audience_label,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/comms/grade", methods=["POST"])
+@analyst_required
+def api_career_comms_grade():
+    """Grade Comms Gym draft; award XP on pass."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    scenario_id = (data.get("scenario_id") or "").strip()
+    draft = data.get("draft") or ""
+    result = comms_lab.grade_draft(scenario_id, draft)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_comms_attempts "
+        f"(analyst_id, scenario_id, score_pct, passed, draft_text) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            scenario_id,
+            result["pct"],
+            1 if result.get("passed") else 0,
+            (draft or "")[:4000],
+        ),
+    )
+    try:
+        award_xp(analyst_id, 8, "Comms Gym draft", "career")
+        if result.get("passed"):
+            award_xp(analyst_id, 15, "Comms Gym pass", "career")
+    except Exception:
+        pass
+    return jsonify(result)
+
+
+def _career_best_by_scenario(table: str, analyst_id: int) -> dict:
+    """Best score_pct row per scenario_id for a career_*_attempts table."""
+    rows = db_fetchall(
+        f"SELECT scenario_id, score_pct, passed FROM {table} WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in rows or []:
+        sid = row.get("scenario_id")
+        if not sid:
+            continue
+        prev = best.get(sid)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[sid] = row
+    return best
+
+
+def _career_record_attempt(
+    table: str,
+    analyst_id: int,
+    scenario_id: str,
+    result: dict,
+    answers: dict | None = None,
+) -> None:
+    """Insert graded attempt + XP for Futureproof Career drills."""
+    import json as _json
+    db_run(
+        f"INSERT INTO {table} "
+        f"(analyst_id, scenario_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            scenario_id,
+            int(result.get("pct") or 0),
+            1 if result.get("passed") else 0,
+            _json.dumps(answers or {})[:8000],
+        ),
+    )
+    try:
+        award_xp(analyst_id, 8, f"Career drill ({table})", "career")
+        if result.get("passed"):
+            award_xp(analyst_id, 15, f"Career pass ({table})", "career")
+    except Exception:
+        pass
+
+
+# --- Futureproof Career: SOAR / Oversight / Tune / Metrics / Automation / Policy ---
+
+@app.route("/career/soar")
+@analyst_required
+def career_soar_hub():
+    """G13 SOAR enrich→approve→contain Career prove-it hub."""
+    analyst_id = session["user_id"]
+    return render_template(
+        "career_fp_hub.html",
+        track_title=soar_career_lab.TRACK_TITLE,
+        track_blurb=soar_career_lab.TRACK_BLURB,
+        learn_note=soar_career_lab.LEARN_NOTE,
+        learn_href=soar_career_lab.SECPLUS_LESSON_HREF,
+        primer=soar_career_lab.PRIMER,
+        accent="#ff9900",
+        hub_href="/career/soar",
+        gap_id="G13",
+        items=soar_career_lab.list_scenarios(),
+        best_by_id=_career_best_by_scenario("career_soar_attempts", analyst_id),
+        item_path_prefix="/career/soar/",
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/soar/<scenario_id>")
+@analyst_required
+def career_soar_case(scenario_id: str):
+    """Multi-step SOAR chain prove-it."""
+    sc = soar_career_lab.get_scenario(scenario_id)
+    if not sc:
+        abort(404)
+    return render_template(
+        "career_soar_case.html",
+        scenario=sc,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/soar/grade", methods=["POST"])
+@analyst_required
+def api_career_soar_grade():
+    """Grade SOAR chain prove-it."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    sid = (data.get("scenario_id") or "").strip()
+    tf_raw = data.get("ticket_fields")
+    ticket_fields_submitted = tf_raw if isinstance(tf_raw, dict) else None
+    result = soar_career_lab.grade_chain(
+        sid,
+        enriched=bool(data.get("enriched")),
+        decision=(data.get("decision") or "").strip(),
+        reason=data.get("reason") or "",
+        ticket_note=data.get("ticket_note") or "",
+        ticket_fields_submitted=ticket_fields_submitted,
+    )
+    if not result.get("ok"):
+        return jsonify(result), 400
+    _career_record_attempt("career_soar_attempts", analyst_id, sid, result, data)
+    return jsonify(result)
+
+
+@app.route("/career/oversight")
+@analyst_required
+def career_oversight_hub():
+    """G21 Autopilot Oversight Gym hub."""
+    analyst_id = session["user_id"]
+    return render_template(
+        "career_fp_hub.html",
+        track_title=oversight_lab.TRACK_TITLE,
+        track_blurb=oversight_lab.TRACK_BLURB,
+        primer=oversight_lab.PRIMER,
+        accent="#a78bfa",
+        hub_href="/career/oversight",
+        gap_id="G21",
+        items=oversight_lab.list_cases(),
+        best_by_id=_career_best_by_scenario("career_oversight_attempts", analyst_id),
+        item_path_prefix="/career/oversight/",
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/oversight/<case_id>")
+@analyst_required
+def career_oversight_case(case_id: str):
+    """One oversight case: agree/override + evidence."""
+    sc = oversight_lab.get_case(case_id)
+    if not sc:
+        abort(404)
+    return render_template(
+        "career_oversight_case.html",
+        scenario=sc,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/oversight/grade", methods=["POST"])
+@analyst_required
+def api_career_oversight_grade():
+    """Grade oversight agree/override."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    sid = (data.get("case_id") or data.get("scenario_id") or "").strip()
+    result = oversight_lab.grade_oversight(
+        sid,
+        action=(data.get("action") or "").strip(),
+        evidence_id=(data.get("evidence_id") or "").strip(),
+    )
+    if not result.get("ok"):
+        return jsonify(result), 400
+    _career_record_attempt("career_oversight_attempts", analyst_id, sid, result, data)
+    return jsonify(result)
+
+
+@app.route("/career/tune")
+@analyst_required
+def career_tune_hub():
+    """G17 Tune-or-tolerate hub."""
+    analyst_id = session["user_id"]
+    return render_template(
+        "career_fp_hub.html",
+        track_title=tune_lab.TRACK_TITLE,
+        track_blurb=tune_lab.TRACK_BLURB,
+        primer=tune_lab.PRIMER,
+        accent="#ffcc00",
+        hub_href="/career/tune",
+        gap_id="G17",
+        items=tune_lab.list_drills(),
+        best_by_id=_career_best_by_scenario("career_tune_attempts", analyst_id),
+        item_path_prefix="/career/tune/",
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/tune/<drill_id>")
+@analyst_required
+def career_tune_case(drill_id: str):
+    """One tune/tolerate/escalate drill."""
+    sc = tune_lab.get_drill(drill_id)
+    if not sc:
+        abort(404)
+    return render_template(
+        "career_tune_case.html",
+        scenario=sc,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/tune/grade", methods=["POST"])
+@analyst_required
+def api_career_tune_grade():
+    """Grade tune-or-tolerate choice."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    sid = (data.get("drill_id") or data.get("scenario_id") or "").strip()
+    result = tune_lab.grade_tune(sid, (data.get("choice") or "").strip())
+    if not result.get("ok"):
+        return jsonify(result), 400
+    _career_record_attempt("career_tune_attempts", analyst_id, sid, result, data)
+    return jsonify(result)
+
+
+@app.route("/career/metrics")
+@analyst_required
+def career_metrics_hub():
+    """G16 Ops metrics literacy + training widget."""
+    analyst_id = session["user_id"]
+    shift = db_fetchone(
+        f"SELECT COUNT(*) AS c, COALESCE(AVG(score_pct),0) AS avg_pct "
+        f"FROM career_shift_sessions WHERE analyst_id = {PH} AND status = 'complete'",
+        (analyst_id,),
+    ) or {}
+    closed = db_fetchall(
+        f"SELECT disposition FROM soc_cases WHERE analyst_id = {PH} AND status = 'closed'",
+        (analyst_id,),
+    ) or []
+    fp_n = sum(1 for r in closed if (r.get("disposition") or "") == "false_positive")
+    widget = metrics_lab.widget_from_signals(
+        shift_n=int(shift.get("c") or 0),
+        shift_avg=float(shift.get("avg_pct") or 0),
+        soc_closed_fp=fp_n,
+        soc_closed_total=len(closed),
+    )
+    best = _career_best_by_scenario("career_metrics_attempts", analyst_id)
+    return render_template(
+        "career_metrics.html",
+        track_title=metrics_lab.TRACK_TITLE,
+        track_blurb=metrics_lab.TRACK_BLURB,
+        show_me=metrics_lab.SHOW_ME,
+        quiz=metrics_lab.list_quiz(),
+        widget=widget,
+        best_quiz=best.get("metrics_quiz"),
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/metrics/grade", methods=["POST"])
+@analyst_required
+def api_career_metrics_grade():
+    """Grade ops metrics quiz."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    answers = data.get("answers") or {}
+    result = metrics_lab.grade_quiz(answers)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    _career_record_attempt(
+        "career_metrics_attempts", analyst_id, "metrics_quiz", result, answers,
+    )
+    return jsonify(result)
+
+
+@app.route("/career/automation")
+@analyst_required
+def career_automation_hub():
+    """G18 Automation lite hub."""
+    analyst_id = session["user_id"]
+    return render_template(
+        "career_fp_hub.html",
+        track_title=automation_lab.TRACK_TITLE,
+        track_blurb=automation_lab.TRACK_BLURB,
+        primer=automation_lab.PRIMER,
+        accent="#34d399",
+        hub_href="/career/automation",
+        gap_id="G18",
+        items=automation_lab.list_drills(),
+        best_by_id=_career_best_by_scenario("career_automation_attempts", analyst_id),
+        item_path_prefix="/career/automation/",
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/automation/<drill_id>")
+@analyst_required
+def career_automation_case(drill_id: str):
+    """One automation-lite drill."""
+    sc = automation_lab.get_drill(drill_id)
+    if not sc:
+        abort(404)
+    return render_template(
+        "career_automation_case.html",
+        scenario=sc,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/automation/grade", methods=["POST"])
+@analyst_required
+def api_career_automation_grade():
+    """Grade automation-lite drill."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    sid = (data.get("drill_id") or data.get("scenario_id") or "").strip()
+    result = automation_lab.grade_automation(sid, data)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    _career_record_attempt("career_automation_attempts", analyst_id, sid, result, data)
+    return jsonify(result)
+
+
+@app.route("/career/automation-policy")
+@analyst_required
+def career_policy_hub():
+    """G22 per-tenant automation policy hub."""
+    analyst_id = session["user_id"]
+    return render_template(
+        "career_fp_hub.html",
+        track_title=policy_lab.TRACK_TITLE,
+        track_blurb=policy_lab.TRACK_BLURB,
+        primer=policy_lab.PRIMER,
+        accent="#f472b6",
+        hub_href="/career/automation-policy",
+        gap_id="G22",
+        items=policy_lab.list_scenarios(),
+        best_by_id=_career_best_by_scenario("career_policy_attempts", analyst_id),
+        item_path_prefix="/career/automation-policy/",
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/automation-policy/<scenario_id>")
+@analyst_required
+def career_policy_case(scenario_id: str):
+    """One automation policy scenario."""
+    sc = policy_lab.get_scenario(scenario_id)
+    if not sc:
+        abort(404)
+    return render_template(
+        "career_policy_case.html",
+        scenario=sc,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/policy/grade", methods=["POST"])
+@analyst_required
+def api_career_policy_grade():
+    """Grade automation policy drill."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    sid = (data.get("scenario_id") or "").strip()
+    result = policy_lab.grade_policy(sid, data)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    _career_record_attempt("career_policy_attempts", analyst_id, sid, result, data)
+    return jsonify(result)
+
+
+@app.route("/career/portfolio")
+@analyst_required
+def career_portfolio():
+    """Portfolio case list — evidence for GTA SOC applications."""
+    analyst_id = session["user_id"]
+    cases = db_fetchall(
+        f"SELECT * FROM career_portfolio_cases WHERE analyst_id = {PH} "
+        f"ORDER BY created_at DESC",
+        (analyst_id,),
+    )
+    return render_template(
+        "career_portfolio.html",
+        cases=cases,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/portfolio/add", methods=["POST"])
+@analyst_required
+def career_portfolio_add():
+    """Add a manual portfolio case."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()[:200]
+    if not title:
+        return jsonify({"error": "Title required"}), 400
+    # Prefer composed ticket-hygiene fields when provided
+    what = (data.get("what") or "").strip()
+    why = (data.get("why") or "").strip()
+    next_steps = (data.get("next_steps") or data.get("next") or "").strip()
+    disposition = (data.get("disposition") or "").strip()[:80]
+    mitre = (data.get("mitre_techniques") or "").strip()[:200]
+    if what or why or next_steps:
+        summary = career_lab.format_ticket_summary(
+            what=what,
+            why=why,
+            disposition=disposition,
+            mitre=mitre,
+            next_steps=next_steps,
+        )[:2000]
+    else:
+        summary = (data.get("summary") or "").strip()[:2000]
+    track_id = (data.get("track_id") or "").strip()[:40]
+    tools = (data.get("tools_used") or "").strip()[:300]
+    db_run(
+        f"INSERT INTO career_portfolio_cases "
+        f"(analyst_id, title, track_id, summary, tools_used, mitre_techniques, "
+        f" disposition, source_type) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},'manual')",
+        (analyst_id, title, track_id, summary, tools, mitre, disposition),
+    )
+    xp = award_xp(analyst_id, XP_REWARDS["portfolio_case"], "Portfolio case added", "career")
+    return jsonify({"ok": True, "xp": xp})
+
+
+@app.route("/career/portfolio/<int:case_id>/toggle", methods=["POST"])
+@analyst_required
+def career_portfolio_toggle(case_id):
+    """Include/exclude a case from PDF export."""
+    analyst_id = session["user_id"]
+    row = db_fetchone(
+        f"SELECT id, include_in_export FROM career_portfolio_cases "
+        f"WHERE id = {PH} AND analyst_id = {PH}",
+        (case_id, analyst_id),
+    )
+    if not row:
+        return jsonify({"error": "Not found"}), 404
+    new_val = 0 if row["include_in_export"] else 1
+    db_run(
+        f"UPDATE career_portfolio_cases SET include_in_export = {PH} WHERE id = {PH}",
+        (new_val, case_id),
+    )
+    return jsonify({"ok": True, "include_in_export": new_val})
+
+
+@app.route("/career/portfolio/<int:case_id>/delete", methods=["POST"])
+@analyst_required
+def career_portfolio_delete(case_id):
+    """Delete a portfolio case."""
+    analyst_id = session["user_id"]
+    db_run(
+        f"DELETE FROM career_portfolio_cases WHERE id = {PH} AND analyst_id = {PH}",
+        (case_id, analyst_id),
+    )
+    return jsonify({"ok": True})
+
+
+@app.route("/career/portfolio/pdf")
+@analyst_required
+def career_portfolio_pdf():
+    """Download branded portfolio PDF for applications."""
+    analyst_id = session["user_id"]
+    user = db_fetchone(f"SELECT username FROM users WHERE id = {PH}", (analyst_id,))
+    name = (user or {}).get("username") or session.get("username") or "Analyst"
+    cases = db_fetchall(
+        f"SELECT * FROM career_portfolio_cases "
+        f"WHERE analyst_id = {PH} AND include_in_export = 1 "
+        f"ORDER BY created_at DESC",
+        (analyst_id,),
+    )
+    counts = _career_activity_counts(analyst_id)
+    tracks = career_lab.compute_track_stats(counts)
+    readiness = career_lab.overall_readiness(tracks)
+    shift_stats_row = db_fetchone(
+        f"SELECT COUNT(*) AS completed, COALESCE(AVG(score_pct),0) AS avg_pct "
+        f"FROM career_shift_sessions WHERE analyst_id = {PH} AND status = 'complete'",
+        (analyst_id,),
+    )
+    # Count alerts across completed shifts
+    alert_total = 0
+    for row in db_fetchall(
+        f"SELECT alerts_json FROM career_shift_sessions "
+        f"WHERE analyst_id = {PH} AND status = 'complete'",
+        (analyst_id,),
+    ):
+        alert_total += len(career_lab.alerts_from_json(row.get("alerts_json")))
+    from pdf_generator import generate_portfolio_pdf
+    pdf_bytes = generate_portfolio_pdf(
+        analyst_name=name,
+        cases=cases,
+        readiness_pct=readiness,
+        shift_stats={
+            "completed": int((shift_stats_row or {}).get("completed") or 0),
+            "avg_pct": round(float((shift_stats_row or {}).get("avg_pct") or 0)),
+            "alerts": alert_total,
+        },
+    )
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=boundry_soc_portfolio.pdf"},
+    )
+
+
+@app.route("/career/shift")
+@analyst_required
+def career_shift_page():
+    """Shift simulator lobby — Quick (default) or Standard."""
+    import ticket_fields as _ticket_fields
+    return render_template(
+        "career_shift.html",
+        modes=career_lab.SHIFT_MODES,
+        default_mode="quick",
+        mitre_options=career_lab.get_shift_mitre_options(),
+        clients=career_lab.list_mssp_clients(),
+        # Client + disposition stay on Shift's existing selects (multi-tenant + SLA path).
+        ticket_fields=_ticket_fields.fields_for_ui(omit=["client", "disposition"]),
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/shift/start", methods=["POST"])
+@analyst_required
+def career_shift_start():
+    """Start a Quick or Standard shift session."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    mode_id = (data.get("mode") or "quick").strip().lower()
+    if mode_id not in career_lab.SHIFT_MODES:
+        mode_id = "quick"
+    mode = career_lab.get_shift_mode(mode_id)
+    alerts = career_lab.build_shift_alerts(mode_id)
+    db_run(
+        f"INSERT INTO career_shift_sessions "
+        f"(analyst_id, mode, status, alerts_json) VALUES ({PH},{PH},'active',{PH})",
+        (analyst_id, mode_id, career_lab.alerts_to_json(alerts)),
+    )
+    row = db_fetchone(
+        f"SELECT MAX(id) AS sid FROM career_shift_sessions WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    # Strip correct answers from client payload (keep tenant + SLA for case console)
+    public_alerts = [
+        {
+            "idx": a["idx"],
+            "title": a["title"],
+            "severity": a["severity"],
+            "source": a["source"],
+            "detail": a["detail"],
+            "client_id": a.get("client_id") or "",
+            "client_name": a.get("client_name") or "",
+            "client_tier": a.get("client_tier") or "",
+            "sla_minutes": a.get("sla_minutes") or 30,
+            "sla_seconds": a.get("sla_seconds") or 1800,
+        }
+        for a in alerts
+    ]
+    return jsonify({
+        "session_id": row["sid"],
+        "mode": mode_id,
+        "duration_sec": mode["duration_sec"],
+        "label": mode["label"],
+        "alerts": public_alerts,
+        "mitre_options": career_lab.get_shift_mitre_options(),
+        "clients": career_lab.list_mssp_clients(),
+    })
+
+
+@app.route("/career/shift/complete", methods=["POST"])
+@analyst_required
+def career_shift_complete():
+    """Score a finished shift; optionally add strong cases to portfolio."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    session_id = data.get("session_id")
+    answers = data.get("answers") or []
+    if not session_id:
+        return jsonify({"error": "Missing session"}), 400
+    row = db_fetchone(
+        f"SELECT * FROM career_shift_sessions WHERE id = {PH} AND analyst_id = {PH}",
+        (session_id, analyst_id),
+    )
+    if not row:
+        return jsonify({"error": "Session not found"}), 404
+    if row["status"] == "complete":
+        return jsonify({"error": "Already completed"}), 400
+    alerts = career_lab.alerts_from_json(row.get("alerts_json"))
+    result = career_lab.score_shift_answers(alerts, answers)
+    db_run(
+        f"UPDATE career_shift_sessions SET status = 'complete', answers_json = {PH}, "
+        f"score_pct = {PH}, points = {PH}, max_points = {PH}, "
+        f"completed_at = datetime('now') WHERE id = {PH}",
+        (
+            _json.dumps(answers),
+            result["pct"],
+            result["points"],
+            result["max_points"],
+            session_id,
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["shift_complete"],
+        f"Shift complete ({row['mode']}) {result['pct']}%", "career",
+    )
+    if result["pct"] >= 80:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["shift_bonus"],
+            "Shift score ≥ 80%", "career",
+        )
+        if bonus:
+            xp_result = bonus
+
+    # Auto-add correctly dispositioned true_positive/escalate with notes to portfolio
+    added = 0
+    ans_by_idx = {int(a.get("idx", -1)): a for a in answers}
+    for g in result["graded"]:
+        if not g["disp_ok"] or not (g.get("notes_ok") or g.get("hygiene_ok")):
+            continue
+        if g["correct_disposition"] not in ("true_positive", "escalate"):
+            continue
+        alert = next((a for a in alerts if a["idx"] == g["idx"]), None)
+        if not alert:
+            continue
+        ans = ans_by_idx.get(g["idx"]) or {}
+        notes = (ans.get("notes") or "").strip()
+        summary = (ans.get("summary") or "").strip()
+        next_action = (ans.get("next_action") or ans.get("next") or "").strip()
+        if summary or next_action:
+            notes = career_lab.format_ticket_summary(
+                what=summary or notes,
+                why="",
+                disposition=g["correct_disposition"],
+                mitre=alert.get("correct_mitre") or "",
+                next_steps=next_action,
+            )
+        client_tag = alert.get("client_name") or alert.get("client_id") or ""
+        title = alert["title"][:200]
+        if client_tag:
+            title = f"[{client_tag}] {title}"[:200]
+        db_run(
+            f"INSERT INTO career_portfolio_cases "
+            f"(analyst_id, title, track_id, summary, tools_used, mitre_techniques, "
+            f" disposition, source_type, source_id) "
+            f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},'shift',{PH})",
+            (
+                analyst_id,
+                title,
+                "siem",
+                notes[:2000],
+                f"Shift sim ({row['mode']}); {alert.get('source','')}; client={client_tag}",
+                alert.get("correct_mitre") or "",
+                g["correct_disposition"],
+                session_id,
+            ),
+        )
+        added += 1
+
+    return jsonify({
+        "ok": True,
+        "result": result,
+        "portfolio_added": added,
+        "xp": xp_result,
+    })
+
+
+# --- G1: Email Triage Lab ---
+
+@app.route("/career/email")
+@analyst_required
+def career_email_hub():
+    """Email Triage Lab hub — samples + paste parse."""
+    analyst_id = session["user_id"]
+    attempts = db_fetchall(
+        f"SELECT sample_id, score_pct, passed, created_at FROM career_email_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 20",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in attempts:
+        sid = row.get("sample_id")
+        if not sid:
+            continue
+        prev = best.get(sid)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[sid] = row
+    samples = career_instances.attach_open_urls(email_lab.list_samples(), "/career/email")
+    return render_template(
+        "career_email.html",
+        track_title=email_lab.TRACK_TITLE,
+        track_blurb=email_lab.TRACK_BLURB,
+        primer=email_lab.PRIMER,
+        samples=samples,
+        best_by_sample=best,
+        tutor_track="email",
+        tutor_context={"lab": "email", "title": email_lab.TRACK_TITLE},
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/email/<sample_id>")
+@analyst_required
+def career_email_case(sample_id: str):
+    """One email sample with checklist + disposition prove-it (variant via ?seed=)."""
+    seed = request.args.get("seed")
+    if not seed:
+        return redirect(f"/career/email/{sample_id}?seed={career_instances.new_seed()}")
+    sample = email_lab.materialize_sample(sample_id, seed)
+    if not sample:
+        abort(404)
+    public = {
+        "id": sample["id"],
+        "title": sample["title"],
+        "difficulty": sample["difficulty"],
+        "teach": sample["teach"],
+        "raw": sample["raw"],
+        "instance_seed": sample.get("instance_seed") or seed,
+    }
+    tutor_ctx = {
+        "lab": "email",
+        "case_id": sample["id"],
+        "title": sample["title"],
+        "teach": sample["teach"],
+        "raw": sample["raw"],
+    }
+    return render_template(
+        "career_email_case.html",
+        sample=public,
+        checklist=email_lab.CHECKLIST_ITEMS,
+        dispositions=email_lab.DISPOSITIONS,
+        next_preview=email_lab.next_after(sample_id),
+        tutor_track="email",
+        tutor_lesson_id=sample_id,
+        tutor_context=tutor_ctx,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/email/parse", methods=["POST"])
+@analyst_required
+def api_career_email_parse():
+    """Parse pasted .eml / headers into analyst-facing fields."""
+    data = request.get_json(silent=True) or {}
+    return jsonify(email_lab.parse_eml(data.get("raw") or ""))
+
+
+@app.route("/api/career/email/grade", methods=["POST"])
+@analyst_required
+def api_career_email_grade():
+    """Grade checklist + disposition; award XP on pass."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    sample_id = (data.get("sample_id") or "").strip()
+    checklist = data.get("checklist") or {}
+    disposition = (data.get("disposition") or "").strip()
+    result = email_lab.grade_triage(sample_id, checklist, disposition)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_email_attempts "
+        f"(analyst_id, sample_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            sample_id,
+            result["pct"],
+            1 if result["passed"] else 0,
+            _json.dumps({"checklist": checklist, "disposition": disposition}),
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["email_triage"],
+        f"Email triage ({sample_id}) {result['pct']}%", "career",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["email_triage_pass"],
+            f"Email triage pass ({sample_id})", "career",
+        )
+        if bonus:
+            xp_result = bonus
+    result["xp"] = xp_result
+    result["next"] = email_lab.next_after(sample_id)
+    return jsonify(result)
+
+
+# --- G4: EDR Console Lab ---
+
+@app.route("/career/edr")
+@analyst_required
+def career_edr_hub():
+    """EDR Console Lab hub — process-tree cases."""
+    analyst_id = session["user_id"]
+    attempts = db_fetchall(
+        f"SELECT case_id, score_pct, passed, created_at FROM career_edr_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 20",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in attempts:
+        cid = row.get("case_id")
+        if not cid:
+            continue
+        prev = best.get(cid)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[cid] = row
+    cases = career_instances.attach_open_urls(edr_lab.list_cases(), "/career/edr")
+    return render_template(
+        "career_edr.html",
+        track_title=edr_lab.TRACK_TITLE,
+        track_blurb=edr_lab.TRACK_BLURB,
+        primer=edr_lab.PRIMER,
+        console_legend=edr_lab.CONSOLE_LEGEND,
+        cases=cases,
+        best_by_case=best,
+        tutor_track="edr",
+        tutor_context={"lab": "edr", "title": edr_lab.TRACK_TITLE},
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/edr/<case_id>")
+@analyst_required
+def career_edr_case(case_id: str):
+    """One EDR case with process tree + prove-it grade (variant instance via ?seed=)."""
+    seed = request.args.get("seed")
+    if not seed:
+        return redirect(f"/career/edr/{case_id}?seed={career_instances.new_seed()}")
+    case = edr_lab.materialize_case(case_id, seed)
+    if not case:
+        abort(404)
+    public = {
+        "id": case["id"],
+        "title": case["title"],
+        "difficulty": case["difficulty"],
+        "host": case["host"],
+        "user": case["user"],
+        "teach": case["teach"],
+        "instance_seed": case.get("instance_seed") or seed,
+    }
+    tree_lines = edr_lab.format_tree_lines(case["tree"])
+    tutor_ctx = {
+        "lab": "edr",
+        "case_id": case["id"],
+        "title": case["title"],
+        "host": case["host"],
+        "user": case["user"],
+        "teach": case["teach"],
+        "tree_lines": tree_lines,
+        "legend": edr_lab.CONSOLE_LEGEND,
+    }
+    return render_template(
+        "career_edr_case.html",
+        case=public,
+        tree_lines=tree_lines,
+        console_legend=edr_lab.CONSOLE_LEGEND,
+        checklist=edr_lab.CHECKLIST_ITEMS,
+        dispositions=edr_lab.DISPOSITIONS,
+        next_preview=edr_lab.next_after(case_id),
+        tutor_track="edr",
+        tutor_lesson_id=case_id,
+        tutor_context=tutor_ctx,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/edr/grade", methods=["POST"])
+@analyst_required
+def api_career_edr_grade():
+    """Grade EDR checklist + isolate + disposition; award XP on pass."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    case_id = (data.get("case_id") or "").strip()
+    checklist = data.get("checklist") or {}
+    isolate = bool(data.get("isolate"))
+    disposition = (data.get("disposition") or "").strip()
+    result = edr_lab.grade_edr(case_id, checklist, isolate, disposition)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_edr_attempts "
+        f"(analyst_id, case_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            case_id,
+            result["pct"],
+            1 if result["passed"] else 0,
+            _json.dumps({
+                "checklist": checklist,
+                "isolate": isolate,
+                "disposition": disposition,
+            }),
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["edr_triage"],
+        f"EDR triage ({case_id}) {result['pct']}%", "career",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["edr_triage_pass"],
+            f"EDR triage pass ({case_id})", "career",
+        )
+        if bonus:
+            xp_result = bonus
+    result["xp"] = xp_result
+    result["next"] = edr_lab.next_after(case_id)
+    return jsonify(result)
+
+
+# --- G8: Log Source Literacy Lab ---
+
+@app.route("/career/logs")
+@analyst_required
+def career_logs_hub():
+    """Log Source Lab hub — flashcards + name-the-evidence drills."""
+    analyst_id = session["user_id"]
+    attempts = db_fetchall(
+        f"SELECT drill_id, score_pct, passed, created_at FROM career_logs_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 30",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in attempts:
+        did = row.get("drill_id")
+        if not did:
+            continue
+        prev = best.get(did)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[did] = row
+    drills = career_instances.attach_open_urls(log_lab.list_drills(), "/career/logs")
+    return render_template(
+        "career_logs.html",
+        track_title=log_lab.TRACK_TITLE,
+        track_blurb=log_lab.TRACK_BLURB,
+        primer=log_lab.PRIMER,
+        flashcards=log_lab.FLASHCARDS,
+        drills=drills,
+        best_by_drill=best,
+        tutor_track="logs",
+        tutor_context={"lab": "logs", "title": log_lab.TRACK_TITLE},
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/logs/<drill_id>")
+@analyst_required
+def career_logs_drill(drill_id: str):
+    """One log literacy drill with snippet + prove-it grade (variant via ?seed=)."""
+    seed = request.args.get("seed")
+    if not seed:
+        return redirect(f"/career/logs/{drill_id}?seed={career_instances.new_seed()}")
+    drill = log_lab.materialize_drill(drill_id, seed)
+    if not drill:
+        abort(404)
+    public = {
+        "id": drill["id"],
+        "title": drill["title"],
+        "difficulty": drill["difficulty"],
+        "teach": drill["teach"],
+        "snippet": drill["snippet"],
+        "instance_seed": drill.get("instance_seed") or seed,
+    }
+    tutor_ctx = {
+        "lab": "logs",
+        "case_id": drill["id"],
+        "title": drill["title"],
+        "teach": drill["teach"],
+        "snippet": drill["snippet"],
+    }
+    return render_template(
+        "career_logs_drill.html",
+        drill=public,
+        sources=log_lab.SOURCES,
+        evidence_types=log_lab.EVIDENCE_TYPES,
+        checklist=log_lab.CHECKLIST_ITEMS,
+        next_preview=log_lab.next_after(drill_id),
+        tutor_track="logs",
+        tutor_lesson_id=drill_id,
+        tutor_context=tutor_ctx,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/logs/grade", methods=["POST"])
+@analyst_required
+def api_career_logs_grade():
+    """Grade log source + evidence + checklist; award XP."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    drill_id = (data.get("drill_id") or "").strip()
+    source_id = (data.get("source_id") or "").strip()
+    evidence_id = (data.get("evidence_id") or "").strip()
+    checklist = data.get("checklist") or {}
+    result = log_lab.grade_drill(drill_id, source_id, evidence_id, checklist)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_logs_attempts "
+        f"(analyst_id, drill_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            drill_id,
+            result["pct"],
+            1 if result["passed"] else 0,
+            _json.dumps({
+                "source_id": source_id,
+                "evidence_id": evidence_id,
+                "checklist": checklist,
+            }),
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["logs_drill"],
+        f"Log drill ({drill_id}) {result['pct']}%", "career",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["logs_drill_pass"],
+            f"Log drill pass ({drill_id})", "career",
+        )
+        if bonus:
+            xp_result = bonus
+    result["xp"] = xp_result
+    result["next"] = log_lab.next_after(drill_id)
+    return jsonify(result)
+
+
+# --- G6: IOC Enrichment Lab ---
+
+@app.route("/career/intel")
+@analyst_required
+def career_intel_hub():
+    """IOC Enrichment Lab hub — local reputation stub + cases."""
+    analyst_id = session["user_id"]
+    attempts = db_fetchall(
+        f"SELECT case_id, score_pct, passed, created_at FROM career_intel_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 30",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in attempts:
+        cid = row.get("case_id")
+        if not cid:
+            continue
+        prev = best.get(cid)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[cid] = row
+    cases = career_instances.attach_open_urls(intel_lab.list_cases(), "/career/intel")
+    return render_template(
+        "career_intel.html",
+        track_title=intel_lab.TRACK_TITLE,
+        track_blurb=intel_lab.TRACK_BLURB,
+        primer=intel_lab.PRIMER,
+        cases=cases,
+        best_by_case=best,
+        tutor_track="intel",
+        tutor_context={"lab": "intel", "title": intel_lab.TRACK_TITLE},
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/intel/<case_id>")
+@analyst_required
+def career_intel_case(case_id: str):
+    """One IOC enrichment case with lookup + ticket note (variant via ?seed=)."""
+    seed = request.args.get("seed")
+    if not seed:
+        return redirect(f"/career/intel/{case_id}?seed={career_instances.new_seed()}")
+    case = intel_lab.materialize_case(case_id, seed)
+    if not case:
+        abort(404)
+    public = {
+        "id": case["id"],
+        "title": case["title"],
+        "difficulty": case["difficulty"],
+        "ioc": case["ioc"],
+        "scenario": case["scenario"],
+        "teach": case["teach"],
+        "instance_seed": case.get("instance_seed") or seed,
+    }
+    tutor_ctx = {
+        "lab": "intel",
+        "case_id": case["id"],
+        "title": case["title"],
+        "ioc": case["ioc"],
+        "scenario": case["scenario"],
+        "teach": case["teach"],
+    }
+    return render_template(
+        "career_intel_case.html",
+        case=public,
+        checklist=intel_lab.CHECKLIST_ITEMS,
+        dispositions=intel_lab.DISPOSITIONS,
+        next_preview=intel_lab.next_after(case_id),
+        tutor_track="intel",
+        tutor_lesson_id=case_id,
+        tutor_context=tutor_ctx,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/intel/lookup", methods=["POST"])
+@analyst_required
+def api_career_intel_lookup():
+    """Local IOC reputation stub lookup (no cloud calls)."""
+    data = request.get_json(silent=True) or {}
+    return jsonify(intel_lab.lookup_ioc(data.get("ioc") or ""))
+
+
+@app.route("/api/career/intel/grade", methods=["POST"])
+@analyst_required
+def api_career_intel_grade():
+    """Grade enrichment checklist + disposition + ticket note; award XP."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    case_id = (data.get("case_id") or "").strip()
+    checklist = data.get("checklist") or {}
+    disposition = (data.get("disposition") or "").strip()
+    note = data.get("note") or ""
+    result = intel_lab.grade_enrichment(case_id, checklist, disposition, note)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_intel_attempts "
+        f"(analyst_id, case_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            case_id,
+            result["pct"],
+            1 if result["passed"] else 0,
+            _json.dumps({
+                "checklist": checklist,
+                "disposition": disposition,
+                "note": note[:2000],
+            }),
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["intel_enrich"],
+        f"IOC enrich ({case_id}) {result['pct']}%", "career",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["intel_enrich_pass"],
+            f"IOC enrich pass ({case_id})", "career",
+        )
+        if bonus:
+            xp_result = bonus
+    result["xp"] = xp_result
+    result["next"] = intel_lab.next_after(case_id)
+    return jsonify(result)
+
+
+# --- G9: Networking for Analysts (Net-for-SOC Learn + drills) ---
+
+def _net_upsert_progress(analyst_id: int, lesson_id: str, **fields) -> None:
+    """Insert or update Net-for-SOC per-lesson progress row."""
+    row = db_fetchone(
+        f"SELECT id FROM career_net_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    if not row:
+        db_run(
+            f"INSERT INTO career_net_progress (analyst_id, lesson_id) VALUES ({PH},{PH})",
+            (analyst_id, lesson_id),
+        )
+    sets = []
+    params = []
+    for key, val in fields.items():
+        if key in ("lesson_done", "practice_ok", "practice_total", "practice_ids"):
+            sets.append(f"{key} = {PH}")
+            params.append(val)
+    if not sets:
+        return
+    sets.append("updated_at = datetime('now')")
+    params.extend([analyst_id, lesson_id])
+    db_run(
+        f"UPDATE career_net_progress SET {', '.join(sets)} "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        tuple(params),
+    )
+
+
+@app.route("/career/net")
+@analyst_required
+def career_net_hub():
+    """Net-for-SOC hub — Learn spine + flashcards + signal drills."""
+    analyst_id = session["user_id"]
+    prog_rows = db_fetchall(
+        f"SELECT * FROM career_net_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    prog = {r["lesson_id"]: r for r in prog_rows if r.get("lesson_id")}
+    quiz_rows = db_fetchall(
+        f"SELECT lesson_id, score_pct, passed, created_at FROM career_net_quiz "
+        f"WHERE analyst_id = {PH} AND lesson_id != '' "
+        f"ORDER BY score_pct DESC, id DESC",
+        (analyst_id,),
+    )
+    quiz_best: dict[str, dict] = {}
+    for row in quiz_rows:
+        lid = row.get("lesson_id") or ""
+        if lid and lid not in quiz_best:
+            quiz_best[lid] = row
+    passed_ids = {lid for lid, q in quiz_best.items() if q.get("passed")}
+    continue_lesson = net_learn.next_incomplete_lesson(passed_ids)
+
+    lessons_view = []
+    done_lessons = 0
+    quizzes_passed = 0
+    for lesson in net_learn.LESSONS:
+        p = prog.get(lesson["id"]) or {}
+        practice_need = len(net_learn.get_practice(lesson["id"]))
+        ok = int(p.get("practice_ok") or 0)
+        lesson_done = bool(p.get("lesson_done"))
+        if lesson_done:
+            done_lessons += 1
+        qbest = quiz_best.get(lesson["id"])
+        quiz_passed = bool(qbest and qbest.get("passed"))
+        if quiz_passed:
+            quizzes_passed += 1
+        lessons_view.append({
+            **lesson,
+            "lesson_done": lesson_done,
+            "practice_ok": ok,
+            "practice_need": practice_need,
+            "practice_done": practice_need > 0 and ok >= practice_need,
+            "quiz_best": qbest,
+            "quiz_passed": quiz_passed,
+            "recommended": net_learn.is_recommended(lesson["id"], passed_ids),
+            "is_continue": bool(continue_lesson and continue_lesson["id"] == lesson["id"]),
+        })
+
+    attempts = db_fetchall(
+        f"SELECT drill_id, score_pct, passed, created_at FROM career_net_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 30",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in attempts:
+        did = row.get("drill_id")
+        if not did:
+            continue
+        prev = best.get(did)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[did] = row
+    drills = career_instances.attach_open_urls(net_lab.list_drills(), "/career/net")
+    return render_template(
+        "career_net.html",
+        track_title=net_learn.TRACK_TITLE,
+        track_blurb=net_learn.TRACK_BLURB,
+        primer=net_lab.PRIMER,
+        flashcards=net_lab.FLASHCARDS,
+        lessons=lessons_view,
+        continue_lesson=continue_lesson,
+        done_lessons=done_lessons,
+        total_lessons=len(net_learn.LESSONS),
+        quizzes_passed=quizzes_passed,
+        total_quizzes=len(net_learn.LESSONS),
+        pass_pct=net_learn.PASS_PCT,
+        drills=drills,
+        best_by_drill=best,
+        tutor_track="net",
+        tutor_context={"lab": "net", "title": net_learn.TRACK_TITLE},
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/net/lesson/<lesson_id>")
+@analyst_required
+def career_net_lesson(lesson_id: str):
+    """Show-me page for one Net-for-SOC lesson."""
+    lesson = net_learn.get_lesson(lesson_id)
+    if not lesson:
+        abort(404)
+    analyst_id = session["user_id"]
+    prog = db_fetchone(
+        f"SELECT * FROM career_net_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_net_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    continue_lesson = net_learn.next_incomplete_lesson(passed_ids)
+    soft_nudge = (
+        continue_lesson is not None
+        and continue_lesson["id"] != lesson_id
+        and not net_learn.is_recommended(lesson_id, passed_ids)
+    )
+    return render_template(
+        "career_net_lesson.html",
+        lesson=lesson,
+        progress=prog,
+        continue_lesson=continue_lesson,
+        soft_nudge=soft_nudge,
+        pass_pct=net_learn.PASS_PCT,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/net/lesson/<lesson_id>/complete", methods=["POST"])
+@analyst_required
+def career_net_lesson_complete(lesson_id: str):
+    """Mark Net-for-SOC Show-me complete; award XP once."""
+    lesson = net_learn.get_lesson(lesson_id)
+    if not lesson:
+        return jsonify({"error": "Unknown lesson"}), 404
+    analyst_id = session["user_id"]
+    existing = db_fetchone(
+        f"SELECT lesson_done FROM career_net_progress "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    already = bool(existing and existing.get("lesson_done"))
+    _net_upsert_progress(analyst_id, lesson_id, lesson_done=1)
+    xp = {}
+    if not already:
+        xp = award_xp(
+            analyst_id, XP_REWARDS["net_lesson"],
+            f"Net lesson: {lesson['title']}", "net_learn",
+        )
+    return jsonify({"ok": True, "already": already, "xp": xp})
+
+
+@app.route("/career/net/practice/<lesson_id>")
+@analyst_required
+def career_net_practice(lesson_id: str):
+    """Help-me practice for a Net-for-SOC lesson."""
+    lesson = net_learn.get_lesson(lesson_id)
+    if not lesson:
+        abort(404)
+    items = net_learn.public_practice(lesson_id)
+    analyst_id = session["user_id"]
+    prog = db_fetchone(
+        f"SELECT * FROM career_net_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    return render_template(
+        "career_net_practice.html",
+        lesson=lesson,
+        items=items,
+        progress=prog,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/net/practice/check", methods=["POST"])
+@analyst_required
+def career_net_practice_check():
+    """Check a Net-for-SOC Help-me answer and update progress."""
+    import json as _json
+    data = request.get_json(silent=True) or {}
+    lesson_id = (data.get("lesson_id") or "").strip()
+    practice_id = (data.get("practice_id") or "").strip()
+    picked = data.get("picked") or ""
+    if not lesson_id or not practice_id:
+        return jsonify({"error": "lesson_id and practice_id required"}), 400
+    result = net_learn.check_practice_answer(lesson_id, practice_id, picked)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    xp = {}
+    if result.get("correct"):
+        analyst_id = session["user_id"]
+        row = db_fetchone(
+            f"SELECT practice_ok, practice_ids FROM career_net_progress "
+            f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+            (analyst_id, lesson_id),
+        )
+        solved = set()
+        if row and row.get("practice_ids"):
+            try:
+                solved = set(_json.loads(row["practice_ids"] or "[]"))
+            except Exception:
+                solved = set()
+        if practice_id not in solved:
+            solved.add(practice_id)
+            need = len(net_learn.get_practice(lesson_id))
+            _net_upsert_progress(
+                analyst_id,
+                lesson_id,
+                practice_ok=len(solved),
+                practice_total=need,
+                practice_ids=_json.dumps(sorted(solved)),
+            )
+            xp = award_xp(
+                analyst_id, XP_REWARDS["net_practice"],
+                f"Net practice: {practice_id}", "net_learn",
+            )
+    return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
+
+
+@app.route("/career/net/quiz/<lesson_id>")
+@analyst_required
+def career_net_quiz_page(lesson_id: str):
+    """Per-lesson Net-for-SOC Prove-it quiz."""
+    lesson = net_learn.get_lesson(lesson_id)
+    questions = net_learn.public_quiz(lesson_id)
+    if not lesson or not questions:
+        abort(404)
+    analyst_id = session["user_id"]
+    quiz_best = db_fetchone(
+        f"SELECT score_pct, passed, created_at FROM career_net_quiz "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH} "
+        f"ORDER BY score_pct DESC, id DESC LIMIT 1",
+        (analyst_id, lesson_id),
+    )
+    return render_template(
+        "career_net_quiz.html",
+        lesson=lesson,
+        questions=questions,
+        quiz_best=quiz_best,
+        pass_pct=net_learn.PASS_PCT,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/net/quiz/<lesson_id>/submit", methods=["POST"])
+@analyst_required
+def career_net_quiz_submit(lesson_id: str):
+    """Grade a per-lesson Net-for-SOC quiz and store the attempt."""
+    lesson = net_learn.get_lesson(lesson_id)
+    if not lesson or not net_learn.get_quiz(lesson_id):
+        return jsonify({"error": "Unknown lesson quiz"}), 404
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    answers = data.get("answers") or {}
+    result = net_learn.grade_quiz(lesson_id, answers)
+    if not result.get("ok"):
+        return jsonify({"error": result.get("error") or "Grade failed"}), 400
+    db_run(
+        f"INSERT INTO career_net_quiz "
+        f"(analyst_id, lesson_id, score_pct, correct, total, passed) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            lesson_id,
+            result["pct"],
+            result["correct"],
+            result["total"],
+            1 if result["passed"] else 0,
+        ),
+    )
+    xp = award_xp(
+        analyst_id, XP_REWARDS["net_quiz"],
+        f"Net quiz {lesson_id} {result['pct']}%", "net_learn",
+    )
+    if result["passed"]:
+        prior_pass = db_fetchone(
+            f"SELECT COUNT(*) AS c FROM career_net_quiz "
+            f"WHERE analyst_id = {PH} AND lesson_id = {PH} AND passed = 1",
+            (analyst_id, lesson_id),
+        )
+        if int((prior_pass or {}).get("c") or 0) <= 1:
+            bonus = award_xp(
+                analyst_id, XP_REWARDS["net_quiz_pass"],
+                f"Net quiz passed: {lesson_id}", "net_learn",
+            )
+            if bonus:
+                xp = bonus
+    return jsonify({"ok": True, "result": result, "xp": xp})
+
+
+@app.route("/career/net/<drill_id>")
+@analyst_required
+def career_net_drill(drill_id: str):
+    """One networking drill with traffic snippet + prove-it (variant via ?seed=)."""
+    # Learn routes are registered above; unknown drill ids 404.
+    seed = request.args.get("seed")
+    if not seed:
+        return redirect(f"/career/net/{drill_id}?seed={career_instances.new_seed()}")
+    drill = net_lab.materialize_drill(drill_id, seed)
+    if not drill:
+        abort(404)
+    public = {
+        "id": drill["id"],
+        "title": drill["title"],
+        "difficulty": drill["difficulty"],
+        "teach": drill["teach"],
+        "snippet": drill["snippet"],
+        "instance_seed": drill.get("instance_seed") or seed,
+    }
+    tutor_ctx = {
+        "lab": "net",
+        "case_id": drill["id"],
+        "title": drill["title"],
+        "teach": drill["teach"],
+        "snippet": drill["snippet"],
+    }
+    return render_template(
+        "career_net_drill.html",
+        drill=public,
+        signals=net_lab.SIGNALS,
+        directions=net_lab.DIRECTIONS,
+        checklist=net_lab.CHECKLIST_ITEMS,
+        next_preview=net_lab.next_after(drill_id),
+        tutor_track="net",
+        tutor_lesson_id=drill_id,
+        tutor_context=tutor_ctx,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/net/grade", methods=["POST"])
+@analyst_required
+def api_career_net_grade():
+    """Grade network signal + direction + checklist; award XP."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    drill_id = (data.get("drill_id") or "").strip()
+    signal_id = (data.get("signal_id") or "").strip()
+    direction_id = (data.get("direction_id") or "").strip()
+    checklist = data.get("checklist") or {}
+    result = net_lab.grade_drill(drill_id, signal_id, direction_id, checklist)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_net_attempts "
+        f"(analyst_id, drill_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            drill_id,
+            result["pct"],
+            1 if result["passed"] else 0,
+            _json.dumps({
+                "signal_id": signal_id,
+                "direction_id": direction_id,
+                "checklist": checklist,
+            }),
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["net_drill"],
+        f"Net drill ({drill_id}) {result['pct']}%", "career",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["net_drill_pass"],
+            f"Net drill pass ({drill_id})", "career",
+        )
+        if bonus:
+            xp_result = bonus
+    result["xp"] = xp_result
+    result["next"] = net_lab.next_after(drill_id)
+    return jsonify(result)
+
+
+# --- G7: Vulnerability Queue ---
+
+@app.route("/career/vuln")
+@analyst_required
+def career_vuln_hub():
+    """Vulnerability Queue hub — CVSS vs exploitability vs asset criticality."""
+    analyst_id = session["user_id"]
+    attempts = db_fetchall(
+        f"SELECT case_id, score_pct, passed, created_at FROM career_vuln_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 30",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in attempts:
+        cid = row.get("case_id")
+        if not cid:
+            continue
+        prev = best.get(cid)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[cid] = row
+    cases = career_instances.attach_open_urls(vuln_lab.list_cases(), "/career/vuln")
+    return render_template(
+        "career_vuln.html",
+        track_title=vuln_lab.TRACK_TITLE,
+        track_blurb=vuln_lab.TRACK_BLURB,
+        primer=vuln_lab.PRIMER,
+        cases=cases,
+        best_by_case=best,
+        tutor_track="vuln",
+        tutor_context={"lab": "vuln", "title": vuln_lab.TRACK_TITLE},
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/vuln/<case_id>")
+@analyst_required
+def career_vuln_case(case_id: str):
+    """One vuln triage case with priority + disposition (variant via ?seed=)."""
+    seed = request.args.get("seed")
+    if not seed:
+        return redirect(f"/career/vuln/{case_id}?seed={career_instances.new_seed()}")
+    case = vuln_lab.materialize_case(case_id, seed)
+    if not case:
+        abort(404)
+    public = {
+        "id": case["id"],
+        "title": case["title"],
+        "difficulty": case["difficulty"],
+        "finding": case["finding"],
+        "teach": case["teach"],
+        "instance_seed": case.get("instance_seed") or seed,
+    }
+    tutor_ctx = {
+        "lab": "vuln",
+        "case_id": case["id"],
+        "title": case["title"],
+        "finding": case["finding"],
+        "teach": case["teach"],
+    }
+    return render_template(
+        "career_vuln_case.html",
+        case=public,
+        priorities=vuln_lab.PRIORITIES,
+        dispositions=vuln_lab.DISPOSITIONS,
+        checklist=vuln_lab.CHECKLIST_ITEMS,
+        next_preview=vuln_lab.next_after(case_id),
+        tutor_track="vuln",
+        tutor_lesson_id=case_id,
+        tutor_context=tutor_ctx,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/vuln/grade", methods=["POST"])
+@analyst_required
+def api_career_vuln_grade():
+    """Grade vuln priority + disposition + checklist; award XP."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    case_id = (data.get("case_id") or "").strip()
+    priority_id = (data.get("priority_id") or "").strip()
+    disposition = (data.get("disposition") or "").strip()
+    checklist = data.get("checklist") or {}
+    result = vuln_lab.grade_vuln(case_id, priority_id, disposition, checklist)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_vuln_attempts "
+        f"(analyst_id, case_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            case_id,
+            result["pct"],
+            1 if result["passed"] else 0,
+            _json.dumps({
+                "priority_id": priority_id,
+                "disposition": disposition,
+                "checklist": checklist,
+            }),
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["vuln_triage"],
+        f"Vuln triage ({case_id}) {result['pct']}%", "career",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["vuln_triage_pass"],
+            f"Vuln triage pass ({case_id})", "career",
+        )
+        if bonus:
+            xp_result = bonus
+    result["xp"] = xp_result
+    result["next"] = vuln_lab.next_after(case_id)
+    return jsonify(result)
+
+
+# --- G5: Sentinel Workspace Lab ---
+
+@app.route("/career/sentinel")
+@analyst_required
+def career_sentinel_hub():
+    """Sentinel Workspace Lab hub — Incidents / Entities / Hunting blades."""
+    analyst_id = session["user_id"]
+    attempts = db_fetchall(
+        f"SELECT case_id, score_pct, passed, created_at FROM career_sentinel_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 30",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in attempts:
+        cid = row.get("case_id")
+        if not cid:
+            continue
+        prev = best.get(cid)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[cid] = row
+    cases = career_instances.attach_open_urls(sentinel_lab.list_cases(), "/career/sentinel")
+    return render_template(
+        "career_sentinel.html",
+        track_title=sentinel_lab.TRACK_TITLE,
+        track_blurb=sentinel_lab.TRACK_BLURB,
+        primer=sentinel_lab.PRIMER,
+        cases=cases,
+        best_by_case=best,
+        random_case=sentinel_lab.random_case_url(),
+        tutor_track="sentinel",
+        tutor_context={"lab": "sentinel", "title": sentinel_lab.TRACK_TITLE},
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/sentinel/<case_id>")
+@analyst_required
+def career_sentinel_case(case_id: str):
+    """One Sentinel workspace case with three blades (variant via ?seed=)."""
+    seed = request.args.get("seed")
+    if not seed:
+        return redirect(f"/career/sentinel/{case_id}?seed={career_instances.new_seed()}")
+    case = sentinel_lab.materialize_case(case_id, seed)
+    if not case:
+        abort(404)
+    hunt = case["hunt"]
+    hunt_cols: list[str] = []
+    if hunt.get("rows"):
+        hunt_cols = list(hunt["rows"][0].keys())
+    public = {
+        "id": case["id"],
+        "title": case["title"],
+        "difficulty": case["difficulty"],
+        "client": case["client"],
+        "teach": case["teach"],
+        "instance_seed": case.get("instance_seed") or seed,
+    }
+    tutor_ctx = {
+        "lab": "sentinel",
+        "case_id": case["id"],
+        "title": case["title"],
+        "client": case["client"],
+        "teach": case["teach"],
+        "incident": case["incident"],
+        "entities": case["entities"],
+        "hunt": hunt,
+    }
+    return render_template(
+        "career_sentinel_case.html",
+        case=public,
+        incident=case["incident"],
+        entities=case["entities"],
+        hunt=hunt,
+        hunt_cols=hunt_cols,
+        blades=sentinel_lab.BLADES,
+        dispositions=sentinel_lab.DISPOSITIONS,
+        checklist=sentinel_lab.CHECKLIST_ITEMS,
+        next_preview=sentinel_lab.next_after(case_id),
+        tutor_track="sentinel",
+        tutor_lesson_id=case_id,
+        tutor_context=tutor_ctx,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/sentinel/grade", methods=["POST"])
+@analyst_required
+def api_career_sentinel_grade():
+    """Grade Sentinel checklist + blade focus + disposition; award XP."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    case_id = (data.get("case_id") or "").strip()
+    checklist = data.get("checklist") or {}
+    blade_id = (data.get("blade_id") or "").strip()
+    disposition = (data.get("disposition") or "").strip()
+    result = sentinel_lab.grade_sentinel(case_id, checklist, blade_id, disposition)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_sentinel_attempts "
+        f"(analyst_id, case_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            case_id,
+            result["pct"],
+            1 if result["passed"] else 0,
+            _json.dumps({
+                "checklist": checklist,
+                "blade_id": blade_id,
+                "disposition": disposition,
+            }),
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["sentinel_triage"],
+        f"Sentinel triage ({case_id}) {result['pct']}%", "career",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["sentinel_triage_pass"],
+            f"Sentinel triage pass ({case_id})", "career",
+        )
+        if bonus:
+            xp_result = bonus
+    result["xp"] = xp_result
+    result["next"] = sentinel_lab.next_after(case_id)
+    return jsonify(result)
+
+
+# --- G11: Entra Conditional Access Lab ---
+
+@app.route("/career/entra")
+@analyst_required
+def career_entra_hub():
+    """Entra Conditional Access Lab hub — CA storyboard cases."""
+    analyst_id = session["user_id"]
+    attempts = db_fetchall(
+        f"SELECT case_id, score_pct, passed, created_at FROM career_entra_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 30",
+        (analyst_id,),
+    )
+    best: dict = {}
+    for row in attempts:
+        cid = row.get("case_id")
+        if not cid:
+            continue
+        prev = best.get(cid)
+        if not prev or int(row.get("score_pct") or 0) > int(prev.get("score_pct") or 0):
+            best[cid] = row
+    cases = career_instances.attach_open_urls(entra_lab.list_cases(), "/career/entra")
+    return render_template(
+        "career_entra.html",
+        track_title=entra_lab.TRACK_TITLE,
+        track_blurb=entra_lab.TRACK_BLURB,
+        primer=entra_lab.PRIMER,
+        cases=cases,
+        best_by_case=best,
+        tutor_track="entra",
+        tutor_context={"lab": "entra", "title": entra_lab.TRACK_TITLE},
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/entra/<case_id>")
+@analyst_required
+def career_entra_case(case_id: str):
+    """One Entra CA storyboard with prove-it grade (variant via ?seed=)."""
+    seed = request.args.get("seed")
+    if not seed:
+        return redirect(f"/career/entra/{case_id}?seed={career_instances.new_seed()}")
+    case = entra_lab.materialize_case(case_id, seed)
+    if not case:
+        abort(404)
+    public = {
+        "id": case["id"],
+        "title": case["title"],
+        "difficulty": case["difficulty"],
+        "client": case["client"],
+        "teach": case["teach"],
+        "instance_seed": case.get("instance_seed") or seed,
+    }
+    sb = case["storyboard"]
+    tutor_ctx = {
+        "lab": "entra",
+        "case_id": case["id"],
+        "title": case["title"],
+        "client": case["client"],
+        "teach": case["teach"],
+        "storyboard": sb,
+        "alert_text": sb.get("alert_text") if isinstance(sb, dict) else "",
+    }
+    return render_template(
+        "career_entra_case.html",
+        case=public,
+        sb=sb,
+        outcomes=entra_lab.OUTCOMES,
+        dispositions=entra_lab.DISPOSITIONS,
+        checklist=entra_lab.CHECKLIST_ITEMS,
+        next_preview=entra_lab.next_after(case_id),
+        tutor_track="entra",
+        tutor_lesson_id=case_id,
+        tutor_context=tutor_ctx,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/entra/grade", methods=["POST"])
+@analyst_required
+def api_career_entra_grade():
+    """Grade Entra CA checklist + outcome + disposition; award XP."""
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    case_id = (data.get("case_id") or "").strip()
+    checklist = data.get("checklist") or {}
+    outcome_id = (data.get("outcome_id") or "").strip()
+    disposition = (data.get("disposition") or "").strip()
+    result = entra_lab.grade_entra(case_id, checklist, outcome_id, disposition)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    db_run(
+        f"INSERT INTO career_entra_attempts "
+        f"(analyst_id, case_id, score_pct, passed, answers_json) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            case_id,
+            result["pct"],
+            1 if result["passed"] else 0,
+            _json.dumps({
+                "checklist": checklist,
+                "outcome_id": outcome_id,
+                "disposition": disposition,
+            }),
+        ),
+    )
+    xp_result = award_xp(
+        analyst_id, XP_REWARDS["entra_triage"],
+        f"Entra CA triage ({case_id}) {result['pct']}%", "career",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["entra_triage_pass"],
+            f"Entra CA triage pass ({case_id})", "career",
+        )
+        if bonus:
+            xp_result = bonus
+    result["xp"] = xp_result
+    result["next"] = entra_lab.next_after(case_id)
+    return jsonify(result)
+
+
+def _spl_upsert_progress(analyst_id: int, lesson_id: str, **fields) -> None:
+    """Insert or update SPL lesson progress row."""
+    row = db_fetchone(
+        f"SELECT id FROM career_spl_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    if not row:
+        db_run(
+            f"INSERT INTO career_spl_progress (analyst_id, lesson_id) VALUES ({PH},{PH})",
+            (analyst_id, lesson_id),
+        )
+    sets = []
+    params = []
+    for key, val in fields.items():
+        if key in ("lesson_done", "practice_ok", "practice_total", "practice_ids"):
+            sets.append(f"{key} = {PH}")
+            params.append(val)
+    if not sets:
+        return
+    sets.append("updated_at = datetime('now')")
+    params.extend([analyst_id, lesson_id])
+    db_run(
+        f"UPDATE career_spl_progress SET {', '.join(sets)} "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        tuple(params),
+    )
+
+
+def _spl_learn_pack_count() -> int:
+    """How many SPL Learn sample events are in siem_events."""
+    row = db_fetchone(
+        f"SELECT COUNT(*) AS c FROM siem_events "
+        f"WHERE event_id LIKE {PH} OR description LIKE {PH}",
+        (f"{spl_learn.SAMPLE_EVENT_PREFIX}%", f"%{spl_learn.SAMPLE_PACK_TAG}%"),
+    )
+    return int((row or {}).get("c") or 0)
+
+
+def _seed_spl_learn_pack(force: bool = False) -> dict:
+    """
+    Insert SPL Learn sample events via direct DB write.
+    Avoids siem_collector.ingest_event so training data does not fire
+    correlation rules / SOAR incidents.
+    """
+    import json as _json
+    already = _spl_learn_pack_count()
+    if already > 0 and not force:
+        return {
+            "ok": True,
+            "already": True,
+            "existing": already,
+            "inserted": 0,
+            "message": (
+                f"Sample pack already loaded ({already} events). "
+                "Use force reload if you want a fresh copy."
+            ),
+        }
+
+    inserted = 0
+    for ev in spl_learn.sample_pack_events():
+        # Unique suffix when force-reloading so event_ids don't collide with UNIQUE constraints
+        eid = ev["event_id"] if not force else f"{ev['event_id']}-{inserted + 1}"
+        try:
+            db_run(
+                f"INSERT INTO siem_events "
+                f"(source, event_id, event_type, severity, host, user_account, "
+                f" src_ip, dst_ip, description, raw_data, simulated) "
+                f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+                (
+                    ev["source"],
+                    eid,
+                    ev["event_type"],
+                    ev["severity"],
+                    ev["host"],
+                    ev["user"],
+                    ev["src_ip"],
+                    ev["dst_ip"],
+                    ev["description"],
+                    _json.dumps(ev.get("raw") or {}),
+                    1,
+                ),
+            )
+            inserted += 1
+        except Exception:
+            continue
+
+    final = _spl_learn_pack_count()
+    return {
+        "ok": True,
+        "already": False,
+        "existing": already,
+        "inserted": inserted,
+        "pack_count": final,
+        "message": (
+            f"Loaded {inserted} SPL Learn sample events (simulated). "
+            f"Pack total now: {final}. Re-run your lesson query."
+        ),
+    }
+
+
+@app.route("/api/career/tutor", methods=["POST"])
+@analyst_required
+def api_career_tutor():
+    """
+    Multi-turn Career Tutor chat.
+    Body: { message, track?, lesson_id?, history?, context? }
+    history is prior turns from the client so follow-up questions work.
+    context is optional page snapshot for hands-on labs (tree, snippet, host, …).
+    Ollama first; Anthropic only if Ollama fails and API key is set.
+    """
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"error": "Message required"}), 400
+    if len(message) > 2000:
+        return jsonify({"error": "Message too long (max 2000 chars)"}), 400
+
+    track = (data.get("track") or "spl").strip().lower()
+    lesson_id = (data.get("lesson_id") or "").strip()
+    history = career_tutor.sanitize_history(data.get("history"))
+    raw_ctx = data.get("context")
+    context = raw_ctx if isinstance(raw_ctx, dict) else {}
+    # Cap context size so prompts stay tight for local 8b models.
+    if context:
+        clipped: dict = {}
+        for k, v in list(context.items())[:40]:
+            key = str(k)[:64]
+            if isinstance(v, str):
+                clipped[key] = v[:4000]
+            elif isinstance(v, list):
+                clipped[key] = [str(x)[:500] for x in v[:80]]
+            elif isinstance(v, dict):
+                clipped[key] = {
+                    str(sk)[:64]: (str(sv)[:800] if not isinstance(sv, (dict, list)) else sv)
+                    for sk, sv in list(v.items())[:40]
+                }
+            elif v is None or isinstance(v, (int, float, bool)):
+                clipped[key] = v
+        context = clipped
+
+    lesson = None
+    scenario = None
+    if track == "spl" and lesson_id:
+        lesson = spl_learn.get_lesson(lesson_id)
+    elif track == "secplus" and lesson_id:
+        lesson = secplus_learn.get_lesson(lesson_id) or secplus_learn.get_domain(lesson_id)
+    elif track == "net" and lesson_id:
+        lesson = net_learn.get_lesson(lesson_id)
+    elif track == "interview" and lesson_id:
+        scenario = interview_gym.get_scenario(lesson_id)
+
+    if track == "spl":
+        system = career_tutor.build_spl_tutor_system(lesson)
+    elif track == "secplus":
+        system = career_tutor.build_secplus_tutor_system(lesson)
+    elif track == "net" and lesson:
+        system = career_tutor.build_net_tutor_system(lesson)
+    elif track == "interview":
+        system = career_tutor.build_interview_tutor_system(scenario)
+    elif track in career_tutor.HANDS_ON_TRACKS:
+        if lesson_id and not context.get("case_id"):
+            context = {**context, "case_id": lesson_id}
+        system = career_tutor.build_hands_on_tutor_system(track, context)
+    else:
+        system = (
+            "You are Boundry Tutor, a patient cybersecurity training coach. "
+            "Stay on SOC / Boundry training topics. Be concise and practical. "
+            "Never use a technical term without defining it in plain English first. "
+            "No em dashes or en dashes as clause pivots."
+        )
+
+    reply = None
+    backend = None
+    try:
+        reply = _call_ollama(
+            message,
+            max_tokens=700,
+            temperature=0.35,
+            timeout=90,
+            system=system,
+            history=history,
+        )
+        backend = "ollama"
+    except Exception as exc:
+        security_log.warning(f"TUTOR_OLLAMA_FAILED error={exc}")
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        if api_key:
+            try:
+                import anthropic as _anthropic
+                msgs = []
+                for turn in history:
+                    msgs.append({"role": turn["role"], "content": turn["content"]})
+                msgs.append({"role": "user", "content": message})
+                ai_client = _anthropic.Anthropic(api_key=api_key)
+                result = ai_client.messages.create(
+                    model="claude-haiku-4-5",
+                    max_tokens=700,
+                    system=system,
+                    messages=msgs,
+                )
+                reply = result.content[0].text
+                backend = "anthropic"
+                security_log.info("TUTOR_AI_BACKEND backend=anthropic")
+            except Exception as exc2:
+                security_log.warning(f"TUTOR_ANTHROPIC_FAILED error={exc2}")
+
+    if not reply:
+        return jsonify({
+            "error": "Tutor unavailable — start Ollama locally (llama3.1:8b / your configured model).",
+        }), 503
+
+    return jsonify({
+        "ok": True,
+        "reply": reply.strip(),
+        "backend": backend,
+        "lesson_id": lesson_id or None,
+    })
+
+
+@app.route("/career/spl/seed-samples", methods=["POST"])
+@analyst_required
+def career_spl_seed_samples():
+    """Load SPL Learn sample SIEM events (Option A)."""
+    data = request.get_json(silent=True) or {}
+    force = bool(data.get("force"))
+    return jsonify(_seed_spl_learn_pack(force=force))
+
+
+@app.route("/career/spl")
+@analyst_required
+def career_spl_hub():
+    """SPL Learn Track hub — lessons, practice, quiz."""
+    analyst_id = session["user_id"]
+    # Auto-seed once so lesson queries never start empty
+    auto = None
+    if _spl_learn_pack_count() == 0:
+        auto = _seed_spl_learn_pack(force=False)
+
+    prog_rows = db_fetchall(
+        f"SELECT * FROM career_spl_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    prog = {r["lesson_id"]: r for r in prog_rows}
+    lessons_view = []
+    done_lessons = 0
+    for lesson in spl_learn.LESSONS:
+        p = prog.get(lesson["id"]) or {}
+        practice_items = spl_learn.get_practice(lesson["id"])
+        need = len(practice_items)
+        ok = int(p.get("practice_ok") or 0)
+        lesson_done = bool(p.get("lesson_done"))
+        if lesson_done:
+            done_lessons += 1
+        lessons_view.append({
+            **lesson,
+            "lesson_done": lesson_done,
+            "practice_ok": ok,
+            "practice_need": need,
+            "practice_done": need > 0 and ok >= need,
+        })
+    quiz_best = db_fetchone(
+        f"SELECT score_pct, passed, created_at FROM career_spl_quiz "
+        f"WHERE analyst_id = {PH} ORDER BY score_pct DESC, id DESC LIMIT 1",
+        (analyst_id,),
+    )
+    sample_count = _spl_learn_pack_count()
+    total = len(spl_learn.LESSONS)
+    return render_template(
+        "career_spl.html",
+        track_title=spl_learn.TRACK_TITLE,
+        track_blurb=spl_learn.TRACK_BLURB,
+        lessons=lessons_view,
+        done_lessons=done_lessons,
+        total_lessons=total,
+        quiz_best=quiz_best,
+        sample_count=sample_count,
+        auto_seed_msg=(auto or {}).get("message") if auto else None,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/spl/lesson/<lesson_id>")
+@analyst_required
+def career_spl_lesson(lesson_id):
+    """Teach page for one SPL lesson."""
+    lesson = spl_learn.get_lesson(lesson_id)
+    if not lesson:
+        abort(404)
+    analyst_id = session["user_id"]
+    prog = db_fetchone(
+        f"SELECT * FROM career_spl_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    return render_template(
+        "career_spl_lesson.html",
+        lesson=lesson,
+        progress=prog,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/spl/lesson/<lesson_id>/complete", methods=["POST"])
+@analyst_required
+def career_spl_lesson_complete(lesson_id):
+    """Mark lesson reading complete; award XP once."""
+    lesson = spl_learn.get_lesson(lesson_id)
+    if not lesson:
+        return jsonify({"error": "Unknown lesson"}), 404
+    analyst_id = session["user_id"]
+    existing = db_fetchone(
+        f"SELECT lesson_done FROM career_spl_progress "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    already = bool(existing and existing.get("lesson_done"))
+    _spl_upsert_progress(analyst_id, lesson_id, lesson_done=1)
+    xp = {}
+    if not already:
+        xp = award_xp(
+            analyst_id, XP_REWARDS["spl_lesson"],
+            f"SPL lesson: {lesson['title']}", "spl_learn",
+        )
+    return jsonify({"ok": True, "already": already, "xp": xp})
+
+
+@app.route("/career/spl/practice/<lesson_id>")
+@analyst_required
+def career_spl_practice(lesson_id):
+    """Guided practice for a lesson."""
+    lesson = spl_learn.get_lesson(lesson_id)
+    if not lesson:
+        abort(404)
+    items = [
+        {
+            "id": p["id"],
+            "prompt": p["prompt"],
+            "hint": p["hint"],
+            "breakdown": p.get("breakdown") or {},
+        }
+        for p in spl_learn.get_practice(lesson_id)
+    ]
+    analyst_id = session["user_id"]
+    prog = db_fetchone(
+        f"SELECT * FROM career_spl_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    return render_template(
+        "career_spl_practice.html",
+        lesson=lesson,
+        items=items,
+        progress=prog,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/spl/practice/check", methods=["POST"])
+@analyst_required
+def career_spl_practice_check():
+    """Check a practice query answer."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    lesson_id = (data.get("lesson_id") or "").strip()
+    practice_id = (data.get("practice_id") or "").strip()
+    query = data.get("query") or ""
+    result = spl_learn.check_practice_answer(lesson_id, practice_id, query)
+    if result.get("error"):
+        return jsonify(result), 400
+    xp = {}
+    if result.get("correct"):
+        import json as _json
+        items = spl_learn.get_practice(lesson_id)
+        prog = db_fetchone(
+            f"SELECT practice_ok, practice_ids FROM career_spl_progress "
+            f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+            (analyst_id, lesson_id),
+        )
+        try:
+            solved = _json.loads((prog or {}).get("practice_ids") or "[]")
+            if not isinstance(solved, list):
+                solved = []
+        except Exception:
+            solved = []
+        first_time = practice_id not in solved
+        if first_time:
+            solved.append(practice_id)
+            _spl_upsert_progress(
+                analyst_id, lesson_id,
+                practice_ok=len(solved),
+                practice_total=len(items),
+                practice_ids=_json.dumps(solved),
+                lesson_done=1,
+            )
+            xp = award_xp(
+                analyst_id, XP_REWARDS["spl_practice"],
+                f"SPL practice {practice_id}", "spl_learn",
+            )
+        else:
+            _spl_upsert_progress(
+                analyst_id, lesson_id,
+                practice_ok=len(solved),
+                practice_total=len(items),
+                lesson_done=1,
+            )
+    return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
+
+
+@app.route("/career/spl/quiz")
+@analyst_required
+def career_spl_quiz_page():
+    """SPL Learn quiz (no answers in page payload beyond choices)."""
+    return render_template(
+        "career_spl_quiz.html",
+        questions=spl_learn.public_quiz(),
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/spl/quiz/submit", methods=["POST"])
+@analyst_required
+def career_spl_quiz_submit():
+    """Grade SPL quiz and store attempt."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    answers = data.get("answers") or {}
+    result = spl_learn.grade_quiz(answers)
+    db_run(
+        f"INSERT INTO career_spl_quiz (analyst_id, score_pct, correct, total, passed) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            result["pct"],
+            result["correct"],
+            result["total"],
+            1 if result["passed"] else 0,
+        ),
+    )
+    xp = award_xp(
+        analyst_id, XP_REWARDS["spl_quiz"],
+        f"SPL quiz {result['pct']}%", "spl_learn",
+    )
+    if result["passed"]:
+        bonus = award_xp(
+            analyst_id, XP_REWARDS["spl_quiz_pass"],
+            "SPL quiz passed (≥70%)", "spl_learn",
+        )
+        if bonus:
+            xp = bonus
+    return jsonify({"ok": True, "result": result, "xp": xp})
+
+
+def _kql_upsert_progress(analyst_id: int, lesson_id: str, **fields) -> None:
+    """Insert or update KQL lesson progress row."""
+    row = db_fetchone(
+        f"SELECT id FROM career_kql_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    if not row:
+        db_run(
+            f"INSERT INTO career_kql_progress (analyst_id, lesson_id) VALUES ({PH},{PH})",
+            (analyst_id, lesson_id),
+        )
+    sets = []
+    params = []
+    for key, val in fields.items():
+        if key in ("lesson_done", "practice_ok", "practice_total", "practice_ids"):
+            sets.append(f"{key} = {PH}")
+            params.append(val)
+    if not sets:
+        return
+    sets.append("updated_at = datetime('now')")
+    params.extend([analyst_id, lesson_id])
+    db_run(
+        f"UPDATE career_kql_progress SET {', '.join(sets)} "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        tuple(params),
+    )
+
+
+@app.route("/career/kql")
+@analyst_required
+def career_kql_hub():
+    """KQL Learn Track hub — lessons, practice, per-section quiz (Sentinel prep)."""
+    analyst_id = session["user_id"]
+    prog_rows = db_fetchall(
+        f"SELECT * FROM career_kql_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    prog = {r["lesson_id"]: r for r in prog_rows}
+    quiz_rows = db_fetchall(
+        f"SELECT lesson_id, score_pct, passed, created_at FROM career_kql_quiz "
+        f"WHERE analyst_id = {PH} AND lesson_id != '' "
+        f"ORDER BY score_pct DESC, id DESC",
+        (analyst_id,),
+    )
+    # Best attempt per lesson (rows already sorted by score desc).
+    quiz_best_by_lesson: dict[str, dict] = {}
+    for row in quiz_rows:
+        lid = row.get("lesson_id") or ""
+        if lid and lid not in quiz_best_by_lesson:
+            quiz_best_by_lesson[lid] = row
+
+    lessons_view = []
+    done_lessons = 0
+    quizzes_passed = 0
+    for lesson in kql_learn.LESSONS:
+        p = prog.get(lesson["id"]) or {}
+        practice_items = kql_learn.get_practice(lesson["id"])
+        need = len(practice_items)
+        ok = int(p.get("practice_ok") or 0)
+        lesson_done = bool(p.get("lesson_done"))
+        if lesson_done:
+            done_lessons += 1
+        qbest = quiz_best_by_lesson.get(lesson["id"])
+        quiz_passed = bool(qbest and qbest.get("passed"))
+        if quiz_passed:
+            quizzes_passed += 1
+        lessons_view.append({
+            **lesson,
+            "lesson_done": lesson_done,
+            "practice_ok": ok,
+            "practice_need": need,
+            "practice_done": need > 0 and ok >= need,
+            "quiz_best": qbest,
+            "quiz_passed": quiz_passed,
+        })
+    return render_template(
+        "career_kql.html",
+        track_title=kql_learn.TRACK_TITLE,
+        track_blurb=kql_learn.TRACK_BLURB,
+        lessons=lessons_view,
+        done_lessons=done_lessons,
+        total_lessons=len(kql_learn.LESSONS),
+        quizzes_passed=quizzes_passed,
+        total_quizzes=len(kql_learn.LESSONS),
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/kql/lesson/<lesson_id>")
+@analyst_required
+def career_kql_lesson(lesson_id):
+    """Teach page for one KQL lesson."""
+    lesson = kql_learn.get_lesson(lesson_id)
+    if not lesson:
+        abort(404)
+    analyst_id = session["user_id"]
+    prog = db_fetchone(
+        f"SELECT * FROM career_kql_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    return render_template(
+        "career_kql_lesson.html",
+        lesson=lesson,
+        progress=prog,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/kql/lesson/<lesson_id>/complete", methods=["POST"])
+@analyst_required
+def career_kql_lesson_complete(lesson_id):
+    """Mark KQL lesson reading complete; award XP once."""
+    lesson = kql_learn.get_lesson(lesson_id)
+    if not lesson:
+        return jsonify({"error": "Unknown lesson"}), 404
+    analyst_id = session["user_id"]
+    existing = db_fetchone(
+        f"SELECT lesson_done FROM career_kql_progress "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    already = bool(existing and existing.get("lesson_done"))
+    _kql_upsert_progress(analyst_id, lesson_id, lesson_done=1)
+    xp = {}
+    if not already:
+        xp = award_xp(
+            analyst_id, XP_REWARDS["kql_lesson"],
+            f"KQL lesson: {lesson['title']}", "kql_learn",
+        )
+    return jsonify({"ok": True, "already": already, "xp": xp})
+
+
+@app.route("/career/kql/practice/<lesson_id>")
+@analyst_required
+def career_kql_practice(lesson_id):
+    """Guided KQL practice for a lesson."""
+    lesson = kql_learn.get_lesson(lesson_id)
+    if not lesson:
+        abort(404)
+    items = [
+        {
+            "id": p["id"],
+            "prompt": p["prompt"],
+            "hint": p["hint"],
+        }
+        for p in kql_learn.get_practice(lesson_id)
+    ]
+    analyst_id = session["user_id"]
+    prog = db_fetchone(
+        f"SELECT * FROM career_kql_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    return render_template(
+        "career_kql_practice.html",
+        lesson=lesson,
+        items=items,
+        progress=prog,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/kql/practice/check", methods=["POST"])
+@analyst_required
+def career_kql_practice_check():
+    """Check a KQL practice answer and update progress."""
+    import json as _json
+    data = request.get_json(silent=True) or {}
+    lesson_id = (data.get("lesson_id") or "").strip()
+    practice_id = (data.get("practice_id") or "").strip()
+    user_query = data.get("query") or ""
+    if not lesson_id or not practice_id:
+        return jsonify({"error": "lesson_id and practice_id required"}), 400
+    result = kql_learn.check_practice_answer(lesson_id, practice_id, user_query)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    xp = {}
+    if result.get("correct"):
+        analyst_id = session["user_id"]
+        row = db_fetchone(
+            f"SELECT practice_ok, practice_ids FROM career_kql_progress "
+            f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+            (analyst_id, lesson_id),
+        )
+        solved = set()
+        if row and row.get("practice_ids"):
+            try:
+                solved = set(_json.loads(row["practice_ids"] or "[]"))
+            except Exception:
+                solved = set()
+        if practice_id not in solved:
+            solved.add(practice_id)
+            need = len(kql_learn.get_practice(lesson_id))
+            _kql_upsert_progress(
+                analyst_id,
+                lesson_id,
+                practice_ok=len(solved),
+                practice_total=need,
+                practice_ids=_json.dumps(sorted(solved)),
+            )
+            xp = award_xp(
+                analyst_id, XP_REWARDS["kql_practice"],
+                f"KQL practice: {practice_id}", "kql_learn",
+            )
+    return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
+
+
+@app.route("/career/kql/quiz")
+@analyst_required
+def career_kql_quiz_legacy():
+    """Legacy global quiz URL — send analysts to the track hub."""
+    return redirect("/career/kql")
+
+
+@app.route("/career/kql/quiz/<lesson_id>")
+@analyst_required
+def career_kql_quiz_page(lesson_id):
+    """Per-lesson KQL quiz page."""
+    lesson = kql_learn.get_lesson(lesson_id)
+    questions = kql_learn.public_quiz(lesson_id)
+    if not lesson or not questions:
+        abort(404)
+    analyst_id = session["user_id"]
+    quiz_best = db_fetchone(
+        f"SELECT score_pct, passed, created_at FROM career_kql_quiz "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH} "
+        f"ORDER BY score_pct DESC, id DESC LIMIT 1",
+        (analyst_id, lesson_id),
+    )
+    return render_template(
+        "career_kql_quiz.html",
+        lesson=lesson,
+        questions=questions,
+        quiz_best=quiz_best,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/kql/quiz/<lesson_id>/submit", methods=["POST"])
+@analyst_required
+def career_kql_quiz_submit(lesson_id):
+    """Grade a per-lesson KQL quiz and store the attempt."""
+    lesson = kql_learn.get_lesson(lesson_id)
+    if not lesson or not kql_learn.get_quiz(lesson_id):
+        return jsonify({"error": "Unknown lesson quiz"}), 404
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    answers = data.get("answers") or {}
+    result = kql_learn.grade_quiz(lesson_id, answers)
+    if not result.get("ok"):
+        return jsonify({"error": result.get("error") or "Grade failed"}), 400
+    db_run(
+        f"INSERT INTO career_kql_quiz "
+        f"(analyst_id, lesson_id, score_pct, correct, total, passed) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            lesson_id,
+            result["pct"],
+            result["correct"],
+            result["total"],
+            1 if result["passed"] else 0,
+        ),
+    )
+    xp = award_xp(
+        analyst_id, XP_REWARDS["kql_quiz"],
+        f"KQL quiz {lesson_id} {result['pct']}%", "kql_learn",
+    )
+    if result["passed"]:
+        # Award pass bonus once per lesson (unique reason string).
+        prior_pass = db_fetchone(
+            f"SELECT COUNT(*) AS c FROM career_kql_quiz "
+            f"WHERE analyst_id = {PH} AND lesson_id = {PH} AND passed = 1",
+            (analyst_id, lesson_id),
+        )
+        # COUNT includes this insert — only bonus on first pass (c == 1).
+        if int((prior_pass or {}).get("c") or 0) <= 1:
+            bonus = award_xp(
+                analyst_id, XP_REWARDS["kql_quiz_pass"],
+                f"KQL quiz passed: {lesson_id}", "kql_learn",
+            )
+            if bonus:
+                xp = bonus
+    return jsonify({"ok": True, "result": result, "xp": xp})
+
+
+def _secplus_upsert_progress(analyst_id: int, lesson_id: str, **fields) -> None:
+    """Insert or update Security+ per-lesson progress row."""
+    lesson = secplus_learn.get_lesson(lesson_id)
+    domain_id = (lesson or {}).get("domain_id") or ""
+    row = db_fetchone(
+        f"SELECT id FROM career_secplus_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    if not row:
+        db_run(
+            f"INSERT INTO career_secplus_progress (analyst_id, lesson_id, domain_id) "
+            f"VALUES ({PH},{PH},{PH})",
+            (analyst_id, lesson_id, domain_id),
+        )
+    sets = []
+    params = []
+    for key, val in fields.items():
+        if key in ("lesson_done", "practice_ok", "practice_total", "practice_ids", "pbq_ok", "domain_id"):
+            sets.append(f"{key} = {PH}")
+            params.append(val)
+    if not sets:
+        return
+    sets.append("updated_at = datetime('now')")
+    params.extend([analyst_id, lesson_id])
+    db_run(
+        f"UPDATE career_secplus_progress SET {', '.join(sets)} "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        tuple(params),
+    )
+
+
+@app.route("/career/secplus")
+@analyst_required
+def career_secplus_hub():
+    """Security+ hub — domain progress, Continue CTA, soft D1→D5 lesson map, term bank link."""
+    analyst_id = session["user_id"]
+    prog_rows = db_fetchall(
+        f"SELECT * FROM career_secplus_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    prog = {r["lesson_id"]: r for r in prog_rows if r.get("lesson_id")}
+    quiz_rows = db_fetchall(
+        f"SELECT lesson_id, score_pct, passed, created_at FROM career_secplus_quiz "
+        f"WHERE analyst_id = {PH} AND lesson_id != '' "
+        f"ORDER BY score_pct DESC, id DESC",
+        (analyst_id,),
+    )
+    quiz_best: dict[str, dict] = {}
+    for row in quiz_rows:
+        lid = row.get("lesson_id") or ""
+        if lid and lid not in quiz_best:
+            quiz_best[lid] = row
+
+    passed_ids = {lid for lid, q in quiz_best.items() if q.get("passed")}
+    continue_lesson = secplus_learn.next_incomplete_lesson(passed_ids)
+    lessons_view = []
+    done_lessons = 0
+    quizzes_passed = 0
+    for lesson in secplus_learn.LESSONS:
+        p = prog.get(lesson["id"]) or {}
+        practice_need = len(secplus_learn.get_practice(lesson["id"]))
+        ok = int(p.get("practice_ok") or 0)
+        lesson_done = bool(p.get("lesson_done"))
+        if lesson_done:
+            done_lessons += 1
+        qbest = quiz_best.get(lesson["id"])
+        quiz_passed = bool(qbest and qbest.get("passed"))
+        if quiz_passed:
+            quizzes_passed += 1
+        lessons_view.append({
+            **lesson,
+            "lesson_done": lesson_done,
+            "practice_ok": ok,
+            "practice_need": practice_need,
+            "practice_done": practice_need > 0 and ok >= practice_need,
+            "pbq_ok": bool(p.get("pbq_ok")),
+            "has_pbq": bool(lesson.get("has_pbq")),
+            "quiz_best": qbest,
+            "quiz_passed": quiz_passed,
+            "is_continue": bool(continue_lesson and continue_lesson["id"] == lesson["id"]),
+        })
+
+    domains_view = []
+    for domain in secplus_learn.DOMAINS:
+        d_lessons = [L for L in lessons_view if L["domain_id"] == domain["id"]]
+        d_passed = sum(1 for L in d_lessons if L["quiz_passed"])
+        d_total = len(d_lessons)
+        domains_view.append({
+            **domain,
+            "lessons_passed": d_passed,
+            "lessons_total": d_total,
+            "quiz_passed": d_total > 0 and d_passed >= d_total,
+            "lessons": d_lessons,
+        })
+
+    return render_template(
+        "career_secplus.html",
+        track_title=secplus_learn.TRACK_TITLE,
+        track_blurb=secplus_learn.TRACK_BLURB,
+        domains=domains_view,
+        lessons=lessons_view,
+        continue_lesson=continue_lesson,
+        done_lessons=done_lessons,
+        total_lessons=len(secplus_learn.LESSONS),
+        quizzes_passed=quizzes_passed,
+        total_quizzes=len(secplus_learn.LESSONS),
+        domains_green=sum(1 for d in domains_view if d["quiz_passed"]),
+        total_domains=len(secplus_learn.DOMAINS),
+        pass_pct=secplus_learn.PASS_PCT,
+        term_count=len(secplus_learn.all_key_terms()),
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/secplus/terms")
+@analyst_required
+def career_secplus_terms():
+    """Phase 1 curated Sec+ term bank (browse only — SM-2 deferred)."""
+    terms = secplus_learn.all_key_terms()
+    return render_template(
+        "career_secplus_terms.html",
+        terms=terms,
+        track_title=secplus_learn.TRACK_TITLE,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/secplus/domain/<domain_id>")
+@analyst_required
+def career_secplus_domain_redirect(domain_id):
+    """Legacy fat-domain URL → first micro-lesson in that domain (soft browse)."""
+    lessons = secplus_learn.lessons_for_domain(domain_id)
+    if not lessons:
+        abort(404)
+    return redirect(f"/career/secplus/lesson/{lessons[0]['id']}")
+
+
+@app.route("/career/secplus/domain/<domain_id>/practice")
+@analyst_required
+def career_secplus_domain_practice_redirect(domain_id):
+    """Legacy domain practice URL → first lesson practice in domain."""
+    lessons = secplus_learn.lessons_for_domain(domain_id)
+    if not lessons:
+        abort(404)
+    return redirect(f"/career/secplus/practice/{lessons[0]['id']}")
+
+
+@app.route("/career/secplus/lesson/<lesson_id>")
+@analyst_required
+def career_secplus_lesson(lesson_id):
+    """Show-me micro-lesson (soft browse — no hard lock)."""
+    lesson = secplus_learn.get_lesson(lesson_id)
+    if not lesson:
+        abort(404)
+    analyst_id = session["user_id"]
+    prog = db_fetchone(
+        f"SELECT * FROM career_secplus_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_secplus_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    continue_lesson = secplus_learn.next_incomplete_lesson(passed_ids)
+    nudge = bool(
+        continue_lesson
+        and continue_lesson["id"] != lesson_id
+        and lesson["order"] > continue_lesson["order"]
+        and lesson_id not in passed_ids
+    )
+    return render_template(
+        "career_secplus_lesson.html",
+        lesson=lesson,
+        progress=prog,
+        continue_lesson=continue_lesson,
+        soft_nudge=nudge,
+        pass_pct=secplus_learn.PASS_PCT,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/secplus/lesson/<lesson_id>/complete", methods=["POST"])
+@analyst_required
+def career_secplus_lesson_complete(lesson_id):
+    """Mark Security+ micro-lesson reading complete; award XP once."""
+    lesson = secplus_learn.get_lesson(lesson_id)
+    if not lesson:
+        return jsonify({"error": "Unknown lesson"}), 404
+    analyst_id = session["user_id"]
+    existing = db_fetchone(
+        f"SELECT lesson_done FROM career_secplus_progress "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    already = bool(existing and existing.get("lesson_done"))
+    _secplus_upsert_progress(
+        analyst_id, lesson_id, lesson_done=1, domain_id=lesson["domain_id"],
+    )
+    xp = {}
+    if not already:
+        xp = award_xp(
+            analyst_id, XP_REWARDS["secplus_lesson"],
+            f"Sec+ lesson: {lesson['title']}", "secplus_learn",
+        )
+    return jsonify({"ok": True, "already": already, "xp": xp})
+
+
+@app.route("/career/secplus/practice/<lesson_id>")
+@analyst_required
+def career_secplus_practice(lesson_id):
+    """Help-me checks + optional Watch-me PBQ for one micro-lesson."""
+    lesson = secplus_learn.get_lesson(lesson_id)
+    if not lesson:
+        abort(404)
+    items = secplus_learn.public_practice(lesson_id)
+    if not items:
+        abort(404)
+    pbq = secplus_learn.public_pbq(lesson_id)
+    analyst_id = session["user_id"]
+    prog = db_fetchone(
+        f"SELECT * FROM career_secplus_progress WHERE analyst_id = {PH} AND lesson_id = {PH}",
+        (analyst_id, lesson_id),
+    )
+    return render_template(
+        "career_secplus_practice.html",
+        lesson=lesson,
+        items=items,
+        pbq=pbq,
+        progress=prog,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/secplus/practice/check", methods=["POST"])
+@analyst_required
+def career_secplus_practice_check():
+    """Grade a Help-me check and update progress."""
+    import json as _json
+    data = request.get_json(silent=True) or {}
+    lesson_id = (data.get("lesson_id") or data.get("domain_id") or "").strip()
+    practice_id = (data.get("practice_id") or "").strip()
+    picked = data.get("picked") or ""
+    if not lesson_id or not practice_id:
+        return jsonify({"error": "lesson_id and practice_id required"}), 400
+    result = secplus_learn.check_practice_answer(lesson_id, practice_id, picked)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    xp = {}
+    if result.get("correct"):
+        analyst_id = session["user_id"]
+        row = db_fetchone(
+            f"SELECT practice_ok, practice_ids FROM career_secplus_progress "
+            f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+            (analyst_id, lesson_id),
+        )
+        solved = set()
+        if row and row.get("practice_ids"):
+            try:
+                solved = set(_json.loads(row["practice_ids"] or "[]"))
+            except Exception:
+                solved = set()
+        if practice_id not in solved:
+            solved.add(practice_id)
+            need = len(secplus_learn.get_practice(lesson_id))
+            lesson = secplus_learn.get_lesson(lesson_id) or {}
+            _secplus_upsert_progress(
+                analyst_id,
+                lesson_id,
+                practice_ok=len(solved),
+                practice_total=need,
+                practice_ids=_json.dumps(sorted(solved)),
+                domain_id=lesson.get("domain_id") or "",
+            )
+            xp = award_xp(
+                analyst_id, XP_REWARDS["secplus_practice"],
+                f"Sec+ practice: {practice_id}", "secplus_learn",
+            )
+    return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
+
+
+@app.route("/career/secplus/pbq/check", methods=["POST"])
+@analyst_required
+def career_secplus_pbq_check():
+    """Grade the Watch-me PBQ for a lesson (when tagged)."""
+    data = request.get_json(silent=True) or {}
+    lesson_id = (data.get("lesson_id") or data.get("domain_id") or "").strip()
+    if not lesson_id:
+        return jsonify({"error": "lesson_id required"}), 400
+    result = secplus_learn.check_pbq_answer(lesson_id, data)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    xp = {}
+    if result.get("correct"):
+        analyst_id = session["user_id"]
+        row = db_fetchone(
+            f"SELECT pbq_ok FROM career_secplus_progress "
+            f"WHERE analyst_id = {PH} AND lesson_id = {PH}",
+            (analyst_id, lesson_id),
+        )
+        already = bool(row and row.get("pbq_ok"))
+        if not already:
+            lesson = secplus_learn.get_lesson(lesson_id) or {}
+            _secplus_upsert_progress(
+                analyst_id, lesson_id, pbq_ok=1,
+                domain_id=lesson.get("domain_id") or "",
+            )
+            xp = award_xp(
+                analyst_id, XP_REWARDS["secplus_pbq"],
+                f"Sec+ PBQ: {lesson_id}", "secplus_learn",
+            )
+    return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
+
+
+@app.route("/career/secplus/quiz/<lesson_id>")
+@analyst_required
+def career_secplus_quiz_page(lesson_id):
+    """Per-lesson Security+ prove-it quiz (soft browse)."""
+    # Legacy domain quiz URLs → first lesson quiz in that domain.
+    if secplus_learn.get_domain(lesson_id) and not secplus_learn.get_lesson(lesson_id):
+        lessons = secplus_learn.lessons_for_domain(lesson_id)
+        if not lessons:
+            abort(404)
+        return redirect(f"/career/secplus/quiz/{lessons[0]['id']}")
+    lesson = secplus_learn.get_lesson(lesson_id)
+    questions = secplus_learn.public_quiz(lesson_id)
+    if not lesson or not questions:
+        abort(404)
+    analyst_id = session["user_id"]
+    quiz_best = db_fetchone(
+        f"SELECT score_pct, passed, created_at FROM career_secplus_quiz "
+        f"WHERE analyst_id = {PH} AND lesson_id = {PH} "
+        f"ORDER BY score_pct DESC, id DESC LIMIT 1",
+        (analyst_id, lesson_id),
+    )
+    passed_ids = {
+        r["lesson_id"]
+        for r in db_fetchall(
+            f"SELECT DISTINCT lesson_id FROM career_secplus_quiz "
+            f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+            (analyst_id,),
+        )
+        if r.get("lesson_id")
+    }
+    next_after = None
+    if lesson_id in passed_ids:
+        next_after = secplus_learn.next_incomplete_lesson(passed_ids)
+    return render_template(
+        "career_secplus_quiz.html",
+        lesson=lesson,
+        questions=questions,
+        quiz_best=quiz_best,
+        next_lesson=next_after,
+        pass_pct=secplus_learn.PASS_PCT,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/secplus/quiz/<lesson_id>/submit", methods=["POST"])
+@analyst_required
+def career_secplus_quiz_submit(lesson_id):
+    """Grade a per-lesson Security+ quiz and store the attempt."""
+    lesson = secplus_learn.get_lesson(lesson_id)
+    if not lesson or not secplus_learn.get_quiz(lesson_id):
+        return jsonify({"error": "Unknown lesson quiz"}), 404
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    answers = data.get("answers") or {}
+    result = secplus_learn.grade_quiz(lesson_id, answers)
+    if not result.get("ok"):
+        return jsonify({"error": result.get("error") or "Grade failed"}), 400
+    db_run(
+        f"INSERT INTO career_secplus_quiz "
+        f"(analyst_id, lesson_id, domain_id, score_pct, correct, total, passed) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id,
+            lesson_id,
+            lesson["domain_id"],
+            result["pct"],
+            result["correct"],
+            result["total"],
+            1 if result["passed"] else 0,
+        ),
+    )
+    xp = award_xp(
+        analyst_id, XP_REWARDS["secplus_quiz"],
+        f"Sec+ quiz {lesson_id} {result['pct']}%", "secplus_learn",
+    )
+    next_lesson = None
+    if result["passed"]:
+        prior_pass = db_fetchone(
+            f"SELECT COUNT(*) AS c FROM career_secplus_quiz "
+            f"WHERE analyst_id = {PH} AND lesson_id = {PH} AND passed = 1",
+            (analyst_id, lesson_id),
+        )
+        if int((prior_pass or {}).get("c") or 0) <= 1:
+            bonus = award_xp(
+                analyst_id, XP_REWARDS["secplus_quiz_pass"],
+                f"Sec+ quiz passed: {lesson_id}", "secplus_learn",
+            )
+            if bonus:
+                xp = bonus
+        passed_ids = {
+            r["lesson_id"]
+            for r in db_fetchall(
+                f"SELECT DISTINCT lesson_id FROM career_secplus_quiz "
+                f"WHERE analyst_id = {PH} AND passed = 1 AND lesson_id != ''",
+                (analyst_id,),
+            )
+            if r.get("lesson_id")
+        }
+        nxt = secplus_learn.next_incomplete_lesson(passed_ids)
+        if nxt:
+            next_lesson = {"id": nxt["id"], "title": nxt["title"]}
+    return jsonify({"ok": True, "result": result, "xp": xp, "next_lesson": next_lesson})
+
+
+def _interview_progress_map(analyst_id: int) -> dict[str, dict]:
+    """scenario_id -> progress row for Interview Gym."""
+    rows = db_fetchall(
+        f"SELECT * FROM career_interview_progress WHERE analyst_id = {PH}",
+        (analyst_id,),
+    )
+    return {r["scenario_id"]: r for r in rows}
+
+
+def _interview_upsert_progress(analyst_id: int, scenario_id: str, **fields) -> None:
+    """Upsert Interview Gym progress flags/scores."""
+    existing = db_fetchone(
+        f"SELECT id, guided_done, coached_done, live_done, live_best "
+        f"FROM career_interview_progress "
+        f"WHERE analyst_id = {PH} AND scenario_id = {PH}",
+        (analyst_id, scenario_id),
+    )
+    guided = int(fields.get("guided_done", (existing or {}).get("guided_done") or 0))
+    coached = int(fields.get("coached_done", (existing or {}).get("coached_done") or 0))
+    live = int(fields.get("live_done", (existing or {}).get("live_done") or 0))
+    live_best = int(fields.get("live_best", (existing or {}).get("live_best") or 0))
+    if "live_best" in fields and existing:
+        live_best = max(live_best, int(existing.get("live_best") or 0))
+    if existing:
+        db_run(
+            f"UPDATE career_interview_progress SET guided_done={PH}, coached_done={PH}, "
+            f"live_done={PH}, live_best={PH}, updated_at=datetime('now') WHERE id={PH}",
+            (guided, coached, live, live_best, existing["id"]),
+        )
+    else:
+        db_run(
+            f"INSERT INTO career_interview_progress "
+            f"(analyst_id, scenario_id, guided_done, coached_done, live_done, live_best) "
+            f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH})",
+            (analyst_id, scenario_id, guided, coached, live, live_best),
+        )
+
+
+def _interview_save_instance(
+    analyst_id: int,
+    parent_id: str,
+    scenario: dict,
+) -> str:
+    """Persist a practice variant and return instance id."""
+    import json as _json
+    instance_id = interview_variants.new_instance_id()
+    db_run(
+        f"INSERT INTO career_interview_instances "
+        f"(id, analyst_id, parent_id, source, label, variant_key, payload) "
+        f"VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})",
+        (
+            instance_id,
+            analyst_id,
+            parent_id,
+            str(scenario.get("variant_source") or "curated"),
+            str(scenario.get("variant_label") or "")[:120],
+            str(scenario.get("variant_key") or "")[:80],
+            _json.dumps(scenario),
+        ),
+    )
+    return instance_id
+
+
+def _interview_load_instance(analyst_id: int, instance_id: str) -> dict | None:
+    """Load a practice variant owned by this analyst."""
+    import json as _json
+    if not instance_id:
+        return None
+    row = db_fetchone(
+        f"SELECT payload, parent_id, source, label FROM career_interview_instances "
+        f"WHERE id = {PH} AND analyst_id = {PH}",
+        (instance_id, analyst_id),
+    )
+    if not row:
+        return None
+    try:
+        data = _json.loads(row["payload"])
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    data["parent_id"] = row.get("parent_id") or data.get("parent_id")
+    data["variant_source"] = row.get("source") or data.get("variant_source")
+    data["variant_label"] = row.get("label") or data.get("variant_label")
+    data["instance_id"] = instance_id
+    return data
+
+
+def _interview_used_variant_keys(analyst_id: int, parent_id: str) -> set[str]:
+    """Variant keys already practiced for this parent skill."""
+    rows = db_fetchall(
+        f"SELECT variant_key FROM career_interview_instances "
+        f"WHERE analyst_id = {PH} AND parent_id = {PH}",
+        (analyst_id, parent_id),
+    ) or []
+    return {str(r.get("variant_key") or "") for r in rows if r.get("variant_key")}
+
+
+def _interview_resolve_scenario(analyst_id: int, scenario_id: str, instance_id: str = ""):
+    """Return (scenario_dict, parent_id) for core or variant play."""
+    if instance_id:
+        inst = _interview_load_instance(analyst_id, instance_id)
+        if inst:
+            parent = str(inst.get("parent_id") or scenario_id)
+            return inst, parent
+    core = interview_gym.get_scenario(scenario_id)
+    if not core:
+        return None, scenario_id
+    return core, scenario_id
+
+
+def _interview_guided_grade(scenario: dict, step_id: str, choice_idx: int) -> dict:
+    """Grade Guided against an in-memory scenario (core or variant)."""
+    guided = (scenario.get("guided") or {}).get(step_id)
+    if not guided:
+        return {"ok": False, "error": "Unknown step"}
+    correct = int(choice_idx) == int(guided["answer_idx"])
+    return {
+        "ok": True,
+        "correct": correct,
+        "answer_idx": guided["answer_idx"],
+        "example": guided.get("example") or "",
+        "teach": guided.get("teach") or "",
+    }
+
+
+def _interview_payload_for_mode(scenario: dict, mode: str) -> dict:
+    """Build client payload from a core or variant scenario dict."""
+    steps_out = []
+    if mode == "guided":
+        for step in interview_gym.STEPS:
+            sid = step["id"]
+            g = scenario["guided"][sid]
+            steps_out.append({
+                **step,
+                "teach": g["teach"],
+                "choices": g["choices"],
+                "answer_idx": g["answer_idx"],
+                "example": g["example"],
+            })
+    elif mode == "coached":
+        for step in interview_gym.STEPS:
+            sid = step["id"]
+            steps_out.append({
+                **step,
+                "hint": scenario["guided"][sid]["teach"],
+            })
+    else:
+        steps_out = list(interview_gym.STEPS)
+    out = {
+        "id": scenario.get("parent_id") or scenario.get("id"),
+        "title": scenario.get("title"),
+        "tag": scenario.get("tag"),
+        "prompt": scenario.get("prompt"),
+        "why_hm": scenario.get("why_hm"),
+        "mode": mode,
+        "steps": steps_out,
+        "variant_source": scenario.get("variant_source") or "core",
+        "variant_label": scenario.get("variant_label") or "",
+        "instance_id": scenario.get("instance_id") or "",
+    }
+    if mode == "live":
+        out["seconds"] = interview_gym.LIVE_SECONDS
+        out.pop("why_hm", None)
+    return out
+
+
+def _interview_unlocks(prog_map: dict) -> dict[str, bool]:
+    """Coached unlocks after all Guided done; Live after all Coached done."""
+    total = len(interview_gym.SCENARIOS)
+    guided_n = sum(1 for s in interview_gym.SCENARIOS
+                   if int((prog_map.get(s["id"]) or {}).get("guided_done") or 0))
+    coached_n = sum(1 for s in interview_gym.SCENARIOS
+                    if int((prog_map.get(s["id"]) or {}).get("coached_done") or 0))
+    return {
+        "coached": guided_n >= total,
+        "live": coached_n >= total,
+        "guided_done_count": guided_n,
+        "coached_done_count": coached_n,
+        "total": total,
+    }
+
+
+@app.route("/career/interview")
+@analyst_required
+def career_interview_hub():
+    """Interview Walkthrough Gym hub — Guided → Coached → Live."""
+    analyst_id = session["user_id"]
+    prog = _interview_progress_map(analyst_id)
+    unlocks = _interview_unlocks(prog)
+    cards = []
+    for s in interview_gym.public_scenario_list():
+        p = prog.get(s["id"]) or {}
+        packs = interview_variants.list_curated_packs(s["id"])
+        cards.append({
+            **s,
+            "guided_done": bool(p.get("guided_done")),
+            "coached_done": bool(p.get("coached_done")),
+            "live_done": bool(p.get("live_done")),
+            "live_best": int(p.get("live_best") or 0),
+            "curated_angles": len(packs),
+            "angles_practiced": len(_interview_used_variant_keys(analyst_id, s["id"])),
+        })
+    return render_template(
+        "career_interview.html",
+        track_title=interview_gym.TRACK_TITLE,
+        track_blurb=(
+            interview_gym.TRACK_BLURB
+            + " Core scenarios unlock the path. Use New angle anytime for curated "
+            + "remixes or AI-generated cases of the same skill."
+        ),
+        scenarios=cards,
+        unlocks=unlocks,
+        steps=interview_gym.STEPS,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/interview/<scenario_id>")
+@analyst_required
+def career_interview_scenario(scenario_id):
+    """Interactive scenario page (mode via ?mode=guided|coached|live)."""
+    analyst_id = session["user_id"]
+    instance_id = (request.args.get("instance") or "").strip()
+    scenario, parent_id = _interview_resolve_scenario(analyst_id, scenario_id, instance_id)
+    if not scenario:
+        abort(404)
+    # URL parent must match instance parent when using a variant.
+    if instance_id and parent_id != scenario_id:
+        return redirect(
+            url_for("career_interview_scenario", scenario_id=parent_id)
+            + f"?mode={request.args.get('mode') or 'guided'}&instance={instance_id}"
+        )
+    mode = (request.args.get("mode") or "guided").strip().lower()
+    if mode not in interview_gym.MODES:
+        mode = "guided"
+    prog = _interview_progress_map(analyst_id)
+    unlocks = _interview_unlocks(prog)
+    if mode == "coached" and not unlocks["coached"]:
+        flash("Finish all Guided scenarios first — training wheels before free writing.", "info")
+        return redirect(url_for("career_interview_hub"))
+    if mode == "live" and not unlocks["live"]:
+        flash("Finish all Coached scenarios first — then unlock Live timer mode.", "info")
+        return redirect(url_for("career_interview_hub"))
+
+    payload = _interview_payload_for_mode(scenario, mode)
+    p = prog.get(parent_id) or {}
+    return render_template(
+        "career_interview_scenario.html",
+        scenario=scenario,
+        parent_id=parent_id,
+        mode=mode,
+        payload=payload,
+        unlocks=unlocks,
+        progress=p,
+        steps=interview_gym.STEPS,
+        live_seconds=interview_gym.LIVE_SECONDS,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/interview/new-angle", methods=["POST"])
+@analyst_required
+def api_interview_new_angle():
+    """
+    Create a practice variant for a core skill.
+    Body: { scenario_id, source?: "curated"|"ai"|"auto" }
+    auto = try AI first, fall back to curated.
+    """
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    parent_id = (data.get("scenario_id") or "").strip()
+    source = (data.get("source") or "auto").strip().lower()
+    if source not in ("curated", "ai", "auto"):
+        source = "auto"
+    if not interview_gym.get_scenario(parent_id):
+        return jsonify({"error": "Unknown scenario"}), 404
+
+    scenario = None
+    used = _interview_used_variant_keys(analyst_id, parent_id)
+    if source in ("ai", "auto"):
+        scenario = interview_variants.generate_ai_variant(parent_id, _call_ollama)
+    if scenario is None:
+        pack = interview_variants.pick_curated_pack(parent_id, used)
+        if not pack:
+            return jsonify({"error": "No variants available for this skill yet."}), 400
+        scenario = interview_variants.materialize_curated(parent_id, pack)
+        source_used = "curated"
+    else:
+        source_used = "ai"
+    if not scenario:
+        return jsonify({"error": "Could not build a variant."}), 500
+
+    instance_id = _interview_save_instance(analyst_id, parent_id, scenario)
+    mode = (data.get("mode") or "guided").strip().lower()
+    if mode not in interview_gym.MODES:
+        mode = "guided"
+    return jsonify({
+        "ok": True,
+        "instance_id": instance_id,
+        "source": source_used,
+        "label": scenario.get("variant_label") or "",
+        "url": (
+            f"/career/interview/{parent_id}?mode={mode}&instance={instance_id}"
+        ),
+    })
+
+
+@app.route("/api/career/interview/guided-step", methods=["POST"])
+@analyst_required
+def api_interview_guided_step():
+    """Grade one Guided multiple-choice step (interactive)."""
+    data = request.get_json(silent=True) or {}
+    scenario_id = (data.get("scenario_id") or "").strip()
+    instance_id = (data.get("instance_id") or "").strip()
+    step_id = (data.get("step_id") or "").strip()
+    try:
+        choice_idx = int(data.get("choice_idx"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "choice_idx required"}), 400
+    analyst_id = session["user_id"]
+    scenario, _parent = _interview_resolve_scenario(analyst_id, scenario_id, instance_id)
+    if not scenario:
+        return jsonify({"error": "Unknown scenario"}), 400
+    result = _interview_guided_grade(scenario, step_id, choice_idx)
+    if result.get("error"):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@app.route("/api/career/interview/complete", methods=["POST"])
+@analyst_required
+def api_interview_complete():
+    """
+    Complete a scenario mode.
+    Body: { scenario_id, mode, answers?, score_pct? }
+    Guided/Coached: awards XP once per mode per scenario.
+    Live: optional Ollama rubric on answers.
+    """
+    import json as _json
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    scenario_id = (data.get("scenario_id") or "").strip()
+    instance_id = (data.get("instance_id") or "").strip()
+    mode = (data.get("mode") or "").strip().lower()
+    scenario, parent_id = _interview_resolve_scenario(analyst_id, scenario_id, instance_id)
+    if not scenario or mode not in interview_gym.MODES:
+        return jsonify({"error": "Invalid scenario or mode"}), 400
+
+    prog = _interview_progress_map(analyst_id)
+    unlocks = _interview_unlocks(prog)
+    if mode == "coached" and not unlocks["coached"]:
+        return jsonify({"error": "Coached locked — finish Guided first."}), 403
+    if mode == "live" and not unlocks["live"]:
+        return jsonify({"error": "Live locked — finish Coached first."}), 403
+
+    answers = data.get("answers") or {}
+    if not isinstance(answers, dict):
+        answers = {}
+    feedback = ""
+    score_pct = None
+    xp = {}
+
+    p = prog.get(parent_id) or {}
+    model = dict(scenario.get("model") or {})
+
+    if mode == "guided":
+        already = bool(p.get("guided_done"))
+        _interview_upsert_progress(analyst_id, parent_id, guided_done=1)
+        if not already:
+            xp = award_xp(
+                analyst_id, XP_REWARDS["interview_guided"],
+                f"Interview Guided: {scenario['title']}", "interview_gym",
+            )
+        elif instance_id:
+            xp = award_xp(
+                analyst_id, 6,
+                f"Interview variant practice: {scenario.get('variant_label') or parent_id}",
+                "interview_gym",
+            )
+    elif mode == "coached":
+        already = bool(p.get("coached_done"))
+        feedback = _json.dumps({"model": model})
+        _interview_upsert_progress(analyst_id, parent_id, coached_done=1)
+        if not already:
+            xp = award_xp(
+                analyst_id, XP_REWARDS["interview_coached"],
+                f"Interview Coached: {scenario['title']}", "interview_gym",
+            )
+        elif instance_id:
+            xp = award_xp(
+                analyst_id, 8,
+                f"Interview variant Coached: {scenario.get('variant_label') or parent_id}",
+                "interview_gym",
+            )
+        return jsonify({
+            "ok": True,
+            "mode": mode,
+            "model": model,
+            "xp": xp,
+            "already": already,
+            "unlocks": _interview_unlocks(_interview_progress_map(analyst_id)),
+        })
+    else:  # live
+        # Local heuristic score + optional Ollama coach
+        filled = sum(1 for step in interview_gym.STEPS
+                     if len(str(answers.get(step["id"]) or "").strip()) >= 20)
+        score_pct = round(100 * filled / max(1, len(interview_gym.STEPS)))
+        tips = []
+        verdict = "Solid coverage of the six steps." if score_pct >= 70 else \
+            "Fill each step with a real sentence — blank or tiny answers cost points."
+        try:
+            prompt = interview_gym.build_live_rubric_prompt(scenario, answers)
+            raw = _call_ollama(
+                prompt, max_tokens=400, temperature=0.3, timeout=90,
+                system="You are Boundry Interview Coach. JSON only. Be kind to beginners.",
+            )
+            import re as _re
+            cleaned = _re.sub(r"```[a-z]*\n?", "", raw or "").replace("```", "").strip()
+            parsed = None
+            try:
+                parsed = _json.loads(cleaned)
+            except Exception:
+                m = _re.search(r"\{.*\}", cleaned, _re.DOTALL)
+                if m:
+                    parsed = _json.loads(m.group())
+            if isinstance(parsed, dict):
+                if isinstance(parsed.get("score"), (int, float)):
+                    # Blend heuristic with model (keep beginner-friendly floor)
+                    score_pct = max(score_pct, min(100, int(parsed["score"])))
+                if parsed.get("verdict"):
+                    verdict = str(parsed["verdict"])[:400]
+                if isinstance(parsed.get("tips"), list):
+                    tips = [str(t)[:200] for t in parsed["tips"][:4]]
+        except Exception as exc:
+            security_log.warning(f"INTERVIEW_LIVE_OLLAMA error={exc}")
+
+        feedback = _json.dumps({"verdict": verdict, "tips": tips, "model": model})
+        _interview_upsert_progress(
+            analyst_id, parent_id,
+            live_done=1,
+            live_best=score_pct,
+        )
+        xp = award_xp(
+            analyst_id, XP_REWARDS["interview_live"],
+            f"Interview Live: {scenario['title']}", "interview_gym",
+        )
+        if score_pct >= 70:
+            bonus = award_xp(
+                analyst_id, XP_REWARDS["interview_live_pass"],
+                f"Interview Live pass {score_pct}%", "interview_gym",
+            )
+            if bonus:
+                xp = bonus
+
+        db_run(
+            f"INSERT INTO career_interview_attempts "
+            f"(analyst_id, scenario_id, mode, score_pct, answers_json, feedback) "
+            f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH})",
+            (analyst_id, parent_id, mode, score_pct, _json.dumps(answers), feedback),
+        )
+        return jsonify({
+            "ok": True,
+            "mode": mode,
+            "score_pct": score_pct,
+            "verdict": verdict,
+            "tips": tips,
+            "model": model,
+            "xp": xp,
+            "unlocks": _interview_unlocks(_interview_progress_map(analyst_id)),
+        })
+
+    db_run(
+        f"INSERT INTO career_interview_attempts "
+        f"(analyst_id, scenario_id, mode, score_pct, answers_json, feedback) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH})",
+        (analyst_id, parent_id, mode, score_pct, _json.dumps(answers), feedback),
+    )
+    return jsonify({
+        "ok": True,
+        "mode": mode,
+        "xp": xp,
+        "already": already,
+        "unlocks": _interview_unlocks(_interview_progress_map(analyst_id)),
+    })
 
 
 # --- ROUTE 4d: Training Mode ---
@@ -3697,6 +8808,38 @@ def training_result(attempt_id):
     )
 
 
+def _hq_sort_attention_tickets(tickets: list) -> list:
+    """Order open BT tickets for HQ Attention: overdue, escalated, then priority."""
+    status_rank = {
+        "escalated": 0,
+        "new": 1,
+        "open": 1,
+        "working": 2,
+        "waiting": 3,
+    }
+    now = datetime.utcnow()
+
+    def _overdue(t: dict) -> int:
+        due = (t.get("sla_due_at") or "").strip()
+        if not due:
+            return 1
+        try:
+            due_dt = datetime.strptime(due[:19], "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return 1
+        return 0 if due_dt < now else 1
+
+    return sorted(
+        tickets or [],
+        key=lambda t: (
+            _overdue(t),
+            status_rank.get((t.get("status") or "").lower(), 9),
+            int(t.get("priority") or 5),
+            -(int(t.get("id") or 0)),
+        ),
+    )
+
+
 # --- ROUTE 4b: Analyst Control Room ---
 @app.route("/control-room")
 @dashboard_required
@@ -3802,6 +8945,40 @@ def control_room():
     ) or []
     ransomware_score = _evaluate_ransomware_score()
 
+    # Live Ops strip + open BT count for HQ urgency (analyst only)
+    ops_strip = {}
+    open_bt_count = 0
+    attention_tickets: list = []
+    aid = session.get("user_id")
+    if session.get("role") == "analyst" and aid:
+        active_shift = soc_lab.get_active_shift(db_fetchone, aid, ph=PH)
+        ops_strip = soc_lab.ops_status_strip(
+            db_fetchone, aid, ph=PH, active_shift=active_shift,
+        )
+        open_bt_count = int(ops_strip.get("open_tickets") or 0)
+        raw_tickets = soc_lab.list_tickets(
+            db_fetchall, aid, status="open", ph=PH, limit=40,
+        )
+        attention_tickets = _hq_sort_attention_tickets(raw_tickets)[:8]
+
+    # Attention findings: CRITICAL/HIGH first, then fill to 8
+    _sev_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+    _findings_sorted = sorted(
+        open_findings or [],
+        key=lambda f: (
+            _sev_rank.get((f.get("severity") or "").upper(), 9),
+            -(int(f.get("id") or 0)),
+        ),
+    )
+    attention_findings = [f for f in _findings_sorted if (f.get("severity") or "").upper() in ("CRITICAL", "HIGH")]
+    if len(attention_findings) < 8:
+        for f in _findings_sorted:
+            if f not in attention_findings:
+                attention_findings.append(f)
+            if len(attention_findings) >= 8:
+                break
+    attention_findings = attention_findings[:8]
+
     return render_template(
         "control_room.html",
         clients=clients,
@@ -3812,6 +8989,10 @@ def control_room():
         total_reports=total_reports,
         total_threats=total_threats,
         total_events=total_events,
+        ops_strip=ops_strip,
+        open_bt_count=open_bt_count,
+        attention_tickets=attention_tickets,
+        attention_findings=attention_findings,
         breach_items=breach_items,
         archived_items=archived_items,
         last_intel_update=last_intel_update,
@@ -4553,7 +9734,7 @@ def _ollama_chat_url() -> str:
 
 
 def _call_ollama(prompt, *, model=None, max_tokens=2048, temperature=0.3,
-                 timeout=120, system=AI_SYSTEM_PROMPT):
+                 timeout=120, system=AI_SYSTEM_PROMPT, history=None):
     """Send a chat completion to Ollama with a model-not-found fallback chain.
 
     Tries `model` (default OLLAMA_MODEL) first. If Ollama returns HTTP 404 with
@@ -4561,6 +9742,9 @@ def _call_ollama(prompt, *, model=None, max_tokens=2048, temperature=0.3,
     in order. Connection-refused / timeout errors are not retried (every model
     would fail the same way) and are raised so the caller can fall back to
     Anthropic. Returns the assistant text on success.
+
+    history: optional list of prior turns [{"role":"user"|"assistant","content":"..."}]
+    for multi-turn tutors. Cap is enforced by the caller.
     """
     import json as _j
     import urllib.request as _urlreq
@@ -4575,6 +9759,12 @@ def _call_ollama(prompt, *, model=None, max_tokens=2048, temperature=0.3,
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
+    if history:
+        for turn in history:
+            role = (turn.get("role") or "").strip().lower()
+            content = (turn.get("content") or "").strip()
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content[:4000]})
     messages.append({"role": "user", "content": _cap_prompt(prompt)})
 
     url = _ollama_chat_url()
@@ -4602,7 +9792,7 @@ def _call_ollama(prompt, *, model=None, max_tokens=2048, temperature=0.3,
                 body = exc.read().decode("utf-8", errors="ignore").lower()
             except Exception:
                 pass
-            if exc.code == 404 and "model" in body and "not found" in body:
+            if exc.code == 404 and "not found" in body:
                 app.logger.info(
                     f"Ollama model {m} not found, trying next fallback"
                 )
@@ -6323,12 +11513,13 @@ def scorecard():
 
 # ── CISSP study helpers ──────────────────────────────────────────────────────
 
-def _generate_cissp_question(domain_num, difficulty_hint=None):
+def _generate_cissp_question(domain_num, difficulty_hint=None, topic=None, lesson=None):
     """
     Use Ollama to generate a scenario-based CISSP practice question for the given domain.
     Returns a validated dict or None if generation fails.
     The correct answer is NOT returned to the browser — it stays server-side in the DB.
     difficulty_hint: 1=beginner, 2=intermediate, 3=advanced (used by CAT exam engine).
+    topic / lesson: when lesson is set, question is grounded in that mini-lesson.
     """
     import json as _j
 
@@ -6337,19 +11528,30 @@ def _generate_cissp_question(domain_num, difficulty_hint=None):
         return None
 
     topics_str = ", ".join(domain.get("key_topics", []))
+    focus_topic = (topic or (lesson or {}).get("topic") or "").strip()
 
-    _difficulty_guidance = ""
-    if difficulty_hint == 1:
-        _difficulty_guidance = "\nDifficulty target: BEGINNER — use a straightforward scenario testing fundamental concepts with one clearly correct answer."
-    elif difficulty_hint == 3:
-        _difficulty_guidance = "\nDifficulty target: ADVANCED — use a complex, ambiguous scenario requiring integration of multiple CISSP domains. All distractors must be plausible."
-    elif difficulty_hint == 2:
-        _difficulty_guidance = "\nDifficulty target: INTERMEDIATE — use a realistic workplace scenario requiring security judgment, not just recall."
+    if lesson:
+        prompt = cissp_lessons.build_lesson_quiz_prompt(
+            domain_num,
+            domain["name"],
+            focus_topic or "Core concepts",
+            lesson,
+            difficulty_hint=difficulty_hint,
+        )
+    else:
+        _difficulty_guidance = ""
+        if difficulty_hint == 1:
+            _difficulty_guidance = "\nDifficulty target: BEGINNER — use a straightforward scenario testing fundamental concepts with one clearly correct answer."
+        elif difficulty_hint == 3:
+            _difficulty_guidance = "\nDifficulty target: ADVANCED — use a complex, ambiguous scenario requiring integration of multiple CISSP domains. All distractors must be plausible."
+        elif difficulty_hint == 2:
+            _difficulty_guidance = "\nDifficulty target: INTERMEDIATE — use a realistic workplace scenario requiring security judgment, not just recall."
 
-    prompt = f"""You are an expert ISC2 CISSP exam question writer. You must write ENTIRELY in English — no other languages.
+        topic_line = f"\nFocus this question on: {focus_topic}." if focus_topic else ""
+        prompt = f"""You are an expert ISC2 CISSP exam question writer. You must write ENTIRELY in English — no other languages.
 
 Write ONE scenario-based practice question for CISSP Domain {domain_num}: {domain["name"]} ({domain["weight"]}% of exam).
-Key topics for this domain: {topics_str}{_difficulty_guidance}
+Key topics for this domain: {topics_str}{topic_line}{_difficulty_guidance}
 
 Requirements:
 1. Write a realistic 3–5 sentence workplace scenario for a senior security professional or manager.
@@ -6406,6 +11608,8 @@ Respond ONLY with valid JSON — absolutely no other text, no markdown, no code 
         if re.search(u'[　-鿿豈-﫿]', all_text):
             security_log.warning(f"CISSP_Q_NON_ENGLISH domain={domain_num} — rejecting")
             return None
+        if focus_topic:
+            q["topic"] = focus_topic
         return q
 
     # 1. Try Ollama (local) — up to 3 attempts before giving up
@@ -6445,6 +11649,130 @@ Respond ONLY with valid JSON — absolutely no other text, no markdown, no code 
     return None
 
 
+def _generate_cissp_lesson(domain_num: int, topic: str) -> dict | None:
+    """Generate a short Ollama mini-lesson for a CISSP topic. Returns dict or None."""
+    import json as _j
+
+    domain = CISSP_DOMAINS.get(domain_num, {})
+    if not domain or not topic:
+        return None
+
+    prompt = cissp_lessons.build_lesson_prompt(
+        domain_num, domain["name"], topic, domain.get("weight", 0)
+    )
+    system = cissp_lessons.lesson_system_prompt()
+
+    def _extract_json(text: str):
+        text = re.sub(r"```[a-z]*\n?", "", text).replace("```", "").strip()
+        try:
+            return _j.loads(text)
+        except Exception:
+            pass
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            try:
+                return _j.loads(match.group())
+            except Exception:
+                pass
+        return None
+
+    def _parse_lesson(text: str):
+        lesson = _extract_json(text)
+        if not lesson:
+            return None
+        required = ["title", "summary", "body", "key_takeaways", "exam_trap"]
+        if not all(k in lesson for k in required):
+            return None
+        if not isinstance(lesson.get("key_takeaways"), list) or not lesson["key_takeaways"]:
+            return None
+        all_text = " ".join([
+            str(lesson.get("title", "")),
+            str(lesson.get("summary", "")),
+            str(lesson.get("body", "")),
+            str(lesson.get("exam_trap", "")),
+            " ".join(str(t) for t in lesson.get("key_takeaways", [])),
+        ])
+        if re.search(u"[　-鿿豈-﫿]", all_text):
+            security_log.warning(f"CISSP_LESSON_NON_ENGLISH domain={domain_num}")
+            return None
+        lesson["topic"] = topic
+        lesson["key_takeaways"] = [str(t) for t in lesson["key_takeaways"][:5]]
+        return lesson
+
+    for attempt in range(1, 4):
+        try:
+            text = _call_ollama(
+                prompt, max_tokens=900, temperature=0.45, timeout=180, system=system
+            ).strip()
+            lesson = _parse_lesson(text)
+            if lesson:
+                return lesson
+            security_log.warning(
+                f"CISSP_LESSON_INVALID domain={domain_num} attempt={attempt}"
+            )
+        except Exception as exc:
+            security_log.warning(
+                f"CISSP_LESSON_OLLAMA_FAILED domain={domain_num} attempt={attempt} error={exc}"
+            )
+            break
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if api_key:
+        try:
+            import anthropic as _anthropic
+            ai_client = _anthropic.Anthropic(api_key=api_key)
+            message = ai_client.messages.create(
+                model="claude-haiku-4-5",
+                max_tokens=900,
+                system=system,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            lesson = _parse_lesson(message.content[0].text)
+            if lesson:
+                security_log.info(f"CISSP_LESSON_ANTHROPIC_FALLBACK domain={domain_num}")
+                return lesson
+        except Exception as exc:
+            security_log.warning(f"CISSP_LESSON_ANTHROPIC_FAILED domain={domain_num} error={exc}")
+    return None
+
+
+def _cissp_single_domain_accuracy(analyst_id: int, domain_num: int) -> float | None:
+    """Domain accuracy 0–100 from cissp_progress, or None if unseen."""
+    row = db_fetchone(
+        f"SELECT attempts, correct FROM cissp_progress "
+        f"WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, domain_num),
+    )
+    if not row:
+        return None
+    return cissp_lessons.domain_accuracy_pct(
+        int(row.get("attempts") or 0), int(row.get("correct") or 0)
+    )
+
+
+def _persist_cissp_attempt(analyst_id: int, domain_num: int, q: dict) -> int:
+    """Insert a CISSP attempt row; return attempt id."""
+    import json as _json
+    db_run(
+        f"INSERT INTO cissp_attempts "
+        f"(analyst_id, domain_num, scenario, question_text, options_json, "
+        f" correct_answer, explanation, mindset, difficulty) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
+        (
+            analyst_id, domain_num,
+            q["scenario"], q["question"],
+            _json.dumps(q["options"]),
+            q["correct"], q["explanation"],
+            q["mindset"], q["difficulty"],
+        ),
+    )
+    return db_fetchone(
+        f"SELECT MAX(id) AS aid FROM cissp_attempts "
+        f"WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, domain_num),
+    )["aid"]
+
+
 def _cissp_readiness_score(analyst_id):
     """
     Calculate a 0–1000 readiness score weighted by each domain's CISSP exam %.
@@ -6478,20 +11806,17 @@ def glossary():
     """Security acronym index — a study reference grouped by category."""
     return render_template(
         "glossary.html",
-        grouped=security_acronyms.acronyms_by_category(),
-        total=len(security_acronyms.ACRONYMS),
+        grouped=security_acronyms.glossary_by_category(),
+        total=len(security_acronyms.GLOSSARY_ENTRIES),
         role=session.get("role", "client"),
         ops_mode=session.get("analyst_mode", False),
     )
 
 
 @app.route("/api/acronyms")
-@login_required
 def api_acronyms():
-    """Acronym map (abbr -> {full, def}) for the site-wide hover tooltips.
-    Available to any logged-in user so tooltips work on every page."""
-    return jsonify({e["abbr"]: {"full": e["full"], "def": e["def"]}
-                    for e in security_acronyms.ACRONYMS})
+    """Glossary hover map (abbr -> term/expansion/layman/aliases). Not secret."""
+    return jsonify(security_acronyms.hover_payload())
 
 
 ACRONYM_QUIZ_LEN    = 25   # questions per tracked acronym quiz
@@ -6622,6 +11947,63 @@ def glossary_quiz_history():
     )
 
 
+CISSP_DOMAIN_QUIZ_LEN  = 10  # questions per tracked single-domain quiz
+CISSP_DOMAIN_HARD_TAIL = 3   # last N questions force advanced difficulty
+
+
+def _domain_quiz_type(domain_num: int) -> str:
+    """quiz_results type key for a single-domain study quiz."""
+    return f"cissp_d{domain_num}"
+
+
+def _domain_difficulty_hint(analyst_id: int, domain_num: int, hard_round: bool = False) -> int:
+    """Pick difficulty from recent domain accuracy (1–3). Hard-tail always returns 3."""
+    if hard_round:
+        return 3
+    row = db_fetchone(
+        f"SELECT attempts, correct FROM cissp_progress "
+        f"WHERE analyst_id = {PH} AND domain_num = {PH}",
+        (analyst_id, domain_num),
+    )
+    if not row or not (row["attempts"] or 0):
+        return 2
+    acc = (row["correct"] or 0) / row["attempts"]
+    if acc >= 0.80:
+        return 3
+    if acc >= 0.55:
+        return 2
+    return 1
+
+
+def _cissp_mindset_accuracy(analyst_id: int, domain_num: int) -> list:
+    """Per-mindset accuracy inside one domain, weakest first."""
+    rows = db_fetchall(
+        f"SELECT mindset, "
+        f"SUM(CASE WHEN is_correct IS NOT NULL THEN 1 ELSE 0 END) AS seen, "
+        f"SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct "
+        f"FROM cissp_attempts "
+        f"WHERE analyst_id = {PH} AND domain_num = {PH} AND skipped = 0 "
+        f"AND is_correct IS NOT NULL "
+        f"GROUP BY mindset",
+        (analyst_id, domain_num),
+    )
+    labels = {"manager": "Manager mindset", "technical": "Technical mindset", "both": "Manager + Technical"}
+    out = []
+    for r in rows:
+        seen = r["seen"] or 0
+        if not seen:
+            continue
+        key = (r["mindset"] or "manager").lower()
+        out.append({
+            "label": labels.get(key, key.title()),
+            "seen": seen,
+            "correct": r["correct"] or 0,
+            "pct": round((r["correct"] or 0) / seen * 100),
+        })
+    out.sort(key=lambda x: x["pct"])
+    return out
+
+
 @app.route("/cissp")
 @analyst_required
 def cissp_hub():
@@ -6653,6 +12035,21 @@ def cissp_hub():
     readiness_score = _cissp_readiness_score(analyst_id)
     domains_studied  = sum(1 for p in progress_rows if (p["attempts"] or 0) >= 1)
     player           = get_player_profile(analyst_id)
+    weak_domains     = _cissp_domain_accuracy(analyst_id)
+    # Unstarted domains also belong in the "drill next" list.
+    started = {w["domain_num"] for w in weak_domains}
+    for num, meta in CISSP_DOMAINS.items():
+        if num not in started:
+            weak_domains.append({
+                "label": f"D{num}: {meta['name']}",
+                "domain_num": num,
+                "seen": 0,
+                "correct": 0,
+                "pct": 0,
+            })
+    # Weakest first; unstarted (0 seen) after low-accuracy started domains
+    weak_domains.sort(key=lambda x: (0 if x["seen"] else 1, x["pct"], -CISSP_DOMAINS[x["domain_num"]]["weight"]))
+    focus_domains = weak_domains[:3]
 
     return render_template(
         "cissp_hub.html",
@@ -6664,14 +12061,17 @@ def cissp_hub():
         domains_studied=domains_studied,
         daily_goal=15,
         player=player,
+        focus_domains=focus_domains,
+        weak_domains=weak_domains,
+        practice_stats=_quiz_stats(analyst_id, "cissp_practice"),
+        domain_quiz_len=CISSP_DOMAIN_QUIZ_LEN,
     )
 
 
 @app.route("/cissp/domain/<int:domain_num>")
 @analyst_required
 def cissp_domain(domain_num):
-    """Domain-specific study page — shows progress, generates questions via AJAX."""
-    import json as _json
+    """Domain-specific study page — fixed-length adaptive quiz + progress history."""
     if domain_num not in CISSP_DOMAINS:
         abort(404)
 
@@ -6686,34 +12086,19 @@ def cissp_domain(domain_num):
     if not progress:
         progress = {"attempts": 0, "correct": 0, "last_studied_at": None}
 
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    session_attempts = db_fetchall(
-        f"SELECT id, scenario, question_text, options_json, correct_answer, user_answer, "
-        f"explanation, mindset, difficulty, is_correct, skipped "
-        f"FROM cissp_attempts "
-        f"WHERE analyst_id = {PH} AND domain_num = {PH} AND created_at LIKE {PH} "
-        f"AND skipped = 0 AND is_correct IS NOT NULL "
-        f"ORDER BY id DESC LIMIT 10",
-        (analyst_id, domain_num, f"{today}%"),
-    )
-    parsed = []
-    for a in session_attempts:
-        a = dict(a)
-        try:
-            a["options"] = _json.loads(a["options_json"])
-        except Exception:
-            a["options"] = {}
-        parsed.append(a)
-
     player = get_player_profile(analyst_id)
+    qtype = _domain_quiz_type(domain_num)
     return render_template(
         "cissp_domain.html",
         domain=domain,
         domain_num=domain_num,
         progress=progress,
-        session_attempts=parsed,
         cissp_domains=CISSP_DOMAINS,
         player=player,
+        quiz_len=CISSP_DOMAIN_QUIZ_LEN,
+        hard_tail=CISSP_DOMAIN_HARD_TAIL,
+        stats=_quiz_stats(analyst_id, qtype),
+        category_accuracy=_cissp_mindset_accuracy(analyst_id, domain_num),
     )
 
 
@@ -6721,44 +12106,166 @@ def cissp_domain(domain_num):
 @analyst_required
 def cissp_get_question(domain_num):
     """
-    AJAX — generate a fresh AI-powered CISSP question.
-    Correct answer is stored in DB but NOT returned to the browser.
+    AJAX — next Domain Study item.
+
+    Hybrid Lesson → Quiz:
+      Body: {
+        hard_round?: bool,
+        mode?: "auto"|"force_lesson"|"force_drill",
+        phase?: "next"|"quiz",          # next = decide+maybe lesson; quiz = question from lesson
+        lesson?: {title, summary, body, key_takeaways, exam_trap, topic}
+      }
+
+    Returns either:
+      {path:"lesson", lesson:{...}, reason, topic, tier, ...}
+      {path:"drill"|"lesson_quiz", attempt_id, scenario, question, options, ...}
     """
-    import json as _json
     if domain_num not in CISSP_DOMAINS:
         return jsonify({"error": "Invalid domain"}), 404
 
     analyst_id = session["user_id"]
-    q          = _generate_cissp_question(domain_num)
-    if not q:
-        return jsonify({"error": "Question generation failed. Start Ollama locally, or set ANTHROPIC_API_KEY to use Claude as a fallback."}), 503
+    data = request.get_json(silent=True) or {}
+    hard_round = bool(data.get("hard_round"))
+    mode = (data.get("mode") or "auto").strip().lower()
+    phase = (data.get("phase") or "next").strip().lower()
+    difficulty_hint = _domain_difficulty_hint(analyst_id, domain_num, hard_round=hard_round)
 
-    db_run(
-        f"INSERT INTO cissp_attempts "
-        f"(analyst_id, domain_num, scenario, question_text, options_json, "
-        f" correct_answer, explanation, mindset, difficulty) "
-        f"VALUES ({PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH},{PH})",
-        (
-            analyst_id, domain_num,
-            q["scenario"], q["question"],
-            _json.dumps(q["options"]),
-            q["correct"], q["explanation"],
-            q["mindset"], q["difficulty"],
-        ),
+    # Phase 2: quiz grounded in a lesson the client just read
+    if phase == "quiz":
+        lesson = data.get("lesson") or {}
+        if not isinstance(lesson, dict) or not (lesson.get("body") or "").strip():
+            return jsonify({"error": "Lesson required before quiz phase."}), 400
+        topic = (lesson.get("topic") or data.get("topic") or "Core concepts").strip()
+        q = _generate_cissp_question(
+            domain_num,
+            difficulty_hint=difficulty_hint,
+            topic=topic,
+            lesson=lesson,
+        )
+        if not q:
+            return jsonify({
+                "error": "Question generation failed. Start Ollama locally, or set ANTHROPIC_API_KEY."
+            }), 503
+        attempt_id = _persist_cissp_attempt(analyst_id, domain_num, q)
+        return jsonify({
+            "path": "lesson_quiz",
+            "attempt_id": attempt_id,
+            "scenario": q["scenario"],
+            "question": q["question"],
+            "options": q["options"],
+            "mindset": q["mindset"],
+            "difficulty": q["difficulty"],
+            "hard_round": hard_round,
+            "topic": topic,
+            "visual": cissp_visuals.get_cissp_visual(
+                domain_num, scenario=q["scenario"], question=q["question"]
+            ),
+        })
+
+    # Phase 1: pick topic + decide lesson vs drill
+    accuracy = _cissp_single_domain_accuracy(analyst_id, domain_num)
+    topic_meta = cissp_lessons.pick_topic(domain_num, accuracy)
+    decision = cissp_lessons.decide_path(topic_meta, accuracy, mode=mode)
+
+    if decision["path"] == "lesson":
+        lesson = _generate_cissp_lesson(domain_num, decision["topic"])
+        if not lesson:
+            # Soft-fallback: don't block study — drop to drill quiz on same topic
+            security_log.warning(
+                f"CISSP_LESSON_FALLBACK_DRILL domain={domain_num} topic={decision['topic']}"
+            )
+        else:
+            return jsonify({
+                "path": "lesson",
+                "lesson": lesson,
+                "topic": decision["topic"],
+                "tier": decision["tier"],
+                "reason": decision["reason"],
+                "accuracy": decision["accuracy"],
+                "threshold": decision["threshold"],
+                "mode": decision["mode"],
+                "hard_round": hard_round,
+            })
+
+    # Drill path (or lesson generation failed)
+    q = _generate_cissp_question(
+        domain_num,
+        difficulty_hint=difficulty_hint,
+        topic=decision["topic"],
     )
-    attempt_id = db_fetchone(
-        f"SELECT MAX(id) AS aid FROM cissp_attempts WHERE analyst_id = {PH} AND domain_num = {PH}",
-        (analyst_id, domain_num),
-    )["aid"]
+    if not q:
+        return jsonify({
+            "error": "Question generation failed. Start Ollama locally, or set ANTHROPIC_API_KEY to use Claude as a fallback."
+        }), 503
 
+    attempt_id = _persist_cissp_attempt(analyst_id, domain_num, q)
     return jsonify({
+        "path": "drill",
         "attempt_id": attempt_id,
-        "scenario":   q["scenario"],
-        "question":   q["question"],
-        "options":    q["options"],
-        "mindset":    q["mindset"],
+        "scenario": q["scenario"],
+        "question": q["question"],
+        "options": q["options"],
+        "mindset": q["mindset"],
         "difficulty": q["difficulty"],
+        "hard_round": hard_round,
+        "topic": decision["topic"],
+        "tier": decision["tier"],
+        "reason": decision["reason"],
+        "visual": cissp_visuals.get_cissp_visual(
+            domain_num, scenario=q["scenario"], question=q["question"]
+        ),
     })
+
+
+@app.route("/cissp/domain/<int:domain_num>/complete", methods=["POST"])
+@analyst_required
+def cissp_domain_complete(domain_num):
+    """Log a finished single-domain quiz; return updated progress stats."""
+    if domain_num not in CISSP_DOMAINS:
+        return jsonify({"error": "Invalid domain"}), 404
+    data = request.get_json(silent=True) or {}
+    results = data.get("results") or []
+    uid = session["user_id"]
+    qtype = _domain_quiz_type(domain_num)
+
+    if results:
+        correct = sum(1 for r in results if r.get("correct"))
+        total = max(1, min(CISSP_DOMAIN_QUIZ_LEN, len(results)))
+    else:
+        total = CISSP_DOMAIN_QUIZ_LEN
+        correct = max(0, min(total, int(data.get("correct", 0))))
+    score = round(correct / total * 100) if total else 0
+    prev = _quiz_stats(uid, qtype)
+    db_run(
+        f"INSERT INTO quiz_results (user_id, quiz_type, questions, correct, score_pct) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (uid, qtype, total, correct, score),
+    )
+    security_log.info(
+        f"QUIZ_DONE type={qtype} user={session.get('username','')} score={score}"
+    )
+    stats = _quiz_stats(uid, qtype)
+    return jsonify({
+        "score": score, "correct": correct, "total": total,
+        "stats": stats,
+        "prev_average": prev["average"], "prev_last": prev["last"],
+        "is_best": bool(stats["best"] == score and prev["count"] > 0 and score > (prev["best"] or 0)),
+    })
+
+
+@app.route("/cissp/domain/<int:domain_num>/history")
+@analyst_required
+def cissp_domain_history(domain_num):
+    """Return the domain quiz progress panel (partial HTML) for live refresh."""
+    if domain_num not in CISSP_DOMAINS:
+        abort(404)
+    uid = session["user_id"]
+    return render_template(
+        "_quiz_history.html",
+        stats=_quiz_stats(uid, _domain_quiz_type(domain_num)),
+        category_accuracy=_cissp_mindset_accuracy(uid, domain_num),
+        quiz_len=CISSP_DOMAIN_QUIZ_LEN,
+    )
 
 
 @app.route("/cissp/domain/<int:domain_num>/answer", methods=["POST"])
@@ -6869,13 +12376,85 @@ def cissp_skip_question(domain_num):
 
 # ── CISSP Practice Mode ──────────────────────────────────────────────────────
 
+CISSP_PRACTICE_LEN       = 15  # questions per tracked practice quiz (Ollama-paced)
+CISSP_PRACTICE_WEAK_TAIL = 5   # last N questions focus on weakest domains
+
+
+def _cissp_domain_accuracy(analyst_id: int) -> list:
+    """Per-domain accuracy from cissp_progress, weakest first (acronym-quiz style)."""
+    rows = {
+        r["domain_num"]: r for r in db_fetchall(
+            f"SELECT domain_num, attempts, correct FROM cissp_progress WHERE analyst_id = {PH}",
+            (analyst_id,),
+        )
+    }
+    out = []
+    for num, meta in CISSP_DOMAINS.items():
+        r = rows.get(num)
+        if r and (r["attempts"] or 0) > 0:
+            att = r["attempts"]
+            cor = r["correct"] or 0
+            out.append({
+                "label": f"D{num}: {meta['name']}",
+                "domain_num": num,
+                "seen": att,
+                "correct": cor,
+                "pct": round(cor / att * 100),
+            })
+    out.sort(key=lambda x: x["pct"])
+    return out
+
+
+def _pick_practice_domain(analyst_id: int, weak_only: bool = False) -> int:
+    """Pick a CISSP domain using exam weights × weakness multipliers.
+
+    Unseen / low-accuracy domains get higher weight so practice focuses on gaps,
+    while still roughly mirroring the real exam distribution.
+    """
+    import random as _rnd
+    rows = {
+        r["domain_num"]: r for r in db_fetchall(
+            f"SELECT domain_num, attempts, correct FROM cissp_progress WHERE analyst_id = {PH}",
+            (analyst_id,),
+        )
+    }
+    domains = list(CISSP_DOMAINS.keys())
+    if weak_only:
+        # Prefer domains under 70% accuracy, or never attempted.
+        weak = []
+        for d in domains:
+            r = rows.get(d)
+            if not r or not r["attempts"]:
+                weak.append(d)
+            elif (r["correct"] or 0) / r["attempts"] < 0.70:
+                weak.append(d)
+        if weak:
+            domains = weak
+
+    weights = []
+    for d in domains:
+        exam_w = float(CISSP_DOMAINS[d]["weight"])
+        r = rows.get(d)
+        if not r or not r["attempts"]:
+            mult = 3.0          # unseen — drill more
+        else:
+            acc = (r["correct"] or 0) / r["attempts"]
+            if acc < 0.5:
+                mult = 4.0
+            elif acc < 0.8:
+                mult = 2.0
+            else:
+                mult = 1.0
+        weights.append(max(0.1, exam_w * mult))
+    return _rnd.choices(domains, weights=weights, k=1)[0]
+
+
 @app.route("/cissp/practice")
 @analyst_required
 def cissp_practice():
-    """Mixed-domain question drill — random weighted domain per question."""
+    """Mixed-domain question drill — adaptive weighting + tracked quiz sessions."""
     analyst_id = session["user_id"]
     player = get_player_profile(analyst_id)
-    # Aggregate stats across all domains for the practice hub card
     all_progress = {
         r["domain_num"]: r for r in db_fetchall(
             f"SELECT domain_num, attempts, correct FROM cissp_progress WHERE analyst_id = {PH}",
@@ -6890,20 +12469,22 @@ def cissp_practice():
         player=player,
         total_att=total_att,
         total_cor=total_cor,
+        quiz_len=CISSP_PRACTICE_LEN,
+        weak_tail=CISSP_PRACTICE_WEAK_TAIL,
+        stats=_quiz_stats(analyst_id, "cissp_practice"),
+        category_accuracy=_cissp_domain_accuracy(analyst_id),
     )
 
 
 @app.route("/cissp/practice/question", methods=["POST"])
 @analyst_required
 def cissp_practice_question():
-    """AJAX — generate a question from a weighted-random CISSP domain."""
-    import random as _rnd
+    """AJAX — generate a question from an adaptively weighted CISSP domain."""
     analyst_id = session["user_id"]
-    # Weighted random selection mirrors the real exam distribution
-    domains  = list(CISSP_DOMAINS.keys())
-    weights  = [CISSP_DOMAINS[d]["weight"] for d in domains]
-    dom_num  = _rnd.choices(domains, weights=weights, k=1)[0]
-    domain   = CISSP_DOMAINS[dom_num]
+    data = request.get_json(silent=True) or {}
+    weak_only = bool(data.get("weak_only"))
+    dom_num = _pick_practice_domain(analyst_id, weak_only=weak_only)
+    domain = CISSP_DOMAINS[dom_num]
 
     q = _generate_cissp_question(dom_num)
     if not q:
@@ -6938,7 +12519,56 @@ def cissp_practice_question():
         "options":    q["options"],
         "mindset":    q["mindset"],
         "difficulty": q["difficulty"],
+        "weak_round": weak_only,
+        "visual": cissp_visuals.get_cissp_visual(
+            dom_num, scenario=q["scenario"], question=q["question"]
+        ),
     })
+
+
+@app.route("/cissp/practice/complete", methods=["POST"])
+@analyst_required
+def cissp_practice_complete():
+    """Log a finished CISSP practice quiz; return updated progress stats."""
+    data = request.get_json(silent=True) or {}
+    results = data.get("results") or []
+    uid = session["user_id"]
+
+    # Prefer per-question results; fall back to a single correct count.
+    if results:
+        correct = sum(1 for r in results if r.get("correct"))
+        total = max(1, min(CISSP_PRACTICE_LEN, len(results)))
+    else:
+        total = CISSP_PRACTICE_LEN
+        correct = max(0, min(total, int(data.get("correct", 0))))
+    score = round(correct / total * 100) if total else 0
+    prev = _quiz_stats(uid, "cissp_practice")
+    db_run(
+        f"INSERT INTO quiz_results (user_id, quiz_type, questions, correct, score_pct) "
+        f"VALUES ({PH},{PH},{PH},{PH},{PH})",
+        (uid, "cissp_practice", total, correct, score),
+    )
+    security_log.info(f"QUIZ_DONE type=cissp_practice user={session.get('username','')} score={score}")
+    stats = _quiz_stats(uid, "cissp_practice")
+    return jsonify({
+        "score": score, "correct": correct, "total": total,
+        "stats": stats,
+        "prev_average": prev["average"], "prev_last": prev["last"],
+        "is_best": bool(stats["best"] == score and prev["count"] > 0 and score > (prev["best"] or 0)),
+    })
+
+
+@app.route("/cissp/practice/history")
+@analyst_required
+def cissp_practice_history():
+    """Return the practice progress panel (partial HTML) for live refresh."""
+    uid = session["user_id"]
+    return render_template(
+        "_quiz_history.html",
+        stats=_quiz_stats(uid, "cissp_practice"),
+        category_accuracy=_cissp_domain_accuracy(uid),
+        quiz_len=CISSP_PRACTICE_LEN,
+    )
 
 
 # ── CISSP Flashcards ─────────────────────────────────────────────────────────
@@ -7834,6 +13464,42 @@ def bulk_resolve_all_findings():
     return jsonify({"ok": True, "resolved": resolved, "reason": reason})
 
 
+# ── SIEM FP templates (Phase A) ─────────────────────────────────────────────────
+
+@app.route("/api/siem/fp-template", methods=["POST"])
+@dashboard_required
+def api_siem_fp_template():
+    """Apply a one-click false-positive template to a correlation finding."""
+    import siem_fp_templates
+
+    data = request.get_json(silent=True) or {}
+    template_id = (data.get("template_id") or "").strip()
+    finding_id = data.get("finding_id")
+    if not template_id:
+        return jsonify({"error": "template_id is required"}), 400
+    try:
+        finding_id = int(finding_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "finding_id must be an integer"}), 400
+
+    result = siem_fp_templates.apply_template(
+        template_id,
+        finding_id,
+        db_fetchone=db_fetchone,
+        db_fetchall=db_fetchall,
+        db_run=db_run,
+        ph=PH,
+        added_by=session.get("username", "analyst"),
+    )
+    if not result.get("ok"):
+        return jsonify(result), 400
+    security_log.info(
+        f"SIEM_FP_TEMPLATE id={template_id} finding={finding_id} "
+        f"by={session.get('username')} actions={result.get('actions_taken')}"
+    )
+    return jsonify(result)
+
+
 # ── SIEM Suppression ────────────────────────────────────────────────────────────
 
 @app.route("/api/siem/suppress", methods=["POST"])
@@ -8344,6 +14010,50 @@ def api_get_terminal_activity():
 
 # ── SIEM Routes ──────────────────────────────────────────────────────────────
 
+_SIEM_OPEN_CASE_STATUSES = ("new", "working", "waiting", "escalated", "open")
+
+
+def _siem_events_today_clause() -> str:
+    """SQL fragment: non-dismissed events on the current calendar day (local DB date)."""
+    if DATABASE_URL:
+        return "dismissed=0 AND created_at::date = CURRENT_DATE"
+    return "dismissed=0 AND date(created_at) = date('now')"
+
+
+def _siem_spl_hint(event: dict) -> str:
+    """One-line SPL-lite hint for investigating a single event."""
+    parts: list[str] = []
+    et = (event.get("event_type") or "").strip()
+    ip = (event.get("src_ip") or "").strip()
+    if et:
+        parts.append(f'event_type="{et}"')
+    if ip:
+        parts.append(f'src_ip="{ip}"')
+    return " ".join(parts) if parts else "*"
+
+
+def _siem_open_case_for_event(event_id: int) -> dict | None:
+    """Return open Boundry Ticket linked to a SIEM event id, if any."""
+    statuses = _SIEM_OPEN_CASE_STATUSES
+    phs = ",".join(PH for _ in statuses)
+    row = db_fetchone(
+        f"SELECT id, ticket_no, status, title, severity, created_at "
+        f"FROM soc_cases WHERE source={PH} AND source_id={PH} "
+        f"AND status IN ({phs}) ORDER BY id DESC LIMIT 1",
+        ("siem", str(event_id), *statuses),
+    )
+    if not row:
+        return None
+    return {
+        "id": row.get("id"),
+        "ticket_no": row.get("ticket_no") or "",
+        "status": row.get("status") or "",
+        "title": row.get("title") or "",
+        "severity": row.get("severity") or "",
+        "created_at": row.get("created_at") or "",
+    }
+
+
 @app.route("/siem")
 @dashboard_required
 def siem_dashboard():
@@ -8364,8 +14074,7 @@ def siem_dashboard():
         return (r or {}).get("n", 0)
 
     stats = {
-        "total_today": _count(
-            "dismissed=0 AND created_at >= datetime('now','-1 day')"),
+        "total_today": _count(_siem_events_today_clause()),
         "critical":    _count(
             "severity='CRITICAL' AND dismissed=0 AND created_at >= datetime('now','-1 hour')"),
         "high":        _count(
@@ -8444,6 +14153,94 @@ def api_siem_events():
     return jsonify({"events": events, "max_id": max_id})
 
 
+@app.route("/api/siem/events/<int:event_id>")
+@dashboard_required
+def api_siem_event_detail(event_id: int):
+    """GET — single SIEM event with triage workflow hints."""
+    import json as _json
+
+    row = db_fetchone(
+        f"SELECT id, created_at AS timestamp, source, event_id, event_type, severity, "
+        f"host, user_account, src_ip, dst_ip, description, raw_data, "
+        f"correlated_finding_id, COALESCE(simulated, 0) AS simulated, dismissed "
+        f"FROM siem_events WHERE id = {PH}",
+        (event_id,),
+    )
+    if not row:
+        return jsonify({"ok": False, "error": "Event not found"}), 404
+
+    raw_parsed: dict | list | None = None
+    raw_str = (row.get("raw_data") or "").strip()
+    if raw_str:
+        try:
+            raw_parsed = _json.loads(raw_str)
+        except (_json.JSONDecodeError, TypeError):
+            raw_parsed = None
+
+    finding = None
+    fid = row.get("correlated_finding_id")
+    if fid:
+        frow = db_fetchone(
+            f"SELECT id, title, severity, description, resolved "
+            f"FROM system_findings WHERE id = {PH}",
+            (int(fid),),
+        )
+        if frow:
+            finding = {
+                "id": frow.get("id"),
+                "title": frow.get("title") or "",
+                "severity": frow.get("severity") or "",
+                "description": (frow.get("description") or "")[:500],
+                "resolved": int(frow.get("resolved") or 0),
+            }
+
+    event = dict(row)
+    event["raw_data"] = raw_parsed if raw_parsed is not None else raw_str
+    event["spl_hint"] = _siem_spl_hint(row)
+    event["existing_case"] = _siem_open_case_for_event(event_id)
+    event["on_soc_queue_default"] = (row.get("severity") or "").upper() in ("HIGH", "CRITICAL")
+
+    return jsonify({"ok": True, "event": event, "correlated_finding": finding})
+
+
+@app.route("/api/siem/events/<int:event_id>/related")
+@dashboard_required
+def api_siem_event_related(event_id: int):
+    """GET — recent related events (same src_ip or event_type, last 24h)."""
+    base = db_fetchone(
+        f"SELECT src_ip, event_type FROM siem_events WHERE id = {PH}",
+        (event_id,),
+    )
+    if not base:
+        return jsonify({"ok": False, "error": "Event not found"}), 404
+
+    src_ip = (base.get("src_ip") or "").strip()
+    etype = (base.get("event_type") or "").strip()
+    since = "datetime('now', '-1 day')" if not DATABASE_URL else "NOW() - INTERVAL '1 day'"
+
+    if src_ip and etype:
+        where = (
+            f"dismissed = 0 AND id != {PH} AND created_at >= {since} "
+            f"AND (src_ip = {PH} OR event_type = {PH})"
+        )
+        params: tuple = (event_id, src_ip, etype)
+    elif src_ip:
+        where = f"dismissed = 0 AND id != {PH} AND created_at >= {since} AND src_ip = {PH}"
+        params = (event_id, src_ip)
+    elif etype:
+        where = f"dismissed = 0 AND id != {PH} AND created_at >= {since} AND event_type = {PH}"
+        params = (event_id, etype)
+    else:
+        return jsonify({"ok": True, "events": []})
+
+    events = db_fetchall(
+        f"SELECT id, created_at AS timestamp, severity, event_type, src_ip, description "
+        f"FROM siem_events WHERE {where} ORDER BY id DESC LIMIT 10",
+        params,
+    )
+    return jsonify({"ok": True, "events": events or []})
+
+
 @app.route("/api/siem/stats")
 @dashboard_required
 def api_siem_stats():
@@ -8453,7 +14250,7 @@ def api_siem_stats():
         return (r or {}).get("n", 0)
 
     return jsonify({
-        "total_today":   _c("dismissed=0 AND created_at>=datetime('now','-1 day')"),
+        "total_today":   _c(_siem_events_today_clause()),
         "critical_hour": _c("severity='CRITICAL' AND dismissed=0 AND created_at>=datetime('now','-1 hour')"),
         "high_hour":     _c("severity='HIGH'     AND dismissed=0 AND created_at>=datetime('now','-1 hour')"),
         "open_findings": (db_fetchone(
@@ -8664,6 +14461,8 @@ def siem_query_page():
         "siem_query.html",
         profile=profile,
         examples=spl_engine.EXAMPLE_QUERIES,
+        prefill_q=request.args.get("q", ""),
+        ref_q=request.args.get("ref", ""),
     )
 
 
@@ -8710,7 +14509,9 @@ def api_siem_spl():
 @analyst_required
 def api_vpn_status():
     """GET — NordVPN status from the host running Flask (Windows terminal only)."""
-    return jsonify(vpn_monitor.get_vpn_status())
+    # Refresh on read so Control Room is not stuck on a stale false-offline
+    # (heartbeat DB is often locked; adapter Up is authoritative).
+    return jsonify(vpn_monitor.get_vpn_status(refresh=True))
 
 
 @app.route("/api/splunk/status")
@@ -9615,11 +15416,25 @@ init_db()
 # Checking for WERKZEUG_RUN_MAIN prevents double-start in debug mode.
 if not os.environ.get("WERKZEUG_RUN_MAIN") or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
     try:
+        soar_engine.start(
+            db_run_fn=db_run,
+            db_fetchall_fn=db_fetchall,
+            db_fetchone_fn=db_fetchone,
+            db_insert_fn=db_insert,
+            ph=PH,
+            set_setting_fn=_set_app_setting,
+            get_setting_fn=_get_app_setting,
+        )
+    except Exception as _soar_err:
+        print(f"[soar] Engine startup failed (non-fatal): {_soar_err}")
+
+    try:
         siem_collector.start(
             db_run_fn=db_run,
             db_fetchall_fn=db_fetchall,
             ph=PH,
             ai_fn=_generate_report_with_ai,
+            soar_fn=soar_engine.open_incident_for_finding,
         )
     except Exception as _siem_err:
         print(f"[siem] Collector startup failed (non-fatal): {_siem_err}")

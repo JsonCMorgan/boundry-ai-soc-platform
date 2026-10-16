@@ -126,8 +126,28 @@ def start(db_run_fn: Callable, db_fetchall_fn: Callable, ph: str = "?") -> None:
     log.info(f"[vpn] VPN monitor started — connected={_status['connected']}")
 
 
-def get_vpn_status() -> dict:
-    """Return a snapshot of VPN status (safe for JSON serialisation)."""
+def get_vpn_status(*, refresh: bool = False) -> dict:
+    """Return a snapshot of VPN status (safe for JSON serialisation).
+
+    If refresh=True (or last check is older than 20s on a monitoring host),
+    run one poll now so Control Room does not sit on a stale false-offline.
+    """
+    if _status.get("monitoring"):
+        stale = True
+        last = _status.get("last_checked")
+        if last and not refresh:
+            try:
+                # last_checked is naive UTC "YYYY-mm-dd HH:MM:SS"
+                from datetime import datetime as _dt
+                age = (_dt.utcnow() - _dt.strptime(last, "%Y-%m-%d %H:%M:%S")).total_seconds()
+                stale = age > 20
+            except Exception:
+                stale = True
+        if refresh or stale:
+            try:
+                _do_poll(prev_connected=_status.get("connected"))
+            except Exception as exc:
+                _status["error"] = str(exc)
     return dict(_status)
 
 
@@ -137,21 +157,46 @@ def _read_heartbeat() -> tuple[int, float]:
     """
     Read the most recent VpnState from the heartbeat DB.
     Returns (vpn_state_int, heartbeat_age_seconds).
+    NordVPN often locks this file; try several open strategies, then give up.
     """
+    openers = (
+        lambda: sqlite3.connect(f"file:{_HEARTBEAT_DB}?mode=ro", uri=True, timeout=3),
+        lambda: sqlite3.connect(_HEARTBEAT_DB, timeout=3),
+    )
+    # Last resort: copy aside (NordVPN may hold an exclusive lock on the live file)
     try:
-        conn = sqlite3.connect(f"file:{_HEARTBEAT_DB}?mode=ro", uri=True, timeout=3)
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(
-            "SELECT VpnState, TimestampUtc FROM VpnStateHeartbeatHistory ORDER BY Id DESC LIMIT 1"
-        ).fetchone()
-        conn.close()
-        if row:
-            # Convert .NET ticks to Unix epoch
-            unix_ts = (row["TimestampUtc"] - _DOTNET_EPOCH) / 10_000_000
-            age_s   = time.time() - unix_ts
-            return int(row["VpnState"]), round(age_s, 1)
-    except Exception as exc:
-        log.debug(f"[vpn] heartbeat read error: {exc}")
+        import shutil
+        import tempfile
+
+        def _via_copy() -> sqlite3.Connection:
+            tmp = os.path.join(tempfile.gettempdir(), "boundry_vpn_heartbeat_copy.db")
+            shutil.copy2(_HEARTBEAT_DB, tmp)
+            return sqlite3.connect(tmp, timeout=3)
+
+        openers = openers + (_via_copy,)
+    except Exception:
+        pass
+
+    last_err: Exception | None = None
+    for open_fn in openers:
+        try:
+            conn = open_fn()
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT VpnState, TimestampUtc FROM VpnStateHeartbeatHistory "
+                "ORDER BY Id DESC LIMIT 1"
+            ).fetchone()
+            conn.close()
+            if row:
+                unix_ts = (row["TimestampUtc"] - _DOTNET_EPOCH) / 10_000_000
+                age_s = time.time() - unix_ts
+                return int(row["VpnState"]), round(age_s, 1)
+            return -1, -1.0
+        except Exception as exc:
+            last_err = exc
+            continue
+    if last_err:
+        log.debug(f"[vpn] heartbeat read error: {last_err}")
     return -1, -1.0
 
 
@@ -179,28 +224,45 @@ def _read_settings() -> dict:
 
 def _read_adapter() -> tuple[bool, str | None]:
     """
-    Check NordLynx adapter state via PowerShell.
+    Check NordVPN tunnel adapter state via PowerShell.
+    Prefers NordLynx; falls back to any Up adapter whose name/description
+    looks like Nord/WireGuard/Wintun (NordVPN protocol variants).
     Returns (is_up: bool, vpn_ip: str | None).
-    Fast path: subprocess call, sub-100ms on local machine.
     """
     try:
-        ps_script = (
-            "$a = Get-NetAdapter -Name 'NordLynx' -ErrorAction SilentlyContinue; "
-            "$ip = (Get-NetIPAddress -InterfaceAlias 'NordLynx' -AddressFamily IPv4 "
-            "       -ErrorAction SilentlyContinue).IPAddress; "
-            "Write-Output \"$($a.Status)|$ip\""
-        )
+        ps_script = r"""
+$a = Get-NetAdapter -Name 'NordLynx' -ErrorAction SilentlyContinue
+if ($a -and $a.Status -eq 'Up') {
+  $ip = (Get-NetIPAddress -InterfaceAlias 'NordLynx' -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty IPAddress)
+  Write-Output "Up|$ip|NordLynx"
+  exit 0
+}
+$cand = Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object {
+  $_.Status -eq 'Up' -and (
+    $_.Name -match 'NordLynx|NordVPN|WireGuard|Wintun' -or
+    $_.InterfaceDescription -match 'NordLynx|NordVPN|WireGuard|Wintun'
+  )
+} | Select-Object -First 1
+if ($cand) {
+  $ip = (Get-NetIPAddress -InterfaceIndex $cand.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty IPAddress)
+  Write-Output ("Up|{0}|{1}" -f $ip, $cand.Name)
+  exit 0
+}
+Write-Output "Down||"
+"""
         out = subprocess.check_output(
             ["powershell", "-NonInteractive", "-NoProfile", "-Command", ps_script],
-            timeout=8,
+            timeout=10,
             stderr=subprocess.DEVNULL,
         ).decode("utf-8", errors="replace").strip()
 
         parts = out.split("|")
         status_str = parts[0].strip() if parts else ""
-        ip_val     = parts[1].strip() if len(parts) > 1 else None
-        is_up      = status_str.lower() == "up"
-        return is_up, (ip_val if ip_val and ip_val != "" else None)
+        ip_val = parts[1].strip() if len(parts) > 1 else None
+        is_up = status_str.lower() == "up"
+        return is_up, (ip_val if ip_val else None)
     except Exception as exc:
         log.debug(f"[vpn] adapter read error: {exc}")
         return False, None
@@ -241,13 +303,26 @@ def _do_poll(prev_connected: bool | None) -> bool | None:
     # 1. Read adapter (primary connection indicator)
     adapter_up, vpn_ip = _read_adapter()
 
-    # 2. Read heartbeat DB (secondary confirmation)
+    # 2. Read heartbeat DB (secondary; often locked by NordVPN → unreadable)
     vpn_state_int, hb_age = _read_heartbeat()
     vpn_state_name = _VPN_STATES.get(vpn_state_int, f"Unknown({vpn_state_int})")
+    hb_fresh = hb_age >= 0 and hb_age <= 180
 
-    # Reconcile: connected if adapter is up AND VpnState == 2
-    # (prevents false positives during server switches where adapter briefly flaps)
-    connected = adapter_up and vpn_state_int == 2
+    # Reconcile:
+    # - NordLynx/tunnel Up is enough to treat as connected (heartbeat DB is often locked).
+    # - Fresh heartbeat VpnState==2 also counts if adapter briefly flaps during server switch.
+    # - Fresh heartbeat Disconnected + adapter down → disconnected.
+    if adapter_up:
+        connected = True
+        if vpn_state_int < 0:
+            vpn_state_name = "Connected (adapter)"
+        elif vpn_state_int != 2 and hb_fresh:
+            # Adapter up but heartbeat disagrees; trust adapter, note state
+            vpn_state_name = f"{vpn_state_name} + adapter Up"
+    elif vpn_state_int == 2 and hb_fresh:
+        connected = True
+    else:
+        connected = False
 
     # 3. Settings
     settings = _read_settings()
@@ -263,6 +338,7 @@ def _do_poll(prev_connected: bool | None) -> bool | None:
         "last_checked":    now,
         "error":           None,
         "heartbeat_age_s": hb_age if hb_age >= 0 else None,
+        "adapter_up":      adapter_up,
     })
 
     if connected:

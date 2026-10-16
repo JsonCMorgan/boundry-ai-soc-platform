@@ -44,7 +44,7 @@ The goal is a 2-person operation where the tools do 80% of the work.
 ## REPOSITORY STRUCTURE
 
 ```
-C:\Dev\vulnerable-flask-app\       ← main Boundry.AI command center
+C:\Dev\MSSP\                       ← main Boundry.AI command center (MSSP)
 ├── app.py                         ← Flask application (5500+ lines, single file)
 ├── siem_collector.py              ← SIEM log ingestion (4 background threads)
 ├── spl_engine.py                  ← SPL-lite query parser (SPL → SQLite)
@@ -338,7 +338,7 @@ for analyst training. Do not "fix" these unless Jason explicitly asks:
 - Weak password storage examples (training)
 - IDOR vulnerabilities in report routes (training)
 - Debug information exposure (training)
-- The file is named `vulnerable-flask-app` intentionally
+- Folder is `MSSP`; intentional training vulns stay labeled (legacy repo name was vulnerable-flask-app)
 
 **How to identify:** Training/demo routes are clearly labelled in comments.
 Real production code (SIEM, scanner, auth, API) is properly secured.
@@ -376,6 +376,18 @@ When in doubt, ask before patching a security issue.
 - CSS custom properties (`--var`) for all colours
 - No Bootstrap, no Tailwind
 - Responsive via CSS Grid/Flexbox
+
+
+## TUTOR / PROFESSOR LESSON VOICE
+
+When writing Security+, CISSP, KQL/SPL, Interview Gym, or any teaching copy
+(or explaining something as a tutor/professor), follow:
+
+  `.cursor/rules/tutor-professor-voice.mdc`
+
+Baseline: define every term before use. Gold standard lesson:
+`tools/gen_secplus_d1.py` → `sp_d1_01_control_functions`. Improve on that baseline.
+Never open with undefined exam slang (SY0-701, distractor, stem, etc.).
 
 
 ## HOW JASON WORKS — PREFERENCES
@@ -496,9 +508,9 @@ LOG_FILE             Flask security log path (unset = stdout)
 
 **Key file paths:**
 ```
-C:\Dev\vulnerable-flask-app\app.db              SQLite database
-C:\Dev\vulnerable-flask-app\docs\reports\        Generated PDF reports
-C:\Dev\vulnerable-flask-app\.terminal_token      bai auth token
+C:\Dev\MSSP\app.db                             SQLite database
+C:\Dev\MSSP\docs\reports\                      Generated PDF reports
+C:\Dev\MSSP\.terminal_token                    bai auth token
 C:\Dev\launch-boundry-ai.bat                     Master launch script
 C:\Dev\BoundryAI-PowerShell\BoundryAI.psm1       bai PowerShell module
 C:\Dev\boundry-mcp-server\server.py              MCP server

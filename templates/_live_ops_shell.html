@@ -1,0 +1,209 @@
+{# Shared Live Ops design tokens + chrome.
+   Include in <head> for CSS. Call OpsShell.renderStatusStrip(el, data) in JS pages.
+   Set body class: ops-shell (Floor/Tickets) or ops-shell ops-hq (Control Room).
+#}
+<style>
+  :root {
+    --ops-bg: #0a0e14;
+    --ops-surface: #0f1923;
+    --ops-card: #131d28;
+    --ops-border: #1e3045;
+    --ops-text: #cdd6e0;
+    --ops-muted: #7a9ab0;
+    --ops-dim: #556677;
+    --ops-accent: #00d4ff;
+    --ops-hq: #00b432;
+    --ops-warn: #ff8c00;
+    --ops-crit: #ff4444;
+    --ops-ok: #00ff88;
+    --ops-practice: #ffcc00;
+    --ops-font: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --ops-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
+  }
+  body.ops-shell {
+    margin: 0;
+    font-family: var(--ops-font);
+    background: var(--ops-bg);
+    color: var(--ops-text);
+  }
+  body.ops-shell.ops-hq {
+    --ops-accent: var(--ops-hq);
+  }
+  .ops-mono { font-family: var(--ops-mono); }
+  .ops-topbar {
+    background: var(--ops-surface);
+    border-bottom: 1px solid var(--ops-border);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  .ops-topbar .ops-brand {
+    color: var(--ops-accent);
+    font-weight: 800;
+    font-size: 0.95em;
+    letter-spacing: 0.02em;
+    margin-right: 8px;
+  }
+  .ops-topbar a {
+    color: var(--ops-muted);
+    text-decoration: none;
+    margin-left: 12px;
+    font-size: 0.82em;
+    font-weight: 600;
+  }
+  .ops-topbar a:hover { color: var(--ops-text); }
+  .ops-topbar a.ops-active { color: var(--ops-accent); }
+  .ops-status-strip {
+    background: #132028;
+    border-bottom: 1px solid var(--ops-border);
+    padding: 7px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    font-size: 0.78em;
+    color: var(--ops-muted);
+  }
+  .ops-status-strip .ops-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+  }
+  .ops-status-strip .ops-pill b {
+    font-family: var(--ops-mono);
+    color: var(--ops-text);
+    font-weight: 800;
+  }
+  .ops-status-strip .ops-pill.warn b { color: var(--ops-warn); }
+  .ops-status-strip .ops-pill.crit b { color: var(--ops-crit); }
+  .ops-status-strip .ops-pill.ok b { color: var(--ops-ok); }
+  .ops-status-strip .ops-honesty {
+    margin-left: auto;
+    font-weight: 600;
+    color: var(--ops-practice);
+    font-size: 0.95em;
+  }
+  .ops-btn {
+    border: 1px solid color-mix(in srgb, var(--ops-accent) 40%, transparent);
+    background: color-mix(in srgb, var(--ops-accent) 12%, transparent);
+    color: var(--ops-accent);
+    padding: 7px 12px;
+    border-radius: 5px;
+    font-family: inherit;
+    font-size: 0.78em;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .ops-btn:hover { filter: brightness(1.08); }
+  .ops-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ops-btn-dim {
+    border-color: var(--ops-border);
+    background: var(--ops-bg);
+    color: var(--ops-muted);
+  }
+  .ops-btn-warn {
+    border-color: #ff8c0066;
+    background: #ff8c0018;
+    color: var(--ops-warn);
+  }
+  .ops-btn-ok {
+    border-color: #00ff8866;
+    background: #00ff8818;
+    color: var(--ops-ok);
+  }
+  .ops-badge {
+    display: inline-block;
+    font-size: 0.65em;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ops-lane-real { background: #00ff8822; color: var(--ops-ok); }
+  .ops-lane-practice { background: #ffcc0022; color: var(--ops-practice); }
+  .ops-sla { font-family: var(--ops-mono); font-size: 0.85em; color: var(--ops-warn); }
+  .ops-sla.over { color: var(--ops-crit); font-weight: 800; }
+  .ops-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82em;
+  }
+  .ops-table th {
+    text-align: left;
+    color: var(--ops-muted);
+    font-weight: 700;
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--ops-border);
+    padding: 8px 8px;
+    background: var(--ops-surface);
+    position: sticky;
+    top: 0;
+  }
+  .ops-table td {
+    border-bottom: 1px solid #131d28;
+    padding: 9px 8px;
+    vertical-align: middle;
+  }
+  .ops-table tr:hover td { background: var(--ops-surface); cursor: pointer; }
+  .ops-table .tno {
+    font-family: var(--ops-mono);
+    color: var(--ops-accent);
+    font-weight: 800;
+    text-decoration: none;
+  }
+  .ops-sev { font-family: var(--ops-mono); font-size: 0.72em; font-weight: 800; }
+  .ops-sev-CRITICAL { color: #ff4444; }
+  .ops-sev-HIGH { color: #ff8c00; }
+  .ops-sev-MEDIUM { color: #ffcc00; }
+  .ops-sev-LOW { color: #9944ee; }
+  .ops-sev-INFO { color: #667; }
+  .ops-st {
+    font-size: 0.68em;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .ops-st-new, .ops-st-open { background: #1e3045; color: #7a9ab0; }
+  .ops-st-working { background: #00d4ff22; color: #00d4ff; }
+  .ops-st-waiting { background: #ffcc0022; color: #ffcc00; }
+  .ops-st-escalated { background: #ff8c0022; color: #ff8c00; }
+  .ops-st-closed { background: #00ff8822; color: #00ff88; }
+  /* Navmenu polish when inside Live shell */
+  body.ops-shell .bnav-trigger { font-family: var(--ops-font); }
+  body.ops-shell .bnav-dd {
+    background: var(--ops-surface);
+    border-color: var(--ops-border);
+    font-family: var(--ops-font);
+  }
+</style>
+<script>
+window.OpsShell = {
+  renderStatusStrip: function (el, data) {
+    var root = typeof el === 'string' ? document.querySelector(el) : el;
+    if (!root) return;
+    data = data || {};
+    var open = data.open_tickets != null ? data.open_tickets : '—';
+    var overdue = data.sla_overdue != null ? data.sla_overdue : 0;
+    var shiftHtml = data.shift_active
+      ? '<span class="ops-pill ok">Shift <b>#' + (data.shift_id || 'on') + '</b></span>'
+      : '<span class="ops-pill">Shift <b>off</b></span>';
+    var odClass = overdue > 0 ? 'crit' : '';
+    root.innerHTML =
+      '<span class="ops-pill">Open tickets <b>' + open + '</b></span>' +
+      '<span class="ops-pill ' + odClass + '">SLA overdue <b>' + overdue + '</b></span>' +
+      shiftHtml +
+      '<span class="ops-honesty">' + (data.honesty || 'Practice never equals Real.') + '</span>';
+  }
+};
+</script>

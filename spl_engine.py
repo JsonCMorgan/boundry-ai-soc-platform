@@ -4,14 +4,16 @@ Translates a subset of Splunk Processing Language to SQLite queries
 against the siem_events table.
 
 Supported syntax:
-  [search] [field=value ...] [earliest=-Nh|-Nd|-Nw] [keyword ...]
+  [search] [field=value ...] [earliest=-Nh|-Nd|-Nw]
   | stats count by <field>[, <field>]
   | sort [-]<field>[, [-]<field>]
   | head <N>
   | table <field> [<field> ...]
   | dedup <field>
   | where <field>="<value>"
-  | rex field=<field> "<named_group_regex>"   (extract to virtual col — not in v1)
+
+Natural language / bare keyword search is intentionally rejected — Boundry
+teaches real SPL field filters (use description=<word> for text match).
 """
 
 import re
@@ -204,20 +206,30 @@ def _do_parse(query: str, ph: str) -> dict[str, Any]:
                     f"event_type, event_id, description, earliest, latest"
                 )
         else:
-            # bare keyword — strip surrounding quotes
+            # bare word / quoted phrase — NOT supported as free-text search
             kw = tok.strip().strip('"').strip("'")
             if kw:
                 keywords.append(kw)
 
-    # Full-text keyword search
+    # Reject natural language / free-text. Valid SPL uses field=value (+ pipes).
+    # Without this, "Get me the top 25 events…" silently becomes LIKE %Get% and
+    # returns misleading rows instead of teaching real SPL.
     if keywords:
-        for kw in keywords:
-            pat = f"%{kw}%"
-            where_clauses.append(
-                f"(description LIKE {ph} OR event_type LIKE {ph} "
-                f"OR host LIKE {ph} OR src_ip LIKE {ph} OR user_account LIKE {ph})"
-            )
-            params.extend([pat, pat, pat, pat, pat])
+        preview = ", ".join(keywords[:8])
+        more = "…" if len(keywords) > 8 else ""
+        raise ValueError(
+            "This is NOT valid Boundry SPL-lite.\n"
+            "Natural language and bare keywords are not supported — "
+            "write real SPL with field=value filters and pipes.\n\n"
+            f"Unrecognized tokens: {preview}{more}\n\n"
+            "Examples:\n"
+            "  severity=HIGH earliest=-24h | head 25\n"
+            "  source=firewall src_ip=198.51.100.9 | stats count by event_type\n"
+            "  event_type=logon_failed | sort -created_at | head 50\n"
+            "  description=powershell | head 20\n\n"
+            "Tip: for text in the description field use description=<word>, "
+            "not an English sentence."
+        )
 
     # ── Parse pipe commands ──────────────────────────────────────────────────
     # Default column set for raw event queries

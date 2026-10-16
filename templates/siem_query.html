@@ -152,6 +152,73 @@
       align-items: center;
       gap: .4rem;
     }
+    .ref-banner {
+      display: none;
+      background: #0a0e14;
+      border: 1px dashed #00d4ff66;
+      border-radius: 6px;
+      padding: .75rem 1rem;
+      margin-bottom: .85rem;
+    }
+    .ref-banner.visible { display: block; }
+    .ref-banner .ref-title {
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: .35rem;
+    }
+    .ref-banner code {
+      color: var(--cyan);
+      font-size: .85rem;
+      white-space: pre-wrap;
+      user-select: none;
+    }
+    .ref-banner .ref-actions {
+      margin-top: .5rem;
+      font-size: .75rem;
+    }
+    .ref-banner button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 4px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: .75rem;
+    }
+    .ref-banner button:hover { color: var(--cyan); border-color: var(--cyan); }
+
+    .lesson-grade {
+      display: none;
+      margin: 0.75rem 0 0;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+    .lesson-grade.visible { display: block; }
+    .lesson-grade.ok {
+      background: #00ff8815;
+      border: 1px solid #00ff8866;
+      color: var(--green);
+    }
+    .lesson-grade.bad {
+      background: #ff444415;
+      border: 1px solid #ff444466;
+      color: #ff8888;
+    }
+    .lesson-grade .sub {
+      display: block;
+      margin-top: 4px;
+      font-weight: 500;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+    }
     .query-input-row {
       display: flex;
       gap: .75rem;
@@ -652,6 +719,17 @@
       📡 SPL Query
     </div>
 
+    <div class="ref-banner{% if ref_q %} visible{% endif %}" id="ref-banner">
+      <div class="ref-title">Type this yourself (muscle memory) — box below stays empty</div>
+      <code id="ref-code">{{ ref_q | default('') }}</code>
+      <div class="ref-actions">
+        <button type="button" onclick="toggleRefBanner()">Hide / show target</button>
+        <button type="button" onclick="gradeAgainstTarget()">Check vs lesson target</button>
+        <span style="color:var(--dim);margin-left:.5rem;">Any valid SPL still runs. Optional: check if you matched the lesson target.</span>
+      </div>
+      <div class="lesson-grade" id="lesson-grade"></div>
+    </div>
+
     <div class="query-input-row">
       <div class="query-input-wrap">
         <span class="query-prompt">›</span>
@@ -661,7 +739,7 @@
           placeholder="severity=HIGH earliest=-24h | stats count by src_ip | sort -count | head 10"
           spellcheck="false"
           autocomplete="off"
-        ></textarea>
+        >{% if not ref_q %}{{ prefill_q | default('') }}{% endif %}</textarea>
       </div>
       <button class="btn-run" id="run-btn" onclick="runQuery()">
         <span class="spinner" id="spinner"></span>
@@ -737,8 +815,8 @@
         <div class="ref-item"><span class="ref-cmd">host=DESKTOP-ABC</span></div>
         <div class="ref-item"><span class="ref-cmd">user=admin</span></div>
         <div class="ref-item"><span class="ref-cmd">event_type=logon_failed</span></div>
-        <div class="ref-item"><span class="ref-cmd">description=powershell</span> <span class="ref-desc">substring</span></div>
-        <div class="ref-item"><span class="ref-cmd">brute force</span> <span class="ref-desc">keyword search</span></div>
+        <div class="ref-item"><span class="ref-cmd">description=powershell</span> <span class="ref-desc">substring (not English sentences)</span></div>
+        <div class="ref-item"><span class="ref-cmd" style="color:#ff8888;">Get me top events…</span> <span class="ref-desc">rejected — not SPL</span></div>
       </div>
 
       <div class="ref-card">
@@ -801,10 +879,64 @@ const ORIGIN_SIM_LABEL = {{ origin_sim_label | tojson }};
 const ORIGIN_SIM_TITLE = {{ ('Demo scenario' if client_mode else 'Training simulation') | tojson }};
 /* ── State ────────────────────────────────────────────────────────────── */
 const EXAMPLES = {{ examples | tojson }};
+const REF_TARGET = {{ ref_q | default('') | tojson }};
 let lastRows = [];
 let lastColumns = [];
 let lastQuery = "";
 let sqlOpen = false;
+
+function normSpl(q) {
+  var s = String(q || "").trim().toLowerCase();
+  s = s.replace(/\s+/g, " ");
+  s = s.replace(/\s*\|\s*/g, " | ");
+  s = s.replace(/\s*=\s*/g, "=");
+  if (s.indexOf("search ") === 0) s = s.slice(7).trim();
+  return s;
+}
+
+function queriesMatch(a, b) {
+  var an = normSpl(a), bn = normSpl(b);
+  if (!an || !bn) return false;
+  if (an === bn) return true;
+  var ap = an.split(" | "), bp = bn.split(" | ");
+  if (ap.length !== bp.length) return false;
+  var a0 = ap[0].split(" ").filter(Boolean).sort().join(" ");
+  var b0 = bp[0].split(" ").filter(Boolean).sort().join(" ");
+  if (a0 !== b0) return false;
+  for (var i = 1; i < ap.length; i++) if (ap[i] !== bp[i]) return false;
+  return true;
+}
+
+function showLessonGrade(ok, detail) {
+  var el = document.getElementById("lesson-grade");
+  if (!el || !REF_TARGET) return;
+  el.className = "lesson-grade visible " + (ok ? "ok" : "bad");
+  el.textContent = "";
+  var main = document.createElement("span");
+  main.textContent = ok
+    ? "✓ CORRECT — matches the lesson target."
+    : "✗ WRONG — this is not the lesson target query.";
+  el.appendChild(main);
+  if (detail) {
+    var sub = document.createElement("span");
+    sub.className = "sub";
+    sub.textContent = detail;
+    el.appendChild(sub);
+  }
+}
+
+function gradeAgainstTarget() {
+  if (!REF_TARGET) return false;
+  var typed = document.getElementById("spl-input").value;
+  var ok = queriesMatch(typed, REF_TARGET);
+  showLessonGrade(
+    ok,
+    ok
+      ? "Matches the lesson target (optional check)."
+      : "Different from the lesson target — that’s fine if your SPL is valid. Use this only when practicing the exact lesson query."
+  );
+  return ok;
+}
 
 /* ── Keyboard shortcut: Ctrl+Enter to run ───────────────────────────── */
 document.getElementById("spl-input").addEventListener("keydown", e => {
@@ -813,6 +945,33 @@ document.getElementById("spl-input").addEventListener("keydown", e => {
     runQuery();
   }
 });
+
+/* Prefill only for ?q= (legacy). ?ref= = type-it-yourself mode, no autofill/autorun */
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("ref")) {
+    document.getElementById("spl-input").focus();
+    return;
+  }
+  const el = document.getElementById("spl-input");
+  if (el && el.value.trim()) {
+    setTimeout(() => runQuery(), 200);
+  }
+})();
+
+function toggleRefBanner() {
+  const code = document.getElementById("ref-code");
+  if (!code) return;
+  if (code.style.visibility === "hidden") {
+    code.style.visibility = "";
+    code.style.height = "";
+    code.style.overflow = "";
+  } else {
+    code.style.visibility = "hidden";
+    code.style.height = "0";
+    code.style.overflow = "hidden";
+  }
+}
 
 /* ── Load example ───────────────────────────────────────────────────── */
 function loadExample(idx) {
@@ -864,14 +1023,15 @@ async function runQuery() {
     document.getElementById("status-time").textContent = `${elapsed}s`;
     sb.classList.add("visible");
 
-    // SQL panel
-    document.getElementById("sql-code").textContent = data.sql;
+    // SQL panel (sql may be omitted from API for security — never throw)
+    const sqlEl = document.getElementById("sql-code");
+    if (sqlEl) sqlEl.textContent = data.sql || data.explanation || "";
     document.getElementById("sql-panel").classList.add("visible");
 
     // Results
-    lastRows = data.rows;
-    lastColumns = data.columns;
-    renderTable(data.columns, data.rows);
+    lastRows = data.rows || [];
+    lastColumns = data.columns || [];
+    renderTable(lastColumns, lastRows);
 
   } catch (err) {
     showError(String(err));
@@ -913,11 +1073,21 @@ function renderTable(columns, rows) {
   if (!rows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = columns.length;
+    td.colSpan = columns.length || 1;
     td.style.textAlign = "center";
-    td.style.color    = "#556677";
+    td.style.color    = "#8aa";
     td.style.padding  = "2rem";
-    td.textContent    = "No results found";
+    td.style.lineHeight = "1.6";
+    td.textContent = "";
+    const line1 = document.createElement("div");
+    line1.textContent = "No results found";
+    line1.style.color = "#556677";
+    line1.style.marginBottom = "8px";
+    const line2 = document.createElement("div");
+    line2.style.fontSize = "0.85em";
+    line2.innerHTML = 'Lesson queries need the sample pack — open <a href="/career/spl" style="color:#00d4ff;">SPL Learn</a> (auto-loads events) or click <b>Load sample SIEM events</b>, then retry.';
+    td.appendChild(line1);
+    td.appendChild(line2);
     tr.appendChild(td);
     tbody.appendChild(tr);
     panel.classList.add("visible");

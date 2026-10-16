@@ -1,0 +1,35 @@
+---
+description: Context engineering work rule — which Boundry docs to load for what
+alwaysApply: true
+---
+
+# Boundry context work rule
+
+Keep this rule small. Load sibling docs on demand; do not paste them into every reply.
+
+## Source of truth
+
+| Need | Open first |
+|------|------------|
+| Product intent, Must/Won’t, metrics | `docs/PRD.md` |
+| What to build next / stage checklist | `docs/IMPLEMENTATION_PLAN.md` |
+| Where code lives / route map | `docs/PROJECT_STRUCTURE.md` |
+| Known defects before “fixing” | `docs/BUGS.md` |
+| Hire skill gaps (G#) | `docs/soc-l1-skills-roadmap.md` |
+| Engineering conventions | `.cursorrules` |
+| Tutor lesson voice | `.cursor/rules/tutor-professor-voice.mdc` |
+
+## Behaviour
+
+1. **PRD wins conflicts.** Do not invent Musts or reverse Won’ts without Jason updating the PRD.
+2. **Career/cert default** when Live vs Career conflict (unless Jason overrides for a Live blocker).
+3. **Sec+ first** until passed; then decide next cert.
+4. **One stage chunk per chat** when possible. New chat is fine; these files hold memory.
+5. **Before coding a feature:** skim PRD + matching IMPLEMENTATION_PLAN stage; check BUGS.md.
+6. **After shipping:** check off plan items; add bugs to `BUGS.md`; update PROJECT_STRUCTURE if layout changed.
+7. **No second PRD.** Do not auto-generate a parallel requirements tree that fights `docs/PRD.md`.
+8. **Privacy:** client/ops AI stays on-machine (Ollama). No silent cloud.
+
+## Significant features
+
+Present 2–3 options with tradeoffs and wait for Jason’s pick before building, unless he already chose.

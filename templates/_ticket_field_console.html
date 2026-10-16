@@ -1,0 +1,167 @@
+{# Shared Ticket Field Console — ITSM-style per-field entry.
+   Include once. Call TicketFields.mount(rootEl, { fields, seed, omit }) then
+   TicketFields.collect() / TicketFields.lock(bool) / TicketFields.applyResults(field_results).
+#}
+<style>
+  .tf-console { margin: 0; }
+  .tf-console .tf-field { margin: 10px 0; }
+  .tf-console .tf-field label {
+    display: block; font-size: 0.75em; color: #7a9ab0; margin: 0 0 4px;
+  }
+  .tf-console .tf-hint { font-size: 0.68em; color: #556; margin: 2px 0 0; }
+  .tf-console select,
+  .tf-console textarea {
+    width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+    border-radius: 6px; padding: 10px; font-family: inherit; font-size: 0.85em;
+  }
+  .tf-console textarea { min-height: 64px; resize: vertical; }
+  .tf-console select:disabled,
+  .tf-console textarea:disabled { opacity: 0.5; }
+  .tf-console .tf-field.tf-ok select,
+  .tf-console .tf-field.tf-ok textarea { border-color: #00ff8866; }
+  .tf-console .tf-field.tf-miss select,
+  .tf-console .tf-field.tf-miss textarea { border-color: #ff8c0066; }
+  .tf-console .tf-field-status {
+    font-size: 0.68em; margin-top: 3px; min-height: 1em;
+  }
+  .tf-console .tf-field-status.ok { color: #00ff88; }
+  .tf-console .tf-field-status.miss { color: #ff8c00; }
+  .tf-console .tf-seed-btn {
+    margin-top: 6px; padding: 7px 12px; border-radius: 6px;
+    border: 1px solid #1e3045; background: #0a0e14; color: #9ab;
+    font-family: inherit; font-size: 0.75em; cursor: pointer; font-weight: 700;
+  }
+  .tf-console .tf-seed-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+<script>
+window.TicketFields = (function () {
+  var root = null;
+  var fieldDefs = [];
+  var seed = {};
+  var locked = false;
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function mount(el, opts) {
+    root = typeof el === 'string' ? document.querySelector(el) : el;
+    if (!root) return;
+    opts = opts || {};
+    fieldDefs = opts.fields || [];
+    seed = opts.seed || {};
+    var showSeed = opts.showSeedBtn !== false;
+    var html = '<div class="tf-console">';
+    fieldDefs.forEach(function (f) {
+      html += '<div class="tf-field" data-tf-id="' + esc(f.id) + '">';
+      html += '<label for="tf-' + esc(f.id) + '">' + esc(f.label) +
+        (f.required ? ' *' : '') + '</label>';
+      if (f.control === 'select') {
+        html += '<select id="tf-' + esc(f.id) + '" data-tf="' + esc(f.id) + '">';
+        html += '<option value="">Choose…</option>';
+        (f.options || []).forEach(function (o) {
+          var sel = seed[f.id] === o.id ? ' selected' : '';
+          html += '<option value="' + esc(o.id) + '"' + sel + '>' + esc(o.label) + '</option>';
+        });
+        html += '</select>';
+      } else {
+        html += '<textarea id="tf-' + esc(f.id) + '" data-tf="' + esc(f.id) + '" placeholder="' +
+          esc(f.placeholder || '') + '">' + esc(seed[f.id] || '') + '</textarea>';
+      }
+      if (f.hint) html += '<div class="tf-hint">' + esc(f.hint) + '</div>';
+      html += '<div class="tf-field-status" data-tf-status="' + esc(f.id) + '"></div>';
+      html += '</div>';
+    });
+    if (showSeed && Object.keys(seed).length) {
+      html += '<button type="button" class="tf-seed-btn" id="tf-seed-btn">Fill placeholders from enrich</button>';
+    }
+    html += '</div>';
+    root.innerHTML = html;
+    var btn = document.getElementById('tf-seed-btn');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        if (locked) return;
+        applySeed(seed, true);
+      });
+    }
+    lock(locked);
+  }
+
+  function applySeed(data, confirmReplace) {
+    data = data || {};
+    Object.keys(data).forEach(function (id) {
+      var el = root && root.querySelector('[data-tf="' + id + '"]');
+      if (!el) return;
+      var v = data[id] || '';
+      if (el.tagName === 'TEXTAREA' && el.value.trim() && confirmReplace) {
+        if (!confirm('Replace ' + id + ' with placeholder?')) return;
+      }
+      if (el.tagName === 'TEXTAREA' && el.value.trim() && !confirmReplace) return;
+      el.value = v;
+    });
+  }
+
+  function collect() {
+    var out = {};
+    if (!root) return out;
+    root.querySelectorAll('[data-tf]').forEach(function (el) {
+      out[el.getAttribute('data-tf')] = (el.value || '').trim();
+    });
+    return out;
+  }
+
+  function setValues(data) {
+    data = data || {};
+    if (!root) return;
+    Object.keys(data).forEach(function (id) {
+      var el = root.querySelector('[data-tf="' + id + '"]');
+      if (el) el.value = data[id] || '';
+    });
+  }
+
+  function lock(on) {
+    locked = !!on;
+    if (!root) return;
+    root.querySelectorAll('select, textarea, button').forEach(function (el) {
+      el.disabled = locked;
+    });
+  }
+
+  function applyResults(fieldResults) {
+    if (!root) return;
+    root.querySelectorAll('.tf-field').forEach(function (wrap) {
+      wrap.classList.remove('tf-ok', 'tf-miss');
+      var st = wrap.querySelector('.tf-field-status');
+      if (st) { st.textContent = ''; st.className = 'tf-field-status'; }
+    });
+    (fieldResults || []).forEach(function (fr) {
+      var wrap = root.querySelector('.tf-field[data-tf-id="' + fr.id + '"]');
+      if (!wrap) return;
+      wrap.classList.add(fr.correct ? 'tf-ok' : 'tf-miss');
+      var st = wrap.querySelector('.tf-field-status');
+      if (st) {
+        st.className = 'tf-field-status ' + (fr.correct ? 'ok' : 'miss');
+        st.textContent = fr.correct
+          ? '✓ ' + (fr.label || fr.id)
+          : '✗ Expected: ' + (fr.expected_display || 'see tips');
+      }
+    });
+  }
+
+  function clearResults() {
+    applyResults([]);
+  }
+
+  return {
+    mount: mount,
+    collect: collect,
+    setValues: setValues,
+    applySeed: applySeed,
+    lock: lock,
+    applyResults: applyResults,
+    clearResults: clearResults
+  };
+})();
+</script>

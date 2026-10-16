@@ -404,3 +404,106 @@ def generate_report_pdf(
         _render_table(pdf, headers, rows)
 
     return bytes(pdf.output())
+
+
+def generate_portfolio_pdf(
+    analyst_name: str,
+    cases: list,
+    readiness_pct: int = 0,
+    shift_stats: dict | None = None,
+) -> bytes:
+    """
+    Branded portfolio PDF for GTA SOC job applications.
+    cases: list of dicts with title, track, summary, tools, mitre, disposition, created_at.
+    """
+    created = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+    pdf = BoundryPDF(report_id="PORTFOLIO", created_at=created)
+
+    # Cover
+    pdf.add_page()
+    pdf.set_fill_color(*DARK)
+    pdf.rect(0, 16, 210, 40, "F")
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(*GREEN)
+    pdf.set_xy(15, 22)
+    pdf.cell(0, 10, "SOC Analyst Portfolio", ln=True)
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(*WHITE)
+    pdf.set_x(15)
+    pdf.cell(0, 8, f"Candidate: {analyst_name}  |  Boundry.AI Career Lab", ln=True)
+
+    pdf.set_y(65)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(*TEXT_DARK)
+    pdf.cell(0, 8, "Target role: GTA SOC Analyst (remote / hybrid)", ln=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*TEXT_MID)
+    pdf.multi_cell(
+        0,
+        5,
+        "Evidence from hands-on triage, incident response, SIEM correlation, "
+        "and shift simulations on a private Boundry.AI security operations lab.",
+    )
+    pdf.ln(4)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(*TEXT_DARK)
+    pdf.cell(0, 7, f"Career Lab readiness: {readiness_pct}%", ln=True)
+    if shift_stats:
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(*TEXT_MID)
+        pdf.cell(
+            0,
+            6,
+            f"Shift sims completed: {shift_stats.get('completed', 0)}  |  "
+            f"Avg score: {shift_stats.get('avg_pct', 0)}%  |  "
+            f"Alerts triaged: {shift_stats.get('alerts', 0)}",
+            ln=True,
+        )
+
+    pdf.ln(6)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(*GREEN)
+    pdf.cell(0, 8, f"Case evidence ({len(cases)})", ln=True)
+
+    if not cases:
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.set_text_color(*TEXT_MID)
+        pdf.multi_cell(0, 5, "No portfolio cases exported yet. Complete shifts and add cases in Career Lab.")
+    else:
+        for i, c in enumerate(cases, 1):
+            if pdf.get_y() > 250:
+                pdf.add_page()
+            title = str(c.get("title") or f"Case {i}")[:90]
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.set_text_color(*TEXT_DARK)
+            pdf.cell(0, 7, f"{i}. {title}", ln=True)
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(*TEXT_MID)
+            meta = (
+                f"Track: {c.get('track_id') or '—'}  |  "
+                f"Disposition: {c.get('disposition') or '—'}  |  "
+                f"Date: {str(c.get('created_at') or '')[:16]}"
+            )
+            pdf.cell(0, 5, meta, ln=True)
+            tools = str(c.get("tools_used") or "").strip()
+            mitre = str(c.get("mitre_techniques") or "").strip()
+            if tools:
+                pdf.cell(0, 5, f"Tools: {tools[:120]}", ln=True)
+            if mitre:
+                pdf.cell(0, 5, f"MITRE: {mitre[:80]}", ln=True)
+            summary = str(c.get("summary") or "").strip()
+            if summary:
+                pdf.set_text_color(*TEXT_DARK)
+                pdf.multi_cell(0, 5, summary[:600])
+            pdf.ln(3)
+
+    pdf.ln(4)
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_text_color(*TEXT_MID)
+    pdf.multi_cell(
+        0,
+        4,
+        "Generated locally by Boundry.AI Career Lab for job applications. "
+        "Lab traffic stays on-machine unless a separate vendor trial is used.",
+    )
+    return bytes(pdf.output())

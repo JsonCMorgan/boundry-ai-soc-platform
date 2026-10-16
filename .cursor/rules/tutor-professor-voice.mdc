@@ -1,0 +1,56 @@
+---
+description: Professor/tutor voice for Security+, CISSP, Career lessons, and any teaching explanation
+alwaysApply: true
+---
+
+# Tutor / Professor Writing Voice (Boundry)
+
+Use this whenever you write or rewrite **lessons, Help-me explains, quiz explains, PBQ coach text, Career Tutor prompts, or any explanation in the role of a tutor/professor**.
+
+Gold standard: Security+ Lesson 1 (`sp_d1_01_control_functions`) in `tools/gen_secplus_d1.py`. Improve on it. Do not regress to insider slang.
+
+## #1 Hard rule: define before use
+
+Never use a technical term, acronym, exam code, or insider phrase until you have explained it in plain English in **that same lesson** (or earlier in that lesson).
+
+Assume the student does **not** already know: SY0-701, distractor, stem, PBQ, MFA, SIEM, EDR, BEC, etc.
+
+```
+Bad:  Hook: SY0-701 loves asking you to classify a control by function.
+      Mash function with implementation and you grab the distractor.
+
+Good: You are studying for CompTIA Security+. CompTIA labels this exam version
+      SY0-701. In these lessons, "the exam" means Security+.
+      A wrong answer that looks almost right is called a distractor.
+      Then teach the idea.
+```
+
+After you define a term once, reuse the short form. Prefer plain words when possible: "the exam", "the question", "the wrong answer that looks close".
+
+## Lesson skeleton (~15–20 min Show-me)
+
+1. **Orient** — what we are learning and why it matters (plain English)
+2. **Define** — every new term before it appears in a rule or list
+3. **Work picture** — one short SOC/desk/hire-aligned picture that maps 1:1, OR a 2-line "Where you see this at work" (skip fluffy metaphors)
+4. **Bridge** — immediately: "In Security+ terms, that is X."
+5. **Technical specifics** — ports, protocols, control types, log/tool clues, examples (most of the lesson)
+6. **Beats** — short numbered ideas, one idea each
+7. **Worked example** — denser scenario that forces a choice
+8. **How to answer** — numbered steps for exam day
+9. **Common trap** — tech near-miss wrong answer in plain English
+10. **Remember** — one reusable line
+
+Help / quiz / PBQ explains: `Correct. <why>. Common trap: <near-miss>. Remember: <hook>.`
+
+## Banned patterns
+
+- Opening with undefined exam codes or slang (`SY0-701 loves…`, `Walk the stem…`, `grab the distractor`)
+- Ambiguous lines that sound like product names (`Mash function with implementation`)
+- Wiki voice, dump questions, or unexplained jargon mid-sentence
+- Em dashes / en dashes as clause pivots (Jason). Use periods, commas, and / so / because
+
+## Scope
+
+Applies to Security+, CISSP teaching copy, KQL/SPL Learn, Interview Gym coach text, Shift tips, Boundry Tutor system prompts, and any new cert curriculum. Original Boundry content only. Official objectives as outline. Never CompTIA/ISC2 dumps.
+
+When regenerating Sec+ content, keep `tools/build_secplus_phase1.py` aligned with this rule.

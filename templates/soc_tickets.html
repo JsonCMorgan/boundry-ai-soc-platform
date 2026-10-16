@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry Tickets — Boundry.AI</title>
+  {% include '_live_ops_shell.html' %}
+  <style>
+    .main { max-width: 1200px; margin: 0 auto; padding: 20px 20px 60px; }
+    h1 { margin: 0 0 4px; color: #fff; font-size: 1.35em; font-weight: 800; }
+    .sub { color: var(--ops-muted); font-size: 0.85em; margin-bottom: 16px; line-height: 1.45; }
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; align-items: end;
+      position: sticky; top: 52px; z-index: 20;
+      background: var(--ops-bg); padding: 10px 0; border-bottom: 1px solid var(--ops-border);
+    }
+    .filters label { display: block; font-size: 0.7em; color: var(--ops-muted); margin-bottom: 4px; font-weight: 700; }
+    .filters input, .filters select {
+      background: var(--ops-bg); border: 1px solid var(--ops-border); color: var(--ops-text);
+      border-radius: 5px; padding: 8px 10px; font-family: inherit; font-size: 0.8em;
+    }
+    .empty { color: var(--ops-dim); padding: 24px 0; }
+    .empty a { color: var(--ops-accent); }
+  </style>
+</head>
+<body class="ops-shell">
+  <div class="ops-topbar">
+    <div>
+      <span class="ops-brand">Boundry Tickets</span>
+      <span style="font-size:0.72em;color:var(--ops-dim);">local ITSM-lite</span>
+      <a href="/soc">Floor</a>
+      <a href="/soc/tickets" class="ops-active">Tickets</a>
+      <a href="/control-room">Control Room</a>
+      {% include "_navmenu.html" %}
+    </div>
+  </div>
+  <div class="ops-status-strip" id="ops-strip"></div>
+
+  <div class="main">
+    <h1>Boundry Tickets</h1>
+    <p class="sub">
+      Local ticket queue for one analyst. Filter open, escalated, or closed.
+      Practice vs Real stays labeled on every row.
+    </p>
+
+    <form class="filters" method="get" action="/soc/tickets">
+      <div>
+        <label>Status</label>
+        <select name="status">
+          <option value="open" {% if status == 'open' %}selected{% endif %}>Open (all active)</option>
+          <option value="new" {% if status == 'new' %}selected{% endif %}>New</option>
+          <option value="working" {% if status == 'working' %}selected{% endif %}>Working</option>
+          <option value="waiting" {% if status == 'waiting' %}selected{% endif %}>Waiting</option>
+          <option value="escalated" {% if status == 'escalated' %}selected{% endif %}>Escalated</option>
+          <option value="closed" {% if status == 'closed' %}selected{% endif %}>Closed</option>
+          <option value="" {% if status == '' %}selected{% endif %}>All</option>
+        </select>
+      </div>
+      <div>
+        <label>Client contains</label>
+        <input name="client" value="{{ client }}" placeholder="Contoso / Harbor…">
+      </div>
+      <div>
+        <label>Search</label>
+        <input name="q" value="{{ q }}" placeholder="BT-… or title">
+      </div>
+      <button type="submit" class="ops-btn">Filter</button>
+    </form>
+
+    <table class="ops-table" id="tickets-table">
+      <thead>
+        <tr>
+          <th>Ticket</th>
+          <th>Status</th>
+          <th>P</th>
+          <th>Client</th>
+          <th>Title</th>
+          <th>Lane</th>
+          <th>SLA</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+        <tr onclick="window.location='/soc?case={{ t.id }}'">
+          <td><a class="tno" href="/soc?case={{ t.id }}" onclick="event.stopPropagation()">{{ t.ticket_no or ('#' ~ t.id) }}</a></td>
+          <td><span class="ops-st ops-st-{{ t.status }}">{{ t.status }}</span></td>
+          <td class="ops-mono">P{{ t.priority }}</td>
+          <td>{{ t.client_tag }}</td>
+          <td>{{ t.title }}</td>
+          <td>{% if t.is_practice %}<span class="ops-badge ops-lane-practice">Practice</span>{% else %}<span class="ops-badge ops-lane-real">Real</span>{% endif %}</td>
+          <td><span class="ops-sla">{{ t.sla_due_at or '—' }}</span></td>
+          <td class="ops-mono" style="font-size:0.85em;color:var(--ops-dim);">{{ t.updated_at or t.created_at or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="empty" style="cursor:default;">
+            No tickets match. Open alerts on the <a href="/soc">SOC Floor</a> to mint BT tickets.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <script>
+  OpsShell.renderStatusStrip('#ops-strip', {{ ops_strip | default({}) | tojson }});
+  </script>
+</body>
+</html>

@@ -17,9 +17,18 @@ inspect_db.py
 instance/
 docs/LAB_CREDENTIALS.md
 
+# Vendor exam objective PDFs (copyrighted; keep local only)
+# Track README + JSON matrices under docs/exam-outlines/; ignore the PDFs.
+docs/exam-outlines/*.pdf
+docs/exam-outlines/_*-extract.txt
+!docs/exam-outlines/README.md
+
 # Logs - never commit
 *.log
 docs/reports/incident_report_*.md
+
+# Local DB backups (M6)
+backups/
 
 # Python
 __pycache__/
@@ -40,3 +49,8 @@ __pycache__/
 # Boundry.AI agent skill progress files (keep README)
 agent_tasks/*.md
 !agent_tasks/README.md
+
+# Local secret loaders (never commit)
+.boundry_env.ps1
+*_profile_backup_*.ps1
+

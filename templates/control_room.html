@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Boundry.AI — Control Room</title>
+    {% include '_live_ops_shell.html' %}
     <style>
         /* ── Colour tokens ─────────────────────────────────────────────────────
            Green  #00b432 / #00ff41   brand · safe · success · resolved
@@ -12,44 +13,47 @@
         ── */
         * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            background: #0b0e17;
-            color: #d4d4d4;
+            font-family: var(--ops-font);
+            background: var(--ops-bg);
+            color: var(--ops-text);
             margin: 0;
             padding: 0;
         }
 
         /* ── Top bar ── */
         .topbar {
-            background: #12151f;
-            border-bottom: 2px solid #00b43233;
-            padding: 14px 32px;
+            background: var(--ops-surface);
+            border-bottom: 1px solid var(--ops-border);
+            padding: 12px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             position: sticky; top: 0; z-index: 50;
-            box-shadow: 0 2px 24px #00b43233, 0 0 48px #00b43211;
         }
         .topbar-brand {
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #00b432;
-            letter-spacing: 0.04em;
-            text-shadow: 0 0 8px #00b432cc, 0 0 28px #00b43266;
+            font-size: 1.05em;
+            font-weight: 800;
+            color: var(--ops-hq);
+            letter-spacing: 0.02em;
+        }
+        .topbar-brand a {
+            color: inherit;
+            text-decoration: none;
         }
         .topbar-user {
             font-size: 0.85em;
-            color: #666;
+            color: var(--ops-muted);
         }
-        .topbar-user strong { color: #aaa; }
+        .topbar-user strong { color: var(--ops-text); }
         .topbar nav a {
-            color: #666;
+            color: var(--ops-muted);
             text-decoration: none;
-            margin-left: 20px;
+            margin-left: 16px;
             font-size: 0.85em;
+            font-weight: 600;
             transition: color 0.15s;
         }
-        .topbar nav a:hover { color: #00b432; text-shadow: 0 0 8px #00b43299; }
+        .topbar nav a:hover { color: var(--ops-hq); }
 
         /* ── Nav dropdown menus ── */
         .nav-menu { position: relative; display: inline-block; margin-left: 20px; }
@@ -74,30 +78,35 @@
 
         /* ── Stat bar ── */
         .statbar {
-            background: #0e1119;
-            border-bottom: 1px solid #1e2235;
+            background: var(--ops-surface);
+            border-bottom: 1px solid var(--ops-border);
             display: flex;
-            padding: 0 32px;
+            flex-wrap: wrap;
+            padding: 0 24px;
         }
         .stat {
-            padding: 18px 28px 18px 0;
-            border-right: 1px solid #1e2235;
-            margin-right: 28px;
+            padding: 14px 24px 14px 0;
+            border-right: 1px solid var(--ops-border);
+            margin-right: 24px;
         }
         .stat:last-child { border-right: none; }
+        .stat a { text-decoration: none; color: inherit; }
         .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #ff6a00;
+            font-size: 1.7em;
+            font-weight: 800;
+            color: var(--ops-warn);
             line-height: 1;
-            text-shadow: 0 0 8px #ff6a00bb, 0 0 24px #ff6a0055;
+            font-family: var(--ops-mono);
         }
+        .stat-value.hq { color: var(--ops-hq); }
+        .stat-value.accent { color: var(--ops-accent); }
         .stat-label {
-            font-size: 0.75em;
-            color: #555;
+            font-size: 0.72em;
+            color: var(--ops-dim);
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-top: 4px;
+            font-weight: 700;
         }
 
         /* ── Main layout ── */
@@ -112,8 +121,8 @@
 
         /* ── Panel ── */
         .panel {
-            background: #12151f;
-            border: 1px solid #1e2235;
+            background: var(--ops-surface, #12151f);
+            border: 1px solid var(--ops-border, #1e2235);
             border-radius: 6px;
             overflow: hidden;
         }
@@ -1095,18 +1104,18 @@
         .remed-close-btn:hover { color: #ff6666; }
     </style>
 </head>
-<body>
+<body class="ops-shell ops-hq">
 
     <div class="topbar">
-        <span class="topbar-brand">&#x1F6E1; Boundry.AI — Control Room</span>
-        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+        <span class="topbar-brand"><a href="/control-room">Control Room · HQ</a></span>
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
             <!-- XP Bar — hidden in Live Ops mode -->
             {% if player and not client_mode and not ops_mode %}
             <div class="xp-bar-wrap" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;">
                 {% if player.streak_days and player.streak_days >= 2 %}
-                <span class="xp-streak-badge" style="color:#ff8c00;font-weight:700;font-size:12px;" title="{{ player.streak_days }}-day streak">🔥{{ player.streak_days }}d</span>
+                <span class="xp-streak-badge" style="color:#ff8c00;font-weight:700;font-size:12px;" title="{{ player.streak_days }}-day streak">{{ player.streak_days }}d streak</span>
                 {% endif %}
-                <a href="/profile" style="background:#1a2a1a;border:1px solid #00b432;border-radius:4px;padding:2px 8px;font-weight:700;color:#00b432;font-size:12px;text-decoration:none;white-space:nowrap;" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+                <a href="/profile" style="background:#1a2a1a;border:1px solid #00b432;border-radius:4px;padding:2px 8px;font-weight:700;color:#00b432;font-size:12px;text-decoration:none;white-space:nowrap;" id="xp-level-badge">Lv.{{ player.level }}</a>
                 <div style="width:100px;height:7px;background:#1a1a1a;border-radius:4px;overflow:hidden;border:1px solid #333;">
                     <div id="xp-bar-fill" style="height:100%;background:linear-gradient(90deg,#00b432,#44ff66);border-radius:4px;width:{{ player.level_pct }}%;transition:width 0.6s ease;"></div>
                 </div>
@@ -1117,12 +1126,17 @@
                 {% if user_role == 'analyst' %}Analyst{% elif user_role == 'demo' %}Showcase{% else %}Client{% endif %}:
                 <strong>{{ session['username'] }}</strong>
             </span>
+            {% if user_role == 'analyst' %}
+            <div id="ops-presence"></div>
+            {% endif %}
             <nav>
+                <a href="/soc">SOC Floor</a>
+                <a href="/soc/tickets">Tickets</a>
                 {% include "_navmenu.html" %}
                 {% if user_role != 'analyst' %}<a href="/account">Account</a>{% endif %}
                 <a href="/logout" style="color:#ff8888; font-weight:bold; border:1px solid #662222;
                    background:#2a0d0d; padding:4px 12px; border-radius:5px; margin-left:16px;">
-                   🚪 Log Out</a>
+                   Log Out</a>
             </nav>
             <!-- Mode toggle -->
             {% if user_role == 'analyst' %}
@@ -1130,15 +1144,23 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if ops_mode %}
                 <input type="hidden" name="mode" value="study">
-                <button type="submit" title="Switch to Study Mode (show CISSP, XP, study notes)" style="background:#1a0a2e;border:1px solid #9944ee88;color:#bb77ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">📘 Switch to Study Mode</button>
+                <button type="submit" title="Switch to Study Mode (show CISSP, XP, study notes)" style="background:#1a0a2e;border:1px solid #9944ee88;color:#bb77ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;">Study Mode</button>
                 {% else %}
                 <input type="hidden" name="mode" value="ops">
-                <button type="submit" title="Switch to Live Ops Mode (clean pro view, no study scaffolding)" style="background:#1a2a3a;border:1px solid #00d4ff88;color:#00d4ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">⚡ Switch to Live Ops</button>
+                <button type="submit" title="Switch to Live Ops Mode (clean pro view, no study scaffolding)" style="background:#1a2a3a;border:1px solid #00d4ff88;color:#00d4ff;border-radius:4px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;">Live Ops</button>
                 {% endif %}
             </form>
             {% endif %}
         </div>
     </div>
+    {% if user_role == 'analyst' %}
+    {% include '_ops_presence.html' %}
+    <div class="ops-status-strip" id="ops-strip"></div>
+    <script>
+      OpsShell.renderStatusStrip('#ops-strip', {{ ops_strip | default({}) | tojson }});
+      if (window.OpsPresence) OpsPresence.mount('#ops-presence');
+    </script>
+    {% endif %}
 
     {% if is_demo_mode %}
     <!-- Demo tour banner -->
@@ -1190,27 +1212,9 @@
         {% endif %}
     </div>
 
-    <div class="statbar">
-        <div class="stat">
-            <div class="stat-value">{{ total_clients }}</div>
-            <div class="stat-label">Clients</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value">{{ total_reports }}</div>
-            <div class="stat-label">Reports</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value">{{ total_threats }}</div>
-            <div class="stat-label">Threats Found</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value">{{ total_events }}</div>
-            <div class="stat-label">Events Analysed</div>
-        </div>
-    </div>
+    {% include "_control_room_hq.html" %}
 
     <div class="main">
-
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, message in messages %}
                 <div class="flash-{{ category }}">
@@ -1224,6 +1228,277 @@
             {% endfor %}
         {% endwith %}
 
+        <!-- Client list -->
+        <div>
+            <div class="panel">
+                <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>Users <span class="badge-count">{{ clients|length }}</span></span>
+                    <button type="button" onclick="toggleAddClient()"
+                        style="font-size:0.72em;font-weight:700;color:#00b432;background:#0a1a0e;
+                        border:1px solid #1a5a2a;padding:4px 11px;border-radius:4px;cursor:pointer;">
+                        + Add Client
+                    </button>
+                </div>
+
+                <!-- Add Client form (hidden until toggled) -->
+                <form id="add-client-form" method="POST" action="{{ url_for('add_client') }}"
+                      style="display:none;padding:14px 16px;background:#0d1420;border-bottom:1px solid #1e2235;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <input name="username" placeholder="Username *" required
+                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
+                        <input name="email" type="email" placeholder="Client email *" required
+                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
+                        <input name="business_name" placeholder="Business name (optional)"
+                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
+                        <input name="industry" placeholder="Industry (optional)"
+                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
+                    </div>
+                    <div style="font-size:0.7em;color:#556;margin-top:8px;line-height:1.5;">
+                        Creates a client account, generates their API key, and sends a password-setup
+                        link. If email isn't configured, the link is shown to you to send manually.
+                    </div>
+                    <button type="submit"
+                        style="margin-top:10px;font-size:0.78em;font-weight:700;color:#000;background:#00b432;
+                        border:none;padding:7px 16px;border-radius:4px;cursor:pointer;">
+                        Create Client &amp; Get Integration →
+                    </button>
+                </form>
+
+                {% for c in clients %}
+                <div class="client-row">
+                    <div class="client-avatar">{{ c.username[0] }}</div>
+                    <span class="client-name">{{ c.username }}</span>
+                    <span class="role-pill role-{{ c.role }}">{{ c.role }}</span>
+                    {% if c.role == 'client' %}
+                    {% set rscore = client_risk.get(c.id) %}
+                    <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
+                        {% if rscore %}
+                        <a href="/analyst/client/{{ c.id }}/risk-assessment"
+                           style="font-size:0.72em; color:#000; text-decoration:none; font-weight:700;
+                                  background:{{ rscore.color }}; padding:3px 8px; border-radius:3px; white-space:nowrap;"
+                           title="Risk {{ rscore.grade }} · ${{ '{:,.0f}'.format(rscore.recommended_monthly) }}/mo recommended">
+                            📊 {{ rscore.grade }} · ${{ '{:,.0f}'.format(rscore.recommended_monthly) }}/mo
+                        </a>
+                        {% else %}
+                        <a href="/analyst/client/{{ c.id }}/risk-assessment"
+                           style="font-size:0.72em; color:#ff9944; text-decoration:none;
+                                  background:#2a1600; border:1px solid #663300; padding:3px 9px;
+                                  border-radius:3px; white-space:nowrap;"
+                           title="Run risk assessment for {{ c.username }}">
+                            📊 Assess Risk
+                        </a>
+                        {% endif %}
+                        <a href="/analyst/client/{{ c.id }}/integration"
+                           style="font-size:0.72em; color:#aa66ff; text-decoration:none;
+                                  background:#1a0a2a; border:1px solid #441a88; padding:3px 9px;
+                                  border-radius:3px; white-space:nowrap;"
+                           title="View integration code for {{ c.username }}">
+                            &#x1F527; Integration
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_client', client_id=c.id) }}"
+                              onsubmit="return confirm('Remove client \'{{ c.username }}\' and ALL their reports and events? This cannot be undone.');"
+                              style="display:inline; margin:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit"
+                                    style="font-size:0.72em; color:#ff6666; background:#2a0d0d;
+                                           border:1px solid #661a1a; padding:3px 8px; border-radius:3px;
+                                           cursor:pointer; line-height:1;"
+                                    title="Remove client {{ c.username }}">
+                                &#x2715;
+                            </button>
+                        </form>
+                    </span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <script>
+            function toggleAddClient() {
+                var f = document.getElementById('add-client-form');
+                f.style.display = (f.style.display === 'none' || !f.style.display) ? 'block' : 'none';
+                if (f.style.display === 'block') { var u = f.querySelector('[name=username]'); if (u) u.focus(); }
+            }
+        </script>
+
+        <!-- All reports -->
+        <div>
+            <div class="panel">
+                <div class="panel-header">
+                    All Incident Reports
+                    <span class="badge-count">{{ reports|length }}</span>
+                </div>
+                <table class="reports-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Client</th>
+                            <th>Generated</th>
+                            <th>Source</th>
+                            <th>Events</th>
+                            <th>Threats</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if reports %}
+                            {% for r in reports %}
+                            <tr>
+                                <td>#{{ r.id }}</td>
+                                <td style="color:#666; font-size:0.85em;">{{ r.owner_username or '—' }}</td>
+                                <td>
+                                    <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
+                                </td>
+                                <td>
+                                    {% if r.simulated %}
+                                        <span class="source-pill source-pill-simulated" title="{% if client_mode %}Demo scenario{% else %}Training simulation{% endif %}">{{ origin_sim_label }}</span>
+                                    {% else %}
+                                        <span class="source-pill source-pill-live" title="Live monitored events">Live</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ r.event_count }}</td>
+                                <td>
+                                    {% if r.threat_count > 0 %}
+                                        <span class="threat-high">{{ r.threat_count }} HIGH</span>
+                                    {% else %}
+                                        <span class="threat-none">0</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="status-badge status-{{ r.status or 'new' }}">
+                                        {{ (r.status or 'new')|upper }}
+                                    </span>
+                                    {% if r.status != 'closed' %}
+                                    <form method="POST" action="/reports/{{ r.id }}/triage" style="display:inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        {% if r.status == 'new' or not r.status %}
+                                            <button class="triage-btn" name="status" value="reviewing">Review</button>
+                                        {% endif %}
+                                        {% if r.status in ('new', 'reviewing', None) %}
+                                            <button class="triage-btn" name="status" value="escalated" style="color:#ff6a00">Escalate</button>
+                                        {% endif %}
+                                        <button class="triage-btn" name="status" value="closed" style="color:#00b432">Close</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                                <td><a class="view-link" href="/reports/{{ r.id }}">View →</a></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="empty-row"><td colspan="8">No reports yet — run the agent to generate one.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Live event feed -->
+        <div class="feed-panel">
+            <div class="panel">
+                <div class="panel-header">
+                    Live Event Feed
+                    <span class="badge-count">{{ recent_events|length }}</span>
+                </div>
+                {% if recent_events %}
+                <div style="max-height: 380px; overflow-y: auto;">
+                    <table class="event-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Event</th>
+                                <th>Source</th>
+                                <th>Username</th>
+                                <th>Source IP</th>
+                                <th>Details</th>
+                                <th>MITRE</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in recent_events %}
+                            <tr>
+                                <td>
+                                    <span class="local-time" data-utc="{{ e.created_at }}">{{ e.created_at }}</span>
+                                </td>
+                                <td>
+                                    {% if e.event_type == 'LOGIN_FAILED' %}
+                                        <span class="evt-badge evt-login-failed">LOGIN_FAILED</span>
+                                    {% elif e.event_type == 'LOGIN_SUCCESS' %}
+                                        <span class="evt-badge evt-login-success">LOGIN_SUCCESS</span>
+                                    {% elif e.event_type == 'SEARCH' %}
+                                        <span class="evt-badge evt-search">SEARCH</span>
+                                    {% elif e.event_type == 'XSS_ATTEMPT' %}
+                                        <span class="evt-badge evt-xss">XSS_ATTEMPT</span>
+                                    {% elif e.event_type == 'DIRECTORY_TRAVERSAL' %}
+                                        <span class="evt-badge evt-traversal">DIR_TRAVERSAL</span>
+                                    {% elif e.event_type == 'PRIV_ESC_ATTEMPT' %}
+                                        <span class="evt-badge evt-priv-esc">PRIV_ESC</span>
+                                    {% elif e.event_type == 'ACCOUNT_ENUM' %}
+                                        <span class="evt-badge evt-account-enum">ACCT_ENUM</span>
+                                    {% else %}
+                                        <span class="evt-badge evt-other">{{ e.event_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if e.simulated %}
+                                        <span class="source-pill source-pill-simulated" title="{% if client_mode %}Demo scenario{% else %}Training simulation{% endif %}">{{ origin_sim_label }}</span>
+                                    {% else %}
+                                        <span class="source-pill source-pill-live" title="Live monitored events">Live</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ e.username or '—' }}</td>
+                                <td>{{ e.ip or '—' }}</td>
+                                <td>
+                                    {% if e.extra %}
+                                        <span class="payload-text" title="{{ e.extra }}">{{ e.extra }}</span>
+                                    {% else %}
+                                        <span style="color:#333">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if e.event_type == 'LOGIN_FAILED' %}
+                                        <span class="mitre-tag">T1110</span>
+                                    {% elif e.event_type == 'SEARCH' %}
+                                        <span class="mitre-tag">T1190</span>
+                                    {% elif e.event_type == 'LOGIN_SUCCESS' %}
+                                        <span class="mitre-tag">T1078</span>
+                                    {% elif e.event_type == 'XSS_ATTEMPT' %}
+                                        <span class="mitre-tag">T1059.007</span>
+                                    {% elif e.event_type == 'DIRECTORY_TRAVERSAL' %}
+                                        <span class="mitre-tag">T1083</span>
+                                    {% elif e.event_type == 'PRIV_ESC_ATTEMPT' %}
+                                        <span class="mitre-tag">T1548</span>
+                                    {% elif e.event_type == 'ACCOUNT_ENUM' %}
+                                        <span class="mitre-tag">T1589.001</span>
+                                    {% else %}
+                                        <span style="color:#333">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if e.processed %}
+                                        <span class="status-processed">PROCESSED</span>
+                                    {% else %}
+                                        <span class="status-pending">⬤ PENDING</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <div style="color:#333; font-style:italic; text-align:center; padding:28px;">
+                        No events yet — click {% if client_mode %}Run Security Demo{% else %}Simulate Attack{% endif %} to generate some.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <details class="hq-tools"{% if not ops_mode %} open{% endif %}>
+            <summary>Tools · Intel, VPN, Scanner, Agent</summary>
+            <div class="hq-tools-body">
         <!-- Breach Intel Panel -->
         <div class="breach-panel">
             <div class="breach-toggle" onclick="toggleBreach()">
@@ -1514,7 +1789,7 @@
                         · {{ resolved_findings_count }} resolved
                     </span>
                     {% else %}
-                    <span style="font-size:0.85em; color:#444; text-transform:none; letter-spacing:0;">— Scan your machine &amp; network to earn XP</span>
+                    <span style="font-size:0.85em; color:#444; text-transform:none; letter-spacing:0;">— Scan your machine &amp; network to {% if not ops_mode %}earn XP{% else %}review findings{% endif %}</span>
                     {% endif %}
                 </span>
                 <span id="scanner-arrow">▼</span>
@@ -1562,7 +1837,7 @@
                             </div>
                         </div>
                         <button class="btn-resolve" onclick="resolveFinding({{ f.id }})">
-                            ✓ Resolve<br>+25 XP
+                            ✓ Resolve<br>{% if not ops_mode %}+25 XP{% else %}resolve{% endif %}
                         </button>
                     </div>
                     {% endfor %}
@@ -1731,6 +2006,7 @@
             </div>
         </div>
 
+        {% if not ops_mode %}
         <!-- MITRE ATT&CK Reference -->
         <div class="mitre-panel">
             <div class="mitre-toggle" onclick="toggleMitre()">
@@ -2122,6 +2398,7 @@
             </div>
         </div>
 
+        {% endif %}
         <!-- Shift checklist -->
         <div class="checklist-panel">
             <div class="checklist-toggle" onclick="toggleChecklist()">
@@ -2227,273 +2504,10 @@
             {% endif %}
         </div>
 
-        <!-- Client list -->
-        <div>
-            <div class="panel">
-                <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;">
-                    <span>Users <span class="badge-count">{{ clients|length }}</span></span>
-                    <button type="button" onclick="toggleAddClient()"
-                        style="font-size:0.72em;font-weight:700;color:#00b432;background:#0a1a0e;
-                        border:1px solid #1a5a2a;padding:4px 11px;border-radius:4px;cursor:pointer;">
-                        + Add Client
-                    </button>
-                </div>
 
-                <!-- Add Client form (hidden until toggled) -->
-                <form id="add-client-form" method="POST" action="{{ url_for('add_client') }}"
-                      style="display:none;padding:14px 16px;background:#0d1420;border-bottom:1px solid #1e2235;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                        <input name="username" placeholder="Username *" required
-                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
-                        <input name="email" type="email" placeholder="Client email *" required
-                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
-                        <input name="business_name" placeholder="Business name (optional)"
-                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
-                        <input name="industry" placeholder="Industry (optional)"
-                            style="padding:8px 10px;background:#0b0e17;border:1px solid #2a3040;border-radius:4px;color:#eee;font-size:0.82em;">
-                    </div>
-                    <div style="font-size:0.7em;color:#556;margin-top:8px;line-height:1.5;">
-                        Creates a client account, generates their API key, and sends a password-setup
-                        link. If email isn't configured, the link is shown to you to send manually.
-                    </div>
-                    <button type="submit"
-                        style="margin-top:10px;font-size:0.78em;font-weight:700;color:#000;background:#00b432;
-                        border:none;padding:7px 16px;border-radius:4px;cursor:pointer;">
-                        Create Client &amp; Get Integration →
-                    </button>
-                </form>
-
-                {% for c in clients %}
-                <div class="client-row">
-                    <div class="client-avatar">{{ c.username[0] }}</div>
-                    <span class="client-name">{{ c.username }}</span>
-                    <span class="role-pill role-{{ c.role }}">{{ c.role }}</span>
-                    {% if c.role == 'client' %}
-                    {% set rscore = client_risk.get(c.id) %}
-                    <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
-                        {% if rscore %}
-                        <a href="/analyst/client/{{ c.id }}/risk-assessment"
-                           style="font-size:0.72em; color:#000; text-decoration:none; font-weight:700;
-                                  background:{{ rscore.color }}; padding:3px 8px; border-radius:3px; white-space:nowrap;"
-                           title="Risk {{ rscore.grade }} · ${{ '{:,.0f}'.format(rscore.recommended_monthly) }}/mo recommended">
-                            📊 {{ rscore.grade }} · ${{ '{:,.0f}'.format(rscore.recommended_monthly) }}/mo
-                        </a>
-                        {% else %}
-                        <a href="/analyst/client/{{ c.id }}/risk-assessment"
-                           style="font-size:0.72em; color:#ff9944; text-decoration:none;
-                                  background:#2a1600; border:1px solid #663300; padding:3px 9px;
-                                  border-radius:3px; white-space:nowrap;"
-                           title="Run risk assessment for {{ c.username }}">
-                            📊 Assess Risk
-                        </a>
-                        {% endif %}
-                        <a href="/analyst/client/{{ c.id }}/integration"
-                           style="font-size:0.72em; color:#aa66ff; text-decoration:none;
-                                  background:#1a0a2a; border:1px solid #441a88; padding:3px 9px;
-                                  border-radius:3px; white-space:nowrap;"
-                           title="View integration code for {{ c.username }}">
-                            &#x1F527; Integration
-                        </a>
-                        <form method="POST" action="{{ url_for('delete_client', client_id=c.id) }}"
-                              onsubmit="return confirm('Remove client \'{{ c.username }}\' and ALL their reports and events? This cannot be undone.');"
-                              style="display:inline; margin:0;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit"
-                                    style="font-size:0.72em; color:#ff6666; background:#2a0d0d;
-                                           border:1px solid #661a1a; padding:3px 8px; border-radius:3px;
-                                           cursor:pointer; line-height:1;"
-                                    title="Remove client {{ c.username }}">
-                                &#x2715;
-                            </button>
-                        </form>
-                    </span>
-                    {% endif %}
-                </div>
-                {% endfor %}
             </div>
-        </div>
-        <script>
-            function toggleAddClient() {
-                var f = document.getElementById('add-client-form');
-                f.style.display = (f.style.display === 'none' || !f.style.display) ? 'block' : 'none';
-                if (f.style.display === 'block') { var u = f.querySelector('[name=username]'); if (u) u.focus(); }
-            }
-        </script>
+        </details>
 
-        <!-- All reports -->
-        <div>
-            <div class="panel">
-                <div class="panel-header">
-                    All Incident Reports
-                    <span class="badge-count">{{ reports|length }}</span>
-                </div>
-                <table class="reports-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Client</th>
-                            <th>Generated</th>
-                            <th>Source</th>
-                            <th>Events</th>
-                            <th>Threats</th>
-                            <th>Status</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if reports %}
-                            {% for r in reports %}
-                            <tr>
-                                <td>#{{ r.id }}</td>
-                                <td style="color:#666; font-size:0.85em;">{{ r.owner_username or '—' }}</td>
-                                <td>
-                                    <span class="local-time" data-utc="{{ r.created_at }}">{{ r.created_at }}</span>
-                                </td>
-                                <td>
-                                    {% if r.simulated %}
-                                        <span class="source-pill source-pill-simulated" title="{% if client_mode %}Demo scenario{% else %}Training simulation{% endif %}">{{ origin_sim_label }}</span>
-                                    {% else %}
-                                        <span class="source-pill source-pill-live" title="Live monitored events">Live</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ r.event_count }}</td>
-                                <td>
-                                    {% if r.threat_count > 0 %}
-                                        <span class="threat-high">{{ r.threat_count }} HIGH</span>
-                                    {% else %}
-                                        <span class="threat-none">0</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <span class="status-badge status-{{ r.status or 'new' }}">
-                                        {{ (r.status or 'new')|upper }}
-                                    </span>
-                                    {% if r.status != 'closed' %}
-                                    <form method="POST" action="/reports/{{ r.id }}/triage" style="display:inline">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        {% if r.status == 'new' or not r.status %}
-                                            <button class="triage-btn" name="status" value="reviewing">Review</button>
-                                        {% endif %}
-                                        {% if r.status in ('new', 'reviewing', None) %}
-                                            <button class="triage-btn" name="status" value="escalated" style="color:#ff6a00">Escalate</button>
-                                        {% endif %}
-                                        <button class="triage-btn" name="status" value="closed" style="color:#00b432">Close</button>
-                                    </form>
-                                    {% endif %}
-                                </td>
-                                <td><a class="view-link" href="/reports/{{ r.id }}">View →</a></td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr class="empty-row"><td colspan="8">No reports yet — run the agent to generate one.</td></tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Live event feed -->
-        <div class="feed-panel">
-            <div class="panel">
-                <div class="panel-header">
-                    Live Event Feed
-                    <span class="badge-count">{{ recent_events|length }}</span>
-                </div>
-                {% if recent_events %}
-                <div style="max-height: 380px; overflow-y: auto;">
-                    <table class="event-table">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Event</th>
-                                <th>Source</th>
-                                <th>Username</th>
-                                <th>Source IP</th>
-                                <th>Details</th>
-                                <th>MITRE</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for e in recent_events %}
-                            <tr>
-                                <td>
-                                    <span class="local-time" data-utc="{{ e.created_at }}">{{ e.created_at }}</span>
-                                </td>
-                                <td>
-                                    {% if e.event_type == 'LOGIN_FAILED' %}
-                                        <span class="evt-badge evt-login-failed">LOGIN_FAILED</span>
-                                    {% elif e.event_type == 'LOGIN_SUCCESS' %}
-                                        <span class="evt-badge evt-login-success">LOGIN_SUCCESS</span>
-                                    {% elif e.event_type == 'SEARCH' %}
-                                        <span class="evt-badge evt-search">SEARCH</span>
-                                    {% elif e.event_type == 'XSS_ATTEMPT' %}
-                                        <span class="evt-badge evt-xss">XSS_ATTEMPT</span>
-                                    {% elif e.event_type == 'DIRECTORY_TRAVERSAL' %}
-                                        <span class="evt-badge evt-traversal">DIR_TRAVERSAL</span>
-                                    {% elif e.event_type == 'PRIV_ESC_ATTEMPT' %}
-                                        <span class="evt-badge evt-priv-esc">PRIV_ESC</span>
-                                    {% elif e.event_type == 'ACCOUNT_ENUM' %}
-                                        <span class="evt-badge evt-account-enum">ACCT_ENUM</span>
-                                    {% else %}
-                                        <span class="evt-badge evt-other">{{ e.event_type }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if e.simulated %}
-                                        <span class="source-pill source-pill-simulated" title="{% if client_mode %}Demo scenario{% else %}Training simulation{% endif %}">{{ origin_sim_label }}</span>
-                                    {% else %}
-                                        <span class="source-pill source-pill-live" title="Live monitored events">Live</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ e.username or '—' }}</td>
-                                <td>{{ e.ip or '—' }}</td>
-                                <td>
-                                    {% if e.extra %}
-                                        <span class="payload-text" title="{{ e.extra }}">{{ e.extra }}</span>
-                                    {% else %}
-                                        <span style="color:#333">—</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if e.event_type == 'LOGIN_FAILED' %}
-                                        <span class="mitre-tag">T1110</span>
-                                    {% elif e.event_type == 'SEARCH' %}
-                                        <span class="mitre-tag">T1190</span>
-                                    {% elif e.event_type == 'LOGIN_SUCCESS' %}
-                                        <span class="mitre-tag">T1078</span>
-                                    {% elif e.event_type == 'XSS_ATTEMPT' %}
-                                        <span class="mitre-tag">T1059.007</span>
-                                    {% elif e.event_type == 'DIRECTORY_TRAVERSAL' %}
-                                        <span class="mitre-tag">T1083</span>
-                                    {% elif e.event_type == 'PRIV_ESC_ATTEMPT' %}
-                                        <span class="mitre-tag">T1548</span>
-                                    {% elif e.event_type == 'ACCOUNT_ENUM' %}
-                                        <span class="mitre-tag">T1589.001</span>
-                                    {% else %}
-                                        <span style="color:#333">—</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if e.processed %}
-                                        <span class="status-processed">PROCESSED</span>
-                                    {% else %}
-                                        <span class="status-pending">⬤ PENDING</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                    <div style="color:#333; font-style:italic; text-align:center; padding:28px;">
-                        No events yet — click {% if client_mode %}Run Security Demo{% else %}Simulate Attack{% endif %} to generate some.
-                    </div>
-                {% endif %}
-            </div>
-        </div>
 
     </div>
 

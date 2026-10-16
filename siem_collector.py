@@ -22,6 +22,8 @@ Usage (from app.py)
 import ipaddress
 import json
 import re
+
+import siem_ingest_tunes
 import socket
 import socketserver
 import subprocess
@@ -35,6 +37,7 @@ _db_run      = None
 _db_fetchall = None
 _PH          = "?"
 _ai_fn       = None   # optional: _generate_report_with_ai from app.py
+_soar_fn     = None   # optional: soar_engine.open_incident_for_finding
 
 
 # ── MITRE ATT&CK event-type mapping ───────────────────────────────────────────
@@ -114,13 +117,14 @@ def _safe_field(value, max_len: int = 200) -> str:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
-def start(db_run_fn, db_fetchall_fn, ph="?", ai_fn=None):
+def start(db_run_fn, db_fetchall_fn, ph="?", ai_fn=None, soar_fn=None):
     """Start all collector daemon threads.  Call once at app startup."""
-    global _db_run, _db_fetchall, _PH, _ai_fn
+    global _db_run, _db_fetchall, _PH, _ai_fn, _soar_fn
     _db_run      = db_run_fn
     _db_fetchall = db_fetchall_fn
     _PH          = ph
     _ai_fn       = ai_fn   # _generate_report_with_ai from app.py
+    _soar_fn     = soar_fn  # soar_engine.open_incident_for_finding
 
     _seed_default_rules()
 
@@ -137,10 +141,13 @@ def start(db_run_fn, db_fetchall_fn, ph="?", ai_fn=None):
 
 def ingest_event(source, event_id, event_type, severity,
                  host="", user="", src_ip="", dst_ip="",
-                 description="", raw=None, simulated=0):
+                 description="", raw=None, simulated=0, correlate=True):
     """
     Normalise and write one event to siem_events, then run the correlation engine.
     Thread-safe.  Called by both background threads and the Flask middleware.
+
+    correlate=False keeps the event for the stream/audit trail but skips
+    rule evaluation (used for tuned vendor noise).
     """
     if not _db_run:
         return
@@ -193,6 +200,9 @@ def ingest_event(source, event_id, event_type, severity,
         )
     except Exception as exc:
         print(f"[siem] ingest_event DB error: {exc}")
+        return
+
+    if not correlate:
         return
 
     # Run correlation asynchronously (fire-and-forget)
@@ -295,6 +305,14 @@ def _windows_event_loop():
                 etype, sev = _WIN_EVENT_MAP.get(eid, ("unknown_event", "INFO"))
                 src_ip     = _extract_ip(msg)
                 desc       = f"Event {eid} — {msg[:200]}"
+                do_correlate = True
+
+                tune = siem_ingest_tunes.tune_windows_event(eid, msg)
+                if tune:
+                    etype = tune.event_type
+                    sev = tune.severity
+                    desc = f"{tune.description_prefix} — {msg[:180]}"
+                    do_correlate = tune.correlate
 
                 ingest_event(
                     source="windows_event",
@@ -306,6 +324,7 @@ def _windows_event_loop():
                     src_ip=src_ip,
                     description=desc,
                     raw={"event_id": eid, "timestamp": ts, "user": user, "msg": msg[:300]},
+                    correlate=do_correlate,
                 )
 
         except json.JSONDecodeError:
@@ -359,18 +378,19 @@ def _firewall_log_loop():
                 if action != "DROP":
                     continue
 
-                # Flag high-risk destination ports
-                risky = dst_port in ("22", "23", "3389", "445", "135", "139",
-                                     "1433", "3306", "5432", "5900", "6379")
-                sev = "HIGH" if risky else "MEDIUM"
-
-                desc = (f"Firewall BLOCKED {protocol} "
-                        f"{src_ip}:{src_port} → {dst_ip}:{dst_port}")
+                sev, etype, do_correlate = siem_ingest_tunes.classify_firewall_drop(
+                    src_ip, dst_ip, dst_port
+                )
+                tag = " [internet background]" if etype == "firewall_block_background" else ""
+                desc = (
+                    f"Firewall BLOCKED{tag} {protocol} "
+                    f"{src_ip}:{src_port} → {dst_ip}:{dst_port}"
+                )
 
                 ingest_event(
                     source="firewall",
                     event_id="FW-DROP",
-                    event_type="firewall_block",
+                    event_type=etype,
                     severity=sev,
                     host=host,
                     src_ip=src_ip,
@@ -379,6 +399,7 @@ def _firewall_log_loop():
                     raw={"action": action, "proto": protocol,
                          "src": f"{src_ip}:{src_port}",
                          "dst": f"{dst_ip}:{dst_port}"},
+                    correlate=do_correlate,
                 )
 
         except PermissionError:
@@ -634,15 +655,19 @@ def _run_correlation():
             cutoff = (datetime.utcnow() - timedelta(seconds=window)
                       ).strftime("%Y-%m-%d %H:%M:%S")
 
-            # Count events grouped by the correlation field
+            # Count events grouped by the correlation field.
+            # Exclude tuned vendor-noise tags so old NEP 7045 rows cannot re-fire
+            # the New Service Installed rule before cleanup retags them.
             hits = _db_fetchall(
                 f"SELECT {gfield} AS grp_val, COUNT(*) AS cnt "
                 f"FROM siem_events "
                 f"WHERE event_type = {_PH} AND created_at >= {_PH} "
                 f"  AND dismissed = 0 "
+                f"  AND description NOT LIKE {_PH} "
+                f"  AND description NOT LIKE {_PH} "
                 f"GROUP BY {gfield} "
                 f"HAVING COUNT(*) >= {_PH}",
-                (etype, cutoff, thresh),
+                (etype, cutoff, "%tuned vendor noise%", "%Service Name:%NEP%", thresh),
             )
 
             for hit in hits:
@@ -705,6 +730,19 @@ def _run_correlation():
                         args=(new_row[0]["id"], rule, grp_val, count, recent_evts),
                         daemon=True, name="siem-ai-triage",
                     ).start()
+
+                # Open a SOAR incident for HIGH/CRITICAL correlation findings
+                if new_row and _soar_fn and sev in ("CRITICAL", "HIGH"):
+                    try:
+                        mitre = _EVENT_MITRE.get(etype, ("", "", ""))
+                        _soar_fn(
+                            new_row[0]["id"],
+                            event_type=etype,
+                            group_value=str(grp_val or ""),
+                            mitre_id=mitre[0] if mitre else "",
+                        )
+                    except Exception as soar_exc:
+                        print(f"[siem] SOAR open failed (non-fatal): {soar_exc}")
 
     except Exception as exc:
         print(f"[siem] _run_correlation error: {exc}")

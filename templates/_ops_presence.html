@@ -1,0 +1,96 @@
+{# Compact Arrived / Away desk presence chip for Live Ops pages.
+   Requires CSRF meta tag. Call OpsPresence.mount('#ops-presence') after DOM ready.
+#}
+<style>
+  .ops-presence {
+    display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    font-size: 0.75em;
+  }
+  .ops-presence .ops-pres-state {
+    font-weight: 800; padding: 3px 8px; border-radius: 4px;
+    border: 1px solid var(--ops-border, #1e3045);
+    background: var(--ops-bg, #0a0e14); color: var(--ops-muted, #7a9ab0);
+  }
+  .ops-presence .ops-pres-state.arrived {
+    border-color: #00ff8866; background: #00ff8818; color: #00ff88;
+  }
+  .ops-presence .ops-pres-state.away {
+    border-color: #ff8c0066; background: #ff8c0018; color: #ff8c00;
+  }
+  .ops-presence .ops-pres-hint {
+    font-size: 0.9em; color: var(--ops-dim, #556); max-width: 220px; line-height: 1.3;
+  }
+  .ops-presence button {
+    border: 1px solid var(--ops-border, #1e3045);
+    background: var(--ops-surface, #0f1923);
+    color: var(--ops-text, #cdd6e0);
+    padding: 4px 9px; border-radius: 4px;
+    font-family: inherit; font-size: 0.95em; font-weight: 700; cursor: pointer;
+  }
+  .ops-presence button:hover { border-color: var(--ops-accent, #00d4ff); color: var(--ops-accent, #00d4ff); }
+  .ops-presence button:disabled { opacity: 0.45; cursor: not-allowed; }
+</style>
+<script>
+window.OpsPresence = (function () {
+  var root = null;
+  var csrf = '';
+
+  function headers() {
+    return { 'Content-Type': 'application/json', 'X-CSRFToken': csrf };
+  }
+
+  function render(state) {
+    if (!root) return;
+    var presence = (state && state.presence) || 'unknown';
+    var at = (state && state.at) || '';
+    var label = presence === 'arrived' ? 'Present' : (presence === 'away' ? 'Away' : 'Presence?');
+    var cls = presence === 'arrived' || presence === 'away' ? presence : '';
+    root.innerHTML =
+      '<span class="ops-pres-state ' + cls + '" title="' + (at ? ('Since ' + at) : 'Not marked yet') + '">' +
+        label + (at ? ' · ' + at.slice(11, 16) : '') +
+      '</span>' +
+      '<button type="button" data-act="arrived"' + (presence === 'arrived' ? ' disabled' : '') + '>Arrived</button>' +
+      '<button type="button" data-act="away"' + (presence === 'away' ? ' disabled' : '') + '>Away</button>' +
+      '<span class="ops-pres-hint">Desk mark + Boundry login. Not Windows unlock.</span>';
+    root.querySelectorAll('button[data-act]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setPresence(btn.getAttribute('data-act'));
+      });
+    });
+  }
+
+  function setPresence(action) {
+    fetch('/api/ops/presence', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ action: action })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) { alert((d && d.error) || 'Presence update failed'); return; }
+        render(d);
+      })
+      .catch(function () { alert('Presence update failed'); });
+  }
+
+  function refresh() {
+    fetch('/api/ops/presence', { headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) render(d);
+        else render({ presence: 'unknown' });
+      })
+      .catch(function () { render({ presence: 'unknown' }); });
+  }
+
+  function mount(sel) {
+    root = typeof sel === 'string' ? document.querySelector(sel) : sel;
+    if (!root) return;
+    csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    render({ presence: 'unknown' });
+    refresh();
+  }
+
+  return { mount: mount, refresh: refresh, setPresence: setPresence };
+})();
+</script>

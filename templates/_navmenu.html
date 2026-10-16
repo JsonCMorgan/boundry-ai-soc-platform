@@ -20,6 +20,27 @@
 <span class="bnav-menu">
     <span class="bnav-trigger" style="color:#9944ee;">🎓 Training ▾</span>
     <span class="bnav-dd">
+        <a href="/career"    style="color:#00d4ff;">🧭 Career Lab</a>
+        <a href="/career/skills" style="color:#00d4ff;">🎯 Job Skills</a>
+        <a href="/career/spl" style="color:#00d4ff;">📚 SPL Learn</a>
+        <a href="/career/kql" style="color:#38bdf8;">🔎 KQL Learn</a>
+        <a href="/career/secplus" style="color:#2dd4bf;">🛡️ Security+ Lab</a>
+        <a href="/career/email" style="color:#f472b6;">📧 Email Triage</a>
+        <a href="/career/edr" style="color:#a78bfa;">🖥️ EDR Console</a>
+        <a href="/career/logs" style="color:#f59e0b;">📜 Log Sources</a>
+        <a href="/career/intel" style="color:#22d3ee;">🔎 IOC Enrichment</a>
+        <a href="/career/net" style="color:#34d399;">🌐 Net-for-SOC</a>
+        <a href="/career/vuln" style="color:#fb923c;">🩹 Vuln Queue</a>
+        <a href="/career/sentinel" style="color:#38bdf8;">📡 Sentinel Workspace</a>
+        <a href="/career/entra" style="color:#818cf8;">🪪 Entra CA</a>
+        <a href="/career/interview" style="color:#00d4ff;">🎤 Interview Gym</a>
+        <a href="/career/comms" style="color:#f472b6;">💬 Comms Gym</a>
+        <a href="/career/soar" style="color:#ff9900;">⚡ SOAR Chain</a>
+        <a href="/career/oversight" style="color:#a78bfa;">🤖 Oversight Gym</a>
+        <a href="/career/tune" style="color:#ffcc00;">🎛️ Tune / Tolerate</a>
+        <a href="/career/metrics" style="color:#f472b6;">📈 Ops Metrics</a>
+        <a href="/career/automation" style="color:#34d399;">🧩 Automation Lite</a>
+        <a href="/career/automation-policy" style="color:#f472b6;">🛂 Auto Policy</a>
         <a href="/training"  style="color:#00b432;">🎓 SOC Training</a>
         <a href="/cissp"     style="color:#9944ee;">📘 CISSP</a>
         <a href="/glossary"  style="color:#bb77ff;">📖 Glossary</a>
@@ -29,14 +50,18 @@
 </span>
 {% endif %}
 <span class="bnav-menu">
-    <span class="bnav-trigger" style="color:#00d4ff;">🛡️ Operations ▾</span>
+    <span class="bnav-trigger" style="color:#00d4ff;">Operations ▾</span>
     <span class="bnav-dd">
-        <a href="/control-room" style="color:#00b432;">🖥️ Control Room</a>
-        <a href="/siem"         style="color:#00d4ff;">📡 SIEM</a>
-        <a href="/siem/query"   style="color:#00d4ff;">🔎 SPL Query</a>
-        <a href="/playbooks"    style="color:#ff9900;">📋 Playbooks</a>
-        <a href="/compliance"   style="color:#f39c12;">📊 Compliance</a>
-        <a href="/daily-log"    style="color:#f59e0b;">📓 Daily Log</a>
-        {% if _role == 'analyst' %}<a href="/reports" style="color:#cc4444;">📄 Reports</a>{% endif %}
+        <a href="/control-room" style="color:#00b432;">Control Room</a>
+        <a href="/soc"          style="color:#00d4ff;">SOC Floor</a>
+        <a href="/soc/tickets"  style="color:#00d4ff;">Boundry Tickets</a>
+        <a href="/siem"         style="color:#00d4ff;">SIEM</a>
+        <a href="/siem/query"   style="color:#00d4ff;">SPL Query</a>
+        <a href="/soar"         style="color:#ff9900;">SOAR</a>
+        <a href="/playbooks"    style="color:#ff9900;">Playbooks</a>
+        <a href="/compliance"   style="color:#f39c12;">Compliance</a>
+        <a href="/daily-log"    style="color:#f59e0b;">Daily Log</a>
+        {% if _role == 'analyst' %}<a href="/reports" style="color:#cc4444;">Reports</a>{% endif %}
     </span>
 </span>
+{% include '_jargon_tooltips.html' %}

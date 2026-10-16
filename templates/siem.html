@@ -102,6 +102,9 @@
         /* ── Main layout ── */
         .main { max-width:1300px; margin:0 auto; padding:20px 24px; }
         .grid { display:grid; grid-template-columns:1fr 320px; gap:20px; }
+        @media (max-width: 1100px) {
+            .grid { grid-template-columns: 1fr; }
+        }
 
         /* ── Panel ── */
         .panel { background:#12151f; border:1px solid #1e2235; border-radius:6px;
@@ -175,6 +178,7 @@
         .event-table td { padding:8px 12px; border-bottom:1px solid #0f1118; vertical-align:top; }
         .event-row { transition:background 0.1s; }
         .event-row:hover { background:#161923; }
+        /* cursor on .event-row set with triage styles above */
         .event-row.sev-CRITICAL { border-left:3px solid #ff4444; }
         .event-row.sev-HIGH     { border-left:3px solid #ff8c00; }
         .event-row.sev-MEDIUM   { border-left:3px solid #ffcc00; }
@@ -320,6 +324,66 @@
             padding:3px 9px; border-radius:3px; cursor:pointer; font-size:0.73em;
             transition:all 0.15s; }
         .btn-fp:hover { background:#ff990011; }
+        .btn-quick-fp { background:none; border:1px solid #00d4ff44; color:#00d4ff;
+                         font-size:0.72em; padding:3px 8px; border-radius:4px; cursor:pointer; }
+        .btn-quick-fp:hover { background:#00d4ff11; }
+        .quick-fp-label { font-size:0.68em; font-weight:700; letter-spacing:0.08em;
+                          text-transform:uppercase; color:#00d4ff; width:100%; margin-bottom:2px; }
+        .findings-alert { background:#0a1520; border:1px solid #00d4ff55; border-radius:8px;
+                          padding:10px 16px; margin-bottom:16px; display:flex; align-items:center;
+                          gap:12px; flex-wrap:wrap; }
+        .findings-alert a { color:#00d4ff; font-weight:700; text-decoration:none; }
+        .findings-alert a:hover { text-decoration:underline; }
+        .stat-findings-link { cursor:pointer; }
+        .stat-findings-link:hover .stat-value { color:#00ffcc; }
+        .stat-clickable { cursor:pointer; }
+        .stat-clickable:hover .stat-value { filter:brightness(1.15); }
+        .event-row { cursor:pointer; }
+        .event-row.event-row-active { background:#0a1520 !important; outline:1px solid #00d4ff55; }
+        .finding-title { cursor:pointer; }
+        .finding-title:hover { color:#00d4ff; }
+        .rw-event-row { cursor:pointer; }
+        .rw-event-row:hover { background:#1a1008; }
+        .triage-drawer-backdrop {
+            display:none; position:fixed; inset:0; background:#000000aa; z-index:200;
+        }
+        .triage-drawer-backdrop.open { display:block; }
+        .triage-drawer {
+            position:fixed; top:0; right:0; width:min(440px,100vw); height:100vh;
+            background:#12151f; border-left:1px solid #00d4ff44; z-index:201;
+            transform:translateX(100%); transition:transform 0.2s ease;
+            display:flex; flex-direction:column; box-shadow:-8px 0 32px #00000088;
+        }
+        .triage-drawer.open { transform:translateX(0); }
+        .triage-drawer-head {
+            padding:14px 16px; border-bottom:1px solid #1e2235;
+            display:flex; justify-content:space-between; align-items:flex-start; gap:10px;
+        }
+        .triage-drawer-head h3 { margin:0; font-size:0.95em; color:#00d4ff; line-height:1.3; }
+        .triage-drawer-body { flex:1; overflow:auto; padding:14px 16px; font-size:0.82em; }
+        .triage-kv { display:grid; grid-template-columns:88px 1fr; gap:4px 10px; margin-bottom:12px; }
+        .triage-kv dt { color:#556; text-transform:uppercase; font-size:0.72em; letter-spacing:0.04em; }
+        .triage-kv dd { margin:0; color:#ccc; word-break:break-word; }
+        .triage-actions { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+        .triage-actions .btn-drawer {
+            padding:9px 12px; border-radius:4px; cursor:pointer; font-size:0.82em;
+            font-weight:600; text-align:left; border:1px solid #1e2235; background:#0e1119; color:#cdd6e0;
+            transition:all 0.15s;
+        }
+        .triage-actions .btn-drawer-primary { border-color:#00d4ff66; color:#00d4ff; background:#00d4ff11; }
+        .triage-actions .btn-drawer-primary:hover { background:#00d4ff22; }
+        .triage-actions .btn-drawer-warn { border-color:#ff444466; color:#ff8888; }
+        .triage-related { margin-top:12px; border-top:1px solid #1e2235; padding-top:10px; }
+        .triage-related-item {
+            padding:6px 0; border-bottom:1px solid #0f1118; cursor:pointer; color:#aaa;
+        }
+        .triage-related-item:hover { color:#00d4ff; }
+        .triage-queue-note { font-size:0.78em; color:#7a9ab0; margin:8px 0; line-height:1.4; }
+        .triage-raw { margin-top:10px; }
+        .triage-raw pre {
+            background:#0a0e14; border:1px solid #1e2235; border-radius:4px;
+            padding:8px; overflow:auto; max-height:160px; font-size:0.75em; color:#8899aa;
+        }
         .btn-suppress { background:none; border:1px solid #ff444433; color:#ff6666;
             padding:3px 9px; border-radius:3px; cursor:pointer; font-size:0.73em;
             transition:all 0.15s; }
@@ -420,21 +484,29 @@
 
 <!-- ── Stat bar ── -->
 <div class="statbar">
-    <div class="stat">
+    <div class="stat stat-clickable" role="button" tabindex="0"
+         onclick="applyTodayFilter()" onkeydown="if(event.key==='Enter')applyTodayFilter()"
+         title="Filter stream to calendar today">
         <div class="stat-value cyan" id="stat-today">{{ stats.total_today }}</div>
-        <div class="stat-label">Events Today</div>
+        <div class="stat-label">Events Today{% if stats.total_today %} · click{% endif %}</div>
     </div>
-    <div class="stat">
+    <div class="stat stat-clickable" role="button" tabindex="0"
+         onclick="applyHourSeverityFilter(['CRITICAL'])" onkeydown="if(event.key==='Enter')applyHourSeverityFilter(['CRITICAL'])"
+         title="Filter to Critical events in the last hour">
         <div class="stat-value red" id="stat-critical">{{ stats.critical }}</div>
-        <div class="stat-label">Critical (1h)</div>
+        <div class="stat-label">Critical (1h){% if stats.critical %} · click{% endif %}</div>
     </div>
-    <div class="stat">
+    <div class="stat stat-clickable" role="button" tabindex="0"
+         onclick="applyHourSeverityFilter(['HIGH'])" onkeydown="if(event.key==='Enter')applyHourSeverityFilter(['HIGH'])"
+         title="Filter to High events in the last hour">
         <div class="stat-value orange" id="stat-high">{{ stats.high }}</div>
-        <div class="stat-label">High (1h)</div>
+        <div class="stat-label">High (1h){% if stats.high %} · click{% endif %}</div>
     </div>
-    <div class="stat">
+    <div class="stat stat-findings-link" role="button" tabindex="0"
+         onclick="scrollToFindings()" onkeydown="if(event.key==='Enter')scrollToFindings()"
+         title="Jump to Correlation Findings (Quick FP lives there)">
         <div class="stat-value green" id="stat-findings">{{ siem_findings|length }}</div>
-        <div class="stat-label">Open Findings</div>
+        <div class="stat-label">Open Findings{% if siem_findings|length %} · click{% endif %}</div>
     </div>
     <div class="stat" style="border-right:none;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:0.78em;">
@@ -446,6 +518,14 @@
         <div class="stat-label">Sources</div>
     </div>
 </div>
+
+{% if siem_findings|length > 0 %}
+<div class="findings-alert" id="findings-jump-banner">
+    <span style="color:#ff9900;font-weight:700;">{{ siem_findings|length }} correlation finding{{ 's' if siem_findings|length != 1 else '' }} open</span>
+    <span style="color:#7a9ab0;font-size:0.88em;">Quick FP buttons are on each finding in the right column (suppress + close in one click).</span>
+    <a href="#correlation-findings-panel" onclick="scrollToFindings(); return false;">Jump to Correlation Findings →</a>
+</div>
+{% endif %}
 
 {% if user_role == 'analyst' and not ops_mode %}
 <!-- ── CISSP Study Note (analyst only, study mode) ── -->
@@ -510,7 +590,8 @@
             </thead>
             <tbody>
                 {% for ev in ransomware_indicators %}
-                <tr style="border-bottom:1px solid #1a0f08;">
+                <tr class="rw-event-row" style="border-bottom:1px solid #1a0f08;" data-event-id="{{ ev.id }}"
+                    onclick="openEventDrawer({{ ev.id }})" title="Click to triage">
                     <td style="padding:6px 8px;">
                         <span style="display:inline-block;padding:1px 7px;border-radius:9px;font-size:.72rem;font-weight:700;
                             background:{% if ev.severity=='CRITICAL' %}#ff222210{% elif ev.severity=='HIGH' %}#ff880010{% else %}#ffaa0010{% endif %};
@@ -690,7 +771,7 @@
                             </td>
                             <td class="user">{{ ev.user_account[:20] if ev.user_account else '—' }}</td>
                             <td class="desc">{{ ev.description[:110] if ev.description else '—' }}</td>
-                            <td><button class="btn-dismiss" onclick="dismissEvent({{ ev.id }},this)">✕</button></td>
+                            <td><button class="btn-dismiss" type="button" onclick="event.stopPropagation(); dismissEvent({{ ev.id }},this)">✕</button></td>
                         </tr>
                         {% else %}
                         <tr id="placeholder-row"><td colspan="9" class="empty">
@@ -706,7 +787,7 @@
         <div>
 
             <!-- SIEM Findings -->
-            <div class="panel" style="overflow:visible;">
+            <div class="panel" id="correlation-findings-panel" style="overflow:visible;">
                 <div class="panel-header">
                     <span class="panel-title">🚨 Correlation Findings</span>
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -736,7 +817,8 @@
                 <div id="findings-list">
                     {% if siem_findings %}
                         {% for f in siem_findings %}
-                        <div class="finding-row" id="finding-{{ f.id }}" data-id="{{ f.id }}">
+                        <div class="finding-row" id="finding-{{ f.id }}" data-id="{{ f.id }}"
+                             data-title="{{ f.title|e }}">
                             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                 <input type="checkbox" class="finding-cb"
                                        onchange="onFindingCheck(this, {{ f.id }})"
@@ -764,6 +846,26 @@
 
                             <!-- Per-finding action buttons -->
                             <div class="finding-actions">
+                                {% set title_l = f.title|lower %}
+                                {% set show_quick_fp = ('firewall port scan' in title_l) or ('new service installed' in title_l) or ('203.0.113.' in f.title) or ('198.51.100.' in f.title) or ('192.0.2.' in f.title) %}
+                                {% if show_quick_fp %}
+                                <span class="quick-fp-label">Quick FP</span>
+                                {% endif %}
+                                {% if 'firewall port scan' in title_l %}
+                                <button class="btn-quick-fp" type="button"
+                                        onclick="applyFpTemplate({{ f.id }}, 'internet_port_scan')"
+                                        title="Suppress scanner IP and close as FP">Internet scan</button>
+                                {% endif %}
+                                {% if 'new service installed' in title_l %}
+                                <button class="btn-quick-fp" type="button"
+                                        onclick="applyFpTemplate({{ f.id }}, 'expected_vendor_service')"
+                                        title="Close as expected vendor service (ingest tune handles NEP noise)">Vendor service</button>
+                                {% endif %}
+                                {% if '203.0.113.' in f.title or '198.51.100.' in f.title or '192.0.2.' in f.title %}
+                                <button class="btn-quick-fp" type="button"
+                                        onclick="applyFpTemplate({{ f.id }}, 'documentation_test_ip')"
+                                        title="Suppress lab/documentation IP and close">Doc test IP</button>
+                                {% endif %}
                                 <button class="btn-resolve"
                                         onclick="openResolveModal([{{ f.id }}])">✓ Resolve</button>
                                 <button class="btn-fp"
@@ -1045,8 +1147,25 @@
     </div>
 </div>
 
+<!-- ── Event triage drawer ── -->
+<div class="triage-drawer-backdrop" id="triage-drawer-backdrop" onclick="closeEventDrawer()"></div>
+<div class="triage-drawer" id="triage-drawer" role="dialog" aria-labelledby="triage-drawer-title">
+    <div class="triage-drawer-head">
+        <div>
+            <div style="font-size:0.68em;color:#556;text-transform:uppercase;letter-spacing:0.06em;">Event triage</div>
+            <h3 id="triage-drawer-title">Loading…</h3>
+            <div id="triage-drawer-sub" style="font-size:0.78em;color:#666;margin-top:4px;"></div>
+        </div>
+        <button type="button" class="btn-dismiss" onclick="closeEventDrawer()" title="Close (Esc)">✕</button>
+    </div>
+    <div class="triage-drawer-body" id="triage-drawer-body">
+        <p style="color:#556;">Loading event…</p>
+    </div>
+</div>
+
 <script>
 const ORIGIN_SIM_LABEL = {{ origin_sim_label | tojson }};
+const CAN_OPEN_TICKET = {{ 'true' if user_role == 'analyst' else 'false' }};
 const ORIGIN_SIM_TITLE = {{ ('Demo scenario' if client_mode else 'Training simulation') | tojson }};
 // ═══════════════════════════════════════════════════════════════════
 //  CSRF HELPER
@@ -1073,6 +1192,354 @@ let chartVisible  = true;
 let timelineChart = null;
 let lastWindow    = '24h';
 let searchResults = [];       // cached for CSV export
+let drawerOpen    = false;
+let drawerEventId = null;
+let drawerCaseId  = null;
+let drawerEventData = null;
+
+// ═══════════════════════════════════════════════════════════════════
+//  STAT FILTERS + URL DEEP LINKS
+// ═══════════════════════════════════════════════════════════════════
+function _pad2(n) { return String(n).padStart(2, '0'); }
+
+function localTodayYmd() {
+    const d = new Date();
+    return `${d.getFullYear()}-${_pad2(d.getMonth() + 1)}-${_pad2(d.getDate())}`;
+}
+
+function hourAgoLocalDatetime() {
+    const d = new Date(Date.now() - 3600000);
+    return `${d.getFullYear()}-${_pad2(d.getMonth() + 1)}-${_pad2(d.getDate())} `
+        + `${_pad2(d.getHours())}:${_pad2(d.getMinutes())}:00`;
+}
+
+function setSeverityChecks(allowed) {
+    const set = new Set(allowed || []);
+    document.querySelectorAll('#sev-checks input').forEach(i => {
+        i.checked = set.has(i.value);
+    });
+}
+
+function applyTodayFilter() {
+    const ymd = localTodayYmd();
+    setMode('search');
+    document.getElementById('search-q').value = '';
+    document.getElementById('search-from').value = ymd;
+    document.getElementById('search-to').value = ymd;
+    setSeverityChecks(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO']);
+    runSearch();
+}
+
+function applyHourSeverityFilter(sevs) {
+    setMode('search');
+    document.getElementById('search-q').value = '';
+    document.getElementById('search-from').value = hourAgoLocalDatetime();
+    document.getElementById('search-to').value = '';
+    setSeverityChecks(sevs || ['CRITICAL']);
+    runSearch();
+}
+
+function parseUrlFilters() {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('range') === 'today') {
+        applyTodayFilter();
+        return;
+    }
+    if (p.get('range') === '1h') {
+        const sev = (p.get('severity') || 'CRITICAL,HIGH')
+            .split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+        applyHourSeverityFilter(sev.length ? sev : ['CRITICAL', 'HIGH']);
+        return;
+    }
+    const ev = p.get('event');
+    if (ev) openEventDrawer(parseInt(ev, 10));
+}
+
+function _setDrawerUrlEvent(id) {
+    const p = new URLSearchParams(window.location.search);
+    if (id) p.set('event', String(id));
+    else p.delete('event');
+    const qs = p.toString();
+    history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EVENT TRIAGE DRAWER
+// ═══════════════════════════════════════════════════════════════════
+function openEventDrawer(eventId) {
+    if (!eventId) return;
+    drawerOpen = true;
+    drawerEventId = eventId;
+    drawerCaseId = null;
+    drawerEventData = null;
+    document.querySelectorAll('#event-tbody .event-row').forEach(r => {
+        r.classList.toggle('event-row-active', r.dataset.id === String(eventId));
+    });
+    document.getElementById('triage-drawer-backdrop').classList.add('open');
+    document.getElementById('triage-drawer').classList.add('open');
+    document.getElementById('triage-drawer-title').textContent = `Event #${eventId}`;
+    document.getElementById('triage-drawer-sub').textContent = 'Loading…';
+    document.getElementById('triage-drawer-body').innerHTML = '<p style="color:#556;">Loading event…</p>';
+    _setDrawerUrlEvent(eventId);
+
+    Promise.all([
+        fetch(`/api/siem/events/${eventId}`).then(r => r.json()),
+        fetch(`/api/siem/events/${eventId}/related`).then(r => r.json()).catch(() => ({ ok: false })),
+    ]).then(([detail, related]) => {
+        if (!detail.ok || !detail.event) {
+            document.getElementById('triage-drawer-body').innerHTML =
+                `<p style="color:#ff6666;">${detail.error || 'Could not load event'}</p>`;
+            return;
+        }
+        drawerEventData = detail.event;
+        if (detail.event.existing_case && detail.event.existing_case.id) {
+            drawerCaseId = detail.event.existing_case.id;
+        }
+        renderTriageDrawer(detail.event, detail.correlated_finding, related.ok ? related.events : []);
+    }).catch(() => {
+        document.getElementById('triage-drawer-body').innerHTML =
+            '<p style="color:#ff6666;">Failed to load event.</p>';
+    });
+}
+
+function closeEventDrawer() {
+    drawerOpen = false;
+    drawerEventId = null;
+    drawerEventData = null;
+    document.getElementById('triage-drawer-backdrop').classList.remove('open');
+    document.getElementById('triage-drawer').classList.remove('open');
+    document.querySelectorAll('#event-tbody .event-row').forEach(r => r.classList.remove('event-row-active'));
+    _setDrawerUrlEvent(null);
+}
+
+function renderTriageDrawer(ev, finding, related) {
+    const title = ev.event_type || ev.event_id || 'SIEM event';
+    document.getElementById('triage-drawer-title').textContent = title.replace(/_/g, ' ');
+    document.getElementById('triage-drawer-sub').textContent =
+        `#${ev.id} · ${(ev.timestamp || '').substring(0, 19)} · ${ev.severity || ''}`;
+
+    const body = document.getElementById('triage-drawer-body');
+    body.innerHTML = '';
+
+    if (!ev.on_soc_queue_default) {
+        const note = document.createElement('div');
+        note.className = 'triage-queue-note';
+        note.textContent = 'This severity is not on the SOC Floor queue by default. Open a ticket here to document and escalate.';
+        body.appendChild(note);
+    }
+
+    const dl = document.createElement('dl');
+    dl.className = 'triage-kv';
+    const fields = [
+        ['Source', (ev.source || '').replace(/_/g, ' ')],
+        ['Type', ev.event_type || '—'],
+        ['Host', ev.host || '—'],
+        ['Src IP', ev.src_ip || '—'],
+        ['Dst IP', ev.dst_ip || '—'],
+        ['User', ev.user_account || '—'],
+        ['Description', ev.description || '—'],
+    ];
+    fields.forEach(([k, v]) => {
+        const dt = document.createElement('dt');
+        dt.textContent = k;
+        const dd = document.createElement('dd');
+        dd.textContent = v;
+        dl.appendChild(dt);
+        dl.appendChild(dd);
+    });
+    body.appendChild(dl);
+
+    if (ev.raw_data && typeof ev.raw_data === 'object') {
+        const rawWrap = document.createElement('details');
+        rawWrap.className = 'triage-raw';
+        rawWrap.innerHTML = '<summary style="cursor:pointer;color:#00d4ff;">Raw payload</summary>';
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(ev.raw_data, null, 2);
+        rawWrap.appendChild(pre);
+        body.appendChild(rawWrap);
+    } else if (ev.raw_data) {
+        const rawWrap = document.createElement('details');
+        rawWrap.className = 'triage-raw';
+        rawWrap.innerHTML = '<summary style="cursor:pointer;color:#00d4ff;">Raw payload</summary>';
+        const pre = document.createElement('pre');
+        pre.textContent = String(ev.raw_data);
+        rawWrap.appendChild(pre);
+        body.appendChild(rawWrap);
+    }
+
+    if (finding && finding.id) {
+        const fbox = document.createElement('div');
+        fbox.style.marginTop = '10px';
+        fbox.style.fontSize = '0.85em';
+        fbox.innerHTML = `<span style="color:#556;">Correlation finding:</span> `;
+        const a = document.createElement('a');
+        a.href = '#correlation-findings-panel';
+        a.style.color = '#00d4ff';
+        a.textContent = finding.title || `Finding #${finding.id}`;
+        a.onclick = (e) => { e.preventDefault(); scrollToFindings(); };
+        fbox.appendChild(a);
+        body.appendChild(fbox);
+    }
+
+    if (ev.existing_case && ev.existing_case.id) {
+        const tbox = document.createElement('div');
+        tbox.style.margin = '10px 0';
+        tbox.style.color = '#00b432';
+        tbox.textContent = `Open ticket: ${ev.existing_case.ticket_no || ev.existing_case.id} (${ev.existing_case.status})`;
+        body.appendChild(tbox);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'triage-actions';
+
+    if (CAN_OPEN_TICKET) {
+        const btnTicket = document.createElement('button');
+        btnTicket.type = 'button';
+        btnTicket.className = 'btn-drawer btn-drawer-primary';
+        btnTicket.textContent = ev.existing_case ? 'Resume ticket' : 'Open Boundry Ticket';
+        btnTicket.onclick = () => drawerOpenTicket(false);
+        actions.appendChild(btnTicket);
+
+        const btnWork = document.createElement('button');
+        btnWork.type = 'button';
+        btnWork.className = 'btn-drawer';
+        btnWork.textContent = 'Open ticket + start work';
+        btnWork.onclick = () => drawerOpenTicket(true);
+        actions.appendChild(btnWork);
+
+        const btnSoc = document.createElement('button');
+        btnSoc.type = 'button';
+        btnSoc.className = 'btn-drawer';
+        btnSoc.textContent = 'Continue on SOC Floor →';
+        btnSoc.onclick = () => drawerGoSoc();
+        actions.appendChild(btnSoc);
+    } else {
+        const hint = document.createElement('p');
+        hint.style.color = '#666';
+        hint.textContent = 'Log in as an analyst to open Boundry Tickets from SIEM.';
+        actions.appendChild(hint);
+    }
+
+    const btnSpl = document.createElement('button');
+    btnSpl.type = 'button';
+    btnSpl.className = 'btn-drawer';
+    btnSpl.textContent = 'Investigate in SPL →';
+    btnSpl.onclick = () => {
+        const q = encodeURIComponent(ev.spl_hint || '*');
+        window.location.href = `/siem/query?q=${q}`;
+    };
+    actions.appendChild(btnSpl);
+
+    if (ev.src_ip) {
+        const btnSup = document.createElement('button');
+        btnSup.type = 'button';
+        btnSup.className = 'btn-drawer';
+        btnSup.textContent = 'Suppress this IP';
+        btnSup.onclick = () => drawerSuppressIp(ev.src_ip);
+        actions.appendChild(btnSup);
+    }
+
+    const btnFp = document.createElement('button');
+    btnFp.type = 'button';
+    btnFp.className = 'btn-drawer btn-drawer-warn';
+    btnFp.textContent = 'False positive (dismiss event)';
+    btnFp.onclick = () => drawerDismissEvent();
+    actions.appendChild(btnFp);
+
+    body.appendChild(actions);
+
+    if (related && related.length) {
+        const rel = document.createElement('div');
+        rel.className = 'triage-related';
+        const h = document.createElement('div');
+        h.style.color = '#556';
+        h.style.marginBottom = '6px';
+        h.textContent = 'Related (24h)';
+        rel.appendChild(h);
+        related.forEach(r => {
+            const item = document.createElement('div');
+            item.className = 'triage-related-item';
+            item.textContent = `#${r.id} ${(r.timestamp || '').substring(0, 16)} ${r.severity} — ${(r.description || '').substring(0, 60)}`;
+            item.onclick = () => openEventDrawer(r.id);
+            rel.appendChild(item);
+        });
+        body.appendChild(rel);
+    }
+}
+
+function drawerOpenTicket(startWork) {
+    if (!drawerEventId || !CAN_OPEN_TICKET) return Promise.resolve(false);
+    return csrfFetch('/api/soc/cases/open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'siem', source_id: String(drawerEventId) }),
+    })
+        .then(r => r.json().then(d => ({ status: r.status, d })))
+        .then(({ status, d }) => {
+            if (status === 403 || !d.ok) {
+                showToast(d.error || 'Could not open ticket (analyst login required)');
+                return false;
+            }
+            drawerCaseId = d.case && d.case.id;
+            showToast(d.created ? `Ticket ${d.case.ticket_no || d.case.id} opened` : 'Ticket resumed');
+            if (startWork && drawerCaseId) {
+                return csrfFetch(`/api/soc/cases/${drawerCaseId}/transition`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: 'working' }),
+                }).then(() => {
+                    showToast('Status: working');
+                    return true;
+                });
+            }
+            openEventDrawer(drawerEventId);
+            return true;
+        })
+        .catch(() => { showToast('Ticket open failed'); return false; });
+}
+
+function drawerGoSoc() {
+    if (drawerCaseId) {
+        window.location.href = `/soc?case=${drawerCaseId}`;
+        return;
+    }
+    if (drawerEventId) {
+        window.location.href = `/soc?open=siem:${drawerEventId}`;
+        return;
+    }
+}
+
+function drawerSuppressIp(ip) {
+    document.getElementById('suppress-type').value = 'ip';
+    document.getElementById('suppress-value').value = ip || '';
+    document.getElementById('suppress-reason').value = `SIEM event #${drawerEventId || ''}`;
+    document.getElementById('suppress-modal').classList.add('open');
+}
+
+function drawerDismissEvent() {
+    if (!drawerEventId) return;
+    csrfFetch(`/api/siem/events/${drawerEventId}/dismiss`, { method: 'POST' })
+        .then(() => {
+            const row = document.querySelector(`tr[data-id="${drawerEventId}"]`);
+            if (row) row.remove();
+            showToast('Event dismissed');
+            closeEventDrawer();
+            refreshStats();
+        });
+}
+
+function filterStreamFromFindingTitle(el) {
+    const row = el.closest('.finding-row');
+    const title = (row && row.dataset.title) ? row.dataset.title : (el.textContent || '');
+    const q = title.replace(/^\[SIEM\]\s*/i, '').split(/[—–-]/)[0].trim();
+    if (!q) return;
+    setMode('search');
+    document.getElementById('search-q').value = q;
+    document.getElementById('search-from').value = '';
+    document.getElementById('search-to').value = '';
+    setSeverityChecks(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO']);
+    runSearch();
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  TIMELINE CHART
@@ -1210,7 +1677,7 @@ function applySourceFilter() {
 //  LIVE EVENT POLLING
 // ═══════════════════════════════════════════════════════════════════
 function loadEvents(force = false) {
-    if (currentMode !== 'live') return;
+    if (currentMode !== 'live' || drawerOpen) return;
     let url = `/api/siem/events?limit=50&after=${maxSeenId}`;
     if (activeSource !== 'all') url += `&source=${activeSource}`;
 
@@ -1460,7 +1927,10 @@ function buildRow(ev, highlightQ) {
     btn.type        = 'button';
     btn.className   = 'btn-dismiss';
     btn.textContent = '✕';
-    btn.addEventListener('click', () => dismissEvent(ev.id, btn));
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dismissEvent(ev.id, btn);
+    });
     tdBtn.appendChild(btn);
     tr.appendChild(tdBtn);
 
@@ -1709,6 +2179,58 @@ function resolveWithReason(id, reason) {
         setTimeout(refreshFindingCount, 350);
         refreshStats();
     });
+}
+
+function scrollToFindings() {
+    const el = document.getElementById('correlation-findings-panel');
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.style.outline = '2px solid #00d4ff';
+        setTimeout(() => { el.style.outline = ''; }, 2500);
+    }
+}
+
+function applyFpTemplate(findingId, templateId) {
+    csrfFetch('/api/siem/fp-template', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({template_id: templateId, finding_id: findingId}),
+    })
+    .then(r => r.json().then(d => ({ok: r.ok, d})))
+    .then(({ok, d}) => {
+        if (!ok) {
+            showToast(d.error || 'Quick FP failed');
+            return;
+        }
+        const row = document.getElementById(`finding-${findingId}`);
+        if (row) { row.style.opacity='0'; setTimeout(() => row.remove(), 300); }
+        const ip = d.suppressed_ip ? ` — ${d.suppressed_ip} suppressed` : '';
+        showToast(`Quick FP applied${ip}`);
+        setTimeout(refreshFindingCount, 350);
+        refreshStats();
+        if (d.suppressed) {
+            fetch('/api/siem/suppression-list')
+                .then(r => r.json())
+                .then(list => {
+                    const el = document.getElementById('suppression-list');
+                    if (!el || !Array.isArray(list)) return;
+                    const empty = document.getElementById('suppress-empty');
+                    if (empty) empty.remove();
+                    const latest = list[0];
+                    if (!latest) return;
+                    if (document.getElementById(`suppress-${latest.id}`)) return;
+                    el.insertAdjacentHTML('afterbegin', `
+                        <div class="suppress-row" id="suppress-${latest.id}">
+                            <span class="suppress-type">${(latest.suppress_type||'ip').toUpperCase()}</span>
+                            <span class="suppress-val">${latest.value}</span>
+                            <span style="color:#334;font-size:0.8em;flex:2;">${latest.reason || '—'}</span>
+                            <button class="btn-unsuppress" onclick="unsuppress(${latest.id}, this)">Remove</button>
+                        </div>`);
+                })
+                .catch(() => {});
+        }
+    })
+    .catch(() => showToast('Quick FP request failed'));
 }
 
 function resolveAllFindings() {
@@ -2251,6 +2773,26 @@ refreshSplunkStatus();
 setInterval(refreshSplunkStatus, 30000);
 refreshVpnStatus();
 setInterval(refreshVpnStatus, 30000);
+
+document.getElementById('event-tbody').addEventListener('click', function(e) {
+    if (e.target.closest('.btn-dismiss')) return;
+    const row = e.target.closest('tr.event-row');
+    if (row && row.dataset.id) openEventDrawer(parseInt(row.dataset.id, 10));
+});
+
+const findingsList = document.getElementById('findings-list');
+if (findingsList) {
+    findingsList.addEventListener('click', function(e) {
+        const t = e.target.closest('.finding-title');
+        if (t) filterStreamFromFindingTitle(t);
+    });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && drawerOpen) closeEventDrawer();
+});
+
+parseUrlFilters();
 </script>
 <script src="/static/glossary.js" defer></script>
 </body>

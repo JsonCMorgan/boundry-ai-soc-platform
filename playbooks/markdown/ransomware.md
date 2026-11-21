@@ -10,7 +10,7 @@ Ransomware is malicious software that locks a business out of its own files and 
 
 Modern ransomware attacks also steal the data *before* locking it — meaning even if you pay and get your files back, they can still threaten to publish your client records, financial data, or patient information publicly. This is called "double extortion."
 
-For our clients — dispensaries, medical offices, law firms — a ransomware attack doesn't just mean downtime. It means regulatory fines, breach notifications to hundreds of clients, potential lawsuits, and in some cases, total business closure. The average small business ransom demand in 2025 is $120,000. Most businesses that experience one are out of business within a year.
+For our clients (medical offices, law firms, retailers), a ransomware attack doesn't just mean downtime. It means regulatory fines, breach notifications to hundreds of clients, potential lawsuits, and in some cases, total business closure. The average small business ransom demand in 2025 is $120,000. Most businesses that experience one are out of business within a year.
 
 ---
 

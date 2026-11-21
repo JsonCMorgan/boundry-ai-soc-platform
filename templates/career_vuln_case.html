@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ case.title }} — Vuln Queue</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #fb923c; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 920px; margin: 0 auto; padding: 24px 18px 90px; }
+    h1 { color: #fff; margin: 0 0 8px; font-size: 1.25em; }
+    .teach { color: #9ab; font-size: 0.85em; line-height: 1.45; margin-bottom: 14px; }
+    .panel {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px; margin-bottom: 14px;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 0.9em; color: #fb923c; }
+    pre.raw {
+      background: #0a0e14; border: 1px solid #1e3045; border-radius: 6px;
+      padding: 12px; font-size: 0.72em; white-space: pre-wrap; color: #8aa;
+      max-height: 320px; overflow: auto;
+    }
+    label.chk {
+      display: block; font-size: 0.8em; margin: 6px 0; cursor: pointer; color: #cdd6e0;
+    }
+    select, button { font-family: inherit; font-size: 0.8em; }
+    select {
+      width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 6px; padding: 8px; margin-top: 6px; margin-bottom: 10px;
+    }
+    .btn {
+      margin-top: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid #fb923c66;
+      background: #fb923c18; color: #fb923c; font-weight: 800; cursor: pointer;
+    }
+    .result {
+      display: none; margin-top: 14px; padding: 12px; border-radius: 8px;
+      border: 1px solid #1e3045; background: #131d28; font-size: 0.82em; line-height: 1.45;
+    }
+    .result.show { display: block; }
+  
+    .btn-next { border-color: #00ff8866; background: #00ff8818; color: #00ff88; display: none; text-decoration: none; }
+    .btn-next.show { display: inline-block; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Vulnerability Queue</span>
+    <div>
+      <a href="/career/vuln">← Lab hub</a>
+      <a href="/career">Career</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ case.title }}</h1>
+    <p class="teach">{{ case.teach }}</p>
+
+    <div class="panel">
+      <h2>1. Show me — finding ticket</h2>
+      <pre class="raw">{{ case.finding }}</pre>
+    </div>
+
+    <div class="panel">
+      <h2>2. Prove it — priority and disposition</h2>
+      <label style="display:block;font-size:0.8em;color:#9ab;">Priority</label>
+      <select id="priority">
+        <option value="">Select…</option>
+        {% for p in priorities %}
+        <option value="{{ p.id }}">{{ p.label }}</option>
+        {% endfor %}
+      </select>
+      <label style="display:block;font-size:0.8em;color:#9ab;">Disposition</label>
+      <select id="disposition">
+        <option value="">Select…</option>
+        {% for d in dispositions %}
+        <option value="{{ d.id }}">{{ d.label }}</option>
+        {% endfor %}
+      </select>
+      {% for c in checklist %}
+      <label class="chk"><input type="checkbox" id="c-{{ c.id }}"> {{ c.label }}</label>
+      {% endfor %}
+      <button type="button" class="btn" onclick="grade()">Submit triage</button>
+      <div class="result" id="result"></div>
+      <a class="btn btn-next" id="next-scenario" href="{{ next_preview.url if next_preview else '#' }}">Next scenario →</a>
+
+    </div>
+  </div>
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+  function showNext(d) {
+    var nb = document.getElementById('next-scenario');
+    if (!nb) return;
+    if (d && d.next && d.next.url) nb.href = d.next.url;
+    nb.classList.add('show');
+  }
+  var CASE_ID = {{ case.id | tojson }};
+
+  function grade() {
+    var priority = document.getElementById('priority').value;
+    var disposition = document.getElementById('disposition').value;
+    if (!priority || !disposition) { alert('Pick priority and disposition'); return; }
+    var checklist = {};
+    {{ checklist | map(attribute='id') | list | tojson }}.forEach(function (id) {
+      checklist[id] = !!(document.getElementById('c-' + id) || {}).checked;
+    });
+    fetch('/api/career/vuln/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({
+        case_id: CASE_ID,
+        priority_id: priority,
+        disposition: disposition,
+        checklist: checklist
+      })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      BoundryRationale.renderResult(document.getElementById('result'), d);
+      if (d && d.ok) showNext(d);
+    });
+  }
+  </script>
+  {% include '_career_rationale.html' %}
+  {% include '_career_tutor.html' %}
+</body>
+</html>

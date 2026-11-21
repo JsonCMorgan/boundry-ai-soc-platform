@@ -16,7 +16,7 @@ summary: >
 applicable_to:
   - Any SMB handling personal data
   - Healthcare (HIPAA)
-  - Cannabis (METRC/PIPEDA)
+  - Retail (PIPEDA)
   - Legal / Financial (PIPEDA, GLBA)
   - Any business accepting payment cards (PCI DSS)
 

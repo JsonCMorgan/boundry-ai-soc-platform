@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ track_title }} — Boundry.AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: {{ accent }}; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .gap { font-size: 0.72em; color: {{ accent }}; margin-bottom: 10px; }
+    .primer {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 18px; font-size: 0.82em; line-height: 1.5;
+    }
+    .primer b { color: {{ accent }}; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+      text-decoration: none; color: inherit; display: block;
+    }
+    .card:hover { border-color: {{ accent }}66; }
+    .card h3 { margin: 0 0 6px; color: #fff; font-size: 0.95em; }
+    .meta { font-size: 0.72em; color: #667; margin: 8px 0; }
+    .pass { color: #00ff88; font-size: 0.72em; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">{{ track_title }} · {{ gap_id }}</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/skills">Job Skills</a>
+    </div>
+  </div>
+  <div class="main">
+    <div class="gap">{{ gap_id }} · Futureproof Career drill</div>
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    {% if learn_note %}
+    <p class="sub" style="border-left:3px solid {{ accent }};padding-left:12px;color:#9ab;">
+      {{ learn_note }}
+      {% if learn_href %}
+      <a href="{{ learn_href }}" style="color:#00d4ff;margin-left:6px;">Open Sec+ Show-me →</a>
+      {% endif %}
+    </p>
+    {% endif %}
+    <div class="primer">
+      <div style="color:{{ accent }};font-weight:800;margin-bottom:8px;">Define before you start</div>
+      {% for p in primer %}
+      <div style="margin-bottom:6px;"><b>{{ p.term }}:</b> {{ p.plain }}</div>
+      {% endfor %}
+    </div>
+    <div class="grid">
+      {% for s in items %}
+      <a class="card" href="{{ item_path_prefix }}{{ s.id }}">
+        <h3>{{ s.title }}</h3>
+        <div class="meta">
+          {% if s.difficulty %}{{ s.difficulty }}{% endif %}
+          {% if s.client %} · {{ s.client }}{% endif %}
+          {% if s.kind %} · {{ s.kind }}{% endif %}
+          {% if s.agent_verdict %} · agent: {{ s.agent_verdict }}{% endif %}
+        </div>
+        {% if best_by_id.get(s.id) %}
+        <div class="pass">Best {{ best_by_id[s.id].score_pct }}%{% if best_by_id[s.id].passed %} · passed{% endif %}</div>
+        {% else %}
+        <div class="meta">Open to prove it.</div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

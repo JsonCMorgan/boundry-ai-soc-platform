@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Comms Gym — Boundry.AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #f472b6; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .primer {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 18px; font-size: 0.82em; line-height: 1.5;
+    }
+    .primer b { color: #f472b6; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+      text-decoration: none; color: inherit; display: block;
+    }
+    .card:hover { border-color: #f472b666; }
+    .card h3 { margin: 0 0 6px; color: #fff; font-size: 0.95em; }
+    .card p { margin: 0; font-size: 0.78em; color: #9ab; }
+    .meta { font-size: 0.72em; color: #667; margin: 8px 0; }
+    .pass { color: #00ff88; font-size: 0.72em; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Comms Gym · G15</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/interview">Interview Gym</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    <div class="primer">
+      <div style="color:#f472b6;font-weight:800;margin-bottom:8px;">Define before you draft</div>
+      {% for p in primer %}
+      <div style="margin-bottom:6px;"><b>{{ p.term }}:</b> {{ p.plain }}</div>
+      {% endfor %}
+    </div>
+    <div class="grid">
+      {% for s in scenarios %}
+      <a class="card" href="/career/comms/{{ s.id }}">
+        <h3>{{ s.title }}</h3>
+        <div class="meta">{{ s.audience_label }} · {{ s.difficulty }} · {{ s.fact_count }} facts</div>
+        {% if best_by_id.get(s.id) %}
+        <div class="pass">Best {{ best_by_id[s.id].score_pct }}%{% if best_by_id[s.id].passed %} · passed{% endif %}</div>
+        {% else %}
+        <p>Draft a note → get graded on facts, tone, and no overclaim.</p>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

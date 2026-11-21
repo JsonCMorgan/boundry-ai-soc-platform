@@ -206,6 +206,12 @@
         <div class="score-right">
             <div class="scenario-title">{{ attempt.scenario_label }}</div>
             <div class="grade-text">{{ grade_msg }}</div>
+            {% if retention_scheduled %}
+            <div class="grade-text" style="border-left:3px solid #ffd700;padding-left:10px;color:#bbb;">
+              Scheduled: a re-challenge reminder for this scenario is in your
+              <a href="/career/review" style="color:#ffd700;">Daily Review</a> queue in about 3 days.
+            </div>
+            {% endif %}
             <!-- Breakdown — each block revealed one by one by JS -->
             <div class="breakdown">
                 <div class="bd-item" id="bd-tech">

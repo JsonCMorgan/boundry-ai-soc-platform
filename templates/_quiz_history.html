@@ -17,7 +17,7 @@
 {% endfor %}
 
 {% if category_accuracy %}
-<h2 style="margin-top:26px;">Accuracy by Category — weakest first</h2>
+<h2 style="margin-top:26px;">Accuracy by Category / Domain — weakest first</h2>
 {% for c in category_accuracy %}
 {% set col = '#00ff41' if c.pct >= 85 else ('#8fce00' if c.pct >= 70 else ('#ff9900' if c.pct >= 50 else '#ff6a00')) %}
 <div class="hrow">

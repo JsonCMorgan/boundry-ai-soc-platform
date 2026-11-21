@@ -203,8 +203,26 @@
         </span>
         Readiness
       </div>
+      <div class="hero-stat">
+        <span style="color:#ffd700;">{{ retention_due|default(0) }}</span>
+        Review due
+      </div>
+      <div class="hero-stat">
+        <span style="color:#ffd700;">{{ retention_streak|default(0) }}</span>
+        Retention streak
+      </div>
+      <div class="hero-stat">
+        <span>{{ retention_week|default(0) }}</span>
+        Reviews (7d)
+      </div>
     </div>
   </div>
+
+  <p style="font-size:12px;color:#666;margin:-16px 0 24px;">
+    <a href="/career/review" style="color:#ffd700;">Daily Review</a>
+    · backlog {{ retention_backlog|default(0) }} cards
+    · <a href="/api/career/review/export" style="color:#888;">Export review CSV (local)</a>
+  </p>
 
   <!-- Account Security -->
   <div class="security-panel">

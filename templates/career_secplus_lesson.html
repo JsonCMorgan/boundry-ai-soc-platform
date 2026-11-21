@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Sec+ {{ lesson.objective_ref }} — {{ lesson.title }}</title>
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: {{ lesson.domain_color }}; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 820px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 6px; }
+    .meta { color: #667; font-size: 0.8em; margin-bottom: 10px; }
+    .obj {
+      display: inline-block; font-size: 0.72em; font-weight: 800; color: {{ lesson.domain_color }};
+      border: 1px solid #1e3045; padding: 2px 8px; border-radius: 10px; margin-left: 8px;
+    }
+    .path { font-size: 0.75em; color: #556; margin-bottom: 16px; }
+    .path b { color: {{ lesson.domain_color }}; }
+    .nudge {
+      background: #0f1923; border: 1px solid #2dd4bf55; border-radius: 6px;
+      padding: 10px 12px; margin-bottom: 14px; font-size: 0.8em; color: #8aa;
+    }
+    .nudge a { color: #2dd4bf; }
+    .section {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px 18px; margin-bottom: 12px;
+    }
+    .section h2 { margin: 0 0 10px; font-size: 0.95em; color: {{ lesson.domain_color }}; }
+    .body-pre { white-space: pre-wrap; font-size: 0.82em; color: #9ab; line-height: 1.55; margin: 0; }
+    .notes-readable {
+      font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+      font-size: 0.94em;
+      line-height: 1.65;
+      color: #b8c8d8;
+      letter-spacing: 0.01em;
+    }
+    .notes-readable .notes-heading {
+      margin: 18px 0 8px;
+      font-size: 0.92em;
+      font-weight: 700;
+      color: {{ lesson.domain_color }};
+      letter-spacing: 0.02em;
+    }
+    .notes-readable .notes-heading:first-child { margin-top: 0; }
+    .notes-readable .notes-list,
+    .notes-readable .notes-sublist {
+      margin: 0 0 8px;
+      padding-left: 1.25em;
+    }
+    .notes-readable .notes-list { list-style: disc; }
+    .notes-readable .notes-sublist {
+      list-style: circle;
+      margin-top: 6px;
+      margin-bottom: 4px;
+      color: #9ab;
+    }
+    .notes-readable li { margin: 5px 0; padding-left: 2px; }
+    .notes-readable .notes-p { margin: 0 0 10px; color: #9ab; }
+    .notes-readable .notes-spacer { height: 10px; }
+    .lesson-media {
+      border-color: {{ lesson.domain_color }}44;
+      margin-bottom: 16px;
+    }
+    .lesson-media h2 { color: #ffd700; }
+    .lesson-media .media-block { margin-bottom: 16px; }
+    .lesson-media .media-block:last-child { margin-bottom: 0; }
+    .lesson-media .media-label {
+      font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.08em;
+      color: {{ lesson.domain_color }}; margin: 0 0 8px; font-weight: 700;
+    }
+    .lesson-media video {
+      width: 100%; max-width: 100%; margin: 6px 0 0; background: #000;
+      border-radius: 6px; border: 1px solid #1e3045;
+    }
+    .lesson-media audio {
+      width: 100%; max-width: 100%; margin: 6px 0 0;
+    }
+    .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .keys code {
+      background: #0a0e14; border: 1px solid #1e3045; color: #00ff88;
+      padding: 4px 8px; border-radius: 4px; font-size: 0.75em;
+    }
+    .job { border-color: #00d4ff55; }
+    .job a { color: #00d4ff; text-decoration: none; font-size: 0.82em; display: block; padding: 4px 0; }
+    .job a:hover { text-decoration: underline; }
+    .why { font-size: 0.75em; color: #667; }
+    .btn {
+      padding: 10px 16px; border-radius: 6px; border: 1px solid {{ lesson.domain_color }}66;
+      background: {{ lesson.domain_color }}22; color: {{ lesson.domain_color }}; font-weight: 800; cursor: pointer;
+      font-family: inherit; font-size: 0.85em; text-decoration: none; display: inline-block;
+    }
+    .btn-dim { background: #131d28; border-color: #1e3045; color: #9ab; margin-left: 8px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .msg { margin-top: 10px; font-size: 0.82em; color: #00ff88; display: none; }
+    .teach-back { border-color: #ffd70055; }
+    .teach-back .lead { font-size: 0.82em; color: #cdd6e0; line-height: 1.55; margin: 0 0 12px; }
+    .teach-back h3 { margin: 14px 0 6px; font-size: 0.78em; color: #ffd700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .teach-back ol, .teach-back ul { margin: 0; padding-left: 1.2em; font-size: 0.82em; line-height: 1.5; color: #9ab; }
+    .teach-back li { margin: 4px 0; }
+    .teach-back .term { color: #00ff88; font-weight: 700; }
+    .teach-practice details {
+      margin-top: 12px; border: 1px solid #1e3045; border-radius: 6px; background: #0a0e14;
+    }
+    .teach-practice summary {
+      cursor: pointer; padding: 8px 10px; font-size: 0.75em; color: #7a9ab0; font-weight: 700;
+      list-style: none;
+    }
+    .teach-practice summary::-webkit-details-marker { display: none; }
+    .teach-practice textarea {
+      width: 100%; min-height: 72px; margin-top: 0; background: #0f1923; border: 1px solid #1e3045;
+      color: #cdd6e0; border-radius: 0 0 6px 6px; padding: 10px; font-family: inherit; font-size: 0.8em;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Sec+ · D{{ lesson.domain_order }} Show me</span>
+    <div>
+      <a href="/career/secplus">← Lab hub</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ lesson.title }} <span class="obj">{{ lesson.objective_ref }}</span></h1>
+    <div class="meta">~{{ lesson.minutes }} min · D{{ lesson.domain_order }} {{ lesson.domain_title }} · {{ lesson.goal }}</div>
+    <div class="path"><b>Show me</b> → Help me{% if lesson.has_pbq %} → Watch me{% endif %}{% if lesson.has_prove %} → Prove it{% endif %} → Do the job</div>
+
+    {% if soft_nudge and continue_lesson %}
+    <div class="nudge">
+      Your tutor recommends continuing with
+      <a href="/career/secplus/lesson/{{ continue_lesson.id }}">{{ continue_lesson.title }}</a>
+      after you Prove-pass (≥{{ pass_pct }}%). You can still study this lesson now.
+    </div>
+    {% endif %}
+
+    {% for s in lesson.sections if s.heading == 'Session' %}
+    <div class="section">
+      <h2>{{ s.heading }}</h2>
+      <div class="body-pre">{{ s.body }}</div>
+    </div>
+    {% endfor %}
+
+    {% if lesson.video_paths or lesson.audio_paths %}
+    <div class="section lesson-media">
+      <h2>Watch &amp; listen</h2>
+      <p class="meta" style="margin-bottom:12px;">Local Messer files on your machine. Start the video, then read the notes while it plays.</p>
+      {% for vp in lesson.video_paths or [] %}
+      {% set mediap = vp.replace('\\', '/') %}
+      <div class="media-block">
+        <p class="media-label">Video</p>
+        <p class="meta" style="margin:0 0 4px;">
+          <a href="/career/secplus/messer/media/{{ mediap }}" style="color:#ffd700;" target="_blank" rel="noopener">{{ mediap.split('/')[-1] }}</a>
+          · <a href="/career/secplus/messer/media/{{ mediap }}?download=1" style="color:#7a9ab0;">Open in system player</a>
+        </p>
+        <video controls preload="metadata">
+          <source src="/career/secplus/messer/media/{{ mediap }}" type="video/mp4">
+        </video>
+      </div>
+      {% endfor %}
+      {% for ap in lesson.audio_paths or [] %}
+      {% set mediap = ap.replace('\\', '/') %}
+      <div class="media-block">
+        <p class="media-label">Audio</p>
+        <p class="meta" style="margin:0 0 4px;">
+          <a href="/career/secplus/messer/media/{{ mediap }}" style="color:#ffd700;" target="_blank" rel="noopener">{{ mediap.split('/')[-1] }}</a>
+          · <a href="/career/secplus/messer/media/{{ mediap }}?download=1" style="color:#7a9ab0;">Open in system player</a>
+        </p>
+        <audio controls preload="metadata">
+          <source src="/career/secplus/messer/media/{{ mediap }}" type="audio/mpeg">
+        </audio>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for s in lesson.sections if s.heading != 'Session' %}
+    <div class="section">
+      <h2>{{ s.heading }}</h2>
+      {% if s.heading in ['Course notes', 'Transcript'] %}
+      <div class="notes-wrap">{{ s.body | format_notes(s.heading) | safe }}</div>
+      {% else %}
+      <div class="body-pre">{{ s.body }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if messer_companion %}
+    <div class="section teach-back" style="border-color:#ffd70044;">
+      <h2>Messer companion (private)</h2>
+      <p class="lead">Session {{ messer_companion.messer_session }} — {{ messer_companion.messer_title }}</p>
+      {% if messer_companion.bullets %}
+      <h3>Notes excerpt</h3>
+      <ul>{% for b in messer_companion.bullets %}<li>{{ b }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if messer_companion.exam_hacks %}
+      <h3>Exam hacks</h3>
+      <ul>{% for h in messer_companion.exam_hacks %}<li>{{ h }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if messer_companion.transcript_snip %}
+      <h3>Transcript clip</h3>
+      <p class="lead" style="font-size:0.78em;max-height:160px;overflow:auto;">{{ messer_companion.transcript_snip }}</p>
+      {% endif %}
+      {% if messer_companion.video_rel %}
+      <p class="meta"><a href="/career/secplus/messer/media/{{ messer_companion.video_rel }}" style="color:#ffd700;" target="_blank" rel="noopener">Open video</a></p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% set tb = lesson.teach_back or {} %}
+    <div class="section teach-back">
+      <h2>Teach it back</h2>
+      <p class="lead">Goal: explain this lesson to a junior or a curious manager without reading the screen.</p>
+      {% if tb.listener_prompt %}
+      <h3>They might ask</h3>
+      <p class="lead">{{ tb.listener_prompt }}</p>
+      {% endif %}
+      {% if tb.explain_aloud %}
+      <h3>Explain in about 60 seconds</h3>
+      <p class="lead">{{ tb.explain_aloud }}</p>
+      {% endif %}
+      {% if tb.define_first %}
+      <h3>Define these first (say aloud)</h3>
+      <ol>
+        {% for d in tb.define_first %}
+        <li><span class="term">{{ d.term }}</span> — {{ d.say }}</li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+      {% if tb.desk_one_liner %}
+      <h3>One desk line</h3>
+      <p class="lead">{{ tb.desk_one_liner }}</p>
+      {% endif %}
+      {% if tb.exam_trap %}
+      <h3>One exam trap</h3>
+      <p class="lead">{{ tb.exam_trap }}</p>
+      {% endif %}
+      {% if tb.remember %}
+      <h3>Remember</h3>
+      <p class="lead">{{ tb.remember }}</p>
+      {% endif %}
+      <p style="margin:12px 0 0;">
+        <button type="button" id="enroll-teach-back" style="font-family:inherit;padding:8px 14px;border-radius:6px;border:1px solid #ffd70066;background:#ffd70022;color:#ffd700;font-weight:700;cursor:pointer;">
+          Add teach-back to Review deck
+        </button>
+      </p>
+      <div class="teach-practice">
+        <details>
+          <summary>Practice teaching out loud (optional)</summary>
+          {{ writing_coach_from_registry('secplus_teach_back_practice') }}
+          {% set _tb = get_coach('secplus_teach_back_practice') %}
+          <textarea aria-describedby="coach-secplus_teach_back_practice" data-writing-coach="secplus_teach_back_practice"
+            placeholder="{{ (_tb.placeholder_example if _tb else '') }}"></textarea>
+        </details>
+      </div>
+    </div>
+
+    {% if lesson.key_terms %}
+    <div class="section">
+      <h2>Key terms</h2>
+      <div class="keys">
+        {% for k in lesson.key_terms %}
+        <code>{{ k }}</code>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="section job">
+      <h2>Do the job (existing Hub)</h2>
+      {% for c in lesson.job_ctas %}
+      <a href="{{ c.href }}">→ {{ c.label }} <span class="why">— {{ c.why }}</span></a>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:16px;">
+      <button class="btn" id="btn-done" type="button" onclick="markDone()"
+        {% if progress and progress.lesson_done %}disabled{% endif %}>
+        {% if progress and progress.lesson_done %}Show me marked{% else %}Mark Show me done{% endif %}
+      </button>
+      {% if lesson.has_help_me is not defined or lesson.has_help_me %}
+      <a class="btn btn-dim" href="/career/secplus/practice/{{ lesson.id }}">Help me{% if lesson.has_pbq %} + Watch me{% endif %} →</a>
+      {% else %}
+      <span class="btn btn-dim" style="opacity:0.55;cursor:default;" title="No Messer practice bank mapped to this session yet.">Help me (coming soon)</span>
+      {% endif %}
+      <div class="msg" id="msg"></div>
+    </div>
+  </div>
+{% set tutor_track = 'secplus' %}
+{% set tutor_lesson_id = lesson.id %}
+{% include '_career_tutor.html' %}
+{% include '_jargon_tooltips.html' %}
+<script src="/static/game.js"></script>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+var enrollTb = document.getElementById('enroll-teach-back');
+if (enrollTb) enrollTb.addEventListener('click', function(){
+  enrollTb.disabled = true;
+  fetch('/api/career/review/enroll-teach-back', {
+    method: 'POST',
+    headers: {'X-CSRFToken': _csrf, 'Content-Type': 'application/json'},
+    body: JSON.stringify({lesson_id: '{{ lesson.id }}'})
+  }).then(function(r){ return r.json(); }).then(function(){
+    enrollTb.textContent = 'Teach-back queued for Review';
+  }).catch(function(){ enrollTb.disabled = false; });
+});
+function markDone() {
+  var btn = document.getElementById('btn-done');
+  var msg = document.getElementById('msg');
+  btn.disabled = true;
+  fetch('/career/secplus/lesson/{{ lesson.id }}/complete', {
+    method: 'POST',
+    headers: {'X-CSRFToken': _csrf, 'Content-Type': 'application/json'},
+    body: '{}'
+  }).then(function(r){ return r.json(); }).then(function(d){
+    msg.style.display = 'block';
+    msg.textContent = d.already ? 'Already marked.' : 'Show me complete.';
+    btn.textContent = 'Show me marked';
+    if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+  }).catch(function(){
+    btn.disabled = false;
+    msg.style.display = 'block';
+    msg.style.color = '#ff8888';
+    msg.textContent = 'Request failed';
+  });
+}
+</script>
+</body>
+</html>

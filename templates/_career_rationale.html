@@ -1,0 +1,181 @@
+{# Shared answer-rationale popout for Career prove-it results.
+   Include once per page. Use BoundryRationale.renderResult(el, data). #}
+<style>
+  .br-result .scoreline { font-weight: 800; margin-bottom: 8px; }
+  .br-result .teachline { color: #9ab; margin-bottom: 12px; line-height: 1.45; }
+  .br-result ul { margin: 0 0 12px; padding-left: 1.2em; color: #cdd6e0; }
+  .br-result li { margin-bottom: 4px; }
+  .br-ans-row { margin: 8px 0; }
+  .br-ans-label { font-size: 0.75em; color: #7a9ab0; margin-bottom: 4px; }
+  .br-ans-chip {
+    display: inline-block; padding: 6px 10px; border-radius: 6px;
+    border: 1px solid #00d4ff66; background: #00d4ff18; color: #00d4ff;
+    cursor: help; font-size: 0.78em; font-weight: 700;
+  }
+  .br-ans-chip.ok { border-color: #00ff8866; background: #00ff8818; color: #00ff88; }
+  .br-ans-chip.miss { border-color: #ff8c0066; background: #ff8c0018; color: #ff8c00; }
+  .br-ans-chip:hover, .br-ans-chip:focus { outline: none; box-shadow: 0 0 0 2px #00d4ff44; }
+  .br-ans-hint { font-size: 0.68em; color: #556; margin-left: 8px; }
+  .br-rationale-pop {
+    display: none; position: fixed; z-index: 60;
+    width: min(420px, 92vw); max-height: 60vh; overflow: auto;
+    background: #0f1923; border: 1px solid #00d4ff66; border-radius: 10px;
+    padding: 14px 16px; box-shadow: 0 12px 40px #000a;
+    font-size: 0.8em; line-height: 1.5; color: #cdd6e0;
+  }
+  .br-rationale-pop.show { display: block; }
+  .br-rationale-pop h4 {
+    margin: 0 0 8px; color: #00d4ff; font-size: 0.85em;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .br-rationale-pop .close {
+    float: right; border: none; background: transparent; color: #7a9ab0;
+    cursor: pointer; font-size: 1.1em; line-height: 1; padding: 0 0 0 8px;
+  }
+</style>
+<div class="br-rationale-pop" id="br-rationale-pop" role="dialog" aria-label="Answer rationale">
+  <button type="button" class="close" onclick="BoundryRationale.hide()" aria-label="Close">×</button>
+  <h4 id="br-rationale-title">Why this answer</h4>
+  <div id="br-rationale-body"></div>
+</div>
+<script>
+window.BoundryRationale = (function () {
+  var popTimer = null;
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+  function escAttr(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  function hide() {
+    var pop = document.getElementById('br-rationale-pop');
+    if (pop) pop.classList.remove('show');
+  }
+  function placeNear(anchor) {
+    var pop = document.getElementById('br-rationale-pop');
+    if (!pop || !anchor) return;
+    var r = anchor.getBoundingClientRect();
+    var top = r.bottom + 8;
+    var left = Math.min(r.left, window.innerWidth - 440);
+    if (left < 12) left = 12;
+    if (top + 200 > window.innerHeight) top = Math.max(12, r.top - 220);
+    pop.style.top = top + 'px';
+    pop.style.left = left + 'px';
+  }
+  function show(anchor, title, body) {
+    var pop = document.getElementById('br-rationale-pop');
+    if (!pop) return;
+    document.getElementById('br-rationale-title').textContent = title || 'Why this answer';
+    document.getElementById('br-rationale-body').textContent = body || '';
+    placeNear(anchor);
+    pop.classList.add('show');
+  }
+  function bindChip(chip) {
+    var title = chip.getAttribute('data-title') || 'Why this answer';
+    var body = chip.getAttribute('data-rationale') || '';
+    chip.addEventListener('mouseenter', function () {
+      clearTimeout(popTimer);
+      show(chip, title, body);
+    });
+    chip.addEventListener('mouseleave', function () {
+      popTimer = setTimeout(hide, 280);
+    });
+    chip.addEventListener('click', function (e) {
+      e.preventDefault();
+      clearTimeout(popTimer);
+      show(chip, title, body);
+    });
+    chip.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        show(chip, title, body);
+      }
+    });
+  }
+  function chipHtml(chip) {
+    var cls = chip.matched ? 'ok' : 'miss';
+    var title = chip.title || 'Why this answer';
+    var label = chip.label || chip.id || 'Answer';
+    var rationale = chip.rationale || '';
+    return (
+      '<div class="br-ans-row">' +
+        '<div class="br-ans-label">' + esc(chip.row_label || title) +
+          (chip.matched ? ' (you matched)' : ' (hover for why)') +
+        '</div>' +
+        '<span class="br-ans-chip ' + cls + '" tabindex="0" role="button" ' +
+          'data-title="' + escAttr(title) + '" ' +
+          'data-rationale="' + escAttr(rationale) + '">' +
+          esc(label) +
+        '</span>' +
+        '<span class="br-ans-hint">hover or click</span>' +
+      '</div>'
+    );
+  }
+  /**
+   * Render a graded result into el.
+   * data: { ok, pct, passed, teach, checklist?, tips?, answer_chips?, error? }
+   */
+  function renderResult(el, data) {
+    if (!el) return;
+    el.classList.add('show', 'br-result');
+    hide();
+    if (!data || !data.ok) {
+      el.innerHTML = '<span style="color:#ff8c00;">' + esc((data && data.error) || 'Grade failed') + '</span>';
+      return;
+    }
+    var checkHtml = '';
+    if (data.checklist && data.checklist.length) {
+      checkHtml = '<ul>' + data.checklist.map(function (c) {
+        return '<li>' + (c.correct ? '✓' : '✗') + ' ' + esc(c.label) +
+          (c.expected != null
+            ? ' <span style="color:#667;">(expected ' + esc(String(c.expected)) + ')</span>'
+            : '') +
+          '</li>';
+      }).join('') + '</ul>';
+    }
+    var tipsHtml = '';
+    if (data.tips && data.tips.length) {
+      tipsHtml = '<ul>' + data.tips.map(function (t) {
+        return '<li>' + esc(t) + '</li>';
+      }).join('') + '</ul>';
+    }
+    var chips = data.answer_chips || [];
+    var chipsHtml = chips.map(chipHtml).join('');
+    var extra = data.extra_html || '';
+    el.innerHTML =
+      '<div class="scoreline" style="color:' + (data.passed ? '#00ff88' : '#ff8c00') + ';">' +
+        'Score: ' + (data.pct != null ? data.pct : '?') + '% ' +
+        (data.passed ? '(PASS)' : '(keep practicing)') +
+      '</div>' +
+      (data.teach ? '<div class="teachline">' + esc(data.teach) + '</div>' : '') +
+      checkHtml + tipsHtml + chipsHtml + extra;
+    el.style.borderColor = data.passed ? '#00ff8866' : '#ff8c0066';
+    el.querySelectorAll('.br-ans-chip').forEach(bindChip);
+  }
+
+  var pop = document.getElementById('br-rationale-pop');
+  if (pop) {
+    pop.addEventListener('mouseenter', function () { clearTimeout(popTimer); });
+    pop.addEventListener('mouseleave', function () { popTimer = setTimeout(hide, 200); });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+
+  return {
+    esc: esc,
+    escAttr: escAttr,
+    hide: hide,
+    show: show,
+    bindChip: bindChip,
+    renderResult: renderResult
+  };
+})();
+</script>

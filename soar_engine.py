@@ -597,3 +597,77 @@ def stats() -> dict:
 def datetime_prefix_today() -> str:
     from datetime import datetime
     return datetime.utcnow().strftime("%Y-%m-%d") + "%"
+
+
+def metrics_7d() -> dict[str, Any]:
+    """SOAR execution metrics for dashboard (local, last 7 days)."""
+    if not _db_fetchone:
+        return {}
+    opened = _db_fetchone(
+        f"SELECT COUNT(*) AS c FROM soar_incidents WHERE created_at >= datetime('now', '-7 days')"
+    )
+    executed = _db_fetchone(
+        f"SELECT COUNT(*) AS c FROM soar_actions WHERE status = 'executed' "
+        f"AND approved_at >= datetime('now', '-7 days')"
+    )
+    approved = _db_fetchone(
+        f"SELECT COUNT(*) AS c FROM soar_actions WHERE status IN ('executed','approved') "
+        f"AND approved_at >= datetime('now', '-7 days')"
+    )
+    rejected = _db_fetchone(
+        f"SELECT COUNT(*) AS c FROM soar_actions WHERE status = 'rejected' "
+        f"AND approved_at >= datetime('now', '-7 days')"
+    )
+    ex_n = int((executed or {}).get("c") or 0)
+    ap_n = int((approved or {}).get("c") or 0)
+    rate = round(100.0 * ex_n / ap_n, 1) if ap_n else 0.0
+    return {
+        "incidents_opened_7d": int((opened or {}).get("c") or 0),
+        "actions_executed_7d": ex_n,
+        "approval_rate_pct": rate,
+        "actions_rejected_7d": int((rejected or {}).get("c") or 0),
+    }
+
+
+def playbook_catalog() -> list[dict[str, Any]]:
+    """Playbook list with phase counts for SOAR UI."""
+    out: list[dict[str, Any]] = []
+    for pb in playbook_loader.get_all_playbooks():
+        full = playbook_loader.get_playbook(pb.get("id") or "") or {}
+        phases = full.get("phases") or []
+        steps: list[str] = []
+        for ph in phases:
+            for step in ph.get("steps") or []:
+                label = step.get("title") or step.get("action") or "Step"
+                steps.append(str(label))
+        out.append({**pb, "step_labels": steps, "phase_count": len(phases)})
+    return out
+
+
+def playbook_steps_for_incident(incident: dict) -> list[dict[str, Any]]:
+    """Vertical workflow steps for read-only canvas."""
+    pid = incident.get("playbook_id") or ""
+    if not pid:
+        return []
+    pb = playbook_loader.get_playbook(pid) or {}
+    steps_out: list[dict[str, Any]] = []
+    idx = 0
+    for ph in pb.get("phases") or []:
+        phase_label = ph.get("label") or ph.get("title") or f"Phase {ph.get('phase', '')}"
+        for step in ph.get("steps") or []:
+            idx += 1
+            if isinstance(step, str):
+                label = step
+                action_type = ""
+            else:
+                label = step.get("title") or step.get("action") or f"Step {idx}"
+                action_type = step.get("action_type") or step.get("type") or ""
+            steps_out.append(
+                {
+                    "index": idx,
+                    "phase": phase_label,
+                    "label": label,
+                    "action_type": action_type,
+                }
+            )
+    return steps_out

@@ -46,9 +46,11 @@ Known defects: check [`docs/BUGS.md`](BUGS.md) before “fixing.”
 
 ## Stage 1 — Sec+ hire foundation (Career default)
 
-**Goal:** Pass Sec+ SY0-801 path in Hub; keep tutor voice (define-before-use).
+**Goal:** Pass Sec+ in Hub; keep tutor voice (define-before-use).
 
-- [x] SY0-801 matrix coverage 100% mapped (`docs/secplus-objective-coverage.md`)
+**Exam version (Jason, 2026):** **SY0-701** is the study north star while the licensed Messer pack is SY0-701. Revisit **SY0-801** spine/coverage when Messer (or Jason) has 801 course materials.
+
+- [x] SY0-801 matrix coverage 100% mapped (`docs/secplus-objective-coverage.md`) — future pass / gap check when 801 content lands
 - [x] Depth pass on 2.3 / 2.4 (+ warm 2.1 / 2.6 practice); smoke + MCQ lint green
 - [x] Job Skills board exists (`/career/skills`)
 - [ ] Keep deepening as exam date nears
@@ -62,6 +64,25 @@ Known defects: check [`docs/BUGS.md`](BUGS.md) before “fixing.”
 - [x] `/career/skills` — proficient vs developing vs recommended adjacent
 - [x] Career hub surfaces study streak + Job Skills CTA
 - [ ] Monthly glance: proficient count ↑, recommended skills getting reps
+
+---
+
+## Stage 2b — Memory retention (Boundry Retention Layer)
+
+**Goal:** Spaced recall after Prove/Help-me/labs; local FSRS; no cloud sync.
+
+- [x] `memory_retention.py` + `retention_*` tables + py-fsrs
+- [x] `/career/review` session + Career hub due widget
+- [x] Sec+ prove/help/terms/teach-back/72h mini-quiz enroll
+- [x] SPL / KQL / Net prove + net/logs flashcard enroll
+- [x] Intel/vuln/shift/training enroll + Review Mix interleaving
+- [x] PRD metrics (weekly reviews, due backlog), profile stats, CSV export
+- [x] `docs/MEMORY_RETENTION_UX.md` + tutor rule + `tests/test_memory_retention.py`
+- [ ] Linux track: call `enroll_items` when `/career/linux` ships
+
+**Jason personal (not a client Must):** Professor Messer private layer — `content/private/messer/`, `ENABLE_MESSER_LAYER=1`, ingest via `tools/messer_sync_all.py`, policy in `docs/PRIVATE_STUDY_SOURCES.md`. Hybrid Help from notes: `tools/messer_generate_notes_quizzes.py` + audit `tools/messer_notes_quiz_audit.py`.
+
+**Done when:** After any Sec+ Prove pass, analyst has cards due within 24–48h on `/career/review`.
 
 ---
 
@@ -112,6 +133,18 @@ See [`docs/PRE_CLIENT_HARDENING.md`](PRE_CLIENT_HARDENING.md).
 - [x] SIEM Phase A FP (`docs/SIEM_FP_PHASE_A.md`): firewall background matrix, Quick FP templates, ingest tunes module; smoke `tools/_smoke_siem_fp_phase_a.py`
 
 **Held for Roy:** service tiers, 5-minute demo script. Do not unlock until meetup.
+
+---
+
+## Stage 4b — Enterprise SecOps UX (Live bursts)
+
+- [x] Unified SecOps shell (`_secops_layout.html`) + `soc_ioc_stub.py`
+- [x] SIEM Log Activity tabs, saved searches, detections API (`siem_views.py`)
+- [x] Mission Control `/soc/mission` (`mission_control.py`)
+- [x] Case workspace API (timeline, entities, tasks, graph lite)
+- [x] Control Room SecOps KPI + attention rail
+- [x] SOAR workflow canvas (read-only) + 7d metrics
+- [x] Docs `docs/ENTERPRISE_SECOPS_UX.md`; tests `tests/test_enterprise_secops.py`
 
 ---
 

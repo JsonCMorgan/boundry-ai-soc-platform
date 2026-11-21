@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — Security+ SY0-801 Lab</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { color: #2dd4bf; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .path {
+      display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.78em; color: #667; margin-bottom: 20px;
+    }
+    .path span { color: #2dd4bf; }
+    .hero {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 18px 20px; margin-bottom: 22px; display: flex; gap: 22px; flex-wrap: wrap; align-items: center;
+    }
+    .pct { font-size: 2.4em; font-weight: 800; color: #2dd4bf; line-height: 1; }
+    .note { font-size: 0.8em; color: #7a9ab0; margin-top: 8px; line-height: 1.45; }
+    .btn {
+      display: inline-block; padding: 10px 14px; border-radius: 6px; text-decoration: none;
+      font-weight: 700; font-size: 0.82em; border: 1px solid #2dd4bf66; background: #2dd4bf18; color: #2dd4bf;
+    }
+    .btn-dim { border-color: #1e3045; background: #131d28; color: #9ab; margin-left: 8px; }
+    .domain-block { margin-bottom: 22px; }
+    .domain-head {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      border-bottom: 1px solid #1e3045; padding-bottom: 8px; margin-bottom: 10px;
+    }
+    .domain-head h2 { margin: 0; color: #fff; font-size: 1.05em; }
+    .dmeta { font-size: 0.75em; color: #667; }
+    .weight {
+      font-size: 0.72em; font-weight: 800; color: var(--d-color, #2dd4bf);
+      background: #0a0e14; border: 1px solid #1e3045; padding: 2px 8px; border-radius: 10px;
+    }
+    .lesson {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    }
+    .lesson.continue { border-color: #2dd4bf88; box-shadow: 0 0 0 1px #2dd4bf33; }
+    .lesson h3 { margin: 0 0 4px; color: #fff; font-size: 0.92em; }
+    .meta { font-size: 0.72em; color: #667; }
+    .goal { font-size: 0.78em; color: #8aa; margin-top: 4px; }
+    .badges { font-size: 0.7em; margin-top: 6px; }
+    .ok { color: #00ff88; }
+    .dim { color: #556; }
+    .rec { color: #2dd4bf; font-weight: 700; }
+    .actions a { display: inline-block; margin: 3px 0 3px 8px; font-size: 0.75em; color: #2dd4bf; text-decoration: none; }
+    .actions a:hover { text-decoration: underline; }
+    .green-dot { color: #00ff88; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">BOUNDRY.AI · Security+ Lab</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/secplus/terms">Term bank</a>
+      {% if messer_enabled %}<a href="/career/secplus/messer">Messer (private)</a>{% endif %}
+      <a href="/career/kql">KQL Learn</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    {% if retention_due %}
+    <p class="sub" style="color:#ffd700;">Review due from Security+: <b>{{ retention_due }}</b>
+      · <a href="/career/review?mode=focus&amp;track=secplus" style="color:#ffd700;">Daily Review</a></p>
+    {% endif %}
+    {% if messer_enabled %}
+    <p class="sub" style="color:#ffd700;">Messer private layer: <a href="/career/secplus/messer" style="color:#ffd700;">Practice exams & PBQ</a>
+      {% if messer_due %} · {{ messer_due }} due in Review{% endif %}</p>
+    {% endif %}
+    <div class="primer" style="background:#0f1923;border:1px solid #1e3045;border-radius:8px;padding:14px 16px;margin-bottom:18px;font-size:0.84em;line-height:1.55;color:#9ab;">
+      <div style="color:#2dd4bf;font-weight:800;margin-bottom:6px;">Course primer (read once)</div>
+      <b style="color:#cdd6e0;">CompTIA Security+</b> is an entry cybersecurity certification.
+      CompTIA labels the Boundry north-star exam version <b style="color:#cdd6e0;">SY0-801</b>
+      (transition from SY0-701 content is underway).
+      In this lab, “the exam” means Security+.
+      You will read a short scenario, then choose from answer options.
+      A wrong option that looks almost right is a <b style="color:#cdd6e0;">distractor</b>.
+      Your tutor always defines a term before using it. If something is still unclear, hover the dotted term or open the glossary.
+    </div>
+    <div class="path">
+      Your path: <span>1. Show me</span> → <span>2. Help me</span> → <span>3. Watch me</span> (hands-on style practice when tagged) → <span>4. Prove it (≥{{ pass_pct }}%)</span> → Do the job
+    </div>
+
+    <div class="hero">
+      <div>
+        <div class="pct">{{ quizzes_passed }}/{{ total_quizzes }}</div>
+        <div style="font-size:0.75em;color:#667;">LESSONS PROVE-PASSED</div>
+      </div>
+      <div style="flex:1;font-size:0.85em;color:#8aa;">
+        Show-me read: <b style="color:#fff;">{{ done_lessons }}/{{ total_lessons }}</b>
+        · Domains green: <b style="color:#fff;">{{ domains_green }}/{{ total_domains }}</b>
+        · Term bank: <a href="/career/secplus/terms" style="color:#2dd4bf;">{{ term_count }} terms</a>
+        <div style="margin-top:12px;">
+          {% if continue_lesson %}
+          <a class="btn" href="/career/secplus/lesson/{{ continue_lesson.id }}">
+            Continue your lesson → {{ continue_lesson.title }}
+          </a>
+          {% else %}
+          <span class="ok">All micro-lessons prove-passed. Your tutor recommends review drills on weak terms.</span>
+          {% endif %}
+          <a class="btn btn-dim" href="/career/secplus/terms">Browse terms</a>
+        </div>
+        <p class="note">
+          Soft unlock: every lesson is browsable. Continue advances after you Prove ≥{{ pass_pct }}%.
+          Original Boundry practice only (never CompTIA dumps). Terms are defined before they are used.
+          Stay on the D1→D5 spine.
+        </p>
+      </div>
+    </div>
+
+    {% for D in domains %}
+    <div class="domain-block" style="--d-color: {{ D.color }};">
+      <div class="domain-head">
+        <div>
+          <h2>
+            {% if D.quiz_passed %}<span class="green-dot">●</span>{% endif %}
+            D{{ D.order }} · {{ D.title }}
+          </h2>
+          <div class="dmeta">{{ D.lessons_passed }}/{{ D.lessons_total }} lessons prove-passed · {{ D.short }}</div>
+        </div>
+        <span class="weight">{{ D.weight }}%</span>
+      </div>
+      {% for L in D.lessons %}
+      <div class="lesson{% if L.is_continue %} continue{% endif %}">
+        <div>
+          <h3>
+            {% if L.is_continue %}<span class="rec">YOUR TUTOR RECOMMENDS · </span>{% endif %}
+            {{ L.objective_ref }} · {{ L.title }}
+          </h3>
+          <div class="meta">~{{ L.minutes }} min{% if L.has_pbq %} · Watch-me PBQ{% endif %}</div>
+          <div class="goal">{{ L.goal }}</div>
+          <div class="badges">
+            {% if L.lesson_done %}<span class="ok">✓ show</span>{% else %}<span class="dim">○ show</span>{% endif %}
+            ·
+            {% if L.practice_done %}<span class="ok">✓ help {{ L.practice_ok }}/{{ L.practice_need }}</span>
+            {% else %}<span class="dim">help {{ L.practice_ok }}/{{ L.practice_need }}</span>{% endif %}
+            {% if L.has_pbq %}
+            ·
+            {% if L.pbq_ok %}<span class="ok">✓ watch</span>{% else %}<span class="dim">○ watch</span>{% endif %}
+            {% endif %}
+            ·
+            {% if not L.has_quiz %}<span class="dim">— prove n/a</span>
+            {% elif L.quiz_passed %}<span class="ok">✓ prove {{ L.quiz_best.score_pct }}%</span>
+            {% elif L.quiz_best %}<span class="dim">prove {{ L.quiz_best.score_pct }}%</span>
+            {% else %}<span class="dim">○ prove</span>{% endif %}
+          </div>
+        </div>
+        <div class="actions">
+          <a href="/career/secplus/lesson/{{ L.id }}">Show →</a>
+          <a href="/career/secplus/practice/{{ L.id }}">Help{% if L.has_pbq %} / Watch{% endif %} →</a>
+          {% if L.has_quiz %}<a href="/career/secplus/quiz/{{ L.id }}">Prove →</a>{% else %}<span class="dim" title="No exam Prove bank on this session">Prove —</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

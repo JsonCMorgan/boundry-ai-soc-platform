@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — SOC Shift Simulator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { color: #00d4ff; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 820px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 20px; }
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .mode {
+      background: #131d28; border: 2px solid #1e3045; border-radius: 8px;
+      padding: 16px; cursor: pointer; text-align: left;
+    }
+    .mode.selected { border-color: #00d4ff; box-shadow: 0 0 0 1px #00d4ff44; }
+    .mode h3 { margin: 0 0 6px; color: #fff; font-size: 1em; }
+    .mode p { margin: 0; font-size: 0.78em; color: #8aa; line-height: 1.4; }
+    .mode .tag { font-size: 0.7em; color: #00d4ff; margin-top: 8px; font-weight: 700; }
+    .btn {
+      padding: 12px 18px; border-radius: 6px; border: 1px solid #00d4ff66;
+      background: #00d4ff22; color: #00d4ff; font-weight: 800; cursor: pointer;
+      font-family: inherit; font-size: 0.9em;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-dim {
+      background: #131d28; border-color: #1e3045; color: #9ab; margin-left: 8px;
+    }
+    #lobby { display: block; }
+    #active, #done { display: none; }
+    .hud {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 14px;
+    }
+    .timer { font-size: 1.4em; font-weight: 800; color: #00d4ff; }
+    .timer.warn { color: #ff8c00; }
+    .timer.crit { color: #ff4444; }
+    .sla {
+      font-size: 0.9em; font-weight: 700; color: #f472b6;
+    }
+    .sla.warn { color: #ff8c00; }
+    .sla.crit { color: #ff4444; }
+    .client-chip {
+      display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.72em;
+      font-weight: 800; margin-right: 6px; background: #f472b622; color: #f472b6;
+      border: 1px solid #f472b644;
+    }
+    .tier { font-size: 0.7em; color: #7a9ab0; }
+    .alert-card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 18px;
+    }
+    .sev {
+      display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.72em;
+      font-weight: 800; margin-bottom: 8px;
+    }
+    .sev-CRITICAL { background: #ff444433; color: #ff4444; }
+    .sev-HIGH { background: #ff8c0033; color: #ff8c00; }
+    .sev-MEDIUM { background: #ffcc0033; color: #ffcc00; }
+    .sev-LOW, .sev-INFO { background: #334455; color: #9ab; }
+    .alert-card h2 { margin: 0 0 8px; font-size: 1.1em; color: #fff; }
+    .src { font-size: 0.75em; color: #667; margin-bottom: 10px; }
+    .detail { font-size: 0.88em; color: #9ab; line-height: 1.55; margin-bottom: 16px; }
+    label { display: block; font-size: 0.75em; color: #7a9ab0; margin: 10px 0 4px; }
+    select, textarea, input {
+      width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 5px; padding: 8px 10px; font-family: inherit; font-size: 0.85em;
+    }
+    textarea { min-height: 56px; resize: vertical; }
+    .nav-btns { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .result-box {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px; padding: 20px;
+    }
+    .big-score { font-size: 2.6em; font-weight: 800; color: #00ff88; }
+    .graded { margin-top: 16px; }
+    .g-row {
+      border-bottom: 1px solid #1e3045; padding: 10px 0; font-size: 0.82em;
+    }
+    .ok { color: #00ff88; }
+    .bad { color: #ff6666; }
+    .clients-blurb {
+      font-size: 0.78em; color: #8aa; margin-bottom: 14px; line-height: 1.45;
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px; padding: 12px 14px;
+    }
+    @media (max-width: 640px) { .modes { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">BOUNDRY.AI · Shift Sim</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="lobby">
+      <h1>SOC Shift Simulator</h1>
+      <p class="sub">
+        Timed multi-client MSSP queue. Tag the correct client, beat the ticket SLA, pick disposition + MITRE,
+        then fill the Ticket Field Console (priority, what happened, evidence, actions, next action).
+        <strong style="color:#cdd6e0;">Quick Shift</strong> is the default (15–20 min).
+      </p>
+      <div class="clients-blurb">
+        <b style="color:#f472b6;">Clients in this queue:</b>
+        {% for c in clients %}
+          {{ c.name }} ({{ c.tier }}){% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </div>
+      <div class="modes">
+        {% for mid, m in modes.items() %}
+        <button type="button" class="mode {% if mid == default_mode %}selected{% endif %}" data-mode="{{ mid }}" onclick="selectMode('{{ mid }}')">
+          <h3>{{ m.label }}</h3>
+          <p>{{ m.blurb }}</p>
+          <div class="tag">{{ m.alert_count }} alerts · ~{{ m.minutes }} min</div>
+        </button>
+        {% endfor %}
+      </div>
+      <button class="btn" id="btn-start" onclick="startShift()">Start shift →</button>
+    </div>
+
+    <div id="active">
+      <div class="hud">
+        <div>
+          <div style="font-size:0.75em;color:#667;" id="mode-label">—</div>
+          <div class="timer" id="timer">--:--</div>
+        </div>
+        <div>
+          <div style="font-size:0.7em;color:#667;">Ticket SLA</div>
+          <div class="sla" id="sla-timer">--:--</div>
+        </div>
+        <div style="font-size:0.85em;color:#8aa;">
+          Alert <b id="prog" style="color:#fff;">1</b> / <span id="total">0</span>
+        </div>
+      </div>
+      <div class="alert-card" id="alert-card"></div>
+      <div class="nav-btns">
+        <button class="btn" onclick="submitCurrent()">Save & next →</button>
+        <button class="btn btn-dim" onclick="finishEarly()">End shift now</button>
+      </div>
+    </div>
+
+    <div id="done">
+      <div class="result-box">
+        <div style="font-size:0.8em;color:#7a9ab0;">SHIFT COMPLETE</div>
+        <div class="big-score" id="r-score">—%</div>
+        <div id="r-sub" style="color:#8aa;font-size:0.9em;margin-top:4px;"></div>
+        <div class="graded" id="r-graded"></div>
+        <div class="nav-btns" style="margin-top:18px;">
+          <a class="btn" href="/career/shift" style="text-decoration:none;">Another Quick Shift</a>
+          <a class="btn btn-dim" href="/career/portfolio" style="text-decoration:none;">View portfolio</a>
+          <a class="btn btn-dim" href="/career" style="text-decoration:none;">Career Lab</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% include '_ticket_field_console.html' %}
+<script src="/static/game.js"></script>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+function csrfFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({'X-CSRFToken': _csrf, 'Content-Type': 'application/json'}, opts.headers || {});
+  return fetch(url, opts);
+}
+
+var selectedMode = '{{ default_mode }}';
+var mitreOptions = {{ mitre_options | tojson }};
+var clients = {{ clients | tojson }};
+var TICKET_FIELDS = {{ ticket_fields | tojson }};
+var sessionId = null;
+var alerts = [];
+var answers = [];
+var idx = 0;
+var endsAt = 0;
+var shiftStartedAt = 0;
+var ticketOpenedAt = 0;
+var timerHandle = null;
+var finishing = false;
+
+function selectMode(m) {
+  selectedMode = m;
+  document.querySelectorAll('.mode').forEach(function(el) {
+    el.classList.toggle('selected', el.getAttribute('data-mode') === m);
+  });
+}
+
+function mitreSelectHtml(selected) {
+  selected = selected || '';
+  var html = '<select id="a-mitre">';
+  (mitreOptions || []).forEach(function(opt) {
+    var id = opt.id || '';
+    var sel = (id === selected) ? ' selected' : '';
+    html += '<option value="' + esc(id) + '"' + sel + '>' + esc(opt.label || id) + '</option>';
+  });
+  html += '</select>';
+  return html;
+}
+
+function clientSelectHtml(selected) {
+  selected = selected || '';
+  var html = '<select id="a-client"><option value="">Select client…</option>';
+  (clients || []).forEach(function(c) {
+    var sel = (c.id === selected) ? ' selected' : '';
+    html += '<option value="' + esc(c.id) + '"' + sel + '>' +
+      esc(c.name) + ' (' + esc(c.tier || '') + ')</option>';
+  });
+  html += '</select>';
+  return html;
+}
+
+function startShift() {
+  var btn = document.getElementById('btn-start');
+  btn.disabled = true;
+  btn.textContent = 'Loading queue…';
+  csrfFetch('/career/shift/start', {
+    method: 'POST',
+    body: JSON.stringify({ mode: selectedMode })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d.error) { alert(d.error); btn.disabled = false; btn.textContent = 'Start shift →'; return; }
+    sessionId = d.session_id;
+    alerts = d.alerts || [];
+    if (d.mitre_options && d.mitre_options.length) mitreOptions = d.mitre_options;
+    if (d.clients && d.clients.length) clients = d.clients;
+    answers = [];
+    idx = 0;
+    shiftStartedAt = Date.now();
+    endsAt = Date.now() + (d.duration_sec * 1000);
+    document.getElementById('lobby').style.display = 'none';
+    document.getElementById('active').style.display = 'block';
+    document.getElementById('mode-label').textContent = d.label;
+    document.getElementById('total').textContent = alerts.length;
+    renderAlert();
+    tickTimer();
+    timerHandle = setInterval(tickTimer, 1000);
+  })
+  .catch(function(){
+    btn.disabled = false;
+    btn.textContent = 'Start shift →';
+    alert('Failed to start shift');
+  });
+}
+
+function tickTimer() {
+  var left = Math.max(0, Math.floor((endsAt - Date.now()) / 1000));
+  var m = Math.floor(left / 60);
+  var s = left % 60;
+  var el = document.getElementById('timer');
+  el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  el.className = 'timer' + (left <= 60 ? ' crit' : (left <= 180 ? ' warn' : ''));
+
+  // Per-ticket SLA clock (from when this alert was opened)
+  if (idx < alerts.length && ticketOpenedAt) {
+    var a = alerts[idx];
+    var slaSec = a.sla_seconds || ((a.sla_minutes || 30) * 60);
+    var elapsed = Math.floor((Date.now() - ticketOpenedAt) / 1000);
+    var slaLeft = Math.max(0, slaSec - elapsed);
+    var sm = Math.floor(slaLeft / 60);
+    var ss = slaLeft % 60;
+    var slaEl = document.getElementById('sla-timer');
+    slaEl.textContent = sm + ':' + (ss < 10 ? '0' : '') + ss;
+    slaEl.className = 'sla' + (slaLeft <= 0 ? ' crit' : (slaLeft <= 60 ? ' warn' : ''));
+  }
+
+  if (left <= 0 && !finishing) finishShift();
+}
+
+function renderAlert() {
+  if (idx >= alerts.length) { finishShift(); return; }
+  var a = alerts[idx];
+  ticketOpenedAt = Date.now();
+  document.getElementById('prog').textContent = (idx + 1);
+  var prev = answers.find(function(x){ return x.idx === a.idx; }) || {};
+  var prevFields = prev.ticket_fields || {
+    priority: prev.priority || '',
+    what_happened: prev.summary || '',
+    evidence: prev.evidence || '',
+    actions_taken: prev.actions_taken || '',
+    next_action: prev.next_action || ''
+  };
+  document.getElementById('alert-card').innerHTML =
+    '<span class="client-chip">' + esc(a.client_name || 'Unknown client') + '</span>' +
+    '<span class="tier">' + esc(a.client_tier || '') + ' · SLA ' + esc(a.sla_minutes || 30) + 'm</span><br>' +
+    '<span class="sev sev-' + esc(a.severity) + '">' + esc(a.severity) + '</span>' +
+    '<h2>' + esc(a.title) + '</h2>' +
+    '<div class="src">' + esc(a.source) + '</div>' +
+    '<div class="detail">' + esc(a.detail) + '</div>' +
+    '<label>Client (must match the chip above)</label>' +
+    clientSelectHtml(prev.client_id || '') +
+    '<label>Disposition</label>' +
+    '<select id="a-disp">' +
+      '<option value="true_positive"' + (prev.disposition==='true_positive'?' selected':'') + '>True positive — investigate / contain</option>' +
+      '<option value="false_positive"' + (prev.disposition==='false_positive'?' selected':'') + '>False positive — close with note</option>' +
+      '<option value="escalate"' + (prev.disposition==='escalate'?' selected':'') + '>Escalate — IR / senior</option>' +
+    '</select>' +
+    '<label>MITRE technique</label>' +
+    mitreSelectHtml(prev.mitre || '') +
+    '<div style="margin-top:14px;font-size:0.75em;color:#00d4ff;font-weight:700;">Ticket Field Console</div>' +
+    '<p style="font-size:0.72em;color:#7a9ab0;margin:4px 0 8px;line-height:1.4;">' +
+      'Priority + typed sections (what / evidence / actions / next). Client and disposition stay above.</p>' +
+    '<div id="ticket-console"></div>';
+  TicketFields.mount('#ticket-console', {
+    fields: TICKET_FIELDS || [],
+    seed: prevFields,
+    showSeedBtn: false
+  });
+  tickTimer();
+}
+
+function saveCurrent() {
+  if (idx >= alerts.length) return;
+  var a = alerts[idx];
+  var fields = TicketFields.collect();
+  var summary = fields.what_happened || '';
+  var nextAction = fields.next_action || '';
+  var notes =
+    'Priority: ' + (fields.priority || '') + '\n' +
+    'What: ' + summary + '\n' +
+    'Evidence: ' + (fields.evidence || '') + '\n' +
+    'Actions: ' + (fields.actions_taken || '') + '\n' +
+    'Next: ' + nextAction;
+  var ans = {
+    idx: a.idx,
+    disposition: document.getElementById('a-disp').value,
+    mitre: document.getElementById('a-mitre').value,
+    client_id: document.getElementById('a-client').value,
+    summary: summary,
+    next_action: nextAction,
+    evidence: fields.evidence || '',
+    actions_taken: fields.actions_taken || '',
+    priority: fields.priority || '',
+    ticket_fields: fields,
+    notes: notes,
+    elapsed_sec: Math.floor((Date.now() - (ticketOpenedAt || shiftStartedAt)) / 1000)
+  };
+  var found = false;
+  answers = answers.map(function(x){
+    if (x.idx === a.idx) { found = true; return ans; }
+    return x;
+  });
+  if (!found) answers.push(ans);
+}
+
+function submitCurrent() {
+  saveCurrent();
+  idx += 1;
+  if (idx >= alerts.length) finishShift();
+  else renderAlert();
+}
+
+function finishEarly() {
+  if (!confirm('End shift and score what you have?')) return;
+  saveCurrent();
+  finishShift();
+}
+
+function finishShift() {
+  if (finishing) return;
+  finishing = true;
+  if (timerHandle) clearInterval(timerHandle);
+  csrfFetch('/career/shift/complete', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId, answers: answers })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    document.getElementById('active').style.display = 'none';
+    document.getElementById('done').style.display = 'block';
+    if (d.error) {
+      document.getElementById('r-score').textContent = '—';
+      document.getElementById('r-sub').textContent = d.error;
+      return;
+    }
+    var res = d.result || {};
+    document.getElementById('r-score').textContent = (res.pct || 0) + '%';
+    document.getElementById('r-sub').textContent =
+      res.correct_dispositions + ' / ' + res.total_alerts + ' dispositions correct · ' +
+      res.points + '/' + res.max_points + ' pts' +
+      (d.portfolio_added ? ' · ' + d.portfolio_added + ' case(s) added to portfolio' : '');
+    var html = '';
+    (res.graded || []).forEach(function(g){
+      html += '<div class="g-row">' +
+        '<div><b>' + esc(g.title) + '</b>' +
+          (g.client_name ? ' <span style="color:#f472b6;font-size:0.85em;">· ' + esc(g.client_name) + '</span>' : '') +
+        '</div>' +
+        '<div class="' + (g.disp_ok ? 'ok' : 'bad') + '">' +
+          (g.disp_ok ? '✓' : '✗') + ' disposition' +
+          (g.disp_ok ? '' : ' (correct: ' + esc(g.correct_disposition) + ')') +
+        '</div>' +
+        '<div class="' + (g.mitre_ok ? 'ok' : 'bad') + '">' +
+          (g.mitre_ok ? '✓' : '✗') + ' MITRE' +
+          (g.mitre_ok ? '' : ' (correct: ' + esc(g.correct_mitre || 'N/A') + ')') +
+        '</div>' +
+        '<div class="' + (g.client_ok ? 'ok' : 'bad') + '">' +
+          (g.client_ok ? '✓' : '✗') + ' client tag' +
+        '</div>' +
+        '<div class="' + ((g.hygiene_ok || g.notes_ok) ? 'ok' : 'bad') + '">' +
+          ((g.hygiene_ok || g.notes_ok) ? '✓' : '✗') + ' ticket hygiene' +
+        '</div>' +
+        '<div class="' + (g.sla_ok ? 'ok' : 'bad') + '">' +
+          (g.sla_ok ? '✓' : '✗') + ' SLA' +
+        '</div>' +
+        (g.hint ? '<div style="color:#667;margin-top:4px;">' + esc(g.hint) + '</div>' : '') +
+      '</div>';
+    });
+    document.getElementById('r-graded').innerHTML = html;
+    if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+  })
+  .catch(function(){
+    document.getElementById('active').style.display = 'none';
+    document.getElementById('done').style.display = 'block';
+    document.getElementById('r-sub').textContent = 'Network error finishing shift';
+  });
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+</script>
+{% set tutor_track = 'shift' %}
+{% set tutor_context = {'lab': 'shift', 'title': 'Shift Simulation'} %}
+{% include '_career_tutor.html' %}
+</body>
+</html>

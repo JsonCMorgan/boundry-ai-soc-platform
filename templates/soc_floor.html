@@ -5,6 +5,8 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>SOC Floor — Boundry Tickets</title>
   {% include '_live_ops_shell.html' %}
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
   <style>
     .floor {
       display: grid;
@@ -173,18 +175,32 @@
     details.training-bridges summary {
       cursor: pointer; color: #a78bfa; font-weight: 700; font-size: 0.78em;
     }
+    .ws-tabs { margin: 10px 0; border: 1px solid var(--ops-border); border-radius: 6px; overflow: hidden; }
+    .ws-tab-bar { display: flex; gap: 0; background: var(--ops-bg); border-bottom: 1px solid var(--ops-border); }
+    .ws-tab-bar button {
+      flex: 1; padding: 8px; border: none; background: transparent; color: var(--ops-muted);
+      font-size: 0.72em; font-weight: 700; cursor: pointer; text-transform: uppercase;
+    }
+    .ws-tab-bar button.on { color: var(--ops-accent); background: #131d28; }
+    .ws-pane { display: none; padding: 10px; font-size: 0.78em; max-height: 220px; overflow: auto; }
+    .ws-pane.on { display: block; }
+    .ws-graph svg { width: 100%; height: 140px; }
+    .entity-drawer {
+      position: fixed; right: 0; top: 0; width: 320px; max-width: 90vw; height: 100vh;
+      background: var(--ops-surface); border-left: 1px solid var(--ops-border);
+      z-index: 100; padding: 14px; display: none; overflow: auto;
+    }
+    .entity-drawer.open { display: block; }
   </style>
 </head>
-<body class="ops-shell">
+<body class="ops-shell secops-accent-hq">
+{% set secops_active = 'floor' %}
+{% include '_secops_layout.html' %}
   <div class="ops-topbar">
     <div>
       <span class="ops-brand">SOC Floor</span>
       <span style="font-size:0.72em;color:var(--ops-dim);">Boundry Tickets (local)</span>
-      <a href="/soc" class="ops-active">Floor</a>
-      <a href="/soc/tickets">Tickets</a>
-      <a href="/control-room">Control Room</a>
-      <a href="/siem">SIEM</a>
-      <a href="/soar">SOAR</a>
+      <a href="/soc/tickets">Ticket history</a>
       {% include "_navmenu.html" %}
     </div>
     <div class="shift-bar">
@@ -232,6 +248,19 @@
           <div class="obs-links" id="observables-links"></div>
         </div>
 
+        <div class="ws-tabs" id="ws-tabs" style="display:none;">
+          <div class="ws-tab-bar">
+            <button type="button" class="on" data-ws="timeline" onclick="switchWsTab('timeline')">Timeline</button>
+            <button type="button" data-ws="entities" onclick="switchWsTab('entities')">Entities</button>
+            <button type="button" data-ws="tasks" onclick="switchWsTab('tasks')">Tasks</button>
+            <button type="button" data-ws="graph" onclick="switchWsTab('graph')">Graph</button>
+          </div>
+          <div class="ws-pane on" id="ws-timeline"></div>
+          <div class="ws-pane" id="ws-entities"></div>
+          <div class="ws-pane" id="ws-tasks"></div>
+          <div class="ws-pane" id="ws-graph"></div>
+        </div>
+
         <div class="actions" id="state-actions"></div>
 
         <div id="ticket-console"></div>
@@ -254,7 +283,10 @@
           <h3>Work notes</h3>
           <div id="timeline" class="empty">No events yet.</div>
           <div class="composer" style="margin-top:10px;">
-            <textarea id="comment" placeholder="Add a work note…"></textarea>
+            {{ writing_coach_from_registry('soc_work_note') }}
+            {% set _wn = get_coach('soc_work_note') %}
+            <textarea id="comment" aria-describedby="coach-soc_work_note" data-writing-coach="soc_work_note"
+              placeholder="{{ (_wn.placeholder_example if _wn else 'Add a work note…') }}"></textarea>
             <button type="button" class="ops-btn ops-btn-dim" style="margin-top:8px;" onclick="addComment()">Post note</button>
           </div>
         </div>
@@ -273,7 +305,10 @@
       <p style="font-size:0.78em;color:var(--ops-muted);">
         Handoff: what you closed, what stays open, next action, client/severity cue.
       </p>
-      <textarea id="handoff" placeholder="Closed X as FP. Open: Contoso HIGH spray — next: verify MFA reset. SLA 20m."></textarea>
+      {{ writing_coach_from_registry('soc_handoff') }}
+      {% set _ho = get_coach('soc_handoff') %}
+      <textarea id="handoff" aria-describedby="coach-soc_handoff" data-writing-coach="soc_handoff"
+        placeholder="{{ (_ho.placeholder_example if _ho else '') }}"></textarea>
       <div style="margin-top:12px;display:flex;gap:8px;">
         <button type="button" class="ops-btn ops-btn-warn" onclick="endShift()">Confirm end</button>
         <button type="button" class="ops-btn ops-btn-dim" onclick="hideEndModal()">Cancel</button>
@@ -287,7 +322,10 @@
       <p style="font-size:0.78em;color:var(--ops-muted);">
         Ticket stays open in Escalated. Note who needs it, what you did, and why.
       </p>
-      <textarea id="esc-note" placeholder="Escalate to Tier-2: Harbor ransomware indicators…"></textarea>
+      {{ writing_coach_from_registry('soc_escalate') }}
+      {% set _es = get_coach('soc_escalate') %}
+      <textarea id="esc-note" aria-describedby="coach-soc_escalate" data-writing-coach="soc_escalate"
+        placeholder="{{ (_es.placeholder_example if _es else '') }}"></textarea>
       <div style="margin-top:12px;display:flex;gap:8px;">
         <button type="button" class="ops-btn ops-btn-warn" onclick="confirmEscalate()">Escalate</button>
         <button type="button" class="ops-btn ops-btn-dim" onclick="hideEscModal()">Cancel</button>
@@ -312,6 +350,28 @@
     var d = document.createElement('div');
     d.textContent = s == null ? '' : String(s);
     return d.innerHTML;
+  }
+  function attrEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;');
+  }
+  function showObsToast(msg) {
+    var panel = document.getElementById('observables-panel');
+    if (!panel) return;
+    var el = document.getElementById('obs-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'obs-toast';
+      el.style.cssText = 'margin-top:6px;font-size:0.72em;color:var(--ops-ok);min-height:1em;';
+      panel.appendChild(el);
+    }
+    el.textContent = msg || '';
+    if (msg) {
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { el.textContent = ''; }, 2800);
+    }
   }
   function headers() {
     return { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF };
@@ -467,10 +527,11 @@
     }
     panel.style.display = 'block';
     grid.innerHTML = entities.map(function (e) {
+      var v = attrEsc(e.value);
       var enrichBtn = (e.kind === 'ip' || e.kind === 'domain')
-        ? '<button type="button" title="Enrich" onclick="prefillEnrich(' + JSON.stringify(e.value) + ')">Enrich</button>'
+        ? '<button type="button" title="Enrich" data-obs-action="enrich" data-obs-value="' + v + '">Enrich</button>'
         : '';
-      var copyBtn = '<button type="button" title="Copy" onclick="copyText(' + JSON.stringify(e.value) + ')">Copy</button>';
+      var copyBtn = '<button type="button" title="Copy" data-obs-action="copy" data-obs-value="' + v + '">Copy</button>';
       return '<span class="obs-chip"><span class="lbl">' + esc(e.label) + '</span> ' +
         esc(e.value) + copyBtn + enrichBtn + '</span>';
     }).join('');
@@ -490,7 +551,30 @@
 
   function copyText(t) {
     if (!t) return;
-    navigator.clipboard.writeText(String(t)).catch(function () {});
+    var s = String(t);
+    function onOk() { showObsToast('Copied to clipboard: ' + s); }
+    function legacyCopy() {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = s;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) onOk();
+        else showObsToast('Copy failed — select the value manually.');
+      } catch (e) {
+        showObsToast('Copy failed — select the value manually.');
+      }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(s).then(onOk).catch(legacyCopy);
+    } else {
+      legacyCopy();
+    }
   }
 
   function prefillEnrich(val) {
@@ -498,9 +582,28 @@
     if (iocEl) {
       iocEl.value = val;
       iocEl.dataset.userEdited = '1';
+      showObsToast('Running enrich for ' + val + '…');
+      var row = document.querySelector('.enrich-row');
+      if (row && row.scrollIntoView) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       enrich();
     }
   }
+
+  (function bindObservablesGrid() {
+    var grid = document.getElementById('observables-grid');
+    if (!grid || grid.dataset.obsBound) return;
+    grid.dataset.obsBound = '1';
+    grid.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-obs-action]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var val = btn.getAttribute('data-obs-value') || '';
+      var action = btn.getAttribute('data-obs-action');
+      if (action === 'copy') copyText(val);
+      else if (action === 'enrich') prefillEnrich(val);
+    });
+  })();
 
   document.getElementById('ioc').addEventListener('input', function () {
     this.dataset.userEdited = '1';
@@ -806,6 +909,7 @@
             (d.geo ? ' · ' + esc(d.geo) : '') + '</div>' +
             '<div style="margin-top:4px;color:var(--ops-muted);">' + esc(d.summary || '') + '</div>' +
             (d.tags && d.tags.length ? '<div style="margin-top:4px;font-size:0.85em;">Tags: ' + esc(d.tags.join(', ')) + '</div>' : '');
+          showObsToast('Enrich complete: ' + (d.verdict || 'unknown'));
         }
         if (raw) {
           raw.style.display = 'block';
@@ -895,9 +999,90 @@
     };
   }
 
+  var wsBundle = null;
+
+  function switchWsTab(name) {
+    document.querySelectorAll('.ws-tab-bar button').forEach(b => b.classList.toggle('on', b.dataset.ws === name));
+    document.querySelectorAll('.ws-pane').forEach(p => p.classList.toggle('on', p.id === 'ws-' + name));
+  }
+
+  function loadWorkspace(caseId) {
+    if (!caseId) return;
+    fetch('/api/soc/cases/' + caseId + '/workspace')
+      .then(r => r.json()).then(d => {
+        if (!d.ok) return;
+        wsBundle = d;
+        document.getElementById('ws-tabs').style.display = 'block';
+        var tl = d.timeline || [];
+        document.getElementById('ws-timeline').innerHTML = tl.length
+          ? tl.map(e => '<div style="margin-bottom:6px;"><span style="color:var(--ops-dim);">' +
+            (e.created_at || '').substring(0,19) + '</span> ' + (e.body || e.event_type || '') + '</div>').join('')
+          : '<span class="empty">No timeline yet.</span>';
+        var ents = (d.observables && d.observables.entities) || [];
+        document.getElementById('ws-entities').innerHTML = ents.map(e =>
+          '<div style="margin-bottom:6px;cursor:pointer;color:var(--ops-accent);" onclick="openEntityDrawer(\'' +
+          String(e.value).replace(/'/g,'') + '\')">' + (e.label || e.kind) + ': ' + e.value + '</div>'
+        ).join('') || 'No entities';
+        var tasks = d.tasks || [];
+        document.getElementById('ws-tasks').innerHTML = tasks.map(t =>
+          '<div>☐ ' + t.title + ' <span style="color:var(--ops-dim);">(' + t.status + ')</span></div>'
+        ).join('') + '<button type="button" class="ops-btn ops-btn-dim" style="margin-top:8px;" onclick="addWsTask()">+ Task</button>';
+        renderWsGraph(d.graph || {});
+      }).catch(function(){});
+  }
+
+  function renderWsGraph(g) {
+    var el = document.getElementById('ws-graph');
+    if (!g.nodes || !g.nodes.length) { el.textContent = 'No graph data'; return; }
+    var w = 280, h = 120;
+    var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" class="ws-graph"><text x="4" y="12" fill="#556" font-size="8">' +
+      (g.disclaimer || '') + '</text>';
+    g.nodes.forEach(function(n, i) {
+      var x = 20 + (i % 4) * 65, y = 40 + Math.floor(i / 4) * 40;
+      svg += '<circle cx="' + x + '" cy="' + y + '" r="14" fill="#131d28" stroke="#00d4ff"/><text x="' + (x-10) + '" y="' + (y+4) + '" fill="#cdd6e0" font-size="6">' +
+        String(n.label).substring(0,8) + '</text>';
+    });
+    svg += '</svg>';
+    el.innerHTML = svg;
+  }
+
+  function openEntityDrawer(value) {
+    var ins = (wsBundle && wsBundle.entity_insights && wsBundle.entity_insights[value]) || [];
+    var html = '<h4 style="margin:0 0 8px;color:var(--ops-accent);">' + value + '</h4>';
+    ins.forEach(function(i) { html += '<p><b>' + i.title + '</b><br>' + i.detail + '</p>'; });
+    if (!ins.length) html += '<p>No local insights. Run enrich below.</p>';
+    var d = document.getElementById('entity-drawer');
+    if (!d) {
+      d = document.createElement('div');
+      d.id = 'entity-drawer';
+      d.className = 'entity-drawer';
+      document.body.appendChild(d);
+    }
+    d.innerHTML = html + '<button type="button" class="ops-btn ops-btn-dim" onclick="document.getElementById(\'entity-drawer\').classList.remove(\'open\')">Close</button>';
+    d.classList.add('open');
+  }
+
+  function addWsTask() {
+    if (!currentCase) return;
+    var title = prompt('Task title');
+    if (!title) return;
+    fetch('/api/soc/cases/' + currentCase.id + '/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content },
+      body: JSON.stringify({ title: title })
+    }).then(r => r.json()).then(function() { loadWorkspace(currentCase.id); });
+  }
+
+  var _renderCaseOrig = renderCase;
+  renderCase = function(c, item, observables, suggestEvidence) {
+    _renderCaseOrig(c, item, observables, suggestEvidence);
+    if (c && c.id) loadWorkspace(c.id);
+  };
+
   renderShift();
   loadQueue();
   if (window.OpsPresence) OpsPresence.mount('#ops-presence');
   </script>
+{% include '_secops_layout_end.html' %}
 </body>
 </html>

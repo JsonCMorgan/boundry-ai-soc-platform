@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ track_title }} — Boundry.AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #a78bfa; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .primer, .legend {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 18px; font-size: 0.82em; line-height: 1.5;
+    }
+    .primer b, .legend b { color: #a78bfa; }
+    .legend .ex {
+      display: block; margin: 10px 0; padding: 10px 12px; background: #0a0e14;
+      border: 1px solid #1e3045; border-radius: 6px; color: #ff8c00; font-size: 0.78em;
+      white-space: pre-wrap;
+    }
+    .legend ol { margin: 8px 0 0 18px; padding: 0; color: #9ab; }
+    .legend li { margin-bottom: 4px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+    }
+    .card h3 { margin: 0 0 6px; color: #fff; font-size: 0.95em; }
+    .card p { margin: 0 0 10px; font-size: 0.78em; color: #9ab; line-height: 1.4; }
+    .meta { font-size: 0.72em; color: #667; margin-bottom: 8px; }
+    .btn {
+      display: inline-block; padding: 8px 12px; border-radius: 6px; text-decoration: none;
+      font-size: 0.78em; font-weight: 700; border: 1px solid #a78bfa66;
+      background: #a78bfa18; color: #a78bfa; cursor: pointer; font-family: inherit;
+    }
+    .btn:hover { background: #a78bfa28; }
+    .pass { color: #00ff88; font-size: 0.72em; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">EDR Console Lab</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/email">Email Triage</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    <div class="legend">
+      <div style="color:#a78bfa;font-weight:800;margin-bottom:8px;">{{ console_legend.title }}</div>
+      <p style="margin:0 0 8px;color:#9ab;">{{ console_legend.intro }}</p>
+      <div style="color:#7a9ab0;font-size:0.78em;margin-bottom:4px;">Example line (orange = flagged):</div>
+      <code class="ex">{{ console_legend.example_line }}</code>
+      {% for f in console_legend.fields %}
+      <div style="margin-bottom:8px;"><b>{{ f.label }}:</b> {{ f.plain }}</div>
+      {% endfor %}
+      <div style="color:#a78bfa;font-weight:700;margin-top:10px;">Read order</div>
+      <ol>
+        {% for step in console_legend.read_order %}
+        <li>{{ step }}</li>
+        {% endfor %}
+      </ol>
+    </div>
+    <div class="primer">
+      <div style="color:#a78bfa;font-weight:800;margin-bottom:8px;">Before you start (define these)</div>
+      {% for p in primer %}
+      <div style="margin-bottom:6px;"><b>{{ p.term }}:</b> {{ p.plain }}</div>
+      {% endfor %}
+    </div>
+    <h2 style="color:#fff;font-size:1em;">Show me — pick a case</h2>
+    <div class="grid">
+      {% for c in cases %}
+      <div class="card">
+        <h3>{{ c.title }}</h3>
+        <div class="meta">Difficulty {{ c.difficulty }} · new host/user/paths each open</div>
+        <p>{{ c.teach }}</p>
+        {% if best_by_case.get(c.id) and best_by_case[c.id].passed %}
+        <div class="pass">Best: {{ best_by_case[c.id].score_pct }}% PASS</div>
+        {% elif best_by_case.get(c.id) %}
+        <div class="meta">Best: {{ best_by_case[c.id].score_pct }}%</div>
+        {% endif %}
+        <a class="btn" href="{{ c.open_url }}">Open console →</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% include '_career_tutor.html' %}
+</body>
+</html>

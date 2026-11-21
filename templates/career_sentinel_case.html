@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ case.title }} — Sentinel Lab</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #38bdf8; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 24px 18px 90px; }
+    h1 { color: #fff; margin: 0 0 8px; font-size: 1.25em; }
+    .teach { color: #9ab; font-size: 0.85em; line-height: 1.45; margin-bottom: 14px; }
+    .tabs {
+      display: flex; gap: 6px; margin-bottom: 0; flex-wrap: wrap;
+    }
+    .tab {
+      padding: 8px 14px; border: 1px solid #1e3045; border-bottom: none;
+      border-radius: 6px 6px 0 0; background: #0a0e14; color: #7a9ab0;
+      cursor: pointer; font-family: inherit; font-size: 0.78em; font-weight: 700;
+    }
+    .tab.active { background: #0f1923; color: #38bdf8; border-color: #38bdf866; }
+    .panel {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 0 8px 8px 8px;
+      padding: 14px; margin-bottom: 14px; display: none;
+    }
+    .panel.show { display: block; }
+    .panel h2 { margin: 0 0 10px; font-size: 0.9em; color: #38bdf8; }
+    .meta { font-size: 0.78em; color: #7a9ab0; margin-bottom: 8px; line-height: 1.45; }
+    .meta b { color: #fff; }
+    table.ent {
+      width: 100%; border-collapse: collapse; font-size: 0.75em; margin-top: 8px;
+    }
+    table.ent th, table.ent td {
+      border: 1px solid #1e3045; padding: 6px 8px; text-align: left;
+    }
+    table.ent th { color: #38bdf8; background: #0a0e14; }
+    pre.kql {
+      background: #0a0e14; border: 1px solid #1e3045; border-radius: 6px;
+      padding: 10px; font-size: 0.72em; white-space: pre-wrap; color: #8aa;
+      max-height: 180px; overflow: auto; line-height: 1.4;
+    }
+    .prove {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px; margin-top: 8px;
+    }
+    .prove h2 { margin: 0 0 10px; font-size: 0.9em; color: #38bdf8; }
+    label.chk {
+      display: block; font-size: 0.8em; margin: 6px 0; cursor: pointer; color: #cdd6e0;
+    }
+    select, button { font-family: inherit; font-size: 0.8em; }
+    select {
+      width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 6px; padding: 8px; margin-top: 6px;
+    }
+    .btn {
+      margin-top: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid #38bdf866;
+      background: #38bdf818; color: #38bdf8; font-weight: 800; cursor: pointer;
+    }
+    .result {
+      display: none; margin-top: 14px; padding: 12px; border-radius: 8px;
+      border: 1px solid #1e3045; background: #131d28; font-size: 0.82em; line-height: 1.45;
+      white-space: normal;
+    }
+    .result.show { display: block; }
+    .btn-next { border-color: #00ff8866; background: #00ff8818; color: #00ff88; display: none; text-decoration: none; }
+    .btn-next.show { display: inline-block; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Sentinel Workspace</span>
+    <div>
+      <a href="/career/sentinel">← Lab hub</a>
+      <a href="/career/kql">KQL Learn</a>
+      <a href="/career">Career</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ case.title }}</h1>
+    <p class="teach">{{ case.teach }}</p>
+    <div class="meta">Client: <b>{{ case.client }}</b> · difficulty {{ case.difficulty }}</div>
+
+    <div class="tabs">
+      <button type="button" class="tab active" data-blade="incidents" onclick="showBlade('incidents')">1. Incidents</button>
+      <button type="button" class="tab" data-blade="entities" onclick="showBlade('entities')">2. Entities</button>
+      <button type="button" class="tab" data-blade="hunting" onclick="showBlade('hunting')">3. Hunting</button>
+    </div>
+
+    <div class="panel show" id="blade-incidents">
+      <h2>Incidents blade</h2>
+      <div class="meta">
+        <div><b>{{ incident.name }}</b></div>
+        <div>Severity: <b>{{ incident.severity }}</b> · Status: {{ incident.status }}</div>
+        <div>Product: {{ incident.product }}</div>
+        <div>Tactics: {{ incident.tactics }}</div>
+        <div style="margin-top:8px;">{{ incident.summary }}</div>
+      </div>
+    </div>
+
+    <div class="panel" id="blade-entities">
+      <h2>Entities blade</h2>
+      <table class="ent">
+        <tr><th>Type</th><th>Value</th><th>Role</th></tr>
+        {% for e in entities %}
+        <tr>
+          <td>{{ e.type }}</td>
+          <td>{{ e.value }}</td>
+          <td>{{ e.role }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    <div class="panel" id="blade-hunting">
+      <h2>Hunting blade — {{ hunt.query_title }}</h2>
+      <pre class="kql">{{ hunt.kql }}</pre>
+      <table class="ent">
+        <tr>
+          {% for col in hunt_cols %}
+          <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+        {% for row in hunt.rows %}
+        <tr>
+          {% for col in hunt_cols %}
+          <td>{{ row.get(col, '') }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </table>
+      <div class="meta" style="margin-top:10px;">{{ hunt.note }}</div>
+    </div>
+
+    <div class="prove">
+      <h2>Prove it — checklist + blade focus + disposition</h2>
+      {% for c in checklist %}
+      <label class="chk"><input type="checkbox" id="c-{{ c.id }}"> {{ c.label }}</label>
+      {% endfor %}
+      <label style="display:block;margin-top:12px;font-size:0.8em;color:#9ab;">
+        Which blade holds the decisive evidence?
+      </label>
+      <select id="blade">
+        <option value="">Select…</option>
+        {% for b in blades %}
+        <option value="{{ b.id }}">{{ b.label }}</option>
+        {% endfor %}
+      </select>
+      <label style="display:block;margin-top:12px;font-size:0.8em;color:#9ab;">Disposition</label>
+      <select id="disposition">
+        <option value="">Select…</option>
+        {% for d in dispositions %}
+        <option value="{{ d.id }}">{{ d.label }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn" onclick="grade()">Submit Sentinel triage</button>
+      <div class="result" id="result"></div>
+      <a class="btn btn-next" id="next-scenario" href="{{ next_preview.url if next_preview else '#' }}">Next scenario →</a>
+
+    </div>
+  </div>
+  {% include '_career_rationale.html' %}
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+  var CASE_ID = {{ case.id | tojson }};
+
+  function showNext(d) {
+    var nb = document.getElementById('next-scenario');
+    if (!nb) return;
+    if (d && d.next && d.next.url) nb.href = d.next.url;
+    nb.classList.add('show');
+  }
+
+  function showBlade(id) {
+    document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('show'); });
+    document.querySelectorAll('.tab').forEach(function (t) {
+      t.classList.toggle('active', t.getAttribute('data-blade') === id);
+    });
+    var el = document.getElementById('blade-' + id);
+    if (el) el.classList.add('show');
+  }
+
+  function grade() {
+    var checklist = {};
+    {{ checklist | map(attribute='id') | list | tojson }}.forEach(function (id) {
+      checklist[id] = !!(document.getElementById('c-' + id) || {}).checked;
+    });
+    var blade = document.getElementById('blade').value;
+    if (!blade) { alert('Pick which blade holds the decisive evidence'); return; }
+    var disposition = document.getElementById('disposition').value;
+    if (!disposition) { alert('Pick a disposition'); return; }
+    fetch('/api/career/sentinel/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({
+        case_id: CASE_ID,
+        checklist: checklist,
+        blade_id: blade,
+        disposition: disposition
+      })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      BoundryRationale.renderResult(document.getElementById('result'), d);
+      if (d && d.ok) showNext(d);
+    });
+  }
+  </script>
+  {% include '_career_tutor.html' %}
+</body>
+</html>

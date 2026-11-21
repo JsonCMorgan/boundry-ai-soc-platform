@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ scenario.title }} — Interview Gym</title>
+  {% include '_writing_coach.html' %}
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #00d4ff; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 860px; margin: 0 auto; padding: 24px 18px 90px; }
+
+    .mode-pill {
+      display: inline-block; font-size: 0.72em; font-weight: 800; letter-spacing: 0.06em;
+      text-transform: uppercase; padding: 4px 10px; border-radius: 12px;
+      border: 1px solid #00d4ff55; color: #00d4ff; background: #00d4ff15; margin-bottom: 10px;
+    }
+    h1 { margin: 0 0 8px; color: #fff; font-size: 1.35em; }
+    .prompt-box {
+      background: #131d28; border: 1px solid #1e3045; border-left: 3px solid #00d4ff;
+      border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+      font-size: 0.9em; line-height: 1.5; color: #cdd6e0;
+    }
+    .why { font-size: 0.75em; color: #667; margin: -8px 0 18px; }
+
+    /* Progress rail */
+    .rail {
+      display: flex; gap: 4px; margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .rail button {
+      flex: 1; min-width: 70px; padding: 8px 4px; font-size: 0.65em; font-family: inherit;
+      background: #0f1923; border: 1px solid #1e3045; color: #667; border-radius: 6px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .rail button.on { border-color: #00d4ff; color: #00d4ff; background: #00d4ff18; }
+    .rail button.done { border-color: #00ff8866; color: #00ff88; }
+    .rail button:hover { color: #cdd6e0; }
+
+    .step-card {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 10px;
+      padding: 18px; margin-bottom: 14px; display: none;
+      animation: pop 0.25s ease;
+    }
+    .step-card.show { display: block; }
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .step-label { color: #00d4ff; font-weight: 800; font-size: 0.95em; margin-bottom: 4px; }
+    .step-ask { color: #9ab; font-size: 0.82em; margin-bottom: 12px; line-height: 1.4; }
+    .teach {
+      background: #0a0e14; border: 1px dashed #1e3045; border-radius: 6px;
+      padding: 10px 12px; font-size: 0.8em; color: #8aa; line-height: 1.45; margin-bottom: 14px;
+    }
+
+    .choices { display: flex; flex-direction: column; gap: 8px; }
+    .choice {
+      text-align: left; padding: 12px 14px; border-radius: 8px; cursor: pointer;
+      background: #131d28; border: 1px solid #1e3045; color: #cdd6e0;
+      font-family: inherit; font-size: 0.82em; line-height: 1.4;
+      transition: border-color 0.12s, background 0.12s, transform 0.1s;
+    }
+    .choice:hover:not(:disabled) { border-color: #00d4ff66; transform: translateX(2px); }
+    .choice:disabled { cursor: default; }
+    .choice.pick { border-color: #00d4ff; background: #00d4ff15; }
+    .choice.good { border-color: #00ff88; background: #00ff8812; color: #b8ffd4; }
+    .choice.bad { border-color: #ff444466; background: #2a1010; opacity: 0.75; }
+
+    .reveal {
+      display: none; margin-top: 12px; padding: 12px; border-radius: 8px;
+      background: #001a10; border: 1px solid #00ff8844; font-size: 0.82em; line-height: 1.45;
+    }
+    .reveal.show { display: block; animation: pop 0.25s ease; }
+    .reveal .lbl { color: #00ff88; font-weight: 800; font-size: 0.72em; text-transform: uppercase; margin-bottom: 6px; }
+    .reveal .say { color: #cdd6e0; }
+
+    textarea {
+      width: 100%; min-height: 88px; background: #0a0e14; border: 1px solid #1e3045;
+      color: #00d4ff; border-radius: 6px; padding: 10px; font-family: inherit; font-size: 0.85em;
+      resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: #00d4ff88; }
+    .hint-btn {
+      background: transparent; border: none; color: #ffcc00; font-size: 0.75em;
+      cursor: pointer; font-family: inherit; padding: 0; margin: 8px 0;
+      text-decoration: underline;
+    }
+    .hint-box {
+      display: none; font-size: 0.78em; color: #aa9944; background: #1a1608;
+      border: 1px solid #554400; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px;
+    }
+    .hint-box.show { display: block; }
+
+    .nav-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 16px; border-radius: 6px; border: 1px solid #00d4ff66;
+      background: #00d4ff22; color: #00d4ff; font-weight: 800; cursor: pointer;
+      font-family: inherit; font-size: 0.85em;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-dim { background: #131d28; border-color: #1e3045; color: #8aa; }
+    .btn-green { background: #00ff8822; border-color: #00ff8866; color: #00ff88; }
+
+    /* Live timer */
+    .timer-wrap {
+      position: sticky; top: 0; z-index: 20; background: #0a0e14ee;
+      border-bottom: 1px solid #1e3045; padding: 10px 0; margin: -8px 0 16px;
+      display: none; align-items: center; gap: 14px;
+    }
+    .timer-wrap.show { display: flex; }
+    .timer {
+      font-size: 1.6em; font-weight: 800; color: #00d4ff; min-width: 70px;
+    }
+    .timer.warn { color: #ffcc00; }
+    .timer.hot { color: #ff4444; animation: pulse 0.8s infinite; }
+    @keyframes pulse { 50% { opacity: 0.6; } }
+    .timer-bar {
+      flex: 1; height: 8px; background: #1e3045; border-radius: 4px; overflow: hidden;
+    }
+    .timer-bar > i { display: block; height: 100%; width: 100%; background: #00d4ff; transition: width 0.2s linear; }
+
+    .live-all .step-card { display: block; margin-bottom: 12px; animation: none; }
+    .live-all .step-card { border-left: 3px solid #1e3045; }
+    .live-all .step-card:focus-within { border-left-color: #00d4ff; }
+
+    .done-panel {
+      display: none; background: #0f1923; border: 1px solid #00ff8866; border-radius: 10px;
+      padding: 18px; margin-top: 12px;
+    }
+    .done-panel.show { display: block; animation: pop 0.3s ease; }
+    .done-panel h2 { margin: 0 0 8px; color: #00ff88; font-size: 1.1em; }
+    .score-big { font-size: 2.4em; font-weight: 800; color: #00d4ff; }
+    .tips { margin: 12px 0 0; padding-left: 18px; font-size: 0.82em; color: #9ab; }
+    .tips li { margin-bottom: 6px; }
+    .model-grid { margin-top: 14px; }
+    .model-row {
+      font-size: 0.78em; border-top: 1px solid #1e3045; padding: 8px 0;
+      display: grid; grid-template-columns: 110px 1fr; gap: 8px;
+    }
+    .model-row .k { color: #00d4ff; font-weight: 700; }
+    .model-row .v { color: #9ab; line-height: 1.4; }
+
+    .confetti {
+      pointer-events: none; position: fixed; inset: 0; overflow: hidden; z-index: 50;
+    }
+    .confetti i {
+      position: absolute; width: 8px; height: 8px; border-radius: 2px;
+      animation: fall 1.2s ease-out forwards;
+    }
+    @keyframes fall {
+      to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Interview · {{ mode|upper }}</span>
+    <div>
+      <a href="/career/interview">← Gym hub</a>
+      <a href="/career">Career Lab</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <span class="mode-pill">{{ mode }} mode</span>
+    {% if scenario.variant_source and scenario.variant_source != 'core' %}
+    <span class="mode-pill" style="margin-left:6px;border-color:#ffcc0055;color:#ffcc00;background:#ffcc0012;">
+      {{ scenario.variant_source|upper }} angle · {{ scenario.variant_label }}
+    </span>
+    {% endif %}
+    <h1>{{ scenario.title }}</h1>
+    <div class="prompt-box" id="prompt-box">{{ scenario.prompt }}</div>
+    {% if scenario.why_hm %}
+    <div class="why">Hiring managers ask this because: {{ scenario.why_hm }}</div>
+    {% endif %}
+
+    <div class="timer-wrap" id="timer-wrap">
+      <div class="timer" id="timer">2:00</div>
+      <div class="timer-bar"><i id="timer-fill"></i></div>
+      <button type="button" class="btn btn-green" id="btn-start-live" onclick="startLive()">Start timer</button>
+    </div>
+
+    <div class="rail" id="rail"></div>
+    <div id="steps-host"></div>
+
+    <div class="nav-row" id="nav-row">
+      <button type="button" class="btn btn-dim" id="btn-prev" onclick="prevStep()" disabled>← Back</button>
+      <button type="button" class="btn" id="btn-next" onclick="nextStep()" disabled>Next →</button>
+      <button type="button" class="btn btn-green" id="btn-finish" style="display:none;" onclick="finishMode()">Finish scenario ✓</button>
+      <button type="button" class="btn btn-dim" onclick="newAngle()" title="Same skill, new details">New angle</button>
+    </div>
+
+    <div class="done-panel" id="done-panel">
+      <h2 id="done-title">Nice work</h2>
+      <div id="done-score" class="score-big" style="display:none;"></div>
+      <p id="done-verdict" style="font-size:0.85em;color:#9ab;line-height:1.45;"></p>
+      <ul class="tips" id="done-tips"></ul>
+      <div class="model-grid" id="done-model"></div>
+      <div class="nav-row">
+        <a class="btn" href="/career/interview">Back to hub</a>
+        <button type="button" class="btn btn-dim" onclick="location.reload()">Retry same</button>
+        <button type="button" class="btn" onclick="newAngle()">New angle</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="confetti" id="confetti"></div>
+<script src="/static/game.js"></script>
+<script>
+var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+var MODE = {{ mode | tojson }};
+var SCENARIO_ID = {{ (parent_id or scenario.id) | tojson }};
+var INSTANCE_ID = {{ (payload.instance_id or '') | tojson }};
+var PAYLOAD = {{ payload | tojson }};
+var LIVE_SECONDS = {{ live_seconds | int }};
+var INTERVIEW_COACH = {{ get_coach('interview_answer') | tojson }};
+
+function newAngle() {
+  fetch('/api/career/interview/new-angle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+    body: JSON.stringify({ scenario_id: SCENARIO_ID, source: 'auto', mode: MODE })
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (d) {
+    if (d.url) location.href = d.url;
+    else alert(d.error || 'Could not build a new angle.');
+  })
+  .catch(function () { alert('Network error creating a new angle.'); });
+}
+
+var stepIndex = 0;
+var steps = PAYLOAD.steps || [];
+var guidedOk = {}; // step_id -> true when correct
+var liveStarted = false;
+var liveLeft = LIVE_SECONDS;
+var liveTimer = null;
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function buildRail() {
+  var rail = document.getElementById('rail');
+  rail.innerHTML = '';
+  if (MODE === 'live') {
+    rail.style.display = 'none';
+    return;
+  }
+  steps.forEach(function(st, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = (i + 1) + '';
+    b.title = st.label;
+    b.onclick = function() { if (MODE === 'guided' && !canJumpTo(i)) return; goStep(i); };
+    b.id = 'rail-' + i;
+    rail.appendChild(b);
+  });
+}
+
+function canJumpTo(i) {
+  // Guided: can revisit completed or current; not skip ahead
+  if (i <= stepIndex) return true;
+  for (var j = 0; j < i; j++) {
+    if (!guidedOk[steps[j].id]) return false;
+  }
+  return true;
+}
+
+function renderSteps() {
+  var host = document.getElementById('steps-host');
+  host.className = MODE === 'live' ? 'live-all' : '';
+  host.innerHTML = '';
+
+  steps.forEach(function(st, i) {
+    var card = document.createElement('div');
+    card.className = 'step-card' + (MODE === 'live' || i === 0 ? ' show' : '');
+    card.id = 'card-' + i;
+
+    var html = '<div class="step-label">' + esc(st.label) + '</div>';
+    html += '<div class="step-ask">' + esc(st.ask) + '</div>';
+
+    if (MODE === 'guided') {
+      html += '<div class="teach">' + esc(st.teach) + '</div>';
+      html += '<div class="choices" id="choices-' + i + '"></div>';
+      html += '<div class="reveal" id="reveal-' + i + '"><div class="lbl">Say something like this</div><div class="say"></div></div>';
+    } else {
+      if (MODE === 'coached') {
+        html += '<button type="button" class="hint-btn" onclick="toggleHint(' + i + ')">Need a hint?</button>';
+        html += '<div class="hint-box" id="hint-' + i + '">' + esc(st.hint || '') + '</div>';
+      }
+      if (window.WritingCoach && INTERVIEW_COACH && INTERVIEW_COACH.items) {
+        html += WritingCoach.buildHtml(
+          'interview_answer',
+          INTERVIEW_COACH.title || 'Interview answer',
+          INTERVIEW_COACH.items,
+          INTERVIEW_COACH.tip || ''
+        );
+      }
+      var iPh = (INTERVIEW_COACH && INTERVIEW_COACH.placeholder_example) ? INTERVIEW_COACH.placeholder_example : '';
+      html += '<textarea id="ans-' + st.id + '" aria-describedby="coach-interview_answer" data-writing-coach="interview_answer" placeholder="' +
+        esc(iPh) + '"></textarea>';
+    }
+    card.innerHTML = html;
+    host.appendChild(card);
+
+    if (MODE === 'guided') {
+      var box = document.getElementById('choices-' + i);
+      (st.choices || []).forEach(function(c, ci) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'choice';
+        btn.textContent = c;
+        btn.onclick = function() { pickChoice(i, ci, btn); };
+        box.appendChild(btn);
+      });
+    }
+  });
+
+  if (MODE === 'live') {
+    document.getElementById('timer-wrap').classList.add('show');
+    document.getElementById('nav-row').style.display = 'none';
+    // lock textareas until start
+    steps.forEach(function(st) {
+      var ta = document.getElementById('ans-' + st.id);
+      if (ta) ta.disabled = true;
+    });
+  }
+  updateChrome();
+}
+
+function toggleHint(i) {
+  document.getElementById('hint-' + i).classList.toggle('show');
+}
+
+function pickChoice(stepIdx, choiceIdx, btn) {
+  var st = steps[stepIdx];
+  if (guidedOk[st.id]) return;
+
+  fetch('/api/career/interview/guided-step', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+    body: JSON.stringify({
+      scenario_id: SCENARIO_ID,
+      instance_id: INSTANCE_ID || '',
+      step_id: st.id,
+      choice_idx: choiceIdx
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var box = document.getElementById('choices-' + stepIdx);
+    Array.prototype.forEach.call(box.querySelectorAll('.choice'), function(el, idx) {
+      el.disabled = true;
+      if (idx === d.answer_idx) el.classList.add('good');
+      else if (idx === choiceIdx && !d.correct) el.classList.add('bad');
+    });
+    btn.classList.add('pick');
+    var rev = document.getElementById('reveal-' + stepIdx);
+    rev.querySelector('.say').textContent = d.example || '';
+    rev.classList.add('show');
+    if (d.correct) {
+      guidedOk[st.id] = true;
+      sparkle();
+    } else {
+      // Still teach — allow continue after wrong pick once revealed
+      guidedOk[st.id] = true;
+    }
+    updateChrome();
+  });
+}
+
+function goStep(i) {
+  stepIndex = i;
+  if (MODE !== 'live') {
+    steps.forEach(function(_, j) {
+      document.getElementById('card-' + j).classList.toggle('show', j === i);
+    });
+  }
+  updateChrome();
+}
+
+function prevStep() {
+  if (stepIndex > 0) goStep(stepIndex - 1);
+}
+
+function nextStep() {
+  if (MODE === 'guided' && !guidedOk[steps[stepIndex].id]) return;
+  if (stepIndex < steps.length - 1) goStep(stepIndex + 1);
+  else updateChrome();
+}
+
+function updateChrome() {
+  steps.forEach(function(st, i) {
+    var rail = document.getElementById('rail-' + i);
+    if (!rail) return;
+    rail.className = '';
+    if (i === stepIndex) rail.classList.add('on');
+    if (MODE === 'guided' && guidedOk[st.id]) rail.classList.add('done');
+  });
+
+  var prev = document.getElementById('btn-prev');
+  var next = document.getElementById('btn-next');
+  var fin = document.getElementById('btn-finish');
+  if (MODE === 'live') return;
+
+  prev.disabled = stepIndex === 0;
+  var last = stepIndex >= steps.length - 1;
+  if (MODE === 'guided') {
+    next.disabled = !guidedOk[steps[stepIndex].id] || last;
+    var all = steps.every(function(st) { return guidedOk[st.id]; });
+    fin.style.display = all ? '' : 'none';
+  } else {
+    next.disabled = last;
+    fin.style.display = last ? '' : 'none';
+    if (!last) fin.style.display = 'none';
+    // Coached: show finish on last step always
+    if (MODE === 'coached' && last) fin.style.display = '';
+  }
+}
+
+function collectAnswers() {
+  var out = {};
+  steps.forEach(function(st) {
+    var ta = document.getElementById('ans-' + st.id);
+    out[st.id] = ta ? ta.value : '';
+  });
+  return out;
+}
+
+function finishMode() {
+  var body = {
+    scenario_id: SCENARIO_ID,
+    instance_id: INSTANCE_ID || '',
+    mode: MODE,
+    answers: collectAnswers()
+  };
+  document.getElementById('btn-finish').disabled = true;
+  fetch('/api/career/interview/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+    body: JSON.stringify(body)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) {
+      alert(d.error);
+      document.getElementById('btn-finish').disabled = false;
+      return;
+    }
+    if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+    showDone(d);
+    sparkle(true);
+  })
+  .catch(function() {
+    document.getElementById('btn-finish').disabled = false;
+    alert('Request failed');
+  });
+}
+
+function showDone(d) {
+  document.getElementById('nav-row').style.display = 'none';
+  document.getElementById('rail').style.display = 'none';
+  document.getElementById('steps-host').style.display = 'none';
+  document.getElementById('timer-wrap').classList.remove('show');
+
+  var panel = document.getElementById('done-panel');
+  panel.classList.add('show');
+  document.getElementById('done-title').textContent =
+    MODE === 'guided' ? 'Guided complete — talk track unlocked in your head' :
+    MODE === 'coached' ? 'Coached complete — compare to the model' :
+    'Live round complete';
+
+  if (typeof d.score_pct === 'number') {
+    var sc = document.getElementById('done-score');
+    sc.style.display = '';
+    sc.textContent = d.score_pct + '%';
+  }
+  document.getElementById('done-verdict').textContent = d.verdict ||
+    (MODE === 'guided' ? 'You walked the 6-step routine. Next: unlock Coached by finishing all Guided cards.' : '');
+
+  var tips = document.getElementById('done-tips');
+  tips.innerHTML = '';
+  (d.tips || []).forEach(function(t) {
+    var li = document.createElement('li');
+    li.textContent = t;
+    tips.appendChild(li);
+  });
+
+  var model = d.model || {};
+  var mg = document.getElementById('done-model');
+  mg.innerHTML = '<div style="color:#00d4ff;font-size:0.75em;font-weight:800;margin-bottom:6px;">MODEL ANSWER (study this)</div>';
+  steps.forEach(function(st) {
+    var row = document.createElement('div');
+    row.className = 'model-row';
+    row.innerHTML = '<div class="k">' + esc(st.label) + '</div><div class="v">' +
+      esc(model[st.id] || '') + '</div>';
+    mg.appendChild(row);
+  });
+}
+
+function startLive() {
+  if (liveStarted) return;
+  liveStarted = true;
+  document.getElementById('btn-start-live').style.display = 'none';
+  document.getElementById('nav-row').style.display = 'flex';
+  document.getElementById('btn-prev').style.display = 'none';
+  document.getElementById('btn-next').style.display = 'none';
+  document.getElementById('btn-finish').style.display = '';
+  document.getElementById('btn-finish').disabled = false;
+  steps.forEach(function(st) {
+    var ta = document.getElementById('ans-' + st.id);
+    if (ta) { ta.disabled = false; }
+  });
+  if (document.getElementById('ans-' + steps[0].id)) {
+    document.getElementById('ans-' + steps[0].id).focus();
+  }
+  liveLeft = LIVE_SECONDS;
+  tickLive();
+  liveTimer = setInterval(tickLive, 1000);
+}
+
+function tickLive() {
+  liveLeft -= 1;
+  if (liveLeft < 0) liveLeft = 0;
+  var m = Math.floor(liveLeft / 60);
+  var s = liveLeft % 60;
+  var el = document.getElementById('timer');
+  el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  el.className = 'timer' + (liveLeft <= 30 ? (liveLeft <= 10 ? ' hot' : ' warn') : '');
+  document.getElementById('timer-fill').style.width = (100 * liveLeft / LIVE_SECONDS) + '%';
+  if (liveLeft <= 0) {
+    clearInterval(liveTimer);
+    finishMode();
+  }
+}
+
+function sparkle(big) {
+  var box = document.getElementById('confetti');
+  var colors = ['#00d4ff', '#00ff88', '#ffcc00', '#ff8c00'];
+  var n = big ? 40 : 12;
+  for (var i = 0; i < n; i++) {
+    var bit = document.createElement('i');
+    bit.style.left = Math.random() * 100 + 'vw';
+    bit.style.top = '-10px';
+    bit.style.background = colors[i % colors.length];
+    bit.style.animationDelay = (Math.random() * 0.3) + 's';
+    box.appendChild(bit);
+    setTimeout(function(el) { el.remove(); }.bind(null, bit), 1400);
+  }
+}
+
+// init
+buildRail();
+renderSteps();
+if (MODE === 'coached') {
+  // Finish available when last step visible — also allow anytime via scrolling to end
+  document.getElementById('btn-finish').style.display = '';
+  document.getElementById('btn-finish').textContent = 'Submit for model answer →';
+}
+</script>
+{% set tutor_track = 'interview' %}
+{% set tutor_lesson_id = scenario.id %}
+{% include '_career_tutor.html' %}
+{% include '_jargon_tooltips.html' %}
+</body>
+</html>

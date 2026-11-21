@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sec+ {{ lesson.objective_ref }} · Prove it unavailable</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: {{ lesson.domain_color }}; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 720px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; font-size: 1.35em; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 18px 20px; margin-top: 16px; line-height: 1.55; font-size: 0.88em;
+    }
+    .btn {
+      display: inline-block; margin-top: 14px; margin-right: 10px;
+      padding: 10px 16px; border-radius: 6px; border: 1px solid {{ lesson.domain_color }}66;
+      background: {{ lesson.domain_color }}22; color: {{ lesson.domain_color }};
+      font-weight: 800; text-decoration: none; font-size: 0.88em;
+    }
+    .dim { opacity: 0.7; border-color: #1e3045; background: #0f1923; color: #7a9ab0; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Sec+ · D{{ lesson.domain_order }} Prove it</span>
+    <div>
+      <a href="/career/secplus">← Lab hub</a>
+      <a href="/career/secplus/lesson/{{ lesson.id }}">Show me</a>
+      <a href="/career/secplus/practice/{{ lesson.id }}">Help me</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ lesson.title }}</h1>
+    <div class="card">
+      <p><strong>Prove-it is not ready for this session yet.</strong></p>
+      <p>
+        Each session should have a <strong>5-question</strong> Prove-it quiz generated from that
+        session's course notes. This bank is missing or still being built.
+      </p>
+      <p>
+        On your machine run:
+        <code style="color:#ffd700;">python tools/messer_generate_notes_quizzes.py --prove-only --lesson {{ lesson.id }}</code>
+        (Ollama must be running). Or run the full batch from
+        <code style="color:#7a9ab0;">docs/PRIVATE_STUDY_SOURCES.md</code>.
+      </p>
+      <a class="btn" href="/career/secplus/practice/{{ lesson.id }}">← Help me</a>
+      <a class="btn dim" href="/career/secplus">Sec+ hub</a>
+    </div>
+  </div>
+</body>
+</html>

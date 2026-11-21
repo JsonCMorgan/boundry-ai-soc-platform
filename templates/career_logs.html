@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ track_title }} — Boundry.AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #f59e0b; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .primer {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 18px; font-size: 0.82em; line-height: 1.5;
+    }
+    .primer b { color: #f59e0b; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+    }
+    .card h3 { margin: 0 0 6px; color: #fff; font-size: 0.95em; }
+    .card p { margin: 0 0 10px; font-size: 0.78em; color: #9ab; line-height: 1.4; }
+    .meta { font-size: 0.72em; color: #667; margin-bottom: 8px; }
+    .btn {
+      display: inline-block; padding: 8px 12px; border-radius: 6px; text-decoration: none;
+      font-size: 0.78em; font-weight: 700; border: 1px solid #f59e0b66;
+      background: #f59e0b18; color: #f59e0b; cursor: pointer; font-family: inherit;
+    }
+    .btn:hover { background: #f59e0b28; }
+    .pass { color: #00ff88; font-size: 0.72em; }
+    .flash {
+      margin: 18px 0; background: #0f1923; border: 1px solid #1e3045; border-radius: 8px; padding: 16px;
+    }
+    .flash-front { color: #f59e0b; font-weight: 800; font-size: 1em; margin-bottom: 8px; }
+    .flash-back { color: #cdd6e0; font-size: 0.85em; line-height: 1.45; display: none; }
+    .flash-back.show { display: block; }
+    .flash-nav { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+    .btn-dim { border-color: #1e3045; background: #0a0e14; color: #9ab; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Log Source Lab</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/intel">IOC Enrichment</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    <div class="primer">
+      <div style="color:#f59e0b;font-weight:800;margin-bottom:8px;">Before you start (define these)</div>
+      {% for p in primer %}
+      <div style="margin-bottom:6px;"><b>{{ p.term }}:</b> {{ p.plain }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="flash">
+      <h2 style="color:#fff;font-size:1em;margin:0 0 10px;">Show me — flashcards</h2>
+      <div class="flash-front" id="fc-front"></div>
+      <div class="flash-back" id="fc-back"></div>
+      <div class="flash-nav">
+        <button type="button" class="btn" onclick="revealCard()">Reveal</button>
+        <button type="button" class="btn btn-dim" onclick="nextCard()">Next</button>
+        <button type="button" class="btn btn-dim" id="fc-review">Add flashcards to Review</button>
+        <span class="meta" id="fc-idx" style="margin:0;"></span>
+      </div>
+    </div>
+
+    <h2 style="color:#fff;font-size:1em;">Prove it — name the evidence</h2>
+    <div class="grid">
+      {% for d in drills %}
+      <div class="card">
+        <h3>{{ d.title }}</h3>
+        <div class="meta">difficulty {{ d.difficulty }}</div>
+        <p>{{ d.teach }}</p>
+        {% if best_by_drill.get(d.id) and best_by_drill[d.id].passed %}
+        <div class="pass">Best: {{ best_by_drill[d.id].score_pct }}% PASS</div>
+        {% elif best_by_drill.get(d.id) %}
+        <div class="meta">Best: {{ best_by_drill[d.id].score_pct }}%</div>
+        {% endif %}
+        <a class="btn" href="{{ d.open_url }}">Open drill →</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <script>
+  var CARDS = {{ flashcards | tojson }};
+  var idx = 0;
+  function renderCard() {
+    var c = CARDS[idx] || {};
+    document.getElementById('fc-front').textContent = c.front || '';
+    var back = document.getElementById('fc-back');
+    back.textContent = c.back || '';
+    back.classList.remove('show');
+    document.getElementById('fc-idx').textContent = (idx + 1) + ' / ' + CARDS.length;
+  }
+  function revealCard() {
+    document.getElementById('fc-back').classList.add('show');
+  }
+  function nextCard() {
+    idx = (idx + 1) % CARDS.length;
+    renderCard();
+  }
+  renderCard();
+  (function(){
+    var btn = document.getElementById('fc-review');
+    if (!btn) return;
+    var csrf = (document.querySelector('meta[name="csrf-token"]')||{}).content || '';
+    btn.addEventListener('click', function(){
+      btn.disabled = true;
+      fetch('/api/career/review/enroll-flashcards', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+        body: JSON.stringify({track: 'logs'})
+      }).then(function(){ btn.textContent = 'Queued for Review'; });
+    });
+  })();
+  </script>
+  {% include '_career_tutor.html' %}
+</body>
+</html>

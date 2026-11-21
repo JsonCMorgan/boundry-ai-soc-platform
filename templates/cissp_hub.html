@@ -150,6 +150,48 @@
         }
         .bridge-item-domain { font-size: 0.72em; font-weight: bold; color: var(--d-color, #9944ee); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
         .bridge-item-text { color: #888; line-height: 1.5; }
+
+        /* ── Focus next / weak domains ── */
+        .focus-panel {
+            background: #12151f; border: 1px solid #664400; border-left: 4px solid #ff9900;
+            border-radius: 6px; padding: 18px 20px; margin-bottom: 28px;
+        }
+        .focus-panel h3 { margin: 0 0 6px; font-size: 0.85em; color: #ff9900; text-transform: uppercase; letter-spacing: 0.06em; }
+        .focus-panel .focus-sub { font-size: 0.8em; color: #666; margin-bottom: 14px; line-height: 1.5; }
+        .focus-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        @media (max-width: 800px) { .focus-grid { grid-template-columns: 1fr; } }
+        .focus-card {
+            background: #0b0e17; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 14px 16px; text-decoration: none; color: inherit; display: block;
+            transition: border-color 0.15s, transform 0.1s;
+        }
+        .focus-card:hover { border-color: #ff990066; transform: translateY(-1px); }
+        .focus-card .fname { font-size: 0.9em; font-weight: 700; color: #eee; margin-bottom: 6px; }
+        .focus-card .fmeta { font-size: 0.75em; color: #777; display: flex; justify-content: space-between; }
+        .focus-card .fpct { font-weight: 800; }
+        .focus-card .fpct.bad { color: #ff6a00; }
+        .focus-card .fpct.mid { color: #ff9900; }
+        .focus-card .fpct.ok  { color: #88cc00; }
+        .focus-card .fpct.new { color: #555; }
+        .focus-actions { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .focus-actions a {
+            font-size: 0.8em; font-weight: 700; padding: 7px 14px; border-radius: 4px;
+            text-decoration: none;
+        }
+        .btn-focus-practice { background: #00b432; color: #000; }
+        .btn-focus-practice:hover { opacity: 0.9; color: #000; }
+        .btn-focus-weak { background: #2a1a00; color: #ffcc00; border: 1px solid #665500; }
+        .btn-focus-weak:hover { color: #ffe066; }
+
+        .quiz-stats-strip {
+            display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px;
+        }
+        .qstat {
+            background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
+            padding: 12px 16px; min-width: 110px; text-align: center;
+        }
+        .qstat .v { font-size: 1.3em; font-weight: 800; color: #00b432; }
+        .qstat .l { font-size: 0.68em; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -280,6 +322,7 @@
             {% if today_count >= daily_goal %}
             — <span class="daily-complete">✅ Goal reached!</span>
             {% endif %}
+            <span style="color:#444;"> · Domain quizzes are {{ domain_quiz_len }} questions each</span>
         </div>
         {% set goal_pct = [((today_count / daily_goal * 100)|int), 100]|min %}
         <div class="daily-progress-outer">
@@ -290,8 +333,57 @@
         </div>
     </div>
 
+    <!-- Mixed practice progress strip -->
+    {% if practice_stats and practice_stats.count %}
+    <div class="section-heading">🎯 Mixed Practice Progress</div>
+    <div class="quiz-stats-strip">
+        <div class="qstat"><div class="v" style="color:#9944ee;">{{ practice_stats.count }}</div><div class="l">Quizzes</div></div>
+        <div class="qstat"><div class="v">{{ practice_stats.average }}%</div><div class="l">Average</div></div>
+        <div class="qstat"><div class="v" style="color:#ffcc00;">{{ practice_stats.best }}%</div><div class="l">Best</div></div>
+        <div class="qstat"><div class="v" style="color:#ddd;">{{ practice_stats.last }}%</div><div class="l">Last</div></div>
+        <div style="display:flex;align-items:center;">
+            <a href="/cissp/practice" class="btn-focus-practice" style="padding:10px 18px;border-radius:6px;font-weight:800;font-size:0.85em;text-decoration:none;">Run Practice Quiz →</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Drill these next — weakest / unstarted domains -->
+    <div class="focus-panel">
+        <h3>🎯 Drill These Next</h3>
+        <div class="focus-sub">
+            Weakest and unstarted domains first — same adaptive idea as Practice.
+            Each domain study page is now a tracked {{ domain_quiz_len }}-question quiz with miss review.
+        </div>
+        <div class="focus-grid">
+            {% for w in focus_domains %}
+            {% set d = cissp_domains[w.domain_num] %}
+            <a href="/cissp/domain/{{ w.domain_num }}" class="focus-card">
+                <div class="fname" style="border-left:3px solid {{ d.color }};padding-left:10px;">{{ w.label }}</div>
+                <div class="fmeta">
+                    <span>{{ w.seen }} answered · {{ d.weight }}% of exam</span>
+                    {% if w.seen == 0 %}
+                    <span class="fpct new">Not started</span>
+                    {% elif w.pct < 50 %}
+                    <span class="fpct bad">{{ w.pct }}%</span>
+                    {% elif w.pct < 70 %}
+                    <span class="fpct mid">{{ w.pct }}%</span>
+                    {% else %}
+                    <span class="fpct ok">{{ w.pct }}%</span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        <div class="focus-actions">
+            <a href="/cissp/practice" class="btn-focus-practice">🎯 Mixed Practice (all domains)</a>
+            {% if focus_domains %}
+            <a href="/cissp/domain/{{ focus_domains[0].domain_num }}" class="btn-focus-weak">🔥 Start weakest domain →</a>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- Domain grid -->
-    <div class="section-heading">📘 The 8 CISSP Domains — Click a Domain to Study</div>
+    <div class="section-heading">📘 The 8 CISSP Domains — {{ domain_quiz_len }}-question quizzes with miss review</div>
     <div class="domain-grid">
         {% for d_num, d in cissp_domains.items() %}
         {% set p       = progress.get(d_num, {}) %}
@@ -327,7 +419,7 @@
             </div>
             <span class="domain-status {{ status_cls }}">{{ status_lbl }}</span>
             <div class="domain-card-footer">
-                <span class="btn-study" style="background:{{ d.color }};">Study →</span>
+                <span class="btn-study" style="background:{{ d.color }};">Start Quiz →</span>
             </div>
         </a>
         {% endfor %}

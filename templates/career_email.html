@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ track_title }} — Boundry.AI</title>
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #f472b6; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .primer {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 18px; font-size: 0.82em; line-height: 1.5;
+    }
+    .primer b { color: #f472b6; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+    }
+    .card h3 { margin: 0 0 6px; color: #fff; font-size: 0.95em; }
+    .card p { margin: 0 0 10px; font-size: 0.78em; color: #9ab; line-height: 1.4; }
+    .btn {
+      display: inline-block; padding: 8px 12px; border-radius: 6px; text-decoration: none;
+      font-size: 0.78em; font-weight: 700; border: 1px solid #f472b666;
+      background: #f472b618; color: #f472b6; cursor: pointer; font-family: inherit;
+    }
+    .btn:hover { background: #f472b628; }
+    .btn-dim { border-color: #1e3045; background: #0a0e14; color: #9ab; }
+    .paste {
+      margin-top: 22px; background: #0f1923; border: 1px solid #1e3045; border-radius: 8px; padding: 16px;
+    }
+    textarea {
+      width: 100%; min-height: 160px; background: #0a0e14; border: 1px solid #1e3045;
+      color: #cdd6e0; border-radius: 6px; padding: 10px; font-family: inherit; font-size: 0.78em;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Email Triage Lab</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/interview">Interview Gym</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    <div class="primer">
+      <div style="color:#f472b6;font-weight:800;margin-bottom:8px;">Before you start (define these)</div>
+      {% for p in primer %}
+      <div style="margin-bottom:6px;"><b>{{ p.term }}:</b> {{ p.plain }}</div>
+      {% endfor %}
+    </div>
+    <h2 style="color:#fff;font-size:1em;">Show me — pick a sample</h2>
+    <div class="grid">
+      {% for s in samples %}
+      <div class="card">
+        <h3>{{ s.title }}</h3>
+        <p>{{ s.teach }}</p>
+        <a class="btn" href="{{ s.open_url }}">Open sample →</a>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="paste">
+      <h2 style="color:#fff;font-size:1em;margin:0 0 8px;">Or paste your own .eml / headers</h2>
+      <p style="font-size:0.78em;color:#8aa;margin:0 0 10px;">
+        Parsed locally on this machine. Do not paste real client mail with personal data into cloud tools.
+        Practice samples are safest.
+      </p>
+      {{ writing_coach_from_registry('career_email_paste') }}
+      {% set _ep = get_coach('career_email_paste') %}
+      <textarea id="paste-box" aria-describedby="coach-career_email_paste" data-writing-coach="career_email_paste"
+        placeholder="{{ (_ep.placeholder_example if _ep else '') }}"></textarea>
+      <div style="margin-top:10px;">
+        <button type="button" class="btn" onclick="parsePaste()">Parse headers</button>
+        <a class="btn btn-dim" href="/glossary#gloss-SPF">Glossary: SPF</a>
+      </div>
+      <pre id="paste-out" style="display:none;margin-top:12px;background:#0a0e14;border:1px solid #1e3045;padding:12px;font-size:0.75em;white-space:pre-wrap;color:#9ab;"></pre>
+    </div>
+  </div>
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+  function parsePaste() {
+    var raw = document.getElementById('paste-box').value || '';
+    fetch('/api/career/email/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ raw: raw })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var el = document.getElementById('paste-out');
+      el.style.display = 'block';
+      if (!d.ok) { el.textContent = d.error || 'Parse failed'; return; }
+      el.textContent =
+        'From: ' + d.from + '\n' +
+        'Reply-To: ' + d.reply_to + '\n' +
+        'Subject: ' + d.subject + '\n' +
+        'SPF=' + d.spf + '  DKIM=' + d.dkim + '  DMARC=' + d.dmarc + '\n' +
+        'From/Reply mismatch: ' + d.from_reply_mismatch + '\n' +
+        'Auth fail signals: ' + d.auth_fail + '\n' +
+        'Urgency/secrecy language: ' + d.urgency_secrecy + '\n\n' +
+        (d.authentication_results || '');
+    });
+  }
+  </script>
+  {% include '_career_tutor.html' %}
+</body>
+</html>

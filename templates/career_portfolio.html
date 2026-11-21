@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — SOC Portfolio</title>
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { color: #00d4ff; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; margin-bottom: 20px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .btn {
+      padding: 9px 14px; border-radius: 6px; border: 1px solid #1e3045;
+      background: #131d28; color: #cdd6e0; text-decoration: none; font-weight: 700;
+      font-size: 0.82em; cursor: pointer; font-family: inherit;
+    }
+    .btn-cyan { border-color: #00d4ff66; color: #00d4ff; background: #00d4ff18; }
+    .form {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px; margin-bottom: 22px;
+    }
+    .form h2 { margin: 0 0 12px; font-size: 0.95em; color: #00d4ff; }
+    label { display: block; font-size: 0.75em; color: #7a9ab0; margin: 8px 0 4px; }
+    input, select, textarea {
+      width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 5px; padding: 8px 10px; font-family: inherit; font-size: 0.85em;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    .case {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 10px;
+    }
+    .case.excluded { opacity: 0.45; }
+    .case h3 { margin: 0 0 6px; font-size: 0.95em; color: #fff; }
+    .meta { font-size: 0.75em; color: #667; margin-bottom: 6px; }
+    .summary { font-size: 0.82em; color: #9ab; line-height: 1.45; }
+    .row-actions { margin-top: 10px; display: flex; gap: 8px; }
+    .row-actions button {
+      font-size: 0.72em; padding: 5px 10px; border-radius: 4px; cursor: pointer;
+      border: 1px solid #1e3045; background: #0a0e14; color: #8aa; font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">BOUNDRY.AI · Portfolio</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>Job portfolio</h1>
+    <p class="sub">Cases for GTA SOC applications. Correct shift findings auto-add; you can also log manual evidence.</p>
+    <div class="actions">
+      <a class="btn btn-cyan" href="/career/portfolio/pdf">⬇ Download PDF</a>
+      <a class="btn" href="/career/shift">▶ Quick Shift</a>
+    </div>
+
+    <div class="form">
+      <h2>Add case — ticket hygiene</h2>
+      <p style="font-size:0.75em;color:#667;margin:0 0 10px;line-height:1.4;">
+        ServiceNow-style fields for HM-aligned write-ups. Subject = title; body stores What / Why / Disposition / MITRE / Next.
+      </p>
+      <label>Subject (title)</label>
+      <input id="f-title" placeholder="e.g. Password spray triage — blocked source IP">
+      <label>Track</label>
+      <select id="f-track">
+        <option value="siem">SIEM Triage</option>
+        <option value="ir">Incident Response</option>
+        <option value="mitre">MITRE ATT&CK</option>
+        <option value="endpoint">Endpoint / Findings</option>
+        <option value="identity">Identity Attacks</option>
+        <option value="automation">SOAR / Automation</option>
+        <option value="reporting">Analyst Reporting</option>
+      </select>
+      <label>What (observed)</label>
+      {{ writing_coach_from_registry('portfolio_what') }}
+      {% set _pw = get_coach('portfolio_what') %}
+      <textarea id="f-what" aria-describedby="coach-portfolio_what" data-writing-coach="portfolio_what"
+        placeholder="{{ (_pw.placeholder_example if _pw else '') }}"></textarea>
+      <label>Why (it matters)</label>
+      {{ writing_coach_from_registry('portfolio_why') }}
+      {% set _py = get_coach('portfolio_why') %}
+      <textarea id="f-why" style="min-height:56px;" aria-describedby="coach-portfolio_why" data-writing-coach="portfolio_why"
+        placeholder="{{ (_py.placeholder_example if _py else '') }}"></textarea>
+      <label>Disposition</label>
+      <input id="f-disp" placeholder="true_positive / false_positive / escalate">
+      <label>MITRE</label>
+      <input id="f-mitre" placeholder="T1110.003">
+      <label>Next (actions)</label>
+      {{ writing_coach_from_registry('portfolio_next') }}
+      {% set _pn = get_coach('portfolio_next') %}
+      <textarea id="f-next" style="min-height:56px;" aria-describedby="coach-portfolio_next" data-writing-coach="portfolio_next"
+        placeholder="{{ (_pn.placeholder_example if _pn else '') }}"></textarea>
+      <label>Tools used</label>
+      <input id="f-tools" placeholder="Boundry SIEM, SPL, SOAR">
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" type="button" onclick="pasteTemplate()">Insert blank template into What</button>
+        <button class="btn btn-cyan" type="button" onclick="addCase()">Save case</button>
+      </div>
+    </div>
+
+    {% for c in cases %}
+    <div class="case {% if not c.include_in_export %}excluded{% endif %}" id="case-{{ c.id }}">
+      <h3>{{ c.title }}</h3>
+      <div class="meta">
+        {{ c.track_id }} · {{ c.disposition or '—' }} · {{ (c.created_at or '')[:16] }}
+        · {{ 'in PDF' if c.include_in_export else 'excluded' }}
+        {% if c.mitre_techniques %} · MITRE {{ c.mitre_techniques }}{% endif %}
+      </div>
+      {% if c.tools_used %}<div class="meta">Tools: {{ c.tools_used }}</div>{% endif %}
+      <div class="summary">{{ c.summary }}</div>
+      <div class="row-actions">
+        <button onclick="toggleCase({{ c.id }})">Toggle PDF</button>
+        <button onclick="deleteCase({{ c.id }})">Delete</button>
+      </div>
+    </div>
+    {% else %}
+    <p style="color:#556;">No cases yet — finish a Quick Shift or add one above.</p>
+    {% endfor %}
+  </div>
+
+<script src="/static/game.js"></script>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+function csrfFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({'X-CSRFToken': _csrf, 'Content-Type': 'application/json'}, opts.headers || {});
+  return fetch(url, opts);
+}
+function pasteTemplate() {
+  var el = document.getElementById('f-what');
+  if (el.value && !confirm('Replace current What text with blank ticket template?')) return;
+  el.value = 'Subject: \nWhat: \nWhy: \nDisposition: \nMITRE: \nNext: ';
+  el.focus();
+}
+function addCase() {
+  csrfFetch('/career/portfolio/add', {
+    method: 'POST',
+    body: JSON.stringify({
+      title: document.getElementById('f-title').value,
+      track_id: document.getElementById('f-track').value,
+      disposition: document.getElementById('f-disp').value,
+      tools_used: document.getElementById('f-tools').value,
+      mitre_techniques: document.getElementById('f-mitre').value,
+      what: document.getElementById('f-what').value,
+      why: document.getElementById('f-why').value,
+      next_steps: document.getElementById('f-next').value
+    })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.error) { alert(d.error); return; }
+    if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+    location.reload();
+  });
+}
+function toggleCase(id) {
+  csrfFetch('/career/portfolio/' + id + '/toggle', { method: 'POST', body: '{}' })
+    .then(function(){ location.reload(); });
+}
+function deleteCase(id) {
+  if (!confirm('Delete this case?')) return;
+  csrfFetch('/career/portfolio/' + id + '/delete', { method: 'POST', body: '{}' })
+    .then(function(){ location.reload(); });
+}
+</script>
+</body>
+</html>

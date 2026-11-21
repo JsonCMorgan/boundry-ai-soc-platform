@@ -28,23 +28,28 @@
   .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #00b432, #44ff66);
                  border-radius: 4px; transition: width 0.6s; }
 
-  main { max-width: 820px; margin: 0 auto; padding: 32px 20px; }
+  main { max-width: 820px; margin: 0 auto; padding: 32px 20px 80px; }
 
-  .practice-header { margin-bottom: 28px; }
+  .practice-header { margin-bottom: 20px; }
   .practice-header h1 { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 6px; }
   .practice-header p  { font-size: 14px; color: #666; }
 
-  .stats-bar { display: flex; gap: 20px; margin-bottom: 28px; }
+  .stats-bar { display: flex; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
   .stat-chip { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 8px;
-               padding: 12px 20px; text-align: center; }
+               padding: 12px 18px; text-align: center; min-width: 96px; }
   .stat-chip .val { font-size: 22px; font-weight: 800; color: #00b432; }
   .stat-chip .lbl { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
 
-  /* Question card */
+  .prog-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .prog-count { font-size: 0.85em; color: #999; white-space: nowrap; font-weight: 700; }
+  .prog-track { flex: 1; height: 8px; background: #122012; border-radius: 4px; overflow: hidden; }
+  .prog-fill  { height: 100%; background: linear-gradient(90deg,#00b432,#00d4ff); width: 0%; transition: width 0.3s; }
+  .prog-streak { font-size: 0.8em; color: #ff9900; white-space: nowrap; }
+
   .q-card { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 10px;
             padding: 28px; margin-bottom: 24px; display: none; }
   .q-card.visible { display: block; }
-  .q-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 12px; }
+  .q-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 12px; flex-wrap: wrap; }
   .domain-chip { padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 11px; color: #000; }
   .mindset-badge { background: #1a1a2e; border: 1px solid #334; border-radius: 4px;
                    padding: 2px 8px; font-size: 11px; color: #aaa; }
@@ -52,6 +57,8 @@
   .diff-1 { background: #0d2a0d; color: #44cc44; border: 1px solid #1a4a1a; }
   .diff-2 { background: #2a2a0d; color: #cccc44; border: 1px solid #4a4a1a; }
   .diff-3 { background: #2a0d0d; color: #cc4444; border: 1px solid #4a1a1a; }
+  .weak-badge { background: #2a1a00; border: 1px solid #665500; color: #ffcc00;
+                border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
 
   .scenario-text { font-size: 13px; color: #888; line-height: 1.65; margin-bottom: 16px;
                    background: #0a140a; border-left: 3px solid #1a3a1a; padding: 12px 16px;
@@ -83,10 +90,11 @@
 
   .btn-next { margin-top: 16px; background: #00b432; color: #000; border: none;
               border-radius: 6px; padding: 10px 28px; font-size: 14px; font-weight: 800;
-              cursor: pointer; transition: background 0.2s; }
+              cursor: pointer; transition: background 0.2s; display: none; }
+  .btn-next.show { display: inline-block; }
   .btn-next:hover { background: #00d43a; }
 
-  .loading-msg { text-align: center; padding: 48px 0; color: #555; font-size: 14px; }
+  .loading-msg { text-align: center; padding: 48px 0; color: #555; font-size: 14px; display: none; }
   .loading-msg .spinner { font-size: 28px; animation: spin 1s linear infinite; display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -99,12 +107,45 @@
                transition: background 0.2s; }
   .btn-start:hover { background: #00d43a; }
 
-  .session-score { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 8px;
-                   padding: 16px 20px; margin-bottom: 20px;
-                   display: flex; gap: 20px; align-items: center; font-size: 13px; }
-  .session-score .num { font-size: 20px; font-weight: 800; color: #00b432; }
-  .session-score .num.pct-bad { color: #ff6666; }
-  .session-score .num.pct-ok  { color: #ff8c00; }
+  /* Completion */
+  .done { display: none; text-align: center; background: #0d1a0d; border: 1px solid #1a3a1a;
+          border-radius: 10px; padding: 36px 28px; }
+  .done.show { display: block; }
+  .done .score { font-size: 4em; font-weight: 800; line-height: 1; }
+  .done .score-sub { font-size: 0.95em; color: #888; margin-top: 4px; }
+  .done .compare { margin: 22px auto 0; max-width: 480px; font-size: 0.92em; color: #ccc; line-height: 1.7;
+                   background: #0a140a; border: 1px solid #1a3a1a; border-radius: 8px; padding: 16px 20px; }
+  .done .compare b { color: #fff; }
+  .trend-up   { color: #00ff41; font-weight: 700; }
+  .trend-down { color: #ff8888; font-weight: 700; }
+  .trend-flat { color: #cc8800; font-weight: 700; }
+  .best-badge { display: inline-block; margin-top: 12px; background: #2a1a00; color: #ffcc00;
+                border: 1px solid #665500; border-radius: 16px; padding: 4px 16px; font-weight: 700; font-size: 0.85em; }
+  .btn-restart { margin-top: 24px; background: #00b432; color: #000; border: none; padding: 12px 28px;
+                 border-radius: 7px; font-size: 0.95em; font-weight: 800; cursor: pointer; }
+  .btn-restart:hover { background: #00d43a; }
+  .miss-block { text-align: left; max-width: 560px; margin: 24px auto 0; }
+  .miss-title { color: #ff8888; font-weight: 700; margin-bottom: 10px; font-size: 0.95em; }
+  .miss-item { padding: 12px 0; border-bottom: 1px solid #1a2a1a; font-size: 0.86em; }
+  .miss-item .dom { color: #00b432; font-weight: 700; font-size: 0.85em; }
+  .miss-item .q { color: #ddd; margin-top: 4px; }
+  .miss-item .ans { color: #88cc88; margin-top: 6px; }
+  .miss-item .exp { color: #888; margin-top: 4px; line-height: 1.5; }
+
+  /* History (shared partial styles) */
+  .history { margin-top: 34px; }
+  .history h2 { font-size: 0.8em; color: #666; text-transform: uppercase; letter-spacing: 0.06em;
+                border-bottom: 1px solid #1a3a1a; padding-bottom: 8px; margin: 0 0 14px; }
+  .hsummary { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .hstat { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 88px; }
+  .hstat .v { font-size: 1.4em; font-weight: 800; }
+  .hstat .l { font-size: 0.66em; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .hrow { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid #122012; font-size: 0.84em; }
+  .hrow .hdate { color: #777; width: 130px; }
+  .hbar-track { flex: 1; height: 8px; background: #122012; border-radius: 4px; overflow: hidden; }
+  .hbar-fill { height: 100%; border-radius: 4px; }
+  .hrow .hscore { width: 44px; text-align: right; font-weight: 700; color: #ccc; }
+  .empty-hist { color: #555; font-size: 0.85em; }
 </style>
 </head>
 <body>
@@ -134,13 +175,13 @@
 
   <div class="practice-header">
     <h1>🎯 Mixed-Domain Practice</h1>
-    <p>Questions drawn from all 8 CISSP domains, weighted to mirror the real exam distribution. Sharpen recall across your weakest domains.</p>
+    <p>{{ quiz_len }} questions per quiz. Adaptive weighting focuses on weak domains; last {{ weak_tail }} are a weak-domain round. Finish to log your score.</p>
   </div>
 
   <div class="stats-bar">
     <div class="stat-chip">
       <div class="val" id="sess-attempted">0</div>
-      <div class="lbl">This Session</div>
+      <div class="lbl">This Quiz</div>
     </div>
     <div class="stat-chip">
       <div class="val" id="sess-correct" style="color:#00b432">0</div>
@@ -160,86 +201,151 @@
     </div>
   </div>
 
-  <!-- Start card shown until first question loads -->
-  <div class="start-card" id="start-card">
-    <h2>Ready to drill across all 8 domains?</h2>
-    <p>Each question is generated by your local AI (Ollama) and tagged to a CISSP domain by exam weight.<br>
-       Domain 1 (Security & Risk Management) appears most — just like the real exam.</p>
-    <button class="btn-start" onclick="loadQuestion()">Start Practice</button>
+  <div id="quiz-area">
+    <div class="prog-wrap" id="prog-wrap" style="display:none;">
+      <span class="prog-count" id="prog-count">Question 0 / {{ quiz_len }}</span>
+      <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+      <span class="prog-streak" id="prog-streak">🔥 0</span>
+    </div>
+
+    <div class="start-card" id="start-card">
+      <h2>Ready for a {{ quiz_len }}-question drill?</h2>
+      <p>Questions are generated by local Ollama and weighted toward your weakest CISSP domains<br>
+         (while still mirroring exam domain distribution). Last {{ weak_tail }} focus only on gaps.</p>
+      <button class="btn-start" onclick="startQuiz()">Start Practice</button>
+    </div>
+
+    <div class="loading-msg" id="loading-msg">
+      <div class="spinner">⚙️</div>
+      <div style="margin-top:12px">Generating question via Ollama…</div>
+    </div>
+
+    <div class="q-card" id="q-card">
+      <div class="q-meta">
+        <span class="domain-chip" id="q-domain-chip">D?</span>
+        <span class="mindset-badge" id="q-mindset">—</span>
+        <span class="diff-badge" id="q-diff">—</span>
+        <span class="weak-badge" id="q-weak" style="display:none;">🎯 Weak-domain round</span>
+        <span style="margin-left:auto;font-size:11px;color:#444;" id="q-num">Question 1</span>
+      </div>
+      <div id="q-visual"></div>
+      <div class="scenario-text" id="q-scenario"></div>
+      <div class="question-text" id="q-question"></div>
+      <div class="options" id="q-options"></div>
+      <div class="feedback-box" id="q-feedback">
+        <div class="feedback-result" id="fb-result"></div>
+        <div id="fb-explanation"></div>
+      </div>
+      <button class="btn-next" id="btn-next" onclick="nextOrFinish()">Next Question →</button>
+    </div>
   </div>
 
-  <!-- Loading state -->
-  <div class="loading-msg" id="loading-msg" style="display:none">
-    <div class="spinner">⚙️</div>
-    <div style="margin-top:12px">Generating question via Ollama…</div>
+  <div class="done" id="done">
+    <div class="score" id="d-score">—%</div>
+    <div class="score-sub" id="d-sub"></div>
+    <div id="d-best"></div>
+    <div class="compare" id="d-compare"></div>
+    <div id="d-misses"></div>
+    <button class="btn-restart" onclick="restart()">Run Another Quiz →</button>
   </div>
 
-  <!-- Question card (hidden until question loads) -->
-  <div class="q-card" id="q-card">
-    <div class="q-meta">
-      <span class="domain-chip" id="q-domain-chip">D?</span>
-      <span class="mindset-badge" id="q-mindset">—</span>
-      <span class="diff-badge" id="q-diff">—</span>
-      <span style="margin-left:auto;font-size:11px;color:#444;" id="q-num">Question 1</span>
+  <div class="history">
+    <h2>Your Practice Progress</h2>
+    <div id="history-body">
+      {% include "_quiz_history.html" %}
     </div>
-    <div class="scenario-text" id="q-scenario"></div>
-    <div class="question-text" id="q-question"></div>
-    <div class="options" id="q-options"></div>
-    <div class="feedback-box" id="q-feedback">
-      <div class="feedback-result" id="fb-result"></div>
-      <div id="fb-explanation"></div>
-    </div>
-    <button class="btn-next" id="btn-next" style="display:none" onclick="loadQuestion()">Next Question →</button>
   </div>
 
 </main>
 
+{% include "_cissp_visual.html" %}
+
 <script src="/static/game.js"></script>
 <script>
-// ── CSRF helper for AJAX state-changers ──
 var _csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 function csrfFetch(url, opts) {
   opts = opts || {};
   opts.headers = Object.assign({'X-CSRFToken': _csrfToken}, opts.headers || {});
   return fetch(url, opts);
 }
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
 
-var SESSION = { attempted: 0, correct: 0 };
+var QUIZ_LEN = {{ quiz_len }};
+var WEAK_TAIL = {{ weak_tail }};
+var SESSION = { num: 0, correct: 0, streak: 0, misses: [], results: [] };
 var CURRENT = {};
+var answered = false;
 var DIFF_LABELS = { 1: "Beginner", 2: "Intermediate", 3: "Advanced" };
 var MINDSET_LABELS = { manager: "🧠 Manager mindset", technical: "⚙️ Technical mindset", both: "🔀 Both" };
 
 function updateStats() {
-  document.getElementById('sess-attempted').textContent = SESSION.attempted;
-  document.getElementById('sess-correct').textContent   = SESSION.correct;
+  document.getElementById('sess-attempted').textContent = SESSION.num;
+  document.getElementById('sess-correct').textContent = SESSION.correct;
   var pctEl = document.getElementById('sess-pct');
-  if (SESSION.attempted === 0) { pctEl.textContent = '—'; return; }
-  var pct = Math.round(SESSION.correct / SESSION.attempted * 100);
+  if (SESSION.num === 0) { pctEl.textContent = '—'; return; }
+  var pct = Math.round(SESSION.correct / SESSION.num * 100);
   pctEl.textContent = pct + '%';
   pctEl.style.color = pct >= 70 ? '#00b432' : pct >= 50 ? '#ff8c00' : '#ff4444';
 }
 
-function loadQuestion() {
-  // Hide start card, question card; show loader
+function updateProg(beforeAnswer) {
+  var n = SESSION.num;
+  document.getElementById('prog-count').textContent = 'Question ' + n + ' / ' + QUIZ_LEN
+    + (n > (QUIZ_LEN - WEAK_TAIL) ? '  ·  weak-domain round' : '');
+  var fill = beforeAnswer ? ((n - 1) / QUIZ_LEN * 100) : (n / QUIZ_LEN * 100);
+  document.getElementById('prog-fill').style.width = fill + '%';
+  document.getElementById('prog-streak').textContent = '🔥 ' + SESSION.streak;
+}
+
+function startQuiz() {
+  SESSION = { num: 0, correct: 0, streak: 0, misses: [], results: [] };
+  document.getElementById('done').classList.remove('show');
+  document.getElementById('quiz-area').style.display = '';
+  document.getElementById('prog-wrap').style.display = 'flex';
   document.getElementById('start-card').style.display = 'none';
+  loadQuestion();
+}
+
+function nextOrFinish() {
+  if (SESSION.num >= QUIZ_LEN) finishQuiz();
+  else loadQuestion();
+}
+
+function loadQuestion() {
+  if (SESSION.num >= QUIZ_LEN) { finishQuiz(); return; }
+
+  answered = false;
   document.getElementById('q-card').classList.remove('visible');
   document.getElementById('loading-msg').style.display = 'block';
-  document.getElementById('btn-next').style.display = 'none';
+  document.getElementById('btn-next').classList.remove('show');
   document.getElementById('q-feedback').classList.remove('show');
 
-  csrfFetch('/cissp/practice/question', { method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, body: '{}' })
-  .then(r => r.json())
-  .then(data => {
+  var nextNum = SESSION.num + 1;
+  var weakOnly = nextNum > (QUIZ_LEN - WEAK_TAIL);
+
+  csrfFetch('/cissp/practice/question', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ weak_only: weakOnly }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
     if (data.error) {
       document.getElementById('loading-msg').innerHTML =
-        '<div style="color:#ff6666">⚠️ ' + data.error + '</div>';
+        '<div style="color:#ff6666">⚠️ ' + esc(data.error) + '</div>';
       return;
     }
+    SESSION.num = nextNum;
     CURRENT = data;
+    updateProg(true);
+    updateStats();
     renderQuestion(data);
   })
-  .catch(() => {
+  .catch(function() {
     document.getElementById('loading-msg').innerHTML =
       '<div style="color:#ff6666">⚠️ Network error — is Flask running?</div>';
   });
@@ -249,38 +355,40 @@ function renderQuestion(d) {
   document.getElementById('loading-msg').style.display = 'none';
   document.getElementById('q-card').classList.add('visible');
 
-  // Domain chip
   var chip = document.getElementById('q-domain-chip');
   chip.textContent = 'D' + d.domain_num + ': ' + d.domain_name;
   chip.style.background = d.domain_color || '#00b432';
   chip.style.color = '#000';
 
-  // Mindset + difficulty badges
   document.getElementById('q-mindset').textContent = MINDSET_LABELS[d.mindset] || d.mindset;
   var diffEl = document.getElementById('q-diff');
   diffEl.textContent = DIFF_LABELS[d.difficulty] || 'Intermediate';
   diffEl.className = 'diff-badge diff-' + (d.difficulty || 2);
 
-  document.getElementById('q-num').textContent = 'Question ' + (SESSION.attempted + 1);
-  document.getElementById('q-scenario').textContent  = d.scenario;
-  document.getElementById('q-question').textContent  = d.question;
+  var weakEl = document.getElementById('q-weak');
+  weakEl.style.display = d.weak_round ? '' : 'none';
 
-  // Render options
+  document.getElementById('q-num').textContent = 'Question ' + SESSION.num + ' / ' + QUIZ_LEN;
+  renderCisspVisual(document.getElementById('q-visual'), d.visual);
+  document.getElementById('q-scenario').textContent = d.scenario;
+  document.getElementById('q-question').textContent = d.question;
+
   var optContainer = document.getElementById('q-options');
   optContainer.innerHTML = '';
   ['A','B','C','D'].forEach(function(k) {
     var btn = document.createElement('button');
     btn.className = 'opt-btn';
     btn.id = 'opt-' + k;
-    btn.innerHTML = '<span class="opt-key">' + k + '.</span> ' + (d.options[k] || '');
+    btn.innerHTML = '<span class="opt-key">' + k + '.</span> ' + esc(d.options[k] || '');
     btn.onclick = function() { submitAnswer(k); };
     optContainer.appendChild(btn);
   });
 }
 
 function submitAnswer(choice) {
-  // Disable all buttons immediately
-  ['A','B','C','D'].forEach(k => {
+  if (answered) return;
+  answered = true;
+  ['A','B','C','D'].forEach(function(k) {
     var btn = document.getElementById('opt-' + k);
     if (btn) btn.disabled = true;
   });
@@ -290,22 +398,38 @@ function submitAnswer(choice) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ attempt_id: CURRENT.attempt_id, answer: choice }),
   })
-  .then(r => r.json())
-  .then(data => {
-    SESSION.attempted++;
-    if (data.correct) SESSION.correct++;
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.correct) {
+      SESSION.correct++;
+      SESSION.streak++;
+    } else {
+      SESSION.streak = 0;
+      SESSION.misses.push({
+        domain_num: CURRENT.domain_num,
+        domain_name: CURRENT.domain_name,
+        question: CURRENT.question,
+        correct_answer: data.correct_answer,
+        correct_text: data.correct_answer_text || '',
+        explanation: data.explanation || '',
+      });
+    }
+    SESSION.results.push({
+      domain_num: CURRENT.domain_num,
+      attempt_id: CURRENT.attempt_id,
+      correct: !!data.correct,
+    });
     updateStats();
+    updateProg(false);
 
-    // Color the options
     var correct = data.correct_answer;
-    ['A','B','C','D'].forEach(k => {
+    ['A','B','C','D'].forEach(function(k) {
       var btn = document.getElementById('opt-' + k);
       if (!btn) return;
       if (k === correct) btn.classList.add('correct');
       else if (k === choice && !data.correct) btn.classList.add('wrong');
     });
 
-    // Feedback
     var fb = document.getElementById('q-feedback');
     var result = document.getElementById('fb-result');
     if (data.correct) {
@@ -313,15 +437,111 @@ function submitAnswer(choice) {
       result.innerHTML = '✅ Correct! <span class="feedback-xp">+' + (data.xp ? data.xp.xp_gained : 10) + ' XP</span>';
     } else {
       result.className = 'feedback-result err';
-      result.innerHTML = '❌ Incorrect — Correct answer: <strong>' + correct + '</strong>.' +
+      result.innerHTML = '❌ Incorrect — Correct answer: <strong>' + esc(correct) + '</strong>.' +
         ' <span class="feedback-xp">+2 XP</span>';
     }
     document.getElementById('fb-explanation').textContent = data.explanation || '';
     fb.classList.add('show');
-    document.getElementById('btn-next').style.display = 'inline-block';
 
-    if (data.xp) { setTimeout(() => handleXpResult(data.xp), 400); }
+    var nb = document.getElementById('btn-next');
+    nb.textContent = (SESSION.num >= QUIZ_LEN) ? 'See Results →' : 'Next Question →';
+    nb.classList.add('show');
+
+    if (data.xp) { setTimeout(function() { handleXpResult(data.xp); }, 400); }
+  })
+  .catch(function() {
+    answered = false;
+    ['A','B','C','D'].forEach(function(k) {
+      var btn = document.getElementById('opt-' + k);
+      if (btn) btn.disabled = false;
+    });
   });
+}
+
+function trend(delta, label) {
+  if (delta > 0)  return '<span class="trend-up">▲ ' + delta + ' pts above ' + label + '</span>';
+  if (delta < 0)  return '<span class="trend-down">▼ ' + Math.abs(delta) + ' pts below ' + label + '</span>';
+  return '<span class="trend-flat">— on par with ' + label + '</span>';
+}
+
+function finishQuiz() {
+  document.getElementById('loading-msg').style.display = 'none';
+  document.getElementById('q-card').classList.remove('visible');
+
+  csrfFetch('/cissp/practice/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ results: SESSION.results }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) { showDone(d); })
+  .catch(function() { showDone(null); });
+}
+
+function showDone(d) {
+  document.getElementById('quiz-area').style.display = 'none';
+  var done = document.getElementById('done');
+  done.classList.add('show');
+
+  var total = d ? d.total : QUIZ_LEN;
+  var cor = d ? d.correct : SESSION.correct;
+  var score = d ? d.score : Math.round(SESSION.correct / Math.max(1, SESSION.num) * 100);
+  var colour = score >= 85 ? '#00ff41' : (score >= 70 ? '#8fce00' : (score >= 50 ? '#ff9900' : '#ff6a00'));
+
+  document.getElementById('d-score').textContent = score + '%';
+  document.getElementById('d-score').style.color = colour;
+  document.getElementById('d-sub').textContent = cor + ' of ' + total + ' correct';
+
+  var cmp = document.getElementById('d-compare');
+  if (d && d.stats) {
+    var html = '<b>' + d.stats.count + '</b> practice quiz' + (d.stats.count === 1 ? '' : 'zes') +
+               ' logged &nbsp;·&nbsp; Average <b>' + d.stats.average + '%</b> &nbsp;·&nbsp; Best <b>' + d.stats.best + '%</b>';
+    if (d.prev_average !== null && d.prev_average !== undefined) {
+      html += '<br>' + trend(score - d.prev_average, 'your average');
+    } else {
+      html += '<br><span class="trend-flat">First practice quiz logged — baseline set!</span>';
+    }
+    cmp.innerHTML = html;
+    document.getElementById('d-best').innerHTML =
+      (d.is_best ? '<span class="best-badge">🏆 New personal best!</span>' : '');
+  } else {
+    cmp.innerHTML = '<span class="trend-flat">Score saved locally for this session.</span>';
+  }
+
+  var mhtml = '';
+  if (SESSION.misses.length) {
+    mhtml = '<div class="miss-block"><div class="miss-title">📋 Review these ' +
+            SESSION.misses.length + ' you missed</div>';
+    SESSION.misses.forEach(function(m) {
+      mhtml += '<div class="miss-item">'
+            + '<div class="dom">D' + esc(m.domain_num) + ': ' + esc(m.domain_name) + '</div>'
+            + '<div class="q">' + esc(m.question) + '</div>'
+            + '<div class="ans">✓ ' + esc(m.correct_answer)
+            + (m.correct_text ? ' — ' + esc(m.correct_text) : '') + '</div>'
+            + (m.explanation ? '<div class="exp">' + esc(m.explanation) + '</div>' : '')
+            + '</div>';
+    });
+    mhtml += '</div>';
+  } else {
+    mhtml = '<div style="color:#00ff41;margin-top:20px;font-weight:700;">🎉 Perfect run — no misses!</div>';
+  }
+  document.getElementById('d-misses').innerHTML = mhtml;
+
+  fetch('/cissp/practice/history', { credentials: 'same-origin' })
+    .then(function(r) { return r.ok ? r.text() : null; })
+    .then(function(h) { if (h) document.getElementById('history-body').innerHTML = h; })
+    .catch(function() {});
+}
+
+function restart() {
+  SESSION = { num: 0, correct: 0, streak: 0, misses: [], results: [] };
+  document.getElementById('done').classList.remove('show');
+  document.getElementById('quiz-area').style.display = '';
+  document.getElementById('prog-wrap').style.display = 'flex';
+  document.getElementById('prog-fill').style.width = '0%';
+  document.getElementById('prog-streak').textContent = '🔥 0';
+  updateStats();
+  loadQuestion();
 }
 </script>
 <script src="/static/glossary.js" defer></script>

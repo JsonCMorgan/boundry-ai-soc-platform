@@ -1,0 +1,5 @@
+{# Platform-wide jargon hover cards. Safe to include more than once (JS boots once). #}
+{% if jargon_terms is defined %}
+<script>window.__BOUNDRY_JARGON = {{ jargon_terms | tojson }};</script>
+{% endif %}
+<script src="/static/glossary.js" defer></script>

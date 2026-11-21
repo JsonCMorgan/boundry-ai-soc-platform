@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — Sec+ Term Bank</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #2dd4bf; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .term {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 6px;
+      padding: 10px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .term strong { color: #2dd4bf; }
+    .meta { font-size: 0.75em; color: #667; }
+    .meta a { color: #7a9ab0; text-decoration: none; }
+    .meta a:hover { color: #2dd4bf; }
+    input {
+      width: 100%; max-width: 420px; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 6px; padding: 10px 12px; font-family: inherit; margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">BOUNDRY.AI · Sec+ Terms</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career/secplus">← Sec+ hub</a>
+      <a href="/glossary">Full glossary</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>Sec+ term bank</h1>
+    <p class="sub">
+      Curated from each micro-lesson <code>key_terms</code>. Add terms to your shared
+      <a href="/career/review" style="color:#2dd4bf;">Daily Review</a> deck (local FSRS scheduling).
+      Hover jargon still works via the glossary.
+    </p>
+    <p class="sub"><button type="button" id="enroll-all" style="font-family:inherit;padding:8px 14px;border-radius:6px;border:1px solid #2dd4bf66;background:#2dd4bf22;color:#2dd4bf;font-weight:700;cursor:pointer;">Add all terms to Review deck</button></p>
+    <input id="filter" type="search" placeholder="Filter terms…" autocomplete="off">
+    <div id="list">
+      {% for t in terms %}
+      <div class="term" data-term="{{ t.term|lower }}">
+        <div><strong>{{ t.term }}</strong>
+          <button type="button" class="add-term" data-term="{{ t.term }}" style="margin-left:8px;font-size:0.72em;padding:2px 8px;border-radius:4px;border:1px solid #1e3045;background:#0a0e14;color:#7a9ab0;cursor:pointer;">+ Review</button>
+        </div>
+        <div class="meta">
+          {{ t.objective_ref }} ·
+          <a href="/career/secplus/lesson/{{ t.lesson_id }}">{{ t.lesson_title }}</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+{% include '_jargon_tooltips.html' %}
+<script>
+var csrf = document.querySelector('meta[name="csrf-token"]').content;
+function enrollTerm(term, btn) {
+  fetch('/api/career/review/enroll-term', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+    body: JSON.stringify({term: term})
+  }).then(function(r){ return r.json(); }).then(function(){
+    if (btn) { btn.textContent = 'Queued'; btn.disabled = true; }
+  });
+}
+document.querySelectorAll('.add-term').forEach(function(b){
+  b.addEventListener('click', function(){ enrollTerm(b.getAttribute('data-term'), b); });
+});
+var enrollAll = document.getElementById('enroll-all');
+if (enrollAll) enrollAll.addEventListener('click', function(){
+  document.querySelectorAll('.add-term').forEach(function(b){ enrollTerm(b.getAttribute('data-term'), b); });
+  enrollAll.textContent = 'Queued all terms';
+  enrollAll.disabled = true;
+});
+document.getElementById('filter').addEventListener('input', function(){
+  var q = (this.value || '').toLowerCase().trim();
+  document.querySelectorAll('.term').forEach(function(el){
+    var t = el.getAttribute('data-term') || '';
+    el.style.display = (!q || t.indexOf(q) >= 0) ? '' : 'none';
+  });
+});
+</script>
+</body>
+</html>

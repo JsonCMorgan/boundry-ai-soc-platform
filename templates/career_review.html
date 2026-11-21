@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — Daily Review</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #ffd700; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 720px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; margin: 0 0 6px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .meta { font-size: 0.78em; color: #667; margin-bottom: 16px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 18px 20px; margin-bottom: 16px;
+    }
+    .card h2 { margin: 0 0 12px; font-size: 1em; color: #ffd700; }
+    .prompt { line-height: 1.55; margin-bottom: 14px; white-space: pre-wrap; }
+    .choices label {
+      display: block; padding: 10px 12px; margin: 6px 0; border-radius: 6px;
+      border: 1px solid #1e3045; cursor: pointer; font-size: 0.88em;
+    }
+    .choices label:hover { border-color: #ffd70066; }
+    .choices input { margin-right: 8px; }
+    .feedback {
+      margin-top: 14px; padding: 12px; border-radius: 6px; font-size: 0.85em; line-height: 1.5;
+      background: #0a0e14; border-left: 3px solid #00ff88;
+    }
+    .feedback.bad { border-left-color: #ff8c00; }
+    .rating { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .rating button {
+      flex: 1 1 100px; padding: 10px; border-radius: 6px; border: 1px solid #1e3045;
+      background: #0f1923; color: #cdd6e0; font-family: inherit; font-weight: 700; cursor: pointer;
+    }
+    .rating button:hover { border-color: #ffd700; color: #ffd700; }
+    .btn-row { margin-top: 12px; }
+    .btn {
+      display: inline-block; padding: 10px 16px; border-radius: 6px; border: 1px solid #ffd70066;
+      background: #ffd70022; color: #ffd700; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .done { text-align: center; padding: 40px 20px; color: #7a9ab0; }
+    .nudge {
+      background: #131d28; border: 1px solid #ff8c0066; padding: 12px 14px; border-radius: 6px;
+      font-size: 0.82em; margin-bottom: 16px; color: #cdd6e0;
+    }
+    .flash-back { margin-top: 10px; padding: 12px; background: #0a0e14; border-radius: 6px; color: #9ab; }
+    .hidden { display: none; }
+    .confidence { margin: 10px 0; font-size: 0.78em; color: #8aa; }
+    .confidence label { margin-right: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">BOUNDRY.AI · Daily Review</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">Career hub</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>Review queue</h1>
+    <p class="sub">
+      Spaced recall from your Sec+ proves, Help-me misses, labs, and hub flashcards.
+      Answer, read feedback, then rate how hard it felt (Again / Hard / Good / Easy).
+    </p>
+    <div class="meta">
+      Mode: <strong>{{ mode }}</strong>
+      {% if track %} · track {{ track }}{% endif %}
+      · Due now: <strong id="due-total">{{ due_count }}</strong>
+      · Today: <strong id="reviews-today">{{ reviews_today }}</strong> / {{ anti_cram }} soft cap
+    </div>
+    <div id="cram-nudge" class="nudge hidden">
+      Spacing works better tomorrow. You have done many reviews today. Stop here and come back in 24 hours?
+    </div>
+    <div id="session"></div>
+    <div id="empty" class="done hidden">
+      <p>No cards due right now. Pass a Prove-it lesson or miss a Help-me check to enqueue items.</p>
+      <a href="/career" style="color:#ffd700;">← Career hub</a>
+    </div>
+  </div>
+<script>
+(function(){
+  var csrf = document.querySelector('meta[name="csrf-token"]').content;
+  var mode = {{ mode|tojson }};
+  var track = {{ track|tojson }};
+  var limit = {{ session_limit }};
+  var antiCram = {{ anti_cram }};
+  var queue = [];
+  var idx = 0;
+  var miniStep = 0;
+  var cardStart = Date.now();
+
+  function qs() {
+    var u = '/api/career/review/due?mode=' + encodeURIComponent(mode) + '&limit=' + limit;
+    if (track) u += '&track=' + encodeURIComponent(track);
+    return u;
+  }
+
+  function showCramNudge(n) {
+    if (n >= antiCram) document.getElementById('cram-nudge').classList.remove('hidden');
+  }
+
+  function confidenceHtml() {
+    return '<div class="confidence">How sure are you? ' +
+      [1,2,3,4].map(function(n){
+        return '<label><input type="radio" name="conf" value="'+n+'"> '+n+'</label>';
+      }).join('') + ' (1 = guess, 4 = certain)</div>';
+  }
+
+  function suggestedRating(correct, conf) {
+    if (!correct) return 'again';
+    if (conf <= 2) return 'hard';
+    if (conf >= 4) return 'easy';
+    return 'good';
+  }
+
+  function getConfidence() {
+    var el = document.querySelector('input[name=conf]:checked');
+    return el ? parseInt(el.value, 10) : 3;
+  }
+
+  function renderCurrent() {
+    var root = document.getElementById('session');
+    if (idx >= queue.length) {
+      root.innerHTML = '';
+      document.getElementById('empty').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('empty').classList.add('hidden');
+    var item = queue[idx];
+    var d = item.display || {};
+    cardStart = Date.now();
+    var html = '<div class="card" data-item-id="' + item.item_id + '">';
+    html += '<h2>' + (item.track || 'review') + ' · ' + (item.item_type || '') + '</h2>';
+
+    if (d.kind === 'mini_mcq') {
+      var qs = d.questions || [];
+      if (miniStep >= qs.length) miniStep = 0;
+      var q = qs[miniStep] || {};
+      html += '<p class="prompt"><strong>' + (d.title || '72h check') + '</strong> (' + (miniStep+1) + '/' + qs.length + ')<br>' + (q.prompt || '') + '</p>';
+      html += '<div class="choices" id="choices">';
+      var letters = ['A','B','C','D'];
+      letters.forEach(function(L){
+        if (q.choices && q.choices[L]) {
+          html += '<label><input type="radio" name="pick" value="'+L+'"> '+L+'. '+q.choices[L]+'</label>';
+        }
+      });
+      html += '</div>' + confidenceHtml() + '<div class="btn-row"><button class="btn" id="submit-mcq">Check answer</button></div>';
+      html += '<div id="feedback" class="hidden"></div><div id="rate" class="hidden rating"></div>';
+      root.innerHTML = html;
+      document.getElementById('submit-mcq').onclick = function(){
+        var pick = (document.querySelector('input[name=pick]:checked')||{}).value || '';
+        fetch('/api/career/review/grade', {
+          method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
+          body: JSON.stringify({item_id: item.item_id, picked: pick, question_id: q.question_id})
+        }).then(function(r){ return r.json(); }).then(function(res){
+          var fb = document.getElementById('feedback');
+          fb.classList.remove('hidden');
+          fb.className = 'feedback' + (res.correct ? '' : ' bad');
+          fb.textContent = res.feedback || '';
+          if (miniStep < qs.length - 1) {
+            var btn = document.createElement('button');
+            btn.className = 'btn'; btn.textContent = 'Next question in set';
+            btn.onclick = function(){ miniStep++; renderCurrent(); };
+            fb.appendChild(document.createElement('br'));
+            fb.appendChild(btn);
+          } else {
+            showRating(item, res.correct, getConfidence());
+          }
+        });
+      };
+      return;
+    }
+
+    if (d.kind === 'mcq') {
+      html += '<p class="prompt">' + (d.prompt || '') + '</p><div class="choices" id="choices">';
+      ['A','B','C','D'].forEach(function(L){
+        if (d.choices && d.choices[L]) {
+          html += '<label><input type="radio" name="pick" value="'+L+'"> '+L+'. '+d.choices[L]+'</label>';
+        }
+      });
+      html += '</div>' + confidenceHtml() + '<div class="btn-row"><button class="btn" id="submit-mcq">Check answer</button></div>';
+    } else if (d.kind === 'flashcard') {
+      html += '<p class="prompt">' + (d.front || '') + '</p>';
+      html += '<div class="btn-row"><button class="btn" id="reveal">Reveal</button></div>';
+      html += '<div id="flash-back" class="flash-back hidden">' + (d.back || '') + '</div>';
+    } else if (d.kind === 'teach_back') {
+      html += '<p class="prompt">' + (d.prompt || 'Teach this lesson back in 60 seconds.') + '</p>';
+      if (d.beats && d.beats.length) {
+        html += '<ul class="prompt">';
+        d.beats.forEach(function(b){ html += '<li>'+b+'</li>'; });
+        html += '</ul>';
+      }
+      html += '<div class="btn-row"><button class="btn" id="reveal">I tried — show beats</button></div>';
+    } else {
+      html += '<p class="prompt">Review item</p>';
+    }
+    html += '<div id="feedback" class="hidden"></div><div id="rate" class="hidden rating"></div></div>';
+    root.innerHTML = html;
+
+    var sub = document.getElementById('submit-mcq');
+    if (sub) sub.onclick = function(){
+      var pick = (document.querySelector('input[name=pick]:checked')||{}).value || '';
+      fetch('/api/career/review/grade', {
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
+        body: JSON.stringify({item_id: item.item_id, picked: pick})
+      }).then(function(r){ return r.json(); }).then(function(res){
+        var fb = document.getElementById('feedback');
+        fb.classList.remove('hidden');
+        fb.className = 'feedback' + (res.correct ? '' : ' bad');
+        fb.textContent = res.feedback || '';
+        showRating(item, res.correct, getConfidence());
+      });
+    };
+    var rev = document.getElementById('reveal');
+    if (rev) rev.onclick = function(){
+      var fb = document.getElementById('flash-back');
+      if (fb) fb.classList.remove('hidden');
+      showRating(item, true);
+    };
+  }
+
+  function showRating(item, correct, conf) {
+    conf = conf || getConfidence();
+    var suggest = suggestedRating(correct, conf);
+    var rate = document.getElementById('rate');
+    rate.classList.remove('hidden');
+    rate.innerHTML = '<div class="confidence" style="margin-bottom:8px;">Suggested: <b style="color:#ffd700;">'+suggest+'</b> (you can pick any)</div>';
+    ['again','hard','good','easy'].forEach(function(r){
+      var b = document.createElement('button');
+      b.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+      if (r === suggest) b.style.borderColor = '#ffd700';
+      b.onclick = function(){
+        var ms = Date.now() - cardStart;
+        fetch('/api/career/review/rate', {
+          method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
+          body: JSON.stringify({item_id: item.item_id, rating: r, correct: correct, ms: ms})
+        }).then(function(r){ return r.json(); }).then(function(res){
+          document.getElementById('due-total').textContent = res.due_remaining || 0;
+          var rt = document.getElementById('reviews-today');
+          rt.textContent = (parseInt(rt.textContent,10)||0) + 1;
+          showCramNudge(parseInt(rt.textContent,10));
+          miniStep = 0;
+          idx++;
+          renderCurrent();
+        });
+      };
+      rate.appendChild(b);
+    });
+  }
+
+  fetch(qs()).then(function(r){ return r.json(); }).then(function(data){
+    queue = data.items || [];
+    document.getElementById('due-total').textContent = data.due_total || 0;
+    if (data.reviews_today != null) {
+      document.getElementById('reviews-today').textContent = data.reviews_today;
+      showCramNudge(data.reviews_today);
+    }
+    renderCurrent();
+  });
+})();
+</script>
+</body>
+</html>

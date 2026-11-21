@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Boundry.AI — SIEM</title>
+    {% include '_writing_coach.html' %}
+    {% from '_writing_coach.html' import writing_coach_from_registry %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -432,9 +434,25 @@
         /* ── No-results ── */
         .search-zero { padding:40px 16px; text-align:center; color:#333; }
         .search-zero .q { color:#00d4ff; }
+        .la-bar {
+            display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+            padding:10px 32px; background:#0e1119; border-bottom:1px solid #1e2235;
+        }
+        .la-tab {
+            font-size:0.76em; padding:5px 12px; border-radius:4px; cursor:pointer;
+            border:1px solid #1e2235; background:#0a0e14; color:#888;
+        }
+        .la-tab.on { border-color:#00d4ff66; color:#00d4ff; background:#00d4ff11; }
+        .la-group-panel, .la-detect-panel { display:none; padding:12px 32px; background:#0b0e17; border-bottom:1px solid #1e2235; }
+        .la-group-panel.open, .la-detect-panel.open { display:block; }
+        .la-group-table { width:100%; font-size:0.8em; border-collapse:collapse; }
+        .la-group-table td, .la-group-table th { padding:6px 8px; border-bottom:1px solid #1e2235; text-align:left; }
     </style>
 </head>
-<body>
+<body class="ops-shell secops-accent-siem">
+{% set secops_active = 'siem' %}
+{% include '_live_ops_shell.html' %}
+{% include '_secops_layout.html' %}
 
 <!-- ── Topbar ── -->
 <div class="topbar">
@@ -530,6 +548,27 @@
         </div>
         <div class="stat-label">Sources</div>
     </div>
+</div>
+
+<div class="la-bar" id="log-activity-bar">
+    <strong style="font-size:0.72em;color:#556;text-transform:uppercase;letter-spacing:0.06em;">Log Activity</strong>
+    <button type="button" class="la-tab on" data-la="stream" onclick="setLaMode('stream')">Streaming</button>
+    <button type="button" class="la-tab" data-la="search" onclick="setLaMode('search')">Search results</button>
+    <button type="button" class="la-tab" data-la="group" onclick="setLaMode('group')">Grouped</button>
+    <button type="button" class="la-tab" data-la="detections" onclick="setLaMode('detections')">Detections</button>
+    <button type="button" class="la-tab" id="la-pause-btn" onclick="toggleStreamPause()" title="Pause live polling">Pause stream</button>
+    <select id="la-group-by" style="font-size:0.75em;background:#0a0e14;color:#ccc;border:1px solid #1e2235;padding:4px;" onchange="loadLaGroups()">
+        <option value="event_type">Group by event type</option>
+        <option value="src_ip">Group by source IP</option>
+        <option value="source">Group by source</option>
+    </select>
+    <button type="button" class="la-tab" onclick="saveCurrentSearch()">Save search</button>
+</div>
+<div class="la-group-panel" id="la-group-panel">
+    <table class="la-group-table"><thead><tr><th>Value</th><th>Count</th><th>Max sev</th></tr></thead><tbody id="la-group-body"></tbody></table>
+</div>
+<div class="la-detect-panel" id="detections-panel">
+    <table class="la-group-table"><thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Client</th><th>Created</th></tr></thead><tbody id="la-detect-body"></tbody></table>
 </div>
 
 {% if siem_findings|length > 0 %}
@@ -1119,8 +1158,11 @@
         </div>
         <div class="form-row">
             <label class="form-label">Notes (optional)</label>
-            <textarea class="form-input" id="resolve-notes" rows="3"
-                placeholder="e.g. Confirmed scanner traffic from internal vuln scan — added to allowlist"></textarea>
+            {{ writing_coach_from_registry('siem_fp_resolve') }}
+            {% set _fp = get_coach('siem_fp_resolve') %}
+            <textarea class="form-input" id="resolve-notes" rows="3" aria-describedby="coach-siem_fp_resolve"
+                data-writing-coach="siem_fp_resolve"
+                placeholder="{{ (_fp.placeholder_example if _fp else '') }}"></textarea>
         </div>
         <button class="btn-create" onclick="submitResolve()" style="background:#00b43222;border-color:#00b43266;">
             ✓ Confirm Resolution
@@ -1728,7 +1770,7 @@ function applySourceFilter() {
 //  LIVE EVENT POLLING
 // ═══════════════════════════════════════════════════════════════════
 function loadEvents(force = false) {
-    if (currentMode !== 'live' || drawerOpen) return;
+    if (currentMode !== 'live' || drawerOpen || streamPaused) return;
     let url = `/api/siem/events?limit=50&after=${maxSeenId}`;
     if (activeSource !== 'all') url += `&source=${activeSource}`;
 
@@ -2844,7 +2886,54 @@ document.addEventListener('keydown', function(e) {
 });
 
 parseUrlFilters();
+
+let streamPaused = false;
+function setLaMode(mode) {
+    document.querySelectorAll('.la-tab[data-la]').forEach(t => t.classList.toggle('on', t.dataset.la === mode));
+    document.getElementById('la-group-panel').classList.toggle('open', mode === 'group');
+    document.getElementById('detections-panel').classList.toggle('open', mode === 'detections');
+    if (mode === 'group') loadLaGroups();
+    if (mode === 'detections') loadDetections();
+}
+function toggleStreamPause() {
+    streamPaused = !streamPaused;
+    const b = document.getElementById('la-pause-btn');
+    if (b) b.textContent = streamPaused ? 'Resume stream' : 'Pause stream';
+}
+function loadLaGroups() {
+    const gb = document.getElementById('la-group-by').value;
+    fetch('/api/siem/events/group?group_by=' + encodeURIComponent(gb))
+        .then(r => r.json()).then(d => {
+            const tb = document.getElementById('la-group-body');
+            if (!tb || !d.groups) return;
+            tb.innerHTML = d.groups.map(g =>
+                '<tr><td>' + (g.group || '') + '</td><td>' + g.count + '</td><td>' + (g.max_severity || '') + '</td></tr>'
+            ).join('') || '<tr><td colspan="3">No groups</td></tr>';
+        }).catch(() => {});
+}
+function loadDetections() {
+    fetch('/api/siem/detections').then(r => r.json()).then(d => {
+        const tb = document.getElementById('la-detect-body');
+        if (!tb || !d.detections) return;
+        tb.innerHTML = d.detections.map(f =>
+            '<tr style="cursor:pointer" onclick="location.href=\'/scan/findings#f' + f.id + '\'">' +
+            '<td>' + f.id + '</td><td>' + (f.title || '').replace(/</g,'') + '</td><td>' + (f.severity||'') +
+            '</td><td>' + (f.client_id||'') + '</td><td>' + (f.created_at||'').substring(0,19) + '</td></tr>'
+        ).join('') || '<tr><td colspan="5">No open detections</td></tr>';
+    }).catch(() => {});
+}
+function saveCurrentSearch() {
+    const name = prompt('Name this saved search');
+    if (!name) return;
+    const q = { severity: document.getElementById('search-severity')?.value || '', q: document.getElementById('search-q')?.value || '' };
+    fetch('/api/siem/saved-searches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content },
+        body: JSON.stringify({ name: name, query: q })
+    }).then(r => r.json()).then(d => { if (d.ok) alert('Saved'); else alert(d.error || 'Failed'); });
+}
 </script>
 <script src="/static/glossary.js" defer></script>
+{% include '_secops_layout_end.html' %}
 </body>
 </html>

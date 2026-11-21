@@ -1,0 +1,10 @@
+# Models approved for Open WebUI tool / agent use (official Ollama library tags only).
+# Remove any model not on this list from tool-enabled pipelines in Open WebUI.
+# Audit: ollama list — delete abliterated / random HF merge names.
+
+llama3.1:8b
+qwen2.5-coder:7b
+qwen2.5-coder:1.5b-base
+deepseek-r1:8b
+# Embeddings only — do not attach Open WebUI tools to this tag:
+# nomic-embed-text:latest

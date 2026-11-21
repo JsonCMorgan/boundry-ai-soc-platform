@@ -1,4 +1,4 @@
-# Pre-client hardening checklist (M1–M8)
+# Pre-client hardening checklist (M1–M9)
 
 Track go-live readiness. Details in PRD §6.1.  
 **Held for Roy:** service tiers and 5-minute demo script.
@@ -13,6 +13,7 @@ Track go-live readiness. Details in PRD §6.1.
 | M6 | Daily `app.db` backup | Run/register `tools/backup_app_db.ps1` (see below). | Script shipped |
 | M7 | Privacy one-pager | [PRIVACY_DATA_HANDLING.md](PRIVACY_DATA_HANDLING.md) | Shipped |
 | M8 | Mini IR path | [IR_MINI_PATH.md](IR_MINI_PATH.md) | Shipped |
+| M9 | Local LLM hardening (Ollama + Open WebUI) | Loopback bind, firewall 11434/8080/5000, secrets in `%USERPROFILE%\.boundry\secrets.env`, WebUI auth + tool lockdown. Weekly audit: [tools/register_llm_audit_scheduler.ps1](../tools/register_llm_audit_scheduler.ps1); details [LOCAL_LLM_HARDENING.md](LOCAL_LLM_HARDENING.md). | Script + doc shipped; Jason: run [tools/run_harden_ports_elevated.bat](../tools/run_harden_ports_elevated.bat) once (UAC); register weekly audit; configure WebUI auth in UI |
 
 ## Register M6 Task Scheduler (once)
 

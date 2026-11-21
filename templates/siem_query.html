@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SPL Query — Boundry.AI SIEM</title>
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
   <style>
     /* ── Reset + Base ──────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -732,11 +734,15 @@
 
     <div class="query-input-row">
       <div class="query-input-wrap">
+        {{ writing_coach_from_registry('spl_syntax') }}
+        {% set _spl = get_coach('spl_syntax') %}
         <span class="query-prompt">›</span>
         <textarea
           id="spl-input"
           rows="2"
-          placeholder="severity=HIGH earliest=-24h | stats count by src_ip | sort -count | head 10"
+          aria-describedby="coach-spl_syntax"
+          data-writing-coach="spl_syntax"
+          placeholder="{{ (_spl.placeholder_example if _spl else '') }}"
           spellcheck="false"
           autocomplete="off"
         >{% if not ref_q %}{{ prefill_q | default('') }}{% endif %}</textarea>

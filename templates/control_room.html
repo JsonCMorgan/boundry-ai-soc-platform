@@ -1104,7 +1104,9 @@
         .remed-close-btn:hover { color: #ff6666; }
     </style>
 </head>
-<body class="ops-shell ops-hq">
+<body class="ops-shell ops-hq secops-accent-hq">
+{% set secops_active = 'home' %}
+{% include '_secops_layout.html' %}
 
     <div class="topbar">
         <span class="topbar-brand"><a href="/control-room">Control Room · HQ</a></span>
@@ -1156,9 +1158,30 @@
     {% if user_role == 'analyst' %}
     {% include '_ops_presence.html' %}
     <div class="ops-status-strip" id="ops-strip"></div>
+    <div class="ops-status-strip" id="secops-kpi" style="background:#0f1923;border-top:1px solid var(--ops-border);"></div>
+    <div id="secops-attention" style="padding:10px 24px;background:var(--ops-surface);border-bottom:1px solid var(--ops-border);font-size:0.8em;display:none;"></div>
     <script>
       OpsShell.renderStatusStrip('#ops-strip', {{ ops_strip | default({}) | tojson }});
       if (window.OpsPresence) OpsPresence.mount('#ops-presence');
+      fetch('/api/control-room/secops-summary').then(r => r.json()).then(d => {
+        if (!d.ok) return;
+        var k = document.getElementById('secops-kpi');
+        if (k) k.innerHTML =
+          '<span class="ops-pill crit">Open findings <b>' + d.open_findings + '</b></span>' +
+          '<span class="ops-pill">Open cases <b>' + d.open_cases + '</b></span>' +
+          '<span class="ops-pill ok">Closed 7d <b>' + d.cases_closed_7d + '</b></span>' +
+          '<span class="ops-pill warn">SOAR pending <b>' + d.soar_pending_approvals + '</b></span>' +
+          '<span class="ops-pill">Queue age (avg min) <b>' + d.mean_queue_age_min + '</b></span>' +
+          '<a href="/soc/mission" style="margin-left:auto;color:var(--ops-hq);font-weight:700;">Mission Control →</a>';
+        var att = document.getElementById('secops-attention');
+        if (att && d.attention && d.attention.length) {
+          att.style.display = 'block';
+          att.innerHTML = '<strong style="color:var(--ops-warn);">Attention:</strong> ' +
+            d.attention.map(function(i) {
+              return '<a href="' + i.href + '" style="color:var(--ops-accent);margin-right:12px;">[' + i.queue_type + '] ' + i.title + '</a>';
+            }).join('');
+        }
+      }).catch(function(){});
     </script>
     {% endif %}
 
@@ -3179,5 +3202,6 @@ async function refreshVpnCR() {
 refreshVpnCR();
 setInterval(refreshVpnCR, 30000);
 </script>
+{% include '_secops_layout_end.html' %}
 
 </html>

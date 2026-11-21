@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Mission Control — Boundry SecOps</title>
+  {% include '_live_ops_shell.html' %}
+  <style>
+    .mc-wrap { padding: 16px 20px 40px; }
+    .mc-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 14px; }
+    .mc-head h1 { margin: 0; font-size: 1.15em; color: var(--ops-accent); }
+    .mc-views { display: flex; gap: 6px; flex-wrap: wrap; }
+    .mc-views a {
+      padding: 6px 12px; border-radius: 4px; font-size: 0.78em; font-weight: 700;
+      text-decoration: none; border: 1px solid var(--ops-border); color: var(--ops-muted);
+    }
+    .mc-views a.on { border-color: var(--ops-accent); color: var(--ops-accent); background: #00d4ff11; }
+    .mc-table-wrap { overflow: auto; border: 1px solid var(--ops-border); border-radius: 6px; }
+  </style>
+</head>
+<body class="ops-shell secops-accent-hq">
+{% set secops_active = 'mission' %}
+{% include '_secops_layout.html' %}
+<div class="mc-wrap">
+  <div class="mc-head">
+    <h1>Mission Control</h1>
+    <span style="font-size:0.78em;color:var(--ops-muted);">Unified queue: findings, tickets, SOAR (Splunk ES-style)</span>
+    <div class="mc-views">
+      <a href="/soc/mission?view=all" class="{% if view == 'all' %}on{% endif %}">All</a>
+      <a href="/soc/mission?view=new" class="{% if view == 'new' %}on{% endif %}">New</a>
+      <a href="/soc/mission?view=in_progress" class="{% if view == 'in_progress' %}on{% endif %}">In progress</a>
+      <a href="/soc/mission?view=unassigned" class="{% if view == 'unassigned' %}on{% endif %}">Unassigned</a>
+    </div>
+  </div>
+  <div class="mc-table-wrap">
+    <table class="ops-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Title</th>
+          <th>Severity</th>
+          <th>Status</th>
+          <th>Client</th>
+          <th>Age (min)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in queue %}
+        <tr onclick="window.location='{{ item.href }}'">
+          <td><span class="ops-badge ops-lane-real">{{ item.queue_type }}</span></td>
+          <td>{{ item.title }}</td>
+          <td><span class="ops-sev ops-sev-{{ item.severity }}">{{ item.severity }}</span></td>
+          <td>{{ item.status }}</td>
+          <td class="ops-mono" style="font-size:0.85em;">{{ item.client_tag or '—' }}</td>
+          <td class="ops-mono">{{ item.age_min }}</td>
+          <td onclick="event.stopPropagation();">
+            {% if item.queue_type == 'case' %}
+            <button type="button" class="ops-btn ops-btn-dim" onclick="mcAction('case', {{ item.id }}, 'start_work')">Start work</button>
+            {% elif item.queue_type == 'finding' %}
+            <button type="button" class="ops-btn ops-btn-warn" onclick="mcAction('finding', {{ item.id }}, 'open_soar')">Open SOAR</button>
+            {% endif %}
+            <a href="{{ item.href }}" class="ops-btn" style="text-decoration:none;display:inline-block;">Open</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--ops-dim);padding:24px;">Queue empty — good shift or ingest quiet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include '_secops_layout_end.html' %}
+<script>
+function mcAction(qtype, id, action) {
+  fetch('/api/soc/mission/bulk-action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content },
+    body: JSON.stringify({ queue_type: qtype, id: id, action: action })
+  }).then(r => r.json()).then(d => {
+    if (d.href) window.location = d.href;
+    else if (d.ok) location.reload();
+    else alert(d.error || 'Action failed');
+  }).catch(() => alert('Request failed'));
+}
+</script>
+</body>
+</html>

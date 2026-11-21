@@ -47,3 +47,6 @@ qrcode[pil]==8.1
 
 # Production server
 gunicorn==26.0.0
+
+# Spaced repetition (Career Review — local FSRS)
+fsrs==5.1.0

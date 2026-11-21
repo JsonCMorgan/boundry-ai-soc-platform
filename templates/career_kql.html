@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — KQL Learn Track</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { color: #00d4ff; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .path {
+      display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.78em; color: #667; margin-bottom: 20px;
+    }
+    .path span { color: #38bdf8; }
+    .hero {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px 18px; margin-bottom: 20px; display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+    }
+    .pct { font-size: 2.2em; font-weight: 800; color: #38bdf8; }
+    .btn {
+      display: inline-block; padding: 10px 14px; border-radius: 6px; text-decoration: none;
+      font-weight: 700; font-size: 0.82em; border: 1px solid #38bdf866; background: #38bdf818; color: #38bdf8;
+    }
+    .btn-dim { border-color: #1e3045; background: #131d28; color: #9ab; }
+    .lesson {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    }
+    .lesson h3 { margin: 0 0 4px; color: #fff; font-size: 0.98em; }
+    .meta { font-size: 0.75em; color: #667; }
+    .goal { font-size: 0.8em; color: #8aa; margin-top: 6px; }
+    .badges { font-size: 0.72em; margin-top: 8px; }
+    .ok { color: #00ff88; }
+    .dim { color: #556; }
+    .actions a { display: inline-block; margin: 4px 0 4px 8px; font-size: 0.78em; color: #38bdf8; text-decoration: none; }
+    .actions a:hover { text-decoration: underline; }
+    .note { font-size: 0.78em; color: #7a9ab0; margin-top: 8px; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">BOUNDRY.AI · KQL Learn</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/spl">SPL Learn</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    {% if retention_due %}
+    <p class="sub" style="color:#ffd700;">Review due from KQL: <b>{{ retention_due }}</b>
+      · <a href="/career/review?mode=focus&amp;track=kql" style="color:#ffd700;">Daily Review</a></p>
+    {% endif %}
+    <div class="path">Flow: <span>1. Teach</span> → <span>2. Practice</span> → <span>3. Section quiz</span> → apply in interviews / Sentinel</div>
+
+    <div class="hero">
+      <div>
+        <div class="pct">{{ done_lessons }}/{{ total_lessons }}</div>
+        <div style="font-size:0.75em;color:#667;">LESSONS READ</div>
+      </div>
+      <div style="flex:1;font-size:0.85em;color:#8aa;">
+        Section quizzes: <b style="color:#fff;">{{ quizzes_passed }}/{{ total_quizzes }}</b> passed (≥70% each)
+        <div style="margin-top:10px;">
+          <a class="btn btn-dim" href="/career/spl">SPL Learn (parallel)</a>
+        </div>
+        <p class="note">Each lesson has its own quiz. Local only — no Azure workspace required.</p>
+      </div>
+    </div>
+
+    {% for L in lessons %}
+    <div class="lesson">
+      <div>
+        <h3>K{{ L.order }}. {{ L.title }}</h3>
+        <div class="meta">~{{ L.minutes }} min</div>
+        <div class="goal">{{ L.goal }}</div>
+        <div class="badges">
+          {% if L.lesson_done %}<span class="ok">✓ lesson read</span>{% else %}<span class="dim">○ lesson</span>{% endif %}
+          ·
+          {% if L.practice_done %}<span class="ok">✓ practice {{ L.practice_ok }}/{{ L.practice_need }}</span>
+          {% else %}<span class="dim">practice {{ L.practice_ok }}/{{ L.practice_need }}</span>{% endif %}
+          ·
+          {% if L.quiz_passed %}<span class="ok">✓ quiz {{ L.quiz_best.score_pct }}%</span>
+          {% elif L.quiz_best %}<span class="dim">quiz {{ L.quiz_best.score_pct }}%</span>
+          {% else %}<span class="dim">○ quiz</span>{% endif %}
+        </div>
+      </div>
+      <div class="actions">
+        <a href="/career/kql/lesson/{{ L.id }}">Read →</a>
+        <a href="/career/kql/practice/{{ L.id }}">Practice →</a>
+        <a href="/career/kql/quiz/{{ L.id }}">Quiz →</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

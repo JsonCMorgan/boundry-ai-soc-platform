@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>KQL Quiz — {{ lesson.title }} — Boundry.AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #38bdf8; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 780px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; }
+    .sub { color: #7a9ab0; font-size: 0.85em; margin-bottom: 18px; }
+    .q {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .q h3 { margin: 0 0 10px; font-size: 0.9em; color: #fff; }
+    label {
+      display: block; font-size: 0.82em; color: #9ab; padding: 6px 8px; margin: 3px 0;
+      border-radius: 4px; cursor: pointer; border: 1px solid transparent;
+    }
+    label:hover { background: #0a0e14; }
+    input { margin-right: 8px; }
+    .btn {
+      padding: 12px 18px; border-radius: 6px; border: 1px solid #38bdf866;
+      background: #38bdf822; color: #38bdf8; font-weight: 800; cursor: pointer;
+      font-family: inherit; font-size: 0.9em;
+    }
+    #results { display: none; margin-top: 20px; }
+    .score { font-size: 2.4em; font-weight: 800; color: #00ff88; }
+    .g { border-bottom: 1px solid #1e3045; padding: 10px 0; font-size: 0.82em; }
+    .ok { color: #00ff88; }
+    .bad { color: #ff8888; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">KQL Quiz · K{{ lesson.order }}</span>
+    <div>
+      <a href="/career/kql/practice/{{ lesson.id }}">← Practice</a>
+      <a href="/career/kql">Track hub</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ lesson.title }} — quiz</h1>
+    <p class="sub">
+      {{ questions|length }} questions · pass at 70%+. Tied to this section only.
+      {% if quiz_best %}
+        Best so far: <b style="color:#fff;">{{ quiz_best.score_pct }}%</b>
+        {% if quiz_best.passed %}<span class="ok"> · passed</span>{% endif %}
+      {% endif %}
+    </p>
+
+    <div id="form">
+      {% for q in questions %}
+      <div class="q" data-qid="{{ q.id }}">
+        <h3>{{ loop.index }}. {{ q.q }}</h3>
+        {% for letter, text in q.choices.items() %}
+        <label><input type="radio" name="{{ q.id }}" value="{{ letter }}"> {{ letter }}. {{ text }}</label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      <button class="btn" onclick="submitQuiz()">Submit quiz</button>
+    </div>
+
+    <div id="results">
+      <div class="score" id="r-pct">—%</div>
+      <div id="r-sub" style="color:#8aa;margin-bottom:14px;"></div>
+      <div id="r-graded"></div>
+      <p style="margin-top:16px;">
+        <a href="/career/kql" style="color:#38bdf8;">Back to KQL track</a> ·
+        <a href="/career/kql/practice/{{ lesson.id }}" style="color:#38bdf8;">Retry practice</a> ·
+        <a href="/career/interview" style="color:#00d4ff;">Interview Gym</a>
+      </p>
+    </div>
+  </div>
+<script src="/static/game.js"></script>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+var LESSON = {{ lesson.id | tojson }};
+function submitQuiz() {
+  var answers = {};
+  document.querySelectorAll('.q').forEach(function(el){
+    var id = el.getAttribute('data-qid');
+    var picked = el.querySelector('input:checked');
+    if (picked) answers[id] = picked.value;
+  });
+  fetch('/career/kql/quiz/' + encodeURIComponent(LESSON) + '/submit', {
+    method: 'POST',
+    headers: {'X-CSRFToken': _csrf, 'Content-Type': 'application/json'},
+    body: JSON.stringify({ answers: answers })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d.ok) { alert(d.error || 'Submit failed'); return; }
+    var res = d.result;
+    document.getElementById('form').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('r-pct').textContent = res.pct + '%';
+    document.getElementById('r-sub').textContent =
+      res.correct + '/' + res.total + ' correct' + (res.passed ? ' · PASSED' : ' · keep practising');
+    var html = '';
+    (res.graded || []).forEach(function(g){
+      html += '<div class="g"><span class="' + (g.correct ? 'ok' : 'bad') + '">' +
+        (g.correct ? '✓' : '✗') + '</span> ' + g.q +
+        '<div style="color:#667;margin-top:4px;">' + g.explain + '</div></div>';
+    });
+    document.getElementById('r-graded').innerHTML = html;
+    if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+  });
+}
+</script>
+{% include '_jargon_tooltips.html' %}
+</body>
+</html>

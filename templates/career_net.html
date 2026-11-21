@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ track_title }} — Boundry.AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #34d399; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    h2 { color: #fff; font-size: 1em; margin: 22px 0 10px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 14px; }
+    .path {
+      display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.78em; color: #667; margin-bottom: 16px;
+    }
+    .path span { color: #34d399; }
+    .hero {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px 18px; margin-bottom: 18px; display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+    }
+    .pct { font-size: 2.2em; font-weight: 800; color: #34d399; }
+    .btn {
+      display: inline-block; padding: 8px 12px; border-radius: 6px; text-decoration: none;
+      font-size: 0.78em; font-weight: 700; border: 1px solid #34d39966;
+      background: #34d39918; color: #34d399; cursor: pointer; font-family: inherit;
+    }
+    .btn:hover { background: #34d39928; }
+    .btn-dim { border-color: #1e3045; background: #0a0e14; color: #9ab; }
+    .primer {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 18px; font-size: 0.82em; line-height: 1.5;
+    }
+    .primer b { color: #34d399; }
+    .lesson {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    }
+    .lesson.locked { opacity: 0.72; border-style: dashed; }
+    .lesson.continue { border-color: #34d39966; }
+    .lesson h3 { margin: 0 0 4px; color: #fff; font-size: 0.98em; }
+    .meta { font-size: 0.72em; color: #667; margin-bottom: 8px; }
+    .goal { font-size: 0.8em; color: #8aa; margin-top: 6px; }
+    .badges { font-size: 0.72em; margin-top: 8px; }
+    .ok { color: #00ff88; }
+    .dim { color: #556; }
+    .actions a { display: inline-block; margin: 4px 0 4px 8px; font-size: 0.78em; color: #34d399; text-decoration: none; }
+    .actions a:hover { text-decoration: underline; }
+    .note { font-size: 0.78em; color: #7a9ab0; margin-top: 8px; line-height: 1.45; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+    }
+    .card h3 { margin: 0 0 6px; color: #fff; font-size: 0.95em; }
+    .card p { margin: 0 0 10px; font-size: 0.78em; color: #9ab; line-height: 1.4; }
+    .pass { color: #00ff88; font-size: 0.72em; }
+    .flash {
+      margin: 18px 0; background: #0f1923; border: 1px solid #1e3045; border-radius: 8px; padding: 16px;
+    }
+    .flash-front { color: #34d399; font-weight: 800; font-size: 1em; margin-bottom: 8px; }
+    .flash-back { color: #cdd6e0; font-size: 0.85em; line-height: 1.45; display: none; }
+    .flash-back.show { display: block; }
+    .flash-nav { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Net-for-SOC Lab</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/vuln">Vuln Queue</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    {% if retention_due %}
+    <p class="sub" style="color:#ffd700;">Review due from Net: <b>{{ retention_due }}</b>
+      · <a href="/career/review?mode=focus&amp;track=net" style="color:#ffd700;">Daily Review</a></p>
+    {% endif %}
+    <div class="path">Flow: <span>1. Show me</span> → <span>2. Help me</span> → <span>3. Prove it</span> → flashcards / signal drills</div>
+
+    <div class="hero">
+      <div>
+        <div class="pct">{{ done_lessons }}/{{ total_lessons }}</div>
+        <div style="font-size:0.75em;color:#667;">LESSONS READ</div>
+      </div>
+      <div style="flex:1;font-size:0.85em;color:#8aa;">
+        Section quizzes: <b style="color:#fff;">{{ quizzes_passed }}/{{ total_quizzes }}</b> passed (≥{{ pass_pct }}% each)
+        {% if continue_lesson %}
+        <div style="margin-top:10px;">
+          <a class="btn" href="/career/net/lesson/{{ continue_lesson.id }}">Continue → {{ continue_lesson.title }}</a>
+        </div>
+        {% endif %}
+        <p class="note">Hybrid unlock: Continue follows Prove passes. Soft unlock lets you open any lesson with a nudge.</p>
+      </div>
+    </div>
+
+    <div class="primer">
+      <div style="color:#34d399;font-weight:800;margin-bottom:8px;">Before you start (define these)</div>
+      {% for p in primer %}
+      <div style="margin-bottom:6px;"><b>{{ p.term }}:</b> {{ p.plain }}</div>
+      {% endfor %}
+    </div>
+
+    <h2>Learn spine</h2>
+    {% for L in lessons %}
+    <div class="lesson{% if not L.recommended %} locked{% endif %}{% if L.is_continue %} continue{% endif %}">
+      <div>
+        <h3>N{{ L.order }}. {{ L.title }}{% if not L.recommended %} <span class="dim">(ahead of Continue)</span>{% endif %}</h3>
+        <div class="meta">~{{ L.minutes }} min</div>
+        <div class="goal">{{ L.goal }}</div>
+        <div class="badges">
+          {% if L.lesson_done %}<span class="ok">✓ lesson read</span>{% else %}<span class="dim">○ lesson</span>{% endif %}
+          ·
+          {% if L.practice_done %}<span class="ok">✓ practice {{ L.practice_ok }}/{{ L.practice_need }}</span>
+          {% else %}<span class="dim">practice {{ L.practice_ok }}/{{ L.practice_need }}</span>{% endif %}
+          ·
+          {% if L.quiz_passed %}<span class="ok">✓ quiz {{ L.quiz_best.score_pct }}%</span>
+          {% elif L.quiz_best %}<span class="dim">quiz {{ L.quiz_best.score_pct }}%</span>
+          {% else %}<span class="dim">○ quiz</span>{% endif %}
+        </div>
+      </div>
+      <div class="actions">
+        <a href="/career/net/lesson/{{ L.id }}">Show me →</a>
+        <a href="/career/net/practice/{{ L.id }}">Help me →</a>
+        <a href="/career/net/quiz/{{ L.id }}">Prove it →</a>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="flash" id="flashcards">
+      <h2 style="color:#fff;font-size:1em;margin:0 0 10px;">Show me — flashcards (ports shortlist)</h2>
+      <div class="flash-front" id="fc-front"></div>
+      <div class="flash-back" id="fc-back"></div>
+      <div class="flash-nav">
+        <button type="button" class="btn" onclick="revealCard()">Reveal</button>
+        <button type="button" class="btn btn-dim" onclick="nextCard()">Next</button>
+        <button type="button" class="btn btn-dim" id="fc-review">Add flashcards to Review</button>
+        <span class="meta" id="fc-idx" style="margin:0;"></span>
+      </div>
+    </div>
+
+    <h2 id="drills">Prove it — name the network signal</h2>
+    <p class="note" style="margin-top:0;">Parallel hands-on drills. Capstone lesson N14 points here.</p>
+    <div class="grid">
+      {% for d in drills %}
+      <div class="card">
+        <h3>{{ d.title }}</h3>
+        <div class="meta">difficulty {{ d.difficulty }}</div>
+        <p>{{ d.teach }}</p>
+        {% if best_by_drill.get(d.id) and best_by_drill[d.id].passed %}
+        <div class="pass">Best: {{ best_by_drill[d.id].score_pct }}% PASS</div>
+        {% elif best_by_drill.get(d.id) %}
+        <div class="meta">Best: {{ best_by_drill[d.id].score_pct }}%</div>
+        {% endif %}
+        <a class="btn" href="{{ d.open_url }}">Open drill →</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <script>
+  var CARDS = {{ flashcards | tojson }};
+  var idx = 0;
+  function renderCard() {
+    var c = CARDS[idx] || {};
+    document.getElementById('fc-front').textContent = c.front || '';
+    var back = document.getElementById('fc-back');
+    back.textContent = c.back || '';
+    back.classList.remove('show');
+    document.getElementById('fc-idx').textContent = (idx + 1) + ' / ' + CARDS.length;
+  }
+  function revealCard() {
+    document.getElementById('fc-back').classList.add('show');
+  }
+  function nextCard() {
+    idx = (idx + 1) % CARDS.length;
+    renderCard();
+  }
+  renderCard();
+  (function(){
+    var btn = document.getElementById('fc-review');
+    if (!btn) return;
+    var csrf = (document.querySelector('meta[name="csrf-token"]')||{}).content || '';
+    btn.addEventListener('click', function(){
+      btn.disabled = true;
+      fetch('/api/career/review/enroll-flashcards', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+        body: JSON.stringify({track: 'net'})
+      }).then(function(){ btn.textContent = 'Queued for Review'; });
+    });
+  })();
+  </script>
+  {% include '_career_tutor.html' %}
+</body>
+</html>

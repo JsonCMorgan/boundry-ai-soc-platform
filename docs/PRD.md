@@ -97,6 +97,8 @@ Hard constraints:
 | **Lesson streaks** | Days with meaningful Career/Sec+ study activity | TBD (set after 1 week of logging) | Keep streak alive; raise bar after baseline | Monthly | Career / Sec+ progress |
 | **Shift completions** | Finished `/soc` shifts with handoff done | TBD | Rising completions; quality over volume | Monthly | `/soc` shift sessions |
 | **Job Skills** | Skills **proficient** from training signals, plus **Work next** (adjacent skills that pair with strengths). Not job-application counts. | TBD after first `/career/skills` glance | Proficient count ↑; recommended skills getting reps | Monthly | `/career/skills` board |
+| **Retention reviews (weekly)** | FSRS-scheduled cards completed on `/career/review` (local `retention_reviews`) | TBD | Steady weekly completions without cramming | Weekly | `memory_retention.py` |
+| **Retention due backlog** | Cards enrolled but not yet reviewed past due date | TBD | Due count stays manageable (not hundreds idle) | Weekly | `retention_cards.due_at` |
 
 Career success order (Q11): **(1) pass Sec+ → (2) feel ready on a real desk → (3) get interviews.**
 

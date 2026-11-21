@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ track_title }} — Boundry.AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #22d3ee; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .primer {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 18px; font-size: 0.82em; line-height: 1.5;
+    }
+    .primer b { color: #22d3ee; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+    }
+    .card h3 { margin: 0 0 6px; color: #fff; font-size: 0.95em; }
+    .card p { margin: 0 0 10px; font-size: 0.78em; color: #9ab; line-height: 1.4; }
+    .meta { font-size: 0.72em; color: #667; margin-bottom: 8px; word-break: break-all; }
+    .btn {
+      display: inline-block; padding: 8px 12px; border-radius: 6px; text-decoration: none;
+      font-size: 0.78em; font-weight: 700; border: 1px solid #22d3ee66;
+      background: #22d3ee18; color: #22d3ee; cursor: pointer; font-family: inherit;
+    }
+    .btn:hover { background: #22d3ee28; }
+    .btn-dim { border-color: #1e3045; background: #0a0e14; color: #9ab; }
+    .pass { color: #00ff88; font-size: 0.72em; }
+    .bench {
+      margin-top: 22px; background: #0f1923; border: 1px solid #1e3045; border-radius: 8px; padding: 16px;
+    }
+    input[type=text] {
+      width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 6px; padding: 10px; font-family: inherit; font-size: 0.82em;
+    }
+    pre.out {
+      display: none; margin-top: 12px; background: #0a0e14; border: 1px solid #1e3045;
+      padding: 12px; font-size: 0.75em; white-space: pre-wrap; color: #9ab;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">IOC Enrichment Lab</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/career/logs">Log Sources</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    <div class="primer">
+      <div style="color:#22d3ee;font-weight:800;margin-bottom:8px;">Before you start (define these)</div>
+      {% for p in primer %}
+      <div style="margin-bottom:6px;"><b>{{ p.term }}:</b> {{ p.plain }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="bench">
+      <h2 style="color:#fff;font-size:1em;margin:0 0 8px;">Help me — free lookup (local stub)</h2>
+      <p style="font-size:0.78em;color:#8aa;margin:0 0 10px;">
+        Offline reputation only. No VirusTotal / Shodan calls. Practice IOCs are safest.
+      </p>
+      <input type="text" id="ioc-box" placeholder="IP, domain, or SHA-256…">
+      <div style="margin-top:10px;">
+        <button type="button" class="btn" onclick="lookupFree()">Lookup</button>
+        <button type="button" class="btn btn-dim" onclick="document.getElementById('ioc-box').value='203.0.113.88'">Try sample IP</button>
+      </div>
+      <pre class="out" id="lookup-out"></pre>
+    </div>
+
+    <h2 style="color:#fff;font-size:1em;margin-top:22px;">Prove it — enrichment cases</h2>
+    <div class="grid">
+      {% for c in cases %}
+      <div class="card">
+        <h3>{{ c.title }}</h3>
+        <div class="meta">IOC: {{ c.ioc }} · difficulty {{ c.difficulty }}</div>
+        <p>{{ c.teach }}</p>
+        {% if best_by_case.get(c.id) and best_by_case[c.id].passed %}
+        <div class="pass">Best: {{ best_by_case[c.id].score_pct }}% PASS</div>
+        {% elif best_by_case.get(c.id) %}
+        <div class="meta">Best: {{ best_by_case[c.id].score_pct }}%</div>
+        {% endif %}
+        <a class="btn" href="{{ c.open_url }}">Open case →</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+  function lookupFree() {
+    var ioc = document.getElementById('ioc-box').value || '';
+    fetch('/api/career/intel/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ ioc: ioc })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var el = document.getElementById('lookup-out');
+      el.style.display = 'block';
+      if (!d.ok) { el.textContent = d.error || 'Lookup failed'; return; }
+      el.textContent =
+        'IOC: ' + d.ioc + '\n' +
+        'Type: ' + d.ioc_type + '\n' +
+        'Found: ' + d.found + '\n' +
+        'Verdict: ' + d.verdict + '\n' +
+        'Score: ' + (d.score == null ? 'n/a' : d.score) + '\n' +
+        'Tags: ' + ((d.tags || []).join(', ') || '(none)') + '\n' +
+        'Geo: ' + d.geo + '\n' +
+        'First seen: ' + d.first_seen + '\n\n' +
+        (d.summary || '');
+    });
+  }
+  </script>
+  {% include '_career_tutor.html' %}
+</body>
+</html>

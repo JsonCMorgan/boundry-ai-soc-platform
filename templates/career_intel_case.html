@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ case.title }} — IOC Lab</title>
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #22d3ee; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 920px; margin: 0 auto; padding: 24px 18px 90px; }
+    h1 { color: #fff; margin: 0 0 8px; font-size: 1.25em; }
+    .teach { color: #9ab; font-size: 0.85em; line-height: 1.45; margin-bottom: 14px; }
+    .panel {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px; margin-bottom: 14px;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 0.9em; color: #22d3ee; }
+    pre.raw {
+      background: #0a0e14; border: 1px solid #1e3045; border-radius: 6px;
+      padding: 12px; font-size: 0.78em; white-space: pre-wrap; color: #8aa;
+    }
+    .ioc-chip {
+      display: inline-block; margin: 8px 0; padding: 6px 10px; border-radius: 6px;
+      border: 1px solid #22d3ee44; background: #22d3ee12; color: #22d3ee;
+      font-size: 0.78em; word-break: break-all;
+    }
+    label.chk {
+      display: block; font-size: 0.8em; margin: 6px 0; cursor: pointer; color: #cdd6e0;
+    }
+    select, button, textarea { font-family: inherit; font-size: 0.8em; }
+    select, textarea {
+      width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 6px; padding: 8px; margin-top: 6px;
+    }
+    textarea { min-height: 110px; }
+    .btn {
+      margin-top: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid #22d3ee66;
+      background: #22d3ee18; color: #22d3ee; font-weight: 800; cursor: pointer;
+    }
+    .fields { display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; font-size: 0.78em; margin-top: 10px; }
+    .fields b { color: #7a9ab0; font-weight: 600; }
+    .ok { color: #00ff88; } .bad { color: #ff8c00; }
+    .result {
+      display: none; margin-top: 14px; padding: 12px; border-radius: 8px;
+      border: 1px solid #1e3045; background: #131d28; font-size: 0.82em; line-height: 1.45;
+    }
+    .result.show { display: block; }
+  
+    .btn-next { border-color: #00ff8866; background: #00ff8818; color: #00ff88; display: none; text-decoration: none; }
+    .btn-next.show { display: inline-block; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">IOC Enrichment</span>
+    <div>
+      <a href="/career/intel">← Lab hub</a>
+      <a href="/career">Career</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ case.title }}</h1>
+    <p class="teach">{{ case.teach }}</p>
+
+    <div class="panel">
+      <h2>1. Show me — scenario</h2>
+      <pre class="raw">{{ case.scenario }}</pre>
+      <div class="ioc-chip">IOC to enrich: {{ case.ioc }}</div>
+      <button type="button" class="btn" onclick="runLookup()">Run local lookup</button>
+      <div class="fields" id="fields">
+        <b>Status</b><span>Click Run local lookup</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>2. Prove it — checklist + note + disposition</h2>
+      {% for c in checklist %}
+      <label class="chk"><input type="checkbox" id="c-{{ c.id }}"> {{ c.label }}</label>
+      {% endfor %}
+      <label style="display:block;margin-top:12px;font-size:0.8em;color:#9ab;">Ticket note (include IOC + verdict + next step)</label>
+      {{ writing_coach_from_registry('career_intel_note') }}
+      {% set _cn = get_coach('career_intel_note') %}
+      <textarea id="note" aria-describedby="coach-career_intel_note" data-writing-coach="career_intel_note"
+        placeholder="{{ (_cn.placeholder_example if _cn else '') }}"></textarea>
+      <label style="display:block;margin-top:12px;font-size:0.8em;color:#9ab;">Disposition</label>
+      <select id="disposition">
+        <option value="">Select…</option>
+        {% for d in dispositions %}
+        <option value="{{ d.id }}">{{ d.label }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn" onclick="grade()">Submit enrichment</button>
+      <div class="result" id="result"></div>
+      <a class="btn btn-next" id="next-scenario" href="{{ next_preview.url if next_preview else '#' }}">Next scenario →</a>
+
+    </div>
+  </div>
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+  function showNext(d) {
+    var nb = document.getElementById('next-scenario');
+    if (!nb) return;
+    if (d && d.next && d.next.url) nb.href = d.next.url;
+    nb.classList.add('show');
+  }
+  var CASE_ID = {{ case.id | tojson }};
+  var IOC = {{ case.ioc | tojson }};
+  var lookedUp = false;
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function runLookup() {
+    fetch('/api/career/intel/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ ioc: IOC })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var box = document.getElementById('fields');
+      if (!d.ok) { box.innerHTML = '<b>Error</b><span class="bad">' + esc(d.error) + '</span>'; return; }
+      lookedUp = true;
+      var vcls = (d.verdict === 'malicious' || d.verdict === 'suspicious') ? 'bad' : 'ok';
+      box.innerHTML =
+        '<b>IOC</b><span>' + esc(d.ioc) + '</span>' +
+        '<b>Type</b><span>' + esc(d.ioc_type) + '</span>' +
+        '<b>Verdict</b><span class="' + vcls + '">' + esc(d.verdict) + '</span>' +
+        '<b>Score</b><span>' + esc(d.score == null ? 'n/a' : d.score) + '</span>' +
+        '<b>Tags</b><span>' + esc((d.tags || []).join(', ') || '(none)') + '</span>' +
+        '<b>Summary</b><span>' + esc(d.summary) + '</span>';
+      var note = document.getElementById('note');
+      if (!note.value.trim()) {
+        note.value = 'Looked up ' + d.ioc + '. Verdict: ' + d.verdict +
+          ' (score ' + (d.score == null ? 'n/a' : d.score) + '). ' +
+          (d.summary || '') + ' Next: document and act per disposition.';
+      }
+    });
+  }
+
+  function grade() {
+    if (!lookedUp) { alert('Run local lookup first'); return; }
+    var checklist = {};
+    {{ checklist | map(attribute='id') | list | tojson }}.forEach(function (id) {
+      checklist[id] = !!(document.getElementById('c-' + id) || {}).checked;
+    });
+    var disposition = document.getElementById('disposition').value;
+    var note = document.getElementById('note').value || '';
+    fetch('/api/career/intel/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({
+        case_id: CASE_ID,
+        checklist: checklist,
+        disposition: disposition,
+        note: note
+      })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      BoundryRationale.renderResult(document.getElementById('result'), d);
+      if (d && d.ok) showNext(d);
+    });
+  }
+  </script>
+  {% include '_career_rationale.html' %}
+  {% include '_career_tutor.html' %}
+</body>
+</html>

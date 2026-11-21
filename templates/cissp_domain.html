@@ -8,7 +8,6 @@
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; padding: 0; }
 
-        /* ── Top bar ── */
         .topbar {
             background: #12151f; border-bottom: 2px solid {{ domain.color }}33;
             padding: 14px 32px; display: flex; align-items: center;
@@ -18,16 +17,14 @@
         .topbar nav a { color: #666; text-decoration: none; margin-left: 20px; font-size: 0.85em; transition: color 0.15s; }
         .topbar nav a:hover { color: #00b432; }
 
-        /* ── Main layout ── */
-        .main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+        .main { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
 
-        /* ── Domain header ── */
         .domain-header {
             background: #12151f; border: 1px solid #1e2235;
             border-top: 4px solid {{ domain.color }};
-            border-radius: 6px; padding: 22px 24px; margin-bottom: 24px;
+            border-radius: 6px; padding: 22px 24px; margin-bottom: 20px;
         }
-        .domain-header-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+        .domain-header-top { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
         .domain-num-badge {
             font-size: 0.8em; font-weight: bold; font-family: monospace;
             background: #161923; color: {{ domain.color }};
@@ -38,17 +35,66 @@
             font-size: 0.8em; color: {{ domain.color }}; font-weight: bold;
             background: #0b0e17; border: 1px solid #1e2235; padding: 3px 10px; border-radius: 10px;
         }
-        .domain-topics { display: flex; flex-wrap: wrap; gap: 6px; }
+        .domain-sub { font-size: 0.85em; color: #666; margin-top: 4px; }
+        .domain-topics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
         .topic-tag {
             font-size: 0.72em; background: #161923; color: #888;
             border: 1px solid #2a2d3a; padding: 2px 8px; border-radius: 10px;
         }
-        .topic-tag:hover { color: #ccc; border-color: #444; }
+        .path-mode-row {
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+            margin-top: 14px; padding-top: 12px; border-top: 1px solid #1e2235;
+        }
+        .path-mode-label { font-size: 0.75em; color: #666; margin-right: 4px; }
+        .path-mode-btn {
+            font-size: 0.75em; font-family: inherit; cursor: pointer;
+            background: #0b0e17; color: #888; border: 1px solid #2a2d3a;
+            padding: 5px 10px; border-radius: 14px;
+        }
+        .path-mode-btn.active {
+            color: {{ domain.color }}; border-color: {{ domain.color }}66;
+            background: {{ domain.color }}18; font-weight: 700;
+        }
+        .path-mode-hint { font-size: 0.72em; color: #555; width: 100%; margin-top: 4px; }
 
-        /* ── Progress bar ── */
+        .lesson-panel { padding: 22px 24px; }
+        .lesson-eyebrow {
+            font-size: 0.72em; letter-spacing: 0.06em; text-transform: uppercase;
+            color: {{ domain.color }}; margin-bottom: 8px; font-weight: 700;
+        }
+        .lesson-title { font-size: 1.25em; color: #eee; font-weight: 800; margin: 0 0 8px; }
+        .lesson-meta { font-size: 0.78em; color: #666; margin-bottom: 14px; line-height: 1.45; }
+        .lesson-summary {
+            background: #0b0e17; border-left: 3px solid {{ domain.color }};
+            padding: 10px 14px; margin-bottom: 14px; color: #bbb; font-size: 0.88em; line-height: 1.55;
+        }
+        .lesson-body {
+            white-space: pre-wrap; font-size: 0.9em; color: #c8c8c8; line-height: 1.65;
+            margin-bottom: 16px;
+        }
+        .lesson-takeaways { margin: 0 0 14px; padding-left: 18px; color: #aaa; font-size: 0.85em; }
+        .lesson-takeaways li { margin-bottom: 6px; }
+        .lesson-trap {
+            background: #2a1808; border: 1px solid #664422; border-radius: 5px;
+            padding: 10px 12px; font-size: 0.82em; color: #cc9966; margin-bottom: 18px; line-height: 1.5;
+        }
+        .lesson-trap strong { color: #ffaa66; }
+        .btn-lesson-quiz {
+            background: {{ domain.color }}; color: #0b0e17; border: none; border-radius: 5px;
+            padding: 12px 22px; font-weight: 800; cursor: pointer; font-size: 0.95em; font-family: inherit;
+        }
+        .btn-lesson-quiz:hover { filter: brightness(1.08); }
+        .path-pill {
+            display: inline-block; font-size: 0.7em; font-weight: 700;
+            padding: 2px 8px; border-radius: 10px; margin-left: 8px;
+            border: 1px solid #2a2d3a; color: #888;
+        }
+        .path-pill.lesson { color: #ffcc00; border-color: #665500; background: #221a00; }
+        .path-pill.drill { color: #00d4ff; border-color: #004466; background: #001820; }
+
         .progress-bar-wrap {
             background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
-            padding: 16px 20px; margin-bottom: 24px;
+            padding: 16px 20px; margin-bottom: 20px;
             display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
         }
         .progress-stat { text-align: center; min-width: 70px; }
@@ -57,24 +103,30 @@
         .progress-bar-outer { flex: 1; background: #0b0e17; border: 1px solid #1e2235; border-radius: 4px; height: 10px; overflow: hidden; min-width: 100px; }
         .progress-bar-inner { height: 100%; border-radius: 4px; background: {{ domain.color }}; transition: width 0.5s; box-shadow: 0 0 8px {{ domain.color }}66; }
 
-        /* ── SOC bridge ── */
         .soc-bridge {
             background: #120a22; border: 1px solid #441a88; border-left: 3px solid #9944ee;
-            border-radius: 5px; padding: 12px 16px; margin-bottom: 24px;
+            border-radius: 5px; padding: 12px 16px; margin-bottom: 20px;
             font-size: 0.82em; color: #9977cc; line-height: 1.6;
         }
         .soc-bridge strong { color: #bb88ff; }
 
-        /* ── Question card ── */
+        .prog-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; display: none; }
+        .prog-wrap.show { display: flex; }
+        .prog-count { font-size: 0.85em; color: #999; white-space: nowrap; font-weight: 700; }
+        .prog-track { flex: 1; height: 8px; background: #161923; border-radius: 4px; overflow: hidden; }
+        .prog-fill  { height: 100%; background: linear-gradient(90deg,{{ domain.color }},#00d4ff); width: 0%; transition: width 0.3s; }
+        .prog-streak { font-size: 0.8em; color: #ff9900; white-space: nowrap; }
+
         .question-card {
             background: #12151f; border: 1px solid #1e2235; border-radius: 6px;
             margin-bottom: 24px; overflow: hidden;
         }
         .question-card-header {
             background: #161923; padding: 12px 18px;
-            display: flex; align-items: center; gap: 10px;
-            border-bottom: 1px solid #1e2235;
+            display: none; align-items: center; gap: 10px;
+            border-bottom: 1px solid #1e2235; flex-wrap: wrap;
         }
+        .question-card-header.show { display: flex; }
         .mindset-badge {
             font-size: 0.72em; font-weight: bold; text-transform: uppercase;
             letter-spacing: 0.05em; padding: 2px 10px; border-radius: 10px;
@@ -82,6 +134,8 @@
         .mindset-manager  { background: #2a1400; color: #ff8833; border: 1px solid #884400; }
         .mindset-technical{ background: #0a1422; color: #4488ff; border: 1px solid #224488; }
         .mindset-both     { background: #120a22; color: #9944ee; border: 1px solid #441a88; }
+        .hard-badge { background: #2a1a00; border: 1px solid #665500; color: #ffcc00;
+                      border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
         .difficulty-dots { display: flex; gap: 3px; margin-left: auto; }
         .d-dot { width: 8px; height: 8px; border-radius: 50%; background: #222; border: 1px solid #2a2d3a; }
         .d-dot.filled { background: {{ domain.color }}; border-color: {{ domain.color }}; }
@@ -104,43 +158,34 @@
         .option-btn.correct  { border-color: #00b432; background: #0a1a0a; color: #00ff41; }
         .option-btn.wrong    { border-color: #ff6a00; background: #1a0a00; color: #ff9944; }
         .option-label { font-weight: bold; color: {{ domain.color }}; min-width: 16px; font-family: monospace; }
-        .option-btn.correct .option-label  { color: #00b432; }
-        .option-btn.wrong   .option-label  { color: #ff6a00; }
 
         .question-actions { display: flex; gap: 10px; align-items: center; padding: 0 22px 18px; }
         .btn-skip {
             background: transparent; color: #444; border: 1px solid #222;
             padding: 6px 14px; border-radius: 4px; font-size: 0.78em; cursor: pointer;
-            transition: color 0.15s, border-color 0.15s;
         }
         .btn-skip:hover { color: #888; border-color: #555; }
 
-        /* ── Generating spinner ── */
         .generating-state { padding: 48px 24px; text-align: center; }
         .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid #1e2235; border-top-color: {{ domain.color }}; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .generating-label { font-size: 0.85em; color: #555; }
         .generating-sublabel { font-size: 0.75em; color: #333; margin-top: 4px; }
 
-        /* ── Generate button state ── */
         .generate-state { padding: 40px 24px; text-align: center; }
         .btn-generate {
             background: {{ domain.color }}; color: #000; border: none;
             padding: 12px 28px; border-radius: 5px; font-size: 0.95em; font-weight: bold;
-            cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.02em;
+            cursor: pointer;
         }
         .btn-generate:hover { opacity: 0.85; }
-        .btn-generate:disabled { opacity: 0.4; cursor: default; }
 
-        /* ── Error state ── */
         .error-state { padding: 24px; }
         .error-box {
             background: #1a0a00; border: 1px solid #883300; border-left: 4px solid #ff6a00;
             border-radius: 4px; padding: 14px 16px; font-size: 0.85em; color: #ff9944;
         }
-        .error-box strong { color: #ffaa66; }
 
-        /* ── Feedback panel ── */
         .feedback-panel { padding: 18px 22px; border-top: 1px solid #1e2235; }
         .feedback-correct { background: #0a1a0a; border-left: 4px solid #00b432; border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; }
         .feedback-wrong   { background: #1a0a00; border-left: 4px solid #ff6a00; border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; }
@@ -148,37 +193,47 @@
         .feedback-correct .feedback-result { color: #00b432; }
         .feedback-wrong   .feedback-result { color: #ff6a00; }
         .feedback-explanation { font-size: 0.85em; color: #999; line-height: 1.6; }
-        .feedback-explanation strong { color: #ccc; }
         .btn-next {
             background: {{ domain.color }}; color: #000; border: none;
             padding: 10px 24px; border-radius: 4px; font-size: 0.9em; font-weight: bold;
-            cursor: pointer; transition: opacity 0.15s; margin-top: 12px;
+            cursor: pointer; margin-top: 12px;
         }
-        .btn-next:hover { opacity: 0.85; }
 
-        /* ── Session history ── */
-        .history-panel { background: #12151f; border: 1px solid #1e2235; border-radius: 6px; overflow: hidden; }
-        .history-header {
-            background: #161923; padding: 12px 18px; font-size: 0.78em;
-            text-transform: uppercase; letter-spacing: 0.07em; color: #555;
-            border-bottom: 1px solid #1e2235; display: flex; justify-content: space-between;
-        }
-        .history-table { width: 100%; border-collapse: collapse; }
-        .history-table th {
-            background: #161923; color: #444; font-size: 0.7em; text-transform: uppercase;
-            letter-spacing: 0.05em; padding: 8px 14px; text-align: left;
-            border-bottom: 1px solid #1e2235;
-        }
-        .history-table td { padding: 9px 14px; border-bottom: 1px solid #141720; font-size: 0.82em; color: #aaa; }
-        .history-table tr:last-child td { border-bottom: none; }
-        .history-table tr:hover td { background: #14172a; }
-        .result-correct { color: #00b432; font-weight: bold; }
-        .result-wrong   { color: #ff6a00; font-weight: bold; }
-        .hist-scenario  { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #666; }
-        .empty-history  { text-align: center; padding: 24px; color: #333; font-style: italic; }
-        .mindset-small {
-            font-size: 0.7em; padding: 1px 6px; border-radius: 3px;
-        }
+        .done { display: none; text-align: center; background: #12151f; border: 1px solid #1e2235;
+                border-radius: 8px; padding: 36px 28px; margin-bottom: 24px; }
+        .done.show { display: block; }
+        .done .score { font-size: 4em; font-weight: 800; line-height: 1; }
+        .done .score-sub { font-size: 0.95em; color: #888; margin-top: 4px; }
+        .done .compare { margin: 22px auto 0; max-width: 480px; font-size: 0.92em; color: #ccc; line-height: 1.7;
+                         background: #0b0e17; border: 1px solid #1e2235; border-radius: 8px; padding: 16px 20px; }
+        .done .compare b { color: #fff; }
+        .trend-up   { color: #00ff41; font-weight: 700; }
+        .trend-down { color: #ff8888; font-weight: 700; }
+        .trend-flat { color: #cc8800; font-weight: 700; }
+        .best-badge { display: inline-block; margin-top: 12px; background: #2a1a00; color: #ffcc00;
+                      border: 1px solid #665500; border-radius: 16px; padding: 4px 16px; font-weight: 700; font-size: 0.85em; }
+        .btn-restart { margin-top: 24px; background: {{ domain.color }}; color: #000; border: none; padding: 12px 28px;
+                       border-radius: 7px; font-size: 0.95em; font-weight: 800; cursor: pointer; }
+        .miss-block { text-align: left; max-width: 600px; margin: 24px auto 0; }
+        .miss-title { color: #ff8888; font-weight: 700; margin-bottom: 10px; }
+        .miss-item { padding: 12px 0; border-bottom: 1px solid #1a1d2a; font-size: 0.86em; }
+        .miss-item .q { color: #ddd; margin-top: 4px; }
+        .miss-item .ans { color: #88cc88; margin-top: 6px; }
+        .miss-item .exp { color: #888; margin-top: 4px; line-height: 1.5; }
+
+        .history { margin-top: 10px; }
+        .history h2 { font-size: 0.8em; color: #666; text-transform: uppercase; letter-spacing: 0.06em;
+                      border-bottom: 1px solid #1e2235; padding-bottom: 8px; margin: 0 0 14px; }
+        .hsummary { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .hstat { background: #12151f; border: 1px solid #1e2235; border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 88px; }
+        .hstat .v { font-size: 1.4em; font-weight: 800; }
+        .hstat .l { font-size: 0.66em; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+        .hrow { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid #14171f; font-size: 0.84em; }
+        .hrow .hdate { color: #777; width: 130px; }
+        .hbar-track { flex: 1; height: 8px; background: #161923; border-radius: 4px; overflow: hidden; }
+        .hbar-fill { height: 100%; border-radius: 4px; }
+        .hrow .hscore { width: 44px; text-align: right; font-weight: 700; color: #ccc; }
+        .empty-hist { color: #555; font-size: 0.85em; }
     </style>
 </head>
 <body>
@@ -192,24 +247,18 @@
     <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
         {% if player %}
         <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;">
-            {% if player.streak_days and player.streak_days >= 2 %}
-            <span style="color:#ff8c00;font-weight:700;font-size:12px;">🔥{{ player.streak_days }}d</span>
-            {% endif %}
-            <a href="/profile" style="background:#1a2a1a;border:1px solid {{ domain.color }};border-radius:4px;padding:2px 8px;font-weight:700;color:{{ domain.color }};font-size:12px;text-decoration:none;white-space:nowrap;" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
+            <a href="/profile" style="background:#1a2a1a;border:1px solid {{ domain.color }};border-radius:4px;padding:2px 8px;font-weight:700;color:{{ domain.color }};font-size:12px;text-decoration:none;" id="xp-level-badge">{{ player.level_icon }} Lv.{{ player.level }}</a>
             <div style="width:90px;height:7px;background:#1a1a1a;border-radius:4px;overflow:hidden;border:1px solid #333;">
-                <div id="xp-bar-fill" style="height:100%;background:linear-gradient(90deg,{{ domain.color }},#88ffaa);border-radius:4px;width:{{ player.level_pct }}%;transition:width 0.6s;"></div>
+                <div id="xp-bar-fill" style="height:100%;background:linear-gradient(90deg,{{ domain.color }},#88ffaa);border-radius:4px;width:{{ player.level_pct }}%;"></div>
             </div>
-            <span id="xp-bar-label" style="font-size:11px;color:#555;white-space:nowrap;">{{ "{:,}".format(player.xp) }} XP</span>
+            <span id="xp-bar-label" style="font-size:11px;color:#555;">{{ "{:,}".format(player.xp) }} XP</span>
         </div>
         {% endif %}
-        <span style="font-size:0.85em; color:#666;">Analyst: <strong style="color:#aaa;">{{ session['username'] }}</strong></span>
         <nav>
-            <a href="/control-room">⚙ Control Room</a>
             <a href="/cissp">📘 CISSP Hub</a>
             <a href="/cissp/practice">🎯 Practice</a>
             <a href="/cissp/flashcards">🃏 Flashcards</a>
             <a href="/cissp/exam">📝 CAT Exam</a>
-            <a href="/profile" style="color:#ffd700;">⚔️ Profile</a>
             <a href="/logout" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;">🚪 Log Out</a>
         </nav>
     </div>
@@ -217,21 +266,29 @@
 
 <div class="main">
 
-    <!-- Domain header -->
     <div class="domain-header">
         <div class="domain-header-top">
             <span class="domain-num-badge">Domain {{ domain_num }}</span>
             <span class="domain-name-large">{{ domain.name }}</span>
             <span class="domain-weight-badge">{{ domain.weight }}% of CISSP exam</span>
         </div>
+        <div class="domain-sub">{{ quiz_len }} questions per quiz · last {{ hard_tail }} are a hard round (advanced difficulty) · finish to log your score</div>
         <div class="domain-topics">
             {% for topic in domain.key_topics %}
             <span class="topic-tag">{{ topic }}</span>
             {% endfor %}
         </div>
+        <div class="path-mode-row">
+            <span class="path-mode-label">Study path:</span>
+            <button type="button" class="path-mode-btn active" data-mode="auto" onclick="setPathMode('auto')">Auto (hybrid)</button>
+            <button type="button" class="path-mode-btn" data-mode="force_lesson" onclick="setPathMode('force_lesson')">Always Lesson → Quiz</button>
+            <button type="button" class="path-mode-btn" data-mode="force_drill" onclick="setPathMode('force_drill')">Quiz only</button>
+            <div class="path-mode-hint" id="path-mode-hint">
+                Auto: Lesson-tier topics + weak accuracy (&lt;70%) get a short Ollama lesson first; strong drill topics go straight to quiz.
+            </div>
+        </div>
     </div>
 
-    <!-- Progress -->
     {% set att = (progress.get('attempts', 0) or 0) %}
     {% set cor = (progress.get('correct', 0)  or 0) %}
     {% set wrg = att - cor %}
@@ -239,15 +296,15 @@
     <div class="progress-bar-wrap">
         <div class="progress-stat">
             <div class="progress-stat-val" id="stat-attempted">{{ att }}</div>
-            <div class="progress-stat-lbl">Attempted</div>
+            <div class="progress-stat-lbl">All-Time</div>
         </div>
         <div class="progress-stat">
             <div class="progress-stat-val" id="stat-correct" style="color:#00b432;">{{ cor }}</div>
             <div class="progress-stat-lbl">Correct</div>
         </div>
         <div class="progress-stat">
-            <div class="progress-stat-val" id="stat-wrong" style="color:{% if wrg > 0 %}#ff6a00{% else %}#555{% endif %};">{{ wrg }}</div>
-            <div class="progress-stat-lbl">Wrong</div>
+            <div class="progress-stat-val" id="sess-correct">0</div>
+            <div class="progress-stat-lbl">This Quiz</div>
         </div>
         <div class="progress-stat">
             <div class="progress-stat-val" id="stat-accuracy">{% if att > 0 %}{{ pct }}%{% else %}—{% endif %}</div>
@@ -256,154 +313,214 @@
         <div class="progress-bar-outer">
             <div class="progress-bar-inner" id="stat-bar" style="width:{{ pct }}%;"></div>
         </div>
-        <div id="stat-label" style="font-size:0.75em; color:#555;">
-            {% if pct >= 70 and att >= 5 %}🟢 Mastering{% elif att >= 1 %}🟡 In Progress{% else %}⚪ Not started{% endif %}
-        </div>
     </div>
 
-    <!-- SOC bridge -->
     {% if domain.soc_bridge %}
     <div class="soc-bridge">
         🔗 <strong>Your SOC Training Covers This Domain:</strong> {{ domain.soc_bridge }}
     </div>
     {% endif %}
 
-    <!-- Question card -->
-    <div class="question-card" id="question-card">
+    <div id="quiz-area">
+        <div class="prog-wrap" id="prog-wrap">
+            <span class="prog-count" id="prog-count">Question 0 / {{ quiz_len }}</span>
+            <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+            <span class="prog-streak" id="prog-streak">🔥 0</span>
+        </div>
 
-        <!-- Header shows mindset + difficulty — rendered by JS after question loads -->
-        <div class="question-card-header" id="q-header" style="display:none;">
-            <span id="mindset-badge" class="mindset-badge mindset-manager">🧠 Manager Mindset</span>
-            <div class="difficulty-dots" id="difficulty-dots">
-                <span class="d-dot" id="d1"></span>
-                <span class="d-dot" id="d2"></span>
-                <span class="d-dot" id="d3"></span>
+        <div class="question-card" id="question-card">
+            <div class="question-card-header" id="q-header">
+                <span id="mindset-badge" class="mindset-badge mindset-manager">🧠 Manager Mindset</span>
+                <span class="hard-badge" id="hard-badge" style="display:none;">🔥 Hard round</span>
+                <div class="difficulty-dots" id="difficulty-dots">
+                    <span class="d-dot" id="d1"></span>
+                    <span class="d-dot" id="d2"></span>
+                    <span class="d-dot" id="d3"></span>
+                </div>
             </div>
-        </div>
 
-        <!-- States -->
-        <div id="state-generate" class="generate-state">
-            <p style="font-size:0.85em; color:#555; margin-bottom:18px;">
-                Questions are generated live by your local Ollama model — fresh each time, never repeated.
-            </p>
-            <button class="btn-generate" id="btn-generate" onclick="loadQuestion()">
-                ⚡ Generate Question
-            </button>
-        </div>
-
-        <div id="state-generating" class="generating-state" style="display:none;">
-            <div class="spinner"></div>
-            <div class="generating-label">Generating your question…</div>
-            <div class="generating-sublabel">Ollama is thinking — typically 5–15 seconds</div>
-        </div>
-
-        <div id="state-question" class="question-body" style="display:none;">
-            <div class="scenario-text" id="q-scenario"></div>
-            <div class="question-text" id="q-question"></div>
-            <div class="options-grid" id="q-options"></div>
-        </div>
-
-        <div id="state-actions" style="display:none;" class="question-actions">
-            <button class="btn-skip" id="btn-skip" onclick="skipQuestion()">↩ Skip this question</button>
-        </div>
-
-        <div id="state-feedback" class="feedback-panel" style="display:none;"></div>
-
-        <div id="state-error" class="error-state" style="display:none;">
-            <div class="error-box" id="error-msg">
-                <strong>⚠ Question generation failed.</strong><br>
-                Make sure Ollama is running: <code>ollama serve</code> — then try again.
+            <div id="state-generate" class="generate-state">
+                <p style="font-size:0.85em; color:#555; margin-bottom:18px;">
+                    {{ quiz_len }}-question adaptive quiz. Hybrid mode teaches first when the topic is deep
+                    or your domain accuracy is under 70%, then quizzes you on that lesson.
+                </p>
+                <button class="btn-generate" id="btn-generate" onclick="startQuiz()">
+                    ⚡ Start Domain Quiz
+                </button>
             </div>
-            <button class="btn-generate" style="margin-top:14px;" onclick="loadQuestion()">↺ Try Again</button>
+
+            <div id="state-generating" class="generating-state" style="display:none;">
+                <div class="spinner"></div>
+                <div class="generating-label" id="generating-label">Generating…</div>
+                <div class="generating-sublabel" id="generating-sub">Ollama is thinking — typically 5–20 seconds</div>
+            </div>
+
+            <div id="state-lesson" class="lesson-panel" style="display:none;">
+                <div class="lesson-eyebrow">Mini-lesson <span class="path-pill lesson" id="lesson-tier-pill">Lesson</span></div>
+                <h2 class="lesson-title" id="lesson-title">—</h2>
+                <div class="lesson-meta" id="lesson-meta"></div>
+                <div class="lesson-summary" id="lesson-summary"></div>
+                <div class="lesson-body" id="lesson-body"></div>
+                <div style="font-size:0.75em;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Key takeaways</div>
+                <ul class="lesson-takeaways" id="lesson-takeaways"></ul>
+                <div class="lesson-trap" id="lesson-trap"></div>
+                <button type="button" class="btn-lesson-quiz" onclick="quizFromLesson()">Ready — Quiz me on this →</button>
+            </div>
+
+            <div id="state-question" class="question-body" style="display:none;">
+                <div id="q-visual"></div>
+                <div class="scenario-text" id="q-scenario"></div>
+                <div class="question-text" id="q-question"></div>
+                <div class="options-grid" id="q-options"></div>
+            </div>
+
+            <div id="state-actions" style="display:none;" class="question-actions">
+                <button class="btn-skip" id="btn-skip" onclick="skipQuestion()">↩ Skip (doesn’t count)</button>
+            </div>
+
+            <div id="state-feedback" class="feedback-panel" style="display:none;"></div>
+
+            <div id="state-error" class="error-state" style="display:none;">
+                <div class="error-box" id="error-msg">
+                    <strong>⚠ Question generation failed.</strong><br>
+                    Make sure Ollama is running: <code>ollama serve</code> — then try again.
+                </div>
+                <button class="btn-generate" style="margin-top:14px;" onclick="loadQuestion()">↺ Try Again</button>
+            </div>
         </div>
     </div>
 
-    <!-- Session history -->
-    <div class="history-panel">
-        <div class="history-header">
-            <span>Today's Questions — Domain {{ domain_num }}</span>
-            <span id="session-count" style="color:#555;">{{ session_attempts|length }} answered</span>
+    <div class="done" id="done">
+        <div class="score" id="d-score">—%</div>
+        <div class="score-sub" id="d-sub"></div>
+        <div id="d-best"></div>
+        <div class="compare" id="d-compare"></div>
+        <div id="d-misses"></div>
+        <button class="btn-restart" onclick="restart()">Run Another Quiz →</button>
+        <div style="margin-top:14px;">
+            <a href="/cissp" style="color:#888;font-size:0.85em;">← Back to CISSP Hub</a>
         </div>
+    </div>
+
+    <div class="history">
+        <h2>Domain Quiz Progress</h2>
         <div id="history-body">
-        {% if session_attempts %}
-        <table class="history-table">
-            <thead>
-                <tr>
-                    <th>Scenario</th>
-                    <th>Your Answer</th>
-                    <th>Correct</th>
-                    <th>Result</th>
-                    <th>Mindset</th>
-                </tr>
-            </thead>
-            <tbody id="history-rows">
-                {% for a in session_attempts %}
-                <tr>
-                    <td class="hist-scenario" title="{{ a.scenario }}">{{ a.scenario[:80] }}…</td>
-                    <td><strong style="color:{{ domain.color }};">{{ a.user_answer }}</strong></td>
-                    <td><strong>{{ a.correct_answer }}</strong></td>
-                    <td>
-                        {% if a.is_correct %}
-                        <span class="result-correct">✓ Correct</span>
-                        {% else %}
-                        <span class="result-wrong">✗ Wrong</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if a.mindset == 'manager' %}
-                        <span class="mindset-small mindset-manager">Manager</span>
-                        {% elif a.mindset == 'technical' %}
-                        <span class="mindset-small mindset-technical">Technical</span>
-                        {% else %}
-                        <span class="mindset-small mindset-both">Both</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="empty-history" id="empty-history">No questions answered today in this domain yet.</div>
-        {% endif %}
+            {% include "_quiz_history.html" %}
         </div>
     </div>
 
 </div>
 
+{% include "_cissp_visual.html" %}
+
 <script>
-    // ── CSRF helper for AJAX state-changers ──
     var _csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
     function csrfFetch(url, opts) {
         opts = opts || {};
         opts.headers = Object.assign({'X-CSRFToken': _csrfToken}, opts.headers || {});
         return fetch(url, opts);
     }
+    // escHtml provided by _cissp_visual.html
 
-    var DOMAIN_NUM   = {{ domain_num }};
-    var currentAttemptId = null;
+    var DOMAIN_NUM = {{ domain_num }};
+    var QUIZ_LEN = {{ quiz_len }};
+    var HARD_TAIL = {{ hard_tail }};
+    var SESSION = { num: 0, correct: 0, streak: 0, misses: [], results: [] };
+    var CURRENT = {};
     var answered = false;
+    var currentAttemptId = null;
+    var PATH_MODE = localStorage.getItem('cissp_path_mode_d' + DOMAIN_NUM) || 'auto';
+    var PENDING_LESSON = null;
+    var PENDING_HARD = false;
+
+    var PATH_HINTS = {
+        auto: 'Auto: Lesson-tier topics + weak accuracy (<70%) get a short Ollama lesson first; strong drill topics go straight to quiz.',
+        force_lesson: 'Always Lesson → Quiz: every item starts with a mini-lesson, then a question on that lesson.',
+        force_drill: 'Quiz only: skip lessons — same rapid-fire drill as before.'
+    };
+
+    function setPathMode(mode) {
+        PATH_MODE = mode;
+        localStorage.setItem('cissp_path_mode_d' + DOMAIN_NUM, mode);
+        document.querySelectorAll('.path-mode-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+        });
+        var hint = document.getElementById('path-mode-hint');
+        if (hint) hint.textContent = PATH_HINTS[mode] || PATH_HINTS.auto;
+    }
+    setPathMode(PATH_MODE);
 
     function setState(name) {
-        var states = ['state-generate', 'state-generating', 'state-question', 'state-actions', 'state-feedback', 'state-error'];
-        states.forEach(function(id) { document.getElementById(id).style.display = 'none'; });
-        document.getElementById('state-' + name).style.display = '';
-        if (name === 'question') {
-            document.getElementById('state-actions').style.display = '';
-        }
-        // Show/hide header
-        var showHeader = (name === 'question');
-        document.getElementById('q-header').style.display = showHeader ? '' : 'none';
+        ['generate','generating','lesson','question','actions','feedback','error'].forEach(function(s) {
+            var el = document.getElementById('state-' + s);
+            if (el) el.style.display = 'none';
+        });
+        var show = document.getElementById('state-' + name);
+        if (show) show.style.display = '';
+        if (name === 'question') document.getElementById('state-actions').style.display = '';
+        document.getElementById('q-header').classList.toggle('show', name === 'question');
+    }
+
+    function setGenerating(label, sub) {
+        setState('generating');
+        var l = document.getElementById('generating-label');
+        var s = document.getElementById('generating-sub');
+        if (l) l.textContent = label || 'Generating…';
+        if (s) s.textContent = sub || 'Ollama is thinking — typically 5–20 seconds';
+    }
+
+    function showLesson(d) {
+        PENDING_LESSON = d.lesson;
+        document.getElementById('lesson-title').textContent = d.lesson.title || d.topic || 'Lesson';
+        document.getElementById('lesson-meta').textContent =
+            (d.topic ? ('Topic: ' + d.topic + ' · ') : '') + (d.reason || '');
+        document.getElementById('lesson-summary').textContent = d.lesson.summary || '';
+        document.getElementById('lesson-body').textContent = d.lesson.body || '';
+        var ul = document.getElementById('lesson-takeaways');
+        ul.innerHTML = '';
+        (d.lesson.key_takeaways || []).forEach(function(t) {
+            var li = document.createElement('li');
+            li.textContent = t;
+            ul.appendChild(li);
+        });
+        document.getElementById('lesson-trap').innerHTML =
+            '<strong>Exam trap:</strong> ' + escHtml(d.lesson.exam_trap || '');
+        setState('lesson');
+    }
+
+    function renderQuestion(d) {
+        CURRENT = d;
+        currentAttemptId = d.attempt_id;
+        updateProg(true);
+        renderCisspVisual(document.getElementById('q-visual'), d.visual);
+        document.getElementById('q-scenario').textContent = d.scenario;
+        document.getElementById('q-question').textContent = d.question;
+        var optGrid = document.getElementById('q-options');
+        optGrid.innerHTML = '';
+        ['A','B','C','D'].forEach(function(letter) {
+            var btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.id = 'opt-' + letter;
+            btn.innerHTML = '<span class="option-label">' + letter + '</span><span>' + escHtml(d.options[letter] || '') + '</span>';
+            btn.onclick = function() { submitAnswer(letter); };
+            optGrid.appendChild(btn);
+        });
+        setMindsetBadge(d.mindset);
+        setDifficulty(d.difficulty || 2);
+        document.getElementById('hard-badge').style.display = d.hard_round ? '' : 'none';
+        setState('question');
+        refreshStats();
     }
 
     function setMindsetBadge(mindset) {
         var badge = document.getElementById('mindset-badge');
         badge.className = 'mindset-badge mindset-' + mindset;
-        var labels = {
-            'manager':   '🧠 Manager Mindset',
-            'technical': '🔧 Technical Knowledge',
-            'both':      '⚡ Manager + Technical',
-        };
-        badge.textContent = labels[mindset] || '🧠 Manager Mindset';
+        badge.dataset.mindset = mindset;
+        badge.textContent = ({
+            manager: '🧠 Manager Mindset',
+            technical: '🔧 Technical Knowledge',
+            both: '⚡ Manager + Technical',
+        })[mindset] || '🧠 Manager Mindset';
     }
 
     function setDifficulty(level) {
@@ -413,61 +530,120 @@
         }
     }
 
+    function updateProg(beforeAnswer) {
+        var n = SESSION.num;
+        document.getElementById('prog-count').textContent = 'Question ' + n + ' / ' + QUIZ_LEN
+            + (n > (QUIZ_LEN - HARD_TAIL) ? '  ·  hard round' : '');
+        document.getElementById('prog-fill').style.width =
+            (beforeAnswer ? ((n - 1) / QUIZ_LEN * 100) : (n / QUIZ_LEN * 100)) + '%';
+        document.getElementById('prog-streak').textContent = '🔥 ' + SESSION.streak;
+        document.getElementById('sess-correct').textContent = SESSION.correct + '/' + SESSION.num;
+    }
+
+    function startQuiz() {
+        SESSION = { num: 0, correct: 0, streak: 0, misses: [], results: [] };
+        PENDING_LESSON = null;
+        document.getElementById('done').classList.remove('show');
+        document.getElementById('quiz-area').style.display = '';
+        document.getElementById('prog-wrap').classList.add('show');
+        loadQuestion();
+    }
+
+    function restart() { startQuiz(); }
+
+    function nextOrFinish() {
+        if (SESSION.num >= QUIZ_LEN) finishQuiz();
+        else loadQuestion();
+    }
+
     function loadQuestion() {
-        setState('generating');
-        document.getElementById('q-header').style.display = 'none';
+        if (SESSION.num >= QUIZ_LEN) { finishQuiz(); return; }
+        PENDING_LESSON = null;
         answered = false;
         currentAttemptId = null;
-        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/question', {method: 'POST'})
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-                if (d.error) {
-                    document.getElementById('error-msg').innerHTML =
-                        '<strong>⚠ ' + d.error + '</strong>';
-                    setState('error');
-                    return;
-                }
-                currentAttemptId = d.attempt_id;
-                document.getElementById('q-scenario').textContent = d.scenario;
-                document.getElementById('q-question').textContent  = d.question;
-                // Build options
-                var optGrid = document.getElementById('q-options');
-                optGrid.innerHTML = '';
-                var letters = ['A', 'B', 'C', 'D'];
-                letters.forEach(function(letter) {
-                    var btn = document.createElement('button');
-                    btn.className = 'option-btn';
-                    btn.id = 'opt-' + letter;
-                    btn.innerHTML = '<span class="option-label">' + letter + '</span><span>' + (d.options[letter] || '') + '</span>';
-                    btn.onclick = function() { submitAnswer(letter); };
-                    optGrid.appendChild(btn);
-                });
-                setMindsetBadge(d.mindset);
-                setDifficulty(d.difficulty);
-                setState('question');
-                refreshStats();
-            })
-            .catch(function(err) {
-                document.getElementById('error-msg').innerHTML =
-                    '<strong>⚠ Request failed.</strong><br>Check that Ollama is running, then try again.';
+        CURRENT = {};
+
+        var nextNum = SESSION.num + 1;
+        PENDING_HARD = nextNum > (QUIZ_LEN - HARD_TAIL);
+        setGenerating(
+            PATH_MODE === 'force_drill' ? 'Generating your question…' : 'Choosing topic + preparing item…',
+            'Hybrid may teach first, then quiz — Ollama typically 5–20s'
+        );
+
+        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/question', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                hard_round: PENDING_HARD,
+                mode: PATH_MODE,
+                phase: 'next'
+            }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.error) {
+                document.getElementById('error-msg').innerHTML = '<strong>⚠ ' + escHtml(d.error) + '</strong>';
                 setState('error');
-            });
+                return;
+            }
+            if (d.path === 'lesson') {
+                // Lesson does not advance question counter until quiz is answered
+                showLesson(d);
+                return;
+            }
+            SESSION.num = nextNum;
+            renderQuestion(d);
+        })
+        .catch(function() {
+            document.getElementById('error-msg').innerHTML =
+                '<strong>⚠ Request failed.</strong><br>Check that Ollama is running, then try again.';
+            setState('error');
+        });
+    }
+
+    function quizFromLesson() {
+        if (!PENDING_LESSON) return;
+        var nextNum = SESSION.num + 1;
+        setGenerating('Building quiz from your lesson…', 'Question is grounded in what you just read');
+        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/question', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                hard_round: PENDING_HARD,
+                mode: PATH_MODE,
+                phase: 'quiz',
+                lesson: PENDING_LESSON,
+                topic: PENDING_LESSON.topic || ''
+            }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.error) {
+                document.getElementById('error-msg').innerHTML = '<strong>⚠ ' + escHtml(d.error) + '</strong>';
+                setState('error');
+                return;
+            }
+            SESSION.num = nextNum;
+            PENDING_LESSON = null;
+            renderQuestion(d);
+        })
+        .catch(function() {
+            document.getElementById('error-msg').innerHTML =
+                '<strong>⚠ Quiz generation failed.</strong><br>Check Ollama, then try again.';
+            setState('error');
+        });
     }
 
     function submitAnswer(letter) {
         if (answered || !currentAttemptId) return;
         answered = true;
-        // Disable all buttons
         ['A','B','C','D'].forEach(function(l) {
             var btn = document.getElementById('opt-' + l);
             if (btn) btn.disabled = true;
         });
-        // Highlight selected
         var selBtn = document.getElementById('opt-' + letter);
         if (selBtn) selBtn.classList.add('selected');
-        // Hide skip button
         document.getElementById('state-actions').style.display = 'none';
-        document.getElementById('btn-skip').style.display = 'none';
 
         csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/answer', {
             method: 'POST',
@@ -476,37 +652,122 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            // Style the buttons
             var correctBtn = document.getElementById('opt-' + d.correct_answer);
             if (correctBtn) correctBtn.classList.add('correct');
             if (!d.correct) {
-                if (selBtn) selBtn.classList.remove('selected');
-                if (selBtn) selBtn.classList.add('wrong');
+                if (selBtn) { selBtn.classList.remove('selected'); selBtn.classList.add('wrong'); }
+                SESSION.streak = 0;
+                SESSION.misses.push({
+                    question: CURRENT.question || document.getElementById('q-question').textContent,
+                    correct_answer: d.correct_answer,
+                    correct_text: d.correct_answer_text || '',
+                    explanation: d.explanation || '',
+                    mindset: CURRENT.mindset || '',
+                });
+            } else {
+                SESSION.correct++;
+                SESSION.streak++;
             }
-            // XP result — toast + level-up modal
-            if (d.xp && typeof handleXpResult === 'function') {
-                handleXpResult(d.xp);
-            }
-            // Show feedback
+            SESSION.results.push({ attempt_id: currentAttemptId, correct: !!d.correct });
+            updateProg(false);
+
+            if (d.xp && typeof handleXpResult === 'function') handleXpResult(d.xp);
+
             var xpLabel = d.xp ? ' <span style="color:#00b432;font-size:0.85em;font-weight:700;">+' + d.xp.xp_gained + ' XP</span>' : '';
             var fbHtml = d.correct
                 ? '<div class="feedback-correct"><div class="feedback-result">✓ Correct!' + xpLabel + '</div><div class="feedback-explanation">' + escHtml(d.explanation) + '</div></div>'
-                : '<div class="feedback-wrong"><div class="feedback-result">✗ Incorrect — Correct answer was <strong>' + d.correct_answer + '</strong>: ' + escHtml(d.correct_answer_text) + xpLabel + '</div><div class="feedback-explanation">' + escHtml(d.explanation) + '</div></div>';
-            fbHtml += '<button class="btn-next" onclick="loadQuestion()">Next Question →</button>';
+                : '<div class="feedback-wrong"><div class="feedback-result">✗ Incorrect — Correct answer was <strong>' + escHtml(d.correct_answer) + '</strong>: ' + escHtml(d.correct_answer_text) + xpLabel + '</div><div class="feedback-explanation">' + escHtml(d.explanation) + '</div></div>';
+            fbHtml += '<button class="btn-next" onclick="nextOrFinish()">' +
+                      (SESSION.num >= QUIZ_LEN ? 'See Results →' : 'Next Question →') + '</button>';
             var fb = document.getElementById('state-feedback');
             fb.innerHTML = fbHtml;
             fb.style.display = '';
-            // Update session count
-            updateHistoryCount();
-            // Add row to history table
-            addHistoryRow(d, letter);
-            // Update the live stats bar — use response values if available, else fetch from server
-            if (d.new_attempts !== undefined) {
-                updateProgressStats(d.new_attempts, d.new_correct);
-            } else {
-                refreshStats();
-            }
+
+            if (d.new_attempts !== undefined) updateProgressStats(d.new_attempts, d.new_correct);
+            else refreshStats();
         });
+    }
+
+    function skipQuestion() {
+        if (answered || !currentAttemptId) return;
+        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/skip', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({attempt_id: currentAttemptId}),
+        }).then(function() {
+            // Skipped questions don't advance the quiz counter — regenerate same slot
+            SESSION.num = Math.max(0, SESSION.num - 1);
+            loadQuestion();
+        });
+    }
+
+    function finishQuiz() {
+        document.getElementById('quiz-area').style.display = 'none';
+        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/complete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ results: SESSION.results }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) { showDone(d); })
+        .catch(function() { showDone(null); });
+    }
+
+    function trend(delta, label) {
+        if (delta > 0)  return '<span class="trend-up">▲ ' + delta + ' pts above ' + label + '</span>';
+        if (delta < 0)  return '<span class="trend-down">▼ ' + Math.abs(delta) + ' pts below ' + label + '</span>';
+        return '<span class="trend-flat">— on par with ' + label + '</span>';
+    }
+
+    function showDone(d) {
+        var done = document.getElementById('done');
+        done.classList.add('show');
+        var total = d ? d.total : QUIZ_LEN;
+        var cor = d ? d.correct : SESSION.correct;
+        var score = d ? d.score : Math.round(SESSION.correct / Math.max(1, SESSION.num) * 100);
+        var colour = score >= 85 ? '#00ff41' : (score >= 70 ? '#8fce00' : (score >= 50 ? '#ff9900' : '#ff6a00'));
+        document.getElementById('d-score').textContent = score + '%';
+        document.getElementById('d-score').style.color = colour;
+        document.getElementById('d-sub').textContent = cor + ' of ' + total + ' correct · Domain {{ domain_num }}';
+
+        var cmp = document.getElementById('d-compare');
+        if (d && d.stats) {
+            var html = '<b>' + d.stats.count + '</b> domain quiz' + (d.stats.count === 1 ? '' : 'zes') +
+                       ' logged &nbsp;·&nbsp; Average <b>' + d.stats.average + '%</b> &nbsp;·&nbsp; Best <b>' + d.stats.best + '%</b>';
+            if (d.prev_average !== null && d.prev_average !== undefined) {
+                html += '<br>' + trend(score - d.prev_average, 'your average');
+            } else {
+                html += '<br><span class="trend-flat">First domain quiz logged — baseline set!</span>';
+            }
+            cmp.innerHTML = html;
+            document.getElementById('d-best').innerHTML =
+                (d.is_best ? '<span class="best-badge">🏆 New personal best!</span>' : '');
+        } else {
+            cmp.innerHTML = '<span class="trend-flat">Score saved for this session.</span>';
+        }
+
+        var mhtml = '';
+        if (SESSION.misses.length) {
+            mhtml = '<div class="miss-block"><div class="miss-title">📋 Review these ' +
+                    SESSION.misses.length + ' you missed</div>';
+            SESSION.misses.forEach(function(m) {
+                mhtml += '<div class="miss-item">'
+                      + '<div class="q">' + escHtml(m.question) + '</div>'
+                      + '<div class="ans">✓ ' + escHtml(m.correct_answer)
+                      + (m.correct_text ? ' — ' + escHtml(m.correct_text) : '') + '</div>'
+                      + (m.explanation ? '<div class="exp">' + escHtml(m.explanation) + '</div>' : '')
+                      + '</div>';
+            });
+            mhtml += '</div>';
+        } else {
+            mhtml = '<div style="color:#00ff41;margin-top:20px;font-weight:700;">🎉 Perfect run — no misses!</div>';
+        }
+        document.getElementById('d-misses').innerHTML = mhtml;
+
+        fetch('/cissp/domain/' + DOMAIN_NUM + '/history', { credentials: 'same-origin' })
+            .then(function(r) { return r.ok ? r.text() : null; })
+            .then(function(h) { if (h) document.getElementById('history-body').innerHTML = h; })
+            .catch(function() {});
     }
 
     function refreshStats() {
@@ -517,83 +778,14 @@
     }
 
     function updateProgressStats(att, cor) {
-        var wrg = att - cor;
         var pct = att > 0 ? Math.floor(cor / att * 100) : 0;
         var el;
-        el = document.getElementById('stat-attempted');  if (el) el.textContent = att;
-        el = document.getElementById('stat-correct');    if (el) el.textContent = cor;
-        el = document.getElementById('stat-wrong');
-        if (el) {
-            el.textContent = wrg;
-            el.style.color = wrg > 0 ? '#ff6a00' : '#555';
-        }
-        el = document.getElementById('stat-accuracy');   if (el) el.textContent = att > 0 ? pct + '%' : '—';
-        el = document.getElementById('stat-bar');        if (el) el.style.width = pct + '%';
-        el = document.getElementById('stat-label');
-        if (el) el.textContent = (pct >= 70 && att >= 5) ? '🟢 Mastering' : (att >= 1 ? '🟡 In Progress' : '⚪ Not started');
+        el = document.getElementById('stat-attempted'); if (el) el.textContent = att;
+        el = document.getElementById('stat-correct');   if (el) el.textContent = cor;
+        el = document.getElementById('stat-accuracy');  if (el) el.textContent = att > 0 ? pct + '%' : '—';
+        el = document.getElementById('stat-bar');       if (el) el.style.width = pct + '%';
     }
 
-    function skipQuestion() {
-        if (answered || !currentAttemptId) return;
-        csrfFetch('/cissp/domain/' + DOMAIN_NUM + '/skip', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({attempt_id: currentAttemptId}),
-        })
-        .then(function(r) { return r.json(); })
-        .then(function() { loadQuestion(); });
-    }
-
-    function addHistoryRow(d, userAnswer) {
-        // Remove empty-history message if present
-        var empty = document.getElementById('empty-history');
-        if (empty) empty.remove();
-        // Ensure table exists
-        var histBody = document.getElementById('history-body');
-        var tbl = histBody.querySelector('table');
-        if (!tbl) {
-            tbl = document.createElement('table');
-            tbl.className = 'history-table';
-            tbl.innerHTML = '<thead><tr><th>Scenario</th><th>Your Answer</th><th>Correct</th><th>Result</th><th>Mindset</th></tr></thead><tbody id="history-rows"></tbody>';
-            histBody.appendChild(tbl);
-        }
-        var tbody = document.getElementById('history-rows') || tbl.querySelector('tbody');
-        var scenario = document.getElementById('q-scenario').textContent;
-        var mindset  = document.getElementById('mindset-badge').dataset.mindset || '';
-        var mindsetLabel = {manager:'Manager', technical:'Technical', both:'Both'}[mindset] || mindset;
-        var mindsetClass = 'mindset-' + mindset;
-        var row = document.createElement('tr');
-        row.innerHTML =
-            '<td class="hist-scenario" title="' + escAttr(scenario) + '">' + escHtml(scenario.substring(0,80)) + '…</td>' +
-            '<td><strong style="color:var(--d-color,#888);">' + escHtml(userAnswer) + '</strong></td>' +
-            '<td><strong>' + escHtml(d.correct_answer) + '</strong></td>' +
-            '<td>' + (d.correct ? '<span class="result-correct">✓ Correct</span>' : '<span class="result-wrong">✗ Wrong</span>') + '</td>' +
-            '<td><span class="mindset-small ' + mindsetClass + '">' + escHtml(mindsetLabel) + '</span></td>';
-        tbody.insertBefore(row, tbody.firstChild);
-    }
-
-    function updateHistoryCount() {
-        var rows = document.querySelectorAll('#history-rows tr');
-        var el   = document.getElementById('session-count');
-        if (el) el.textContent = (rows.length + {{ session_attempts|length }}) + ' answered';
-    }
-
-    function escHtml(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function escAttr(s) { return escHtml(s); }
-
-    // Store mindset on badge element for history row use
-    var origSetMindset = setMindsetBadge;
-    setMindsetBadge = function(mindset) {
-        origSetMindset(mindset);
-        document.getElementById('mindset-badge').dataset.mindset = mindset;
-    };
-
-    // Refresh stats when page is restored from browser back-forward cache
-    // (bfcache serves a frozen snapshot — fetch current DB values silently)
-    // Always refresh stats on page show — covers normal loads, bfcache restores,
-    // and browser-cached pages where the server-rendered values may be stale.
     window.addEventListener('pageshow', function() { refreshStats(); });
 </script>
 <script src="/static/game.js"></script>

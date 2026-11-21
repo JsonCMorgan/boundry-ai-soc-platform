@@ -17,7 +17,7 @@ summary: >
 applicable_to:
   - All businesses with email accounts (universal)
   - High risk: finance, AP/AR teams, executives
-  - Cannabis, healthcare, legal, financial services
+  - Healthcare, legal, financial services, professional services
 
 mitre_techniques:
   - id: T1566.001

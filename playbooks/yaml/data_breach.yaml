@@ -17,7 +17,7 @@ summary: >
 applicable_to:
   - Any business storing personal information (universal under PIPEDA)
   - Healthcare (HIPAA — any PHI exposure)
-  - Cannabis (PIPEDA — customer PII, METRC data)
+  - Retail (PIPEDA, customer PII and loyalty data)
   - Financial / Legal (GLBA, PIPEDA — client financial data)
   - Payment processing (PCI DSS — cardholder data)
 

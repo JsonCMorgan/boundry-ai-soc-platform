@@ -2,14 +2,15 @@
 
 **Purpose:** Keep agents oriented without dumping the whole repo into chat.  
 **Update when:** major modules or top-level folders change.  
-**Last updated:** 2026-10-16
+**Last updated:** 2026-10-17
 
 ```
 MSSP/
 ├── app.py                 # Flask app (routes, init_db, XP, career, soc, …)
 ├── ticket_fields.py       # Shared Ticket Field Console schema + grade + compose_note
 ├── *.py labs/engines      # siem_collector, siem_ingest_tunes, siem_fp_templates,
-│                          # spl_engine, vpn_monitor, soar_engine, career_lab, soc_lab, …
+│                          # spl_engine, siem_views, mission_control, soc_ioc_stub,
+│                          # vpn_monitor, soar_engine, career_lab, memory_retention, soc_lab, …
 ├── templates/             # Jinja pages (career_*, soc_floor, siem, cissp, …)
 │                          # + _ticket_field_console.html (Career + Live Floor)
 │                          # + _live_ops_shell.html (Floor / Tickets / Control Room chrome)
@@ -40,8 +41,11 @@ MSSP/
 | Control Room HQ | `/control-room` | HQ Attention rail + KPIs; Tools accordion; Live Ops hides MITRE encyclopedia |
 | Futureproof Career | `/career/soar` `/oversight` `/tune` `/metrics` `/automation` `/automation-policy` | Tomorrow + owner Job Skills drills; SOAR/Shift use Ticket Field Console |
 | Sentinel lab | `/career/sentinel` | 13 authored cases; seed randomizes surface fields |
-| SIEM | `/siem`, `/siem/query` | Live + SPL-lite; stat filters (`?range=today`, `?event=<id>`); triage drawer → tickets; Quick FP (`POST /api/siem/fp-template`); `GET /api/siem/events/<id>`, `/related` |
-| Career hub | `/career` | Tracks, drills, gates |
+| SIEM | `/siem`, `/siem/query` | Log Activity tabs (stream/group/detections); saved searches; stat filters; triage drawer → tickets |
+| Mission Control | `/soc/mission` | Unified findings + tickets + SOAR queue |
+| SecOps shell | `_secops_layout.html` | Left nav on Control Room, SIEM, SOC, SOAR |
+| Career hub | `/career` | Tracks, drills, gates, Review due widget |
+| Daily Review | `/career/review` | FSRS spaced queue (`memory_retention.py`) |
 | Job Skills | `/career/skills` | Proficient / adjacent growth |
 | Sec+ | `/career/secplus` | Primary cert this phase |
 | Comms Gym | `/career/comms` | G15 stakeholder notes |

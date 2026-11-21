@@ -33,6 +33,7 @@
   }
   .tf-console .tf-seed-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
+{% include '_writing_coach.html' %}
 <script>
 window.TicketFields = (function () {
   var root = null;
@@ -67,8 +68,21 @@ window.TicketFields = (function () {
         });
         html += '</select>';
       } else {
-        html += '<textarea id="tf-' + esc(f.id) + '" data-tf="' + esc(f.id) + '" placeholder="' +
-          esc(f.placeholder || '') + '">' + esc(seed[f.id] || '') + '</textarea>';
+        if (f.coach && f.coach.items && f.coach.items.length) {
+          html += WritingCoach.buildHtml(
+            f.coach_id || f.id,
+            f.coach.title || f.label,
+            f.coach.items,
+            f.coach.tip || ''
+          );
+        }
+        var coachId = (f.coach_id || f.id);
+        var ariaCoach = (f.coach && f.coach.items) ? WritingCoach.ariaFor(coachId) : '';
+        html += '<textarea id="tf-' + esc(f.id) + '" data-tf="' + esc(f.id) + '" data-writing-coach="' +
+          esc(f.coach_id || '') + '"' +
+          (ariaCoach ? ' aria-describedby="' + esc(ariaCoach) + '"' : '') +
+          ' placeholder="' + esc((f.coach && f.coach.placeholder_example) || f.placeholder || '') + '">' +
+          esc(seed[f.id] || '') + '</textarea>';
       }
       if (f.hint) html += '<div class="tf-hint">' + esc(f.hint) + '</div>';
       html += '<div class="tf-field-status" data-tf-status="' + esc(f.id) + '"></div>';

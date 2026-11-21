@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>SPL Practice — {{ lesson.title }}</title>
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #00d4ff; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+
+    /* Two-column: practice + always-visible anatomy strip */
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 22px;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 80px;
+      align-items: start;
+    }
+    .main { min-width: 0; }
+    h1 { color: #fff; margin: 0 0 6px; }
+    .sub { color: #7a9ab0; font-size: 0.85em; margin-bottom: 18px; }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px; margin-bottom: 14px;
+    }
+    .card h3 { margin: 0 0 8px; font-size: 0.92em; color: #fff; line-height: 1.4; }
+    .ask-box {
+      background: #0a0e14; border: 1px solid #1e3045; border-left: 3px solid #00d4ff;
+      border-radius: 6px; padding: 10px 12px; margin: 0 0 12px; font-size: 0.78em;
+      line-height: 1.45;
+    }
+    .ask-box .goal { color: #7a9ab0; margin-bottom: 8px; }
+    .ask-row {
+      display: grid; grid-template-columns: 64px 1fr; gap: 6px 10px;
+      margin-top: 4px; align-items: start;
+    }
+    .ask-row .k { color: #00d4ff; font-weight: 700; font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.04em; padding-top: 1px; }
+    .ask-row .v { color: #cdd6e0; }
+    textarea {
+      width: 100%; min-height: 64px; background: #0a0e14; border: 1px solid #1e3045;
+      color: #00d4ff; border-radius: 6px; padding: 10px; font-family: inherit; font-size: 0.85em;
+    }
+    .btn {
+      margin-top: 8px; padding: 8px 14px; border-radius: 6px; border: 1px solid #00d4ff66;
+      background: #00d4ff22; color: #00d4ff; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .btn-dim {
+      background: #0a0e14; border-color: #1e3045; color: #8aa; margin-left: 6px;
+    }
+    .fb { margin-top: 10px; font-size: 0.82em; line-height: 1.45; display: none; }
+    .fb.ok { color: #00ff88; display: block; }
+    .fb.bad { color: #ff8888; display: block; }
+    .hint { color: #ffcc00; }
+
+    /* Sticky recipe panel */
+    .recipe {
+      position: sticky; top: 18px;
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 10px;
+      padding: 14px 14px 16px; border-top: 3px solid #00d4ff;
+    }
+    .recipe h2 {
+      margin: 0 0 4px; font-size: 0.82em; color: #00d4ff;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .recipe-blurb {
+      font-size: 0.72em; color: #667; line-height: 1.4; margin: 0 0 12px;
+    }
+    .recipe-shape {
+      background: #0a0e14; border: 1px dashed #00d4ff44; border-radius: 6px;
+      padding: 8px 10px; font-size: 0.72em; color: #00d4ff; margin-bottom: 12px;
+      line-height: 1.45;
+    }
+    .recipe-step {
+      border: 1px solid #1e3045; border-radius: 7px; padding: 9px 10px;
+      margin-bottom: 8px; background: #131d28;
+    }
+    .recipe-step .num {
+      display: inline-block; width: 18px; height: 18px; line-height: 18px;
+      text-align: center; border-radius: 50%; background: #00d4ff22; color: #00d4ff;
+      font-size: 0.7em; font-weight: 800; margin-right: 6px;
+    }
+    .recipe-step .label {
+      font-size: 0.78em; color: #fff; font-weight: 700;
+    }
+    .recipe-step .ask {
+      font-size: 0.7em; color: #7a9ab0; margin: 5px 0 6px; line-height: 1.35;
+    }
+    .recipe-step code, .chip {
+      display: inline-block; background: #0a0e14; border: 1px solid #1e3045;
+      color: #9ab; padding: 2px 6px; border-radius: 4px; font-size: 0.68em;
+      margin: 2px 2px 0 0;
+    }
+    .recipe-step.hot {
+      border-color: #00d4ff55; background: #0a1822;
+    }
+    .recipe-step.hot .label { color: #00d4ff; }
+    .recipe-foot {
+      margin-top: 10px; font-size: 0.68em; color: #556677; line-height: 1.4;
+    }
+    .mobile-recipe-toggle {
+      display: none; width: 100%; margin-bottom: 14px;
+      padding: 10px 12px; border-radius: 8px; border: 1px solid #00d4ff55;
+      background: #00d4ff15; color: #00d4ff; font-weight: 700;
+      font-family: inherit; cursor: pointer; font-size: 0.85em;
+    }
+
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+        padding-bottom: 40px;
+      }
+      .recipe {
+        position: relative; top: 0; order: -1; margin-bottom: 4px;
+        display: none;
+      }
+      .recipe.open { display: block; }
+      .mobile-recipe-toggle { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">SPL Practice · L{{ lesson.order }}</span>
+    <div>
+      <a href="/career/spl/lesson/{{ lesson.id }}">← Lesson</a>
+      <a href="/career/spl">Track hub</a>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="main">
+      <button type="button" class="mobile-recipe-toggle" onclick="toggleRecipe()">
+        ▸ Show SPL recipe (build each query in order)
+      </button>
+
+      <h1>Practice: {{ lesson.title }}</h1>
+      <p class="sub">
+        Use the recipe panel → build every answer in the same order:
+        <b style="color:#cdd6e0;">filters → time → pipes</b>.
+        Hints available if stuck.
+      </p>
+      {{ writing_coach_from_registry('career_spl_practice') }}
+      {% set _sp = get_coach('career_spl_practice') %}
+
+      {% for item in items %}
+      <div class="card" data-pid="{{ item.id }}">
+        <h3>{{ loop.index }}. {{ item.prompt }}</h3>
+        {% if item.breakdown %}
+        <div class="ask-box">
+          {% if item.breakdown.goal %}
+          <div class="goal">Why: {{ item.breakdown.goal }}</div>
+          {% endif %}
+          {% if item.breakdown.find %}
+          <div class="ask-row"><span class="k">Find</span><span class="v">{{ item.breakdown.find }}</span></div>
+          {% endif %}
+          {% if item.breakdown.time %}
+          <div class="ask-row"><span class="k">Time</span><span class="v">{{ item.breakdown.time }}</span></div>
+          {% endif %}
+          {% if item.breakdown.then %}
+          <div class="ask-row"><span class="k">Then</span><span class="v">{{ item.breakdown.then }}</span></div>
+          {% endif %}
+        </div>
+        {% endif %}
+        <textarea id="q-{{ item.id }}" aria-describedby="coach-career_spl_practice" data-writing-coach="career_spl_practice"
+          placeholder="{{ (_sp.placeholder_example if _sp else '') }}"></textarea>
+        <div>
+          <button class="btn" onclick="check('{{ item.id }}')">Check</button>
+          <button class="btn btn-dim" onclick="showHint('{{ item.id }}')">Hint</button>
+        </div>
+        <div class="fb" id="fb-{{ item.id }}"></div>
+        <div class="fb hint" id="hint-{{ item.id }}" style="display:none;">Hint: {{ item.hint }}</div>
+      </div>
+      {% endfor %}
+
+      <p style="margin-top:16px;">
+        <a href="/career/spl/quiz" style="color:#00d4ff;">Ready? Take the SPL Quiz →</a>
+      </p>
+    </div>
+
+    {# Sticky anatomy / routine card — fills the empty side space #}
+    {% set keys = lesson.key_commands or [] %}
+    {% set keys_l = keys | join(' ') | lower %}
+    <aside class="recipe" id="recipe-panel" aria-label="SPL query recipe">
+      <h2>SPL recipe</h2>
+      <p class="recipe-blurb">
+        Same routine every prompt. Ask each question in order, then type that section.
+      </p>
+      <div class="recipe-shape">
+        [filters…] [earliest=…] | command | command …
+      </div>
+
+      <div class="recipe-step{% if 'severity=' in keys_l or 'source=' in keys_l or 'event_type=' in keys_l or 'user=' in keys_l or 'ip=' in keys_l or 'src_ip=' in keys_l %} hot{% endif %}">
+        <div><span class="num">1</span><span class="label">Filters</span></div>
+        <div class="ask">What am I looking for? (field=value — AND with spaces)</div>
+        <code>severity=HIGH</code>
+        <code>source=firewall</code>
+        <code>event_type=logon_failed</code>
+        <code>user=admin</code>
+        <code>src_ip=1.2.3.4</code>
+        <code>host=…</code>
+        <code>description=…</code>
+      </div>
+
+      <div class="recipe-step{% if 'earliest' in keys_l or 'latest' in keys_l %} hot{% endif %}">
+        <div><span class="num">2</span><span class="label">Time window</span></div>
+        <div class="ask">How far back? (optional but SOC-default)</div>
+        <code>earliest=-60m</code>
+        <code>earliest=-1h</code>
+        <code>earliest=-24h</code>
+        <code>earliest=-7d</code>
+        <code>earliest=@d</code>
+      </div>
+
+      <div class="recipe-step{% if 'stats' in keys_l %} hot{% endif %}">
+        <div><span class="num">3</span><span class="label">Pipe · aggregate</span></div>
+        <div class="ask">Count / group? → stats</div>
+        <code>| stats count by src_ip</code>
+        <code>| stats count by user</code>
+        <code>| stats count by host</code>
+      </div>
+
+      <div class="recipe-step{% if 'sort' in keys_l %} hot{% endif %}">
+        <div><span class="num">4</span><span class="label">Pipe · sort</span></div>
+        <div class="ask">Highest / newest first?</div>
+        <code>| sort -count</code>
+        <code>| sort -created_at</code>
+      </div>
+
+      <div class="recipe-step{% if 'head' in keys_l or 'table' in keys_l or 'dedup' in keys_l %} hot{% endif %}">
+        <div><span class="num">5</span><span class="label">Pipe · shape / limit</span></div>
+        <div class="ask">Cap rows or pick columns?</div>
+        <code>| head 20</code>
+        <code>| table host event_type</code>
+        <code>| dedup host</code>
+      </div>
+
+      {% if keys %}
+      <div class="recipe-step hot" style="margin-top:4px;">
+        <div><span class="num">★</span><span class="label">This lesson leans on</span></div>
+        <div class="ask">Focus these while you practice L{{ lesson.order }}</div>
+        {% for k in keys %}
+        <code>{{ k }}</code>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <p class="recipe-foot">
+        Not English — only field=value and pipes.
+        Filters before the first | can be in any order.
+      </p>
+    </aside>
+  </div>
+
+<script src="/static/game.js"></script>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+var lessonId = {{ lesson.id | tojson }};
+function toggleRecipe() {
+  var panel = document.getElementById('recipe-panel');
+  var btn = document.querySelector('.mobile-recipe-toggle');
+  panel.classList.toggle('open');
+  if (btn) {
+    btn.textContent = panel.classList.contains('open')
+      ? '▾ Hide SPL recipe'
+      : '▸ Show SPL recipe (build each query in order)';
+  }
+}
+function showHint(pid) {
+  document.getElementById('hint-' + pid).style.display = 'block';
+}
+function check(pid) {
+  var q = document.getElementById('q-' + pid).value;
+  var fb = document.getElementById('fb-' + pid);
+  fb.className = 'fb';
+  fb.textContent = 'Checking…';
+  fb.style.display = 'block';
+  fetch('/career/spl/practice/check', {
+    method: 'POST',
+    headers: {'X-CSRFToken': _csrf, 'Content-Type': 'application/json'},
+    body: JSON.stringify({ lesson_id: lessonId, practice_id: pid, query: q })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.correct === true) {
+      fb.className = 'fb ok';
+      fb.textContent = '✓ CORRECT. ' + (d.explain || '');
+      if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+    } else {
+      fb.className = 'fb bad';
+      var t = '✗ ' + (d.explain || 'WRONG — try again.');
+      if (d.hint) t += '\nHint: ' + d.hint;
+      if (d.example) t += '\nExample: ' + d.example;
+      fb.style.whiteSpace = 'pre-wrap';
+      fb.textContent = t;
+    }
+  }).catch(function(){
+    fb.className = 'fb bad';
+    fb.textContent = 'Request failed';
+  });
+}
+</script>
+{% set tutor_track = 'spl' %}
+{% set tutor_lesson_id = lesson.id %}
+{% include '_career_tutor.html' %}
+</body>
+</html>

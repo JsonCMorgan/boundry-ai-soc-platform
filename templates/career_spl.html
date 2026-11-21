@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — SPL Learn Track</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { color: #00d4ff; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.88em; line-height: 1.5; margin-bottom: 18px; }
+    .path {
+      display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.78em; color: #667; margin-bottom: 20px;
+    }
+    .path span { color: #00d4ff; }
+    .hero {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px 18px; margin-bottom: 20px; display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+    }
+    .pct { font-size: 2.2em; font-weight: 800; color: #00d4ff; }
+    .btn {
+      display: inline-block; padding: 10px 14px; border-radius: 6px; text-decoration: none;
+      font-weight: 700; font-size: 0.82em; border: 1px solid #00d4ff66; background: #00d4ff18; color: #00d4ff;
+    }
+    .btn-dim { border-color: #1e3045; background: #131d28; color: #9ab; }
+    .btn-warn { border-color: #ff8c0066; background: #ff8c0018; color: #ff8c00; }
+    .seed-msg { font-size: 0.8em; color: #8aa; margin-top: 8px; min-height: 1.2em; }
+    .lesson {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    }
+    .lesson h3 { margin: 0 0 4px; color: #fff; font-size: 0.98em; }
+    .meta { font-size: 0.75em; color: #667; }
+    .goal { font-size: 0.8em; color: #8aa; margin-top: 6px; }
+    .badges { font-size: 0.72em; margin-top: 8px; }
+    .ok { color: #00ff88; }
+    .dim { color: #556; }
+    .actions a { display: inline-block; margin: 4px 0 4px 8px; font-size: 0.78em; color: #00d4ff; text-decoration: none; }
+    .actions a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">BOUNDRY.AI · SPL Learn</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career">← Career Lab</a>
+      <a href="/siem/query">SPL Query</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+    {% if retention_due %}
+    <p class="sub" style="color:#ffd700;">Review due from SPL: <b>{{ retention_due }}</b>
+      · <a href="/career/review?mode=focus&amp;track=spl" style="color:#ffd700;">Daily Review</a></p>
+    {% endif %}
+    <div class="path">Flow: <span>1. Teach</span> → <span>2. Practice</span> → <span>3. Quiz</span> → apply in SIEM / Shift Sim</div>
+
+    <div class="hero">
+      <div>
+        <div class="pct">{{ done_lessons }}/{{ total_lessons }}</div>
+        <div style="font-size:0.75em;color:#667;">LESSONS READ</div>
+      </div>
+      <div style="flex:1;font-size:0.85em;color:#8aa;">
+        {% if quiz_best %}
+          Best quiz: <b style="color:#fff;">{{ quiz_best.score_pct }}%</b>
+          {% if quiz_best.passed %}<span class="ok"> · passed</span>{% else %}<span class="dim"> · keep practising</span>{% endif %}
+        {% else %}
+          No quiz attempt yet — finish a few lessons first, then take the quiz.
+        {% endif %}
+        <div style="margin-top:10px;">
+          <button type="button" class="btn btn-warn" id="btn-seed" onclick="seedSamples(false)">
+            {% if sample_count %}↻ Reload sample events{% else %}⚡ Load sample SIEM events{% endif %}
+          </button>
+          <a class="btn" href="/career/spl/quiz">Take SPL Quiz →</a>
+          <a class="btn btn-dim" href="/siem/query">Open live SPL Query</a>
+        </div>
+        <div class="seed-msg" id="seed-msg">
+          {% if auto_seed_msg %}
+            {{ auto_seed_msg }}
+          {% elif sample_count %}
+            Sample pack loaded ({{ sample_count }} training events). Lesson queries should return rows.
+          {% else %}
+            Lesson queries need sample data — click Load sample SIEM events first (simulated, tagged [SPL Learn]).
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% for L in lessons %}
+    <div class="lesson">
+      <div>
+        <h3>L{{ L.order }}. {{ L.title }}</h3>
+        <div class="meta">~{{ L.minutes }} min</div>
+        <div class="goal">{{ L.goal }}</div>
+        <div class="badges">
+          {% if L.lesson_done %}<span class="ok">✓ lesson read</span>{% else %}<span class="dim">○ lesson</span>{% endif %}
+          ·
+          {% if L.practice_done %}<span class="ok">✓ practice {{ L.practice_ok }}/{{ L.practice_need }}</span>
+          {% else %}<span class="dim">practice {{ L.practice_ok }}/{{ L.practice_need }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="actions">
+        <a href="/career/spl/lesson/{{ L.id }}">Read →</a>
+        <a href="/career/spl/practice/{{ L.id }}">Practice →</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+function seedSamples(force) {
+  var btn = document.getElementById('btn-seed');
+  var msg = document.getElementById('seed-msg');
+  btn.disabled = true;
+  msg.textContent = 'Loading sample events…';
+  fetch('/career/spl/seed-samples', {
+    method: 'POST',
+    headers: {'X-CSRFToken': _csrf, 'Content-Type': 'application/json'},
+    body: JSON.stringify({ force: !!force })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    btn.disabled = false;
+    if (d.already && !force) {
+      msg.textContent = d.message + ' Click again to force a fresh copy.';
+      btn.onclick = function(){ seedSamples(true); };
+      btn.textContent = '↻ Force reload samples';
+      return;
+    }
+    msg.textContent = d.message || 'Done.';
+    btn.textContent = '↻ Reload sample events';
+  }).catch(function(){
+    btn.disabled = false;
+    msg.textContent = 'Failed to load samples — is Flask running?';
+  });
+}
+</script>
+{% set tutor_track = 'spl' %}
+{% include '_career_tutor.html' %}
+</body>
+</html>

@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Boundry.AI Training — {{ sc.label }}</title>
+    {% include '_writing_coach.html' %}
+    {% from '_writing_coach.html' import writing_coach_from_registry %}
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: Arial, sans-serif; background: #0b0e17; color: #d0d0d0; }
@@ -330,8 +332,11 @@
                         What are the IOCs (Indicators of Compromise)?
                         <span class="q-scoring ai-scored">🤖 AI-scored · /5</span>
                     </div>
-                    <textarea name="answer_iocs" id="answer_iocs"
-                        placeholder="List the IOCs you can identify — IP addresses, usernames targeted, payloads, event patterns, timestamps, any anomalies..."
+                    {{ writing_coach_from_registry('training_iocs') }}
+                    {% set _ti = get_coach('training_iocs') %}
+                    <textarea name="answer_iocs" id="answer_iocs" aria-describedby="coach-training_iocs"
+                        data-writing-coach="training_iocs"
+                        placeholder="{{ (_ti.placeholder_example if _ti else '') }}"
                         required></textarea>
                     <div class="val-msg" id="q4-error">Please describe the IOCs you identified.</div>
                 </div>
@@ -343,8 +348,11 @@
                         What is your immediate response action?
                         <span class="q-scoring ai-scored">🤖 AI-scored · /5</span>
                     </div>
-                    <textarea name="answer_response" id="answer_response"
-                        placeholder="What would you do right now? Block the IP? Lock accounts? Escalate? Check for data exfiltration? Be specific..."
+                    {{ writing_coach_from_registry('training_response') }}
+                    {% set _tr = get_coach('training_response') %}
+                    <textarea name="answer_response" id="answer_response" aria-describedby="coach-training_response"
+                        data-writing-coach="training_response"
+                        placeholder="{{ (_tr.placeholder_example if _tr else '') }}"
                         required></textarea>
                     <div class="val-msg" id="q5-error">Please describe your response action.</div>
                 </div>

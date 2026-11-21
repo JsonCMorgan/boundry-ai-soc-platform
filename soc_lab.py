@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from typing import Any, Callable
 
 import career_lab
-import intel_lab
+import soc_ioc_stub
 
 # Severity sort weight (higher = more urgent in queue)
 _SEV_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
@@ -1227,8 +1227,8 @@ def get_active_shift(
 
 
 def enrich_ioc(value: str) -> dict[str, Any]:
-    """Local IOC enrich stub for case workspace (intel_lab)."""
-    return intel_lab.lookup_ioc(value)
+    """Local IOC enrich stub for case workspace (ops-only module)."""
+    return soc_ioc_stub.lookup_ioc(value)
 
 
 def context_for_item(item: dict[str, Any] | None) -> dict[str, Any]:
@@ -1264,4 +1264,130 @@ def context_for_item(item: dict[str, Any] | None) -> dict[str, Any]:
             if item.get("is_practice")
             else "Real Boundry host telemetry / findings."
         ),
+    }
+
+
+def list_case_tasks(db_fetchall: Callable, case_id: int, *, ph: str = "?") -> list[dict[str, Any]]:
+    """Investigation tasks for a ticket (Sentinel-style task list)."""
+    rows = db_fetchall(
+        f"SELECT id, title, status, owner, due_at, created_at FROM soc_case_tasks "
+        f"WHERE case_id = {ph} ORDER BY id ASC",
+        (case_id,),
+    )
+    return [dict(r) for r in rows]
+
+
+def add_case_task(
+    db_run: Callable,
+    db_fetchone: Callable,
+    db_fetchall: Callable,
+    case_id: int,
+    analyst_id: int,
+    title: str,
+    *,
+    ph: str = "?",
+) -> dict[str, Any]:
+    """Add a task to an owned case."""
+    row = db_fetchone(
+        f"SELECT id FROM soc_cases WHERE id = {ph} AND analyst_id = {ph}",
+        (case_id, analyst_id),
+    )
+    if not row:
+        return {"ok": False, "error": "Ticket not found"}
+    t = (title or "").strip()
+    if len(t) < 2:
+        return {"ok": False, "error": "Task title too short"}
+    db_run(
+        f"INSERT INTO soc_case_tasks (case_id, title, status, owner, created_at) "
+        f"VALUES ({ph}, {ph}, 'open', {ph}, datetime('now'))",
+        (case_id, t[:200], str(analyst_id)),
+    )
+    return {"ok": True, "tasks": list_case_tasks(db_fetchall, case_id, ph=ph)}
+
+
+def _entity_insights(
+    db_fetchone: Callable,
+    db_fetchall: Callable,
+    entity: dict[str, str],
+    *,
+    ph: str = "?",
+) -> list[dict[str, str]]:
+    """Local insight cards (not cloud UEBA)."""
+    insights: list[dict[str, str]] = []
+    if entity.get("kind") == "ip" and entity.get("value"):
+        ip = entity["value"]
+        cnt = db_fetchone(
+            f"SELECT COUNT(*) AS n FROM siem_events WHERE src_ip = {ph} "
+            f"AND created_at >= datetime('now', '-24 hours')",
+            (ip,),
+        )
+        n = int((cnt or {}).get("n") or 0)
+        insights.append(
+            {
+                "title": "Events as source IP (24h)",
+                "detail": f"{n} SIEM events listed this IP as src_ip in the last 24 hours.",
+            }
+        )
+        fail = db_fetchone(
+            f"SELECT COUNT(*) AS n FROM siem_events WHERE src_ip = {ph} "
+            f"AND event_type LIKE '%logon%' AND created_at >= datetime('now', '-24 hours')",
+            (ip,),
+        )
+        fn = int((fail or {}).get("n") or 0)
+        if fn:
+            insights.append(
+                {
+                    "title": "Auth-related events",
+                    "detail": f"{fn} logon-related events from this IP in 24h (review for brute force).",
+                }
+            )
+    return insights
+
+
+def build_investigation_graph(entities: list[dict[str, str]]) -> dict[str, Any]:
+    """Simple entity graph for case workspace (local graph, not Sentinel)."""
+    nodes = [{"id": f"e{i}", "label": e.get("value") or "?", "kind": e.get("kind") or "entity"} for i, e in enumerate(entities[:8])]
+    edges: list[dict[str, str]] = []
+    case_node = {"id": "case", "label": "Case", "kind": "case"}
+    nodes.insert(0, case_node)
+    for n in nodes[1:]:
+        edges.append({"from": "case", "to": n["id"], "label": "contains"})
+    return {"nodes": nodes, "edges": edges, "disclaimer": "Local graph — not Microsoft Sentinel investigation graph."}
+
+
+def get_case_workspace(
+    db_fetchone: Callable,
+    db_fetchall: Callable,
+    case_id: int,
+    analyst_id: int,
+    *,
+    ph: str = "?",
+) -> dict[str, Any]:
+    """Full Sentinel-style workspace bundle for a ticket."""
+    bundle = get_case_bundle(db_fetchone, db_fetchall, case_id, analyst_id, ph=ph)
+    if not bundle.get("ok"):
+        return bundle
+    pub = bundle["case"]
+    entities = (bundle.get("observables") or {}).get("entities") or []
+    linked_soar = None
+    sid = pub.get("soar_incident_id")
+    if sid:
+        linked_soar = db_fetchone(f"SELECT id, title, status, severity FROM soar_incidents WHERE id = {ph}", (int(sid),))
+    linked_finding = None
+    if pub.get("source") == "finding" and str(pub.get("source_id") or "").isdigit():
+        linked_finding = db_fetchone(
+            f"SELECT id, title, severity, resolved FROM system_findings WHERE id = {ph}",
+            (int(pub["source_id"]),),
+        )
+    entity_insights: dict[str, list] = {}
+    for ent in entities[:6]:
+        key = ent.get("value") or ""
+        entity_insights[key] = _entity_insights(db_fetchone, db_fetchall, ent, ph=ph)
+    return {
+        **bundle,
+        "tasks": list_case_tasks(db_fetchall, case_id, ph=ph),
+        "graph": build_investigation_graph(entities),
+        "entity_insights": entity_insights,
+        "linked_soar": dict(linked_soar) if linked_soar else None,
+        "linked_finding": dict(linked_finding) if linked_finding else None,
     }

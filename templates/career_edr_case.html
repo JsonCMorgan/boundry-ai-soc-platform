@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ case.title }} — EDR Lab</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #a78bfa; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 920px; margin: 0 auto; padding: 24px 18px 90px; }
+    h1 { color: #fff; margin: 0 0 8px; font-size: 1.25em; }
+    .teach { color: #9ab; font-size: 0.85em; line-height: 1.45; margin-bottom: 14px; }
+    .panel {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px; margin-bottom: 14px;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 0.9em; color: #a78bfa; }
+    .legend-body { font-size: 0.78em; line-height: 1.45; color: #cdd6e0; }
+    .legend-body .ex {
+      display: block; margin: 8px 0; padding: 8px 10px; background: #0a0e14;
+      border: 1px solid #1e3045; border-radius: 6px; color: #ff8c00; white-space: pre-wrap;
+    }
+    .legend-body ol { margin: 6px 0 0 18px; padding: 0; color: #9ab; }
+    .legend-body li { margin-bottom: 3px; }
+    .host-meta { font-size: 0.78em; color: #7a9ab0; margin-bottom: 10px; }
+    pre.tree {
+      background: #0a0e14; border: 1px solid #1e3045; border-radius: 6px;
+      padding: 12px; font-size: 0.72em; white-space: pre-wrap; color: #8aa;
+      max-height: 320px; overflow: auto; line-height: 1.45;
+    }
+    pre.tree .sus { color: #ff8c00; }
+    label.chk {
+      display: block; font-size: 0.8em; margin: 6px 0; cursor: pointer; color: #cdd6e0;
+    }
+    select, button { font-family: inherit; font-size: 0.8em; }
+    select {
+      width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 6px; padding: 8px; margin-top: 6px;
+    }
+    .btn {
+      margin-top: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid #a78bfa66;
+      background: #a78bfa18; color: #a78bfa; font-weight: 800; cursor: pointer;
+      text-decoration: none; display: inline-block;
+    }
+    .btn-next { border-color: #00ff8866; background: #00ff8818; color: #00ff88; display: none; }
+    .btn-next.show { display: inline-block; }
+    .result {
+      display: none; margin-top: 14px; padding: 12px; border-radius: 8px;
+      border: 1px solid #1e3045; background: #131d28; font-size: 0.82em; line-height: 1.45;
+      white-space: normal;
+    }
+    .result.show { display: block; }
+    .hint { font-size: 0.72em; color: #667; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">EDR Console</span>
+    <div>
+      <a href="/career/edr">← Lab hub</a>
+      <a href="/career">Career</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ case.title }}</h1>
+    <p class="teach">{{ case.teach }}</p>
+    <p class="hint">Instance seed {{ case.instance_seed }} · host and paths vary each open. Teaching answers stay the same.</p>
+
+    <div class="panel">
+      <h2>0. How to read this console</h2>
+      <div class="legend-body">
+        <p style="margin:0 0 8px;color:#9ab;">{{ console_legend.intro }}</p>
+        <div style="color:#7a9ab0;margin-bottom:4px;">Example line:</div>
+        <code class="ex">{{ console_legend.example_line }}</code>
+        {% for f in console_legend.fields %}
+        <div style="margin-bottom:7px;"><b style="color:#a78bfa;">{{ f.label }}:</b> {{ f.plain }}</div>
+        {% endfor %}
+        <div style="color:#a78bfa;font-weight:700;margin-top:8px;">Read order</div>
+        <ol>
+          {% for step in console_legend.read_order %}
+          <li>{{ step }}</li>
+          {% endfor %}
+        </ol>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>1. Show me — process tree</h2>
+      <div class="host-meta">Host: <b style="color:#fff;">{{ case.host }}</b> · User: {{ case.user }} · ! = flagged node</div>
+      <pre class="tree">{% for line in tree_lines %}<span class="{% if '!' in line[:8] %}sus{% endif %}">{{ line }}</span>
+{% endfor %}</pre>
+    </div>
+
+    <div class="panel">
+      <h2>2. Prove it — checklist + isolate + disposition</h2>
+      {% for c in checklist %}
+      <label class="chk"><input type="checkbox" id="c-{{ c.id }}"> {{ c.label }}</label>
+      {% endfor %}
+      <label style="display:block;margin-top:12px;font-size:0.8em;color:#9ab;">Isolate this host now?</label>
+      <select id="isolate">
+        <option value="">Select…</option>
+        <option value="yes">Yes — isolate (network contain)</option>
+        <option value="no">No — do not isolate</option>
+      </select>
+      <label style="display:block;margin-top:12px;font-size:0.8em;color:#9ab;">Disposition</label>
+      <select id="disposition">
+        <option value="">Select…</option>
+        {% for d in dispositions %}
+        <option value="{{ d.id }}">{{ d.label }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn" onclick="grade()">Submit EDR triage</button>
+      <div class="result" id="result"></div>
+      <a class="btn btn-next" id="next-scenario" href="{{ next_preview.url if next_preview else '#' }}">Next scenario →</a>
+      <p class="hint">Next scenario opens a different teaching pattern with a new host, user, and paths. Use Ask Tutor (bottom right) if a process line is unclear.</p>
+    </div>
+  </div>
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+  var CASE_ID = {{ case.id | tojson }};
+
+  function showNext(d) {
+    var nb = document.getElementById('next-scenario');
+    if (!nb) return;
+    if (d && d.next && d.next.url) nb.href = d.next.url;
+    nb.classList.add('show');
+  }
+
+  function grade() {
+    var checklist = {};
+    {{ checklist | map(attribute='id') | list | tojson }}.forEach(function (id) {
+      checklist[id] = !!(document.getElementById('c-' + id) || {}).checked;
+    });
+    var iso = document.getElementById('isolate').value;
+    if (!iso) { alert('Pick isolate yes/no'); return; }
+    var disposition = document.getElementById('disposition').value;
+    fetch('/api/career/edr/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({
+        case_id: CASE_ID,
+        checklist: checklist,
+        isolate: iso === 'yes',
+        disposition: disposition
+      })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      BoundryRationale.renderResult(document.getElementById('result'), d);
+      if (d && d.ok) showNext(d);
+    });
+  }
+  </script>
+  {% include '_career_rationale.html' %}
+  {% include '_career_tutor.html' %}
+</body>
+</html>

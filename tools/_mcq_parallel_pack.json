@@ -1,0 +1,7448 @@
+{
+  "sp_d1_01_control_functions_p2": {
+    "choices": [
+      "Detective alert after the event is seen",
+      "Preventive block before the event succeeds",
+      "Directive policy telling people what to do",
+      "Compensating for missing CCTV"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      42,
+      42,
+      29
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_01_control_functions_p3": {
+    "choices": [
+      "Choosing Preventive only instead of the right control",
+      "Directive policy text with no technical enforce",
+      "Corrective: reduces impact after execution",
+      "Preventive block before the event succeeds"
+    ],
+    "answer_idx": 2,
+    "lens": [
+      53,
+      47,
+      42,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_01a": {
+    "choices": [
+      "Preventive block before the event succeeds",
+      "Detective alert after the event is seen",
+      "Physical cage lock around the rack",
+      "Compensating VPN path treated as permanent fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      39,
+      34,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_01b": {
+    "choices": [
+      "Making Detective SIEM the whole answer",
+      "Directive / governance instruction",
+      "Relying on Corrective isolate alone for this risk",
+      "Encryption of data so confidentiality holds in transit"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      34,
+      49,
+      54
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_01c": {
+    "choices": [
+      "Preventive control is working",
+      "A preventive network control is missing or",
+      "Only a deterrent failed",
+      "Confidentiality is automatically fine"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      29,
+      42,
+      23,
+      37
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d1_01d": {
+    "choices": [
+      "Skip control language and only name the product",
+      "Say whether you are looking at a detective",
+      "Assuming Only discuss CCTV closes the gap",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      42,
+      41,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_01e": {
+    "choices": [
+      "Preventive block before the event succeeds",
+      "Detective signal of failed authentication",
+      "Corrective password reset after compromise",
+      "Directive AUP text without technical enforce"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      41,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_02_control_implementation_p1": {
+    "choices": [
+      "Managerial policy document without tooling",
+      "Technical control in software or config",
+      "Physical badge reader at the server room",
+      "Reprint the AUP and call the risk closed"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      39,
+      40,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_02_control_implementation_p2": {
+    "choices": [
+      "Technical firewall rule",
+      "Managerial / governance artefact",
+      "Choosing Physical CCTV instead of the right control",
+      "Making Base64 encoding the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      32,
+      51,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_02_control_implementation_p4": {
+    "choices": [
+      "Physical control like locks or cameras",
+      "Operational process people run by checklist",
+      "Treating Encryption cipher as enough protection here",
+      "Compensating open RDP with no owner or end date"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      43,
+      52,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_02a": {
+    "choices": [
+      "Physical control like locks or cameras",
+      "Technical control in software or config",
+      "Managerial governance artefact or risk acceptance",
+      "Operational process people run by checklist"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      39,
+      49,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_02b": {
+    "choices": [
+      "Physical control like locks or cameras",
+      "Operational process people run by checklist",
+      "Encryption of data so confidentiality holds in transit",
+      "Assuming Compensating RDP closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      43,
+      54,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_02c": {
+    "choices": [
+      "Managerial / third-party review",
+      "Physical control like locks or cameras",
+      "Assuming Corrective isolate closes the gap",
+      "Hashing a password so it cannot be reversed easily"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      31,
+      38,
+      42,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_02d": {
+    "choices": [
+      "Using To sound random as the primary fix",
+      "So you can say 'detective technical' without",
+      "Because CompTIA forbids both",
+      "Claim only physical controls matter on the exam"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      44,
+      28,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_02e": {
+    "choices": [
+      "Physical cage lock around the rack",
+      "Technical control in software or config",
+      "Deterrent banner meant to scare attackers",
+      "Directive AUP alone without technical enforce"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      34,
+      39,
+      41,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_03_cia_fundamentals_p2": {
+    "choices": [
+      "Integrity of privilege boundaries (and likely",
+      "Confidentiality of sensitive data exposure",
+      "Treating Only CCTV as enough protection here",
+      "Relying on Hashing algorithms alone for this risk"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      45,
+      42,
+      44,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_03_cia_fundamentals_p3": {
+    "choices": [
+      "Confidentiality of CCTV",
+      "Availability of accounts",
+      "Relying on Non-repudiation posters alone for this risk",
+      "Physical door locks with no cyber controls"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      24,
+      54,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_03_cia_fundamentals_p4": {
+    "choices": [
+      "Opening more RDP listeners on servers",
+      "Non-repudiation / accountability",
+      "Using Deleting SigninLogs as the primary fix",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      32,
+      44,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_03a": {
+    "choices": [
+      "Availability (and integrity of data)",
+      "Only physical doors without identity controls",
+      "Confidentiality of sensitive data exposure",
+      "Assuming Directive CHG closes the gap"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      36,
+      45,
+      42,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_03b": {
+    "choices": [
+      "Non-repudiation / accountability",
+      "Opening more RDP listeners on servers",
+      "Assuming Deleting logs closes the gap",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      32,
+      37,
+      37,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_03c": {
+    "choices": [
+      "Using Preventive encryption as the primary fix",
+      "Detective deception such as a honeytoken alert",
+      "Physical badge reader at the server room",
+      "Making RTO metric the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      46,
+      46,
+      40,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_03d": {
+    "choices": [
+      "Confidentiality failure from cleartext exposure",
+      "Only availability of MFA for the executive",
+      "Directive scan ticket with no data impact",
+      "SOAR playbook that never mentions the laptop"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      47,
+      42,
+      41,
+      44
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d1_03e": {
+    "choices": [
+      "Integrity of configuration / trust",
+      "Confidentiality of sensitive data exposure",
+      "Integrity of records against unauthorized change",
+      "Availability of coffee"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      34,
+      42,
+      48,
+      22
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_04_aaa_zero_trust_p1": {
+    "choices": [
+      "Identification of the user without authentication",
+      "Authorization that grants admin",
+      "Accounting / audit trail of the authenticated",
+      "A deterrent flight ban"
+    ],
+    "answer_idx": 2,
+    "lens": [
+      49,
+      31,
+      45,
+      22
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_04_aaa_zero_trust_p2": {
+    "choices": [
+      "Trust anyone on VPN with no checks",
+      "Authenticate and authorize each session",
+      "Disable MFA for executives",
+      "Open RDP to speed travel"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      34,
+      39,
+      26,
+      24
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d1_04_aaa_zero_trust_p3": {
+    "choices": [
+      "Choosing Closed gap instead of the right control",
+      "Gap / untreated risk until mitigated or",
+      "Proof of encryption mistaken for full Zero Trust",
+      "Directive CHG for Nessus"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      39,
+      48,
+      24
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_04_aaa_zero_trust_p4": {
+    "choices": [
+      "Identification of the user without authentication",
+      "Authentication proving the claimed identity",
+      "Physical door locks with no cyber controls",
+      "Directive AUP text without technical enforce"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      49,
+      43,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_04a": {
+    "choices": [
+      "Identification of the user without authentication",
+      "Authentication proving the claimed identity",
+      "Physical door locks with no cyber controls",
+      "Directive policy telling people what to do"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      49,
+      43,
+      42,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_04b": {
+    "choices": [
+      "Authorization deciding what the identity may",
+      "Accounting that records actions for later review",
+      "Hashing a password so it cannot be reversed easily",
+      "Deterrent banner meant to scare attackers"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      44,
+      48,
+      50,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_04c": {
+    "choices": [
+      "Assuming Strong Zero Trust closes the gap",
+      "Castle-and-moat thinking, not Zero Trust",
+      "Making Corrective IR the whole answer",
+      "Non-repudiation so actions can be proven later"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      40,
+      37,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_04d": {
+    "choices": [
+      "Required control vs actual control state",
+      "Treat Base64 encoding as real encryption",
+      "Keep legacy authentication protocols enabled",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      40,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_05_change_management_p1": {
+    "choices": [
+      "A technical preventive that drops packets",
+      "A directive / change-management artefact",
+      "Proof of nation-state APT",
+      "A cryptographic hash of Nessus"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      40,
+      25,
+      30
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_05_change_management_p2": {
+    "choices": [
+      "Disable MFA to reduce user friction",
+      "Escalate: missing change is the signal",
+      "Delete logs during response to reduce liability",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      35,
+      38,
+      47,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_05_change_management_p3": {
+    "choices": [
+      "Delete logs during response to reduce liability",
+      "Impact check, stakeholders, backout,",
+      "Open more RDP paths for faster support",
+      "Delete accounting logs"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      36,
+      38,
+      22
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_05_change_management_p4": {
+    "choices": [
+      "Disable SIEM correlation to cut alert volume",
+      "In the same change record as the firewall/SIEM",
+      "Ignore the alert and wait for user complaints",
+      "Only in an unofficial chat joke"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      46,
+      45,
+      31
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d1_05a": {
+    "choices": [
+      "Using Ignore all scans as the primary fix",
+      "Check for a matching change ticket",
+      "Open tcp/3389 from the public internet",
+      "Disable EDR agents to quiet the noise"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      34,
+      38,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_05b": {
+    "choices": [
+      "Assuming Never change prod closes the gap",
+      "How you reverse the change if verify fails",
+      "Rely on awareness posters as the only control",
+      "Treating Deleting the CHG as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      42,
+      45,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_05c": {
+    "choices": [
+      "Keep legacy authentication protocols enabled",
+      "In the same change record as the firewall/SIEM",
+      "Treat Base64 encoding as real encryption",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      46,
+      40,
+      42
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d1_05d": {
+    "choices": [
+      "Making Random intern DM the whole answer",
+      "Named owner / CAB with risk acceptance",
+      "Relying on The attacker alone for this risk",
+      "No one ever documents it"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      38,
+      43,
+      24
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_05e": {
+    "choices": [
+      "That SigninLogs no longer show",
+      "That all firewalls are powered off",
+      "Set an RTO number without testing recovery",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      30,
+      34,
+      42,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_06_crypto_soc_p1": {
+    "choices": [
+      "Encryption protecting confidentiality",
+      "Obfuscation / encoding",
+      "Skip control language and only name the tool",
+      "Open more management ports for convenience"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      22,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_06_crypto_soc_p2": {
+    "choices": [
+      "Confidentiality of the file contents",
+      "Integrity / identification of the sample",
+      "Opening inbound RDP for vendor convenience",
+      "Directive AUP text without technical enforce"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      40,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_06_crypto_soc_p3": {
+    "choices": [
+      "Confidentiality of sensitive data exposure",
+      "Confidentiality if the device is stolen",
+      "Integrity of records against unauthorized change",
+      "Using SOAR lockout as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      39,
+      48,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d1_06_crypto_soc_p4": {
+    "choices": [
+      "Confidentiality of sensitive data exposure",
+      "Confidentiality (and integrity) in transit",
+      "Change tickets alone without technical controls",
+      "Honeypots as the only detection strategy"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      42,
+      47,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_06a": {
+    "choices": [
+      "Assuming Physical access closes the gap",
+      "Confidentiality (and integrity) in transit",
+      "Change tickets alone without technical controls",
+      "Honeypots as the only detection strategy"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      42,
+      47,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_06b": {
+    "choices": [
+      "Choosing Strong encryption instead of the right control",
+      "Obfuscation, not encryption",
+      "Treat Base64 encoding as real encryption",
+      "RPO target alone without backup verification"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      55,
+      27,
+      40,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_06c": {
+    "choices": [
+      "Only prettier dashboards",
+      "Availability friction + phishing lookalike",
+      "Allow faster password spray by relaxing lockouts",
+      "Using Better RTO as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      24,
+      42,
+      48,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_06d": {
+    "choices": [
+      "Hashes become wallpaper",
+      "Identical passwords share digests",
+      "It opens tcp/3389 as the main fix",
+      "Assuming It disables MFA closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      33,
+      33,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d1_06e": {
+    "choices": [
+      "Availability of coffee",
+      "Authenticity / integrity of the published",
+      "Assuming Opening SMB 445 closes the gap",
+      "Confidentiality of sensitive data exposure"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      41,
+      39,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_01_threat_actors_p1": {
+    "choices": [
+      "Hacktivist protest only",
+      "Organized crime / ransomware economics",
+      "Delete logs during response to reduce liability",
+      "Relying on Benign CHG-512 alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      38,
+      47,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_01_threat_actors_p2": {
+    "choices": [
+      "Only script kiddie 445 noise",
+      "Insider or compromised admin identity",
+      "Ignore the alert and wait for user complaints",
+      "Using Authorized Nessus as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      28,
+      37,
+      45,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_01_threat_actors_p3": {
+    "choices": [
+      "Domain compromise tonight",
+      "Commodity probe; perimeter held: note IOC",
+      "Identical to ALLOW 3389 on DC",
+      "Assuming Proof of CFO BEC closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      41,
+      29,
+      40
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d2_01a": {
+    "choices": [
+      "Printer font inventory treated as a security control",
+      "High-value path + likely crime/ransomware",
+      "Disable MFA to reduce user friction",
+      "Using RDP is always FP as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      52,
+      41,
+      35,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_01b": {
+    "choices": [
+      "Nation-state implant only",
+      "CFO clicks Invoice",
+      "Delete logs during response to reduce liability",
+      "Ignore the alert and wait for user complaints"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      18,
+      47,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_01c": {
+    "choices": [
+      "Relying on Strong Zero Trust alone for this risk",
+      "Poorly skilled / unsanctioned admin risk",
+      "Perfect compensating control",
+      "Hashing a password so it cannot be reversed easily"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      40,
+      28,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_02_vectors_email_identity_p1": {
+    "choices": [
+      "Password spray",
+      "Pass-the-hash from a DC",
+      "Open more management ports for convenience",
+      "Only brute against one UPN"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      14,
+      23,
+      42,
+      26
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_02_vectors_email_identity_p2": {
+    "choices": [
+      "Making Only physical USB the whole answer",
+      "Email/identity path with weak auth protocol",
+      "Accept risk with no owner and no review date",
+      "Turn off endpoint telemetry to quiet noise"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      43,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_02_vectors_email_identity_p3": {
+    "choices": [
+      "Accept risk with no owner and no review date",
+      "Block internet macros",
+      "Replace IR with a single status email thread",
+      "Trust all attachments from finance"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      21,
+      44,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_02a": {
+    "choices": [
+      "One user, many passwords",
+      "One password (or few), many users",
+      "Using Only USB as the primary fix",
+      "DNS change alone without identity or endpoint checks"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      24,
+      33,
+      33,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_02b": {
+    "choices": [
+      "It always encrypts better",
+      "It often bypasses modern MFA/CA prompts",
+      "Assuming It deletes SIEM closes the gap",
+      "It is a physical control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      39,
+      39,
+      24
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_02c": {
+    "choices": [
+      "Email and social engineering as the vector",
+      "Only cage keys as the BEC delivery path",
+      "Only NIDS signatures with no mail context",
+      "RPO targets mistaken for phishing controls"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      39,
+      41,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_02d": {
+    "choices": [
+      "Assuming Expose more RDP closes the gap",
+      "Disable legacy auth and require MFA",
+      "Rely on awareness posters as the only control",
+      "Treating Turn off EDR as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      35,
+      45,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_03_vectors_remote_supply_p1": {
+    "choices": [
+      "Disable SIEM correlation to cut alert volume",
+      "Remote access / exposed management plane",
+      "Choosing Only phishing PDF instead of the right control",
+      "Directive AUP text without technical enforce"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      40,
+      55,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_03_vectors_remote_supply_p2": {
+    "choices": [
+      "Assuming Great Zero Trust closes the gap",
+      "Supply-chain / third-party access risk",
+      "Rely on awareness posters as the only control",
+      "Treating Proof of hashing as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      38,
+      45,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_03b": {
+    "choices": [
+      "Disable SIEM correlation to cut alert volume",
+      "Weaker remote vector control",
+      "Physical door locks with no cyber controls",
+      "Rely on awareness posters as the only control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      28,
+      42,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_03c": {
+    "choices": [
+      "Rely on awareness posters as the only control",
+      "Attackers spray known defaults and seasonal",
+      "Making They improve RPO the whole answer",
+      "Treat Base64 encoding as real encryption"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      43,
+      40,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_03d": {
+    "choices": [
+      "Choosing Never instead of the right control",
+      "When entry evidence does not fit those paths",
+      "Treating Only on Saturdays as enough protection here",
+      "Treat Base64 encoding as real encryption"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      43,
+      44,
+      52,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_04_vulns_misconfig_p1": {
+    "choices": [
+      "Treat Base64 encoding as real encryption",
+      "Yes: misconfiguration",
+      "Rely on awareness posters as the only control",
+      "Only physical locks with no cyber detection"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      21,
+      45,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_04_vulns_misconfig_p2": {
+    "choices": [
+      "Choosing Strong design instead of the right control",
+      "Weak / insecure configuration",
+      "Treating Physical control as enough protection here",
+      "RTO target alone without a tested restore path"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      29,
+      51,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_04_vulns_misconfig_p3": {
+    "choices": [
+      "Insecure design / missing data control",
+      "Treating Perfect DLP as enough protection here",
+      "Keep legacy authentication protocols enabled",
+      "Hashing a password so it cannot be reversed easily"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      38,
+      46,
+      44,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_04a": {
+    "choices": [
+      "Using Only CVE counts as the primary fix",
+      "Both are vulnerability inputs",
+      "Misconfig is never a vuln",
+      "Making Ignore both the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      29,
+      25,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_04b": {
+    "choices": [
+      "Misconfiguration / control gap",
+      "Encryption of data so confidentiality holds in transit",
+      "Directive policy text with no technical enforce",
+      "Honeypot decoy treated as primary prevention"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      30,
+      54,
+      47,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_04c": {
+    "choices": [
+      "Preventive block before the event succeeds",
+      "Behavioural detection and containment",
+      "Opening inbound RDP for vendor convenience",
+      "Relying on Deleting EDR alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      37,
+      42,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_04d": {
+    "choices": [
+      "Making Hardening success the whole answer",
+      "Credential / account hygiene vulnerability",
+      "Availability so systems stay usable under stress",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      42,
+      48,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_05_vulns_human_p1": {
+    "choices": [
+      "Automatic TP ransomware",
+      "Process gap that forces extra validation",
+      "Use the finding as proof to open 3389",
+      "Directive CHG for Nessus"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      40,
+      37,
+      24
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_05_vulns_human_p2": {
+    "choices": [
+      "Technical control in software or config",
+      "Human + missing technical macro controls",
+      "Only physical doors without identity controls",
+      "Ignore the alert and wait for user complaints"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      40,
+      45,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_05_vulns_human_p3": {
+    "choices": [
+      "Assuming Public shaming closes the gap",
+      "Contain impact, coach, add technical",
+      "Disable all accounts forever",
+      "Delete logs during response to reduce liability"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      36,
+      28,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_05a": {
+    "choices": [
+      "Assuming Strong crypto closes the gap",
+      "Human / password hygiene vulnerability",
+      "Physical door locks with no cyber controls",
+      "RPO target alone without backup verification"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      38,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_05b": {
+    "choices": [
+      "Process / governance gap",
+      "Treat Base64 encoding as real encryption",
+      "Hashing a password so it cannot be reversed easily",
+      "Relying on NIDS alone for this risk"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      24,
+      40,
+      50,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_05d": {
+    "choices": [
+      "Add ASR + role training",
+      "Only mock the clicker in all-hands",
+      "Set an RTO number without testing recovery",
+      "Assuming MFA everywhere closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      34,
+      42,
+      38
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_06_ioc_identity_p1": {
+    "choices": [
+      "Password spray across many accounts from one IP",
+      "Credential stuffing against a single UPN only",
+      "Pass-the-hash using a stolen NTLM credential",
+      "Benign Defender noise with no auth failures"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      47,
+      45,
+      44,
+      43
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_06_ioc_identity_p2": {
+    "choices": [
+      "Using Ignore success as the primary fix",
+      "Hunt the success session hard",
+      "Choosing Only close as FP instead of the right control",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      29,
+      54,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_06_ioc_identity_p3": {
+    "choices": [
+      "Automatic ransomware TP",
+      "Likely FP with documented travel validation",
+      "Open tcp/3389 from the public internet",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      43,
+      38,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_06a": {
+    "choices": [
+      "count by src_ip / dcount users",
+      "Treat Base64 encoding as real encryption",
+      "Treating Delete 4625 as enough protection here",
+      "Relying on Ignore IPs alone for this risk"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      30,
+      40,
+      46,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_06b": {
+    "choices": [
+      "Many users, one password",
+      "One user, many failures",
+      "Relying on Only USB alone for this risk",
+      "Using Only DNS tunnel as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      24,
+      23,
+      39,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_06c": {
+    "choices": [
+      "Never look for 4624/success",
+      "Hunt successful logons from the attacking IP",
+      "Disable accounting so failed logons are not tracked",
+      "Assuming Trust VPN blindly closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      27,
+      44,
+      51,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_06d": {
+    "choices": [
+      "Relying on Always close FP alone for this risk",
+      "Validate before FP",
+      "Open inbound RDP from the internet",
+      "Delete SigninLogs to hide the spray evidence"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      46,
+      18,
+      34,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_06e": {
+    "choices": [
+      "dcount of users (or count by src_ip) in a",
+      "Assume VPN connect equals full trust",
+      "Delete all 4625 rows first",
+      "Ignore source IP forever"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      41,
+      36,
+      26,
+      24
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_07_ioc_bec_p1": {
+    "choices": [
+      "Using Close travel FP as the primary fix",
+      "Revoke sessions, remove rule, reset, escalate",
+      "Open inbound RDP from the internet",
+      "Open tcp/3389 from the public internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      45,
+      34,
+      38
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_07_ioc_bec_p2": {
+    "choices": [
+      "Assuming It forces MFA closes the gap",
+      "It often skipped the MFA prompt attackers fear",
+      "It encrypts the forward",
+      "Treating It is physical as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      46,
+      23,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_07_ioc_bec_p3": {
+    "choices": [
+      "Delete logs during response to reduce liability",
+      "Fraud staging: warn finance, treat as part of",
+      "Treating Only spam as enough protection here",
+      "Ignore the alert and wait for user complaints"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      45,
+      44,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_07a": {
+    "choices": [
+      "Confidentiality of sensitive data exposure",
+      "Confidentiality / collection indicator",
+      "Relying on RTO metric alone for this risk",
+      "Honeypot decoy treated as primary prevention"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      38,
+      41,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_07b": {
+    "choices": [
+      "Treating Wait overnight as enough protection here",
+      "Revoke sessions + remove rule + reset",
+      "Open inbound RDP from the internet",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      49,
+      37,
+      34,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_07c": {
+    "choices": [
+      "Mailbox collection / email collection",
+      "Call every alert a corrective control",
+      "Assuming Only VLAN closes the gap",
+      "Choosing Only backup instead of the right control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      37,
+      37,
+      33,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_07d": {
+    "choices": [
+      "Using Complete as the primary fix",
+      "Incomplete: needs technical identity/mail",
+      "Better than containment",
+      "Making A backout plan the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      33,
+      41,
+      23,
+      38
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_08_ioc_endpoint_p1": {
+    "choices": [
+      "Approved Office: close FP",
+      "Suspicious parent/child + encoded",
+      "Proof DC already ransomware'd",
+      "Authorized JUMP-01 scan"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      33,
+      29,
+      23
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_08_ioc_endpoint_p2": {
+    "choices": [
+      "Isolate and preserve without notifying stakeholders",
+      "Leave on LAN to see if files encrypt overnight",
+      "Escalate immediately with no triage notes",
+      "Pull EDR tree into ticket"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      46,
+      41,
+      25
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_08_ioc_endpoint_p3": {
+    "choices": [
+      "Because Base64 is encryption",
+      "Preserve evidence",
+      "Because EDR forbids tickets",
+      "Because CHG requires it"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      28,
+      17,
+      27,
+      23
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_08a": {
+    "choices": [
+      "Treating It proves CHG as enough protection here",
+      "It shows execution chain, not just a noisy",
+      "Using It opens RDP as the primary fix",
+      "Assuming It sets RPO closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      42,
+      37,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_08b": {
+    "choices": [
+      "Guaranteed AES confidentiality",
+      "Likely obfuscation/tradecraft",
+      "Assuming Digital signature closes the gap",
+      "Choosing Physical access instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      30,
+      29,
+      41,
+      53
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_08c": {
+    "choices": [
+      "Ignore the alert and wait for user complaints",
+      "Isolate host / network contain",
+      "Choosing Disable all MFA instead of the right control",
+      "Delete SIEM rules after the first false positive"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      30,
+      53,
+      48
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_08d": {
+    "choices": [
+      "Assuming Solid closes the gap",
+      "Near-miss: approved apps can launch malicious",
+      "Making Required by ZT the whole answer",
+      "Treating A backout as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      29,
+      45,
+      38,
+      44
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_09_ioc_network_p1": {
+    "choices": [
+      "Turn off endpoint telemetry to quiet noise",
+      "Commodity probe",
+      "Same urgency as ALLOW 3389 on DC",
+      "Accept risk with no owner and no review date"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      15,
+      32,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_09_ioc_network_p2": {
+    "choices": [
+      "Treating INFO only as enough protection here",
+      "Critical exposure / likely incident path",
+      "Using Ignore if no CVE as the primary fix",
+      "Assuming Only awareness closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      40,
+      41,
+      38
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_09_ioc_network_p3": {
+    "choices": [
+      "Replace IR with a single status email thread",
+      "Possible lateral movement",
+      "Open inbound RDP from the internet",
+      "Hashing a password so it cannot be reversed easily"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      25,
+      34,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_09a": {
+    "choices": [
+      "Printer font inventory treated as a security control",
+      "ALLOW means the path worked or is open",
+      "DROP always means ransomware",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      52,
+      38,
+      28,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_09b": {
+    "choices": [
+      "Steady suspicious egress / callback pattern",
+      "Assuming Only badge logs closes the gap",
+      "Assume VPN connect equals full trust",
+      "RTO target alone without a tested restore path"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      43,
+      39,
+      36,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_09c": {
+    "choices": [
+      "Skip control language and only name the tool",
+      "Firewall + EDR/identity context",
+      "Delete logs during response to reduce liability",
+      "Open more management ports to the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      31,
+      47,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_09d": {
+    "choices": [
+      "Turn off endpoint telemetry to quiet noise",
+      "Critical network exposure indicator",
+      "Open more management ports for convenience",
+      "Relying on Backup proof alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      35,
+      42,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_09e": {
+    "choices": [
+      "DROP is always worse because volume is higher",
+      "ALLOW to a crown jewel is worse",
+      "They are identical forever",
+      "Neither needs a ticket"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      31,
+      26,
+      22
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_10_mitigate_identity_p1": {
+    "choices": [
+      "Making Faster RDP the whole answer",
+      "Make stolen/guessed passwords insufficient",
+      "Delete accounting records after the investigation",
+      "Replace backups with screenshots of dashboards"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      34,
+      42,
+      49,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_10_mitigate_identity_p2": {
+    "choices": [
+      "Only awareness posters in the break room",
+      "Disable legacy auth + block/alert external",
+      "Open tcp/3389 from the public internet",
+      "Turn off mailbox audit to quiet detections"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      42,
+      38,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_10_mitigate_identity_p3": {
+    "choices": [
+      "Relying on Isolate host alone for this risk",
+      "Leave host up to observe encryption",
+      "Assuming Hunt hash in mail closes the gap",
+      "Choosing ASR Office→script instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      43,
+      35,
+      41,
+      55
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_10a": {
+    "choices": [
+      "Disable MFA to reduce user friction",
+      "Force modern auth paths that support MFA/CA",
+      "Open inbound RDP from the internet",
+      "Using Remove SIEM as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      35,
+      43,
+      34,
+      36
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d2_10b": {
+    "choices": [
+      "Confidentiality of sensitive data exposure",
+      "Data exfil / confidentiality mitigation",
+      "Physical cage lock around the rack",
+      "Assuming RPO number closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      39,
+      34,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_10c": {
+    "choices": [
+      "Relying on Punish users only alone for this risk",
+      "Slow spray/brute while limiting collateral",
+      "Disable EDR agents to quiet the noise",
+      "Replace IR with a single status email thread"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      42,
+      37,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_10d": {
+    "choices": [
+      "Correct primary mitigation",
+      "Wrong: remove the exposure",
+      "Disable SIEM correlation to cut alert volume",
+      "Making A hash the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      26,
+      26,
+      44,
+      30
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_11_mitigate_segment_p1": {
+    "choices": [
+      "Delete logs during response to reduce liability",
+      "Remove internet RDP; VPN+MFA+jump/PAM; segment",
+      "Ignore the alert and wait for user complaints",
+      "Disable logging to shrink storage costs"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      46,
+      45,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_11_mitigate_segment_p2": {
+    "choices": [
+      "Assuming Punish the user closes the gap",
+      "Corrective: stop spread / reduce impact",
+      "Replace MFA with password-only logons",
+      "Treating Approve CHG as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      39,
+      37,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_11_mitigate_segment_p3": {
+    "choices": [
+      "Choosing Fully mitigated instead of the right control",
+      "Detective coverage on an unfixed preventive",
+      "Treating Physical fix as enough protection here",
+      "Relying on Encryption complete alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      53,
+      43,
+      47,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_11a": {
+    "choices": [
+      "Treating Pretty VLANs only as enough protection here",
+      "Limit blast radius / separate trust tiers",
+      "Delete logs during response to reduce liability",
+      "Disable MFA to reduce user friction"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      52,
+      41,
+      47,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_11b": {
+    "choices": [
+      "Hardening / preventive endpoint mitigation",
+      "Preventive block before the event succeeds",
+      "RTO target alone without a tested restore path",
+      "Honeypot decoy treated as primary prevention"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      42,
+      46,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_11c": {
+    "choices": [
+      "Remove known exploit paths",
+      "Open more management ports to the internet",
+      "Choosing Replace IR docs instead of the right control",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      26,
+      42,
+      53,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_11d": {
+    "choices": [
+      "Rely on awareness posters as the only control",
+      "After suspected/confirmed execution on a host",
+      "Instead of tickets forever",
+      "Treating Only for printers as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      45,
+      26,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_01_arch_models_p2": {
+    "choices": [
+      "Only the cloud provider",
+      "Yours: customer network/OS config",
+      "Using Only the ISP as the primary fix",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      33,
+      37,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_01_arch_models_p3": {
+    "choices": [
+      "Rely on awareness posters as the only control",
+      "Hunt both cloud SigninLogs and on-prem 462x as",
+      "Disable MFA to reduce user friction",
+      "Choosing Trust VPN only instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      46,
+      35,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_01a": {
+    "choices": [
+      "Provider owns all risk",
+      "Split of duties",
+      "Using No patches ever as the primary fix",
+      "Delete logs during response to reduce liability"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      15,
+      40,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_01b": {
+    "choices": [
+      "Relying on Identity forever alone for this risk",
+      "OS patching compared to IaaS",
+      "Assuming All DLP closes the gap",
+      "Choosing All IR instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      28,
+      31,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_01c": {
+    "choices": [
+      "Using It is SaaS as the primary fix",
+      "Identity store + lateral potential",
+      "Disable SIEM correlation to cut alert volume",
+      "RPO target alone without backup verification"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      35,
+      34,
+      44,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_01d": {
+    "choices": [
+      "Cloud means no tickets",
+      "I pick sources by where the identity/session",
+      "Rely on awareness posters as the only control",
+      "Disable accounting so failed logons are not tracked"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      44,
+      45,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_02_zero_trust_arch_p1": {
+    "choices": [
+      "Trust VPN with no checks",
+      "Zero Trust / CA",
+      "Treating Open RDP to DC as enough protection here",
+      "Open more management ports for convenience"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      24,
+      15,
+      49,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_02_zero_trust_arch_p2": {
+    "choices": [
+      "Turn off endpoint telemetry to quiet noise",
+      "Limit east-west paths after phishing",
+      "Delete SIEM rules after the first false positive",
+      "Using Replace encryption as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      36,
+      48,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_02_zero_trust_arch_p3": {
+    "choices": [
+      "Domain admins for convenience",
+      "Only rights needed for backup jobs, monitored",
+      "Turn off logging because alerts are noisy",
+      "Assuming Internet RDP closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      29,
+      45,
+      41,
+      36
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d3_02a": {
+    "choices": [
+      "MFA prompts during interactive sign-in",
+      "Implicit trust from network location alone",
+      "Change tickets that authorize a temporary path",
+      "EDR alerts that notify after host execution"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      42,
+      46,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_02b": {
+    "choices": [
+      "Disable SIEM correlation to cut alert volume",
+      "Policy-driven authorization in a ZT-ish design",
+      "Base64 encoding mistaken for real encryption",
+      "RTO target alone without a tested restore path"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      46,
+      44,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_02d": {
+    "choices": [
+      "Treat Base64 encoding as real encryption",
+      "Zero Trust / strong authn assumptions",
+      "Only physical doors without identity controls",
+      "Relying on Hash algorithms alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      37,
+      45,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_03_infra_network_p1": {
+    "choices": [
+      "More dashboards, keep ALLOW",
+      "Remove internet RDP; VPN+MFA+jump; segment",
+      "Skip control language and only name the tool",
+      "Disable logging to shrink storage costs"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      27,
+      42,
+      44,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_03_infra_network_p2": {
+    "choices": [
+      "Preventive block before the event succeeds",
+      "Inline prevention/block capability",
+      "Choosing Physical badges instead of the right control",
+      "Change-ticket wording without enforcement"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      34,
+      53,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_03_infra_network_p3": {
+    "choices": [
+      "Allow faster password spray by relaxing lockouts",
+      "Avoid cleartext leak if tunnel drops",
+      "Open inbound RDP from the internet",
+      "Treating Delete EDR as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      36,
+      34,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_03a": {
+    "choices": [
+      "Using Weak design as the primary fix",
+      "Strong secure-infrastructure baseline",
+      "Choosing Only cloud instead of the right control",
+      "Only physical locks with no cyber detection"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      37,
+      48,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_03b": {
+    "choices": [
+      "Assuming Badge doors closes the gap",
+      "Web applications at HTTP(S) layer",
+      "Making Only backups the whole answer",
+      "Rely on awareness posters as the only control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      35,
+      33,
+      36,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_03c": {
+    "choices": [
+      "Complete remote architecture",
+      "Incomplete: authn too weak for the path",
+      "A honeypot used instead of real monitoring",
+      "RPO target alone without backup verification"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      28,
+      39,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_03d": {
+    "choices": [
+      "Making No documentation the whole answer",
+      "Change control + firewall/IDS tuning",
+      "Relying on Deleting 4625 alone for this risk",
+      "Opening 3389 to the world"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      36,
+      44,
+      25
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_04_infra_endpoint_cloud_p1": {
+    "choices": [
+      "Disable MFA to reduce user friction",
+      "EDR ASR / attack surface reduction rules",
+      "Opening inbound RDP for vendor convenience",
+      "Disabling MFA across the tenant"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      35,
+      40,
+      42,
+      31
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_04_infra_endpoint_cloud_p2": {
+    "choices": [
+      "Delete logs during response to reduce liability",
+      "Same class of failure as on-prem internet RDP",
+      "Ignore the alert and wait for user complaints",
+      "Physical door locks with no cyber controls"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      45,
+      45,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_04_infra_endpoint_cloud_p3": {
+    "choices": [
+      "Making Randomize fonts the whole answer",
+      "Consistent hardened config across the fleet",
+      "Delete logs during response to reduce liability",
+      "Using Disable encryption as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      43,
+      47,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_04a": {
+    "choices": [
+      "Least privilege architecture",
+      "Rely on awareness posters as the only control",
+      "Treat Base64 encoding as real encryption",
+      "DNS change alone without identity or endpoint checks"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      28,
+      45,
+      40,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_04b": {
+    "choices": [
+      "Endpoint/data architecture for lost devices",
+      "Making Only SOAR the whole answer",
+      "Treat Base64 encoding as real encryption",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      43,
+      33,
+      40,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_04c": {
+    "choices": [
+      "Expose more public IPs",
+      "Keep service traffic off the public",
+      "Disable MFA to reduce user friction",
+      "Using Ignore NSGs as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      35,
+      35,
+      36
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_04d": {
+    "choices": [
+      "Always pick awareness first",
+      "Pick the control that closes the",
+      "Always pick honeypots first",
+      "Assuming Never use EDR closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      27,
+      32,
+      27,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_05_data_states_p1": {
+    "choices": [
+      "Longer screensaver only",
+      "Classification + DLP",
+      "Ignore the alert and wait for user complaints",
+      "Delete SigninLogs to hide the spray evidence"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      20,
+      45,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_05_data_states_p2": {
+    "choices": [
+      "Data in transit between browser and Boundry UI",
+      "Only data at rest on a stolen USB stick",
+      "Physical cages as the TLS protection layer",
+      "RTO number with no encryption requirement"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      46,
+      39,
+      42,
+      41
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d3_05_data_states_p3": {
+    "choices": [
+      "Data at rest on the endpoint",
+      "Treating Only SMTP as enough protection here",
+      "Rely on awareness posters as the only control",
+      "Change-ticket wording without enforcement"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      28,
+      44,
+      45,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_05a": {
+    "choices": [
+      "Choosing Decorate folders instead of the right control",
+      "Drive which DLP/handling rules apply",
+      "Open inbound RDP from the internet",
+      "Replace MFA with password-only logons"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      54,
+      36,
+      34,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_05b": {
+    "choices": [
+      "Making TLS only the whole answer",
+      "Endpoint DLP blocking paste/upload of",
+      "Relying on Only cage lock alone for this risk",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      32,
+      37,
+      45,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_05c": {
+    "choices": [
+      "Data at rest confidentiality if media is",
+      "Relying on Only spray alone for this risk",
+      "Confidentiality of sensitive data exposure",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      41,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_05d": {
+    "choices": [
+      "Relying on Stronger automatically alone for this risk",
+      "Weaker / noisier because rules lack labels",
+      "Assuming Unnecessary closes the gap",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      53,
+      42,
+      35,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_06_dlp_encryption_p1": {
+    "choices": [
+      "Only longer passwords on Wi-Fi",
+      "DLP / transport rule blocking or alerting",
+      "Open inbound RDP from the internet",
+      "Disable accounting so failed logons are not tracked"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      30,
+      41,
+      34,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_06_dlp_encryption_p2": {
+    "choices": [
+      "You need control after the file leaves the",
+      "Accept risk with no owner and no review date",
+      "Choosing You delete SIEM instead of the right control",
+      "Making You skip MFA the whole answer"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      44,
+      53,
+      36
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_06_dlp_encryption_p3": {
+    "choices": [
+      "Full data architecture",
+      "Gap for lost/stolen endpoints",
+      "Replace IR with a single status email thread",
+      "Treating Only a CHG issue as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      29,
+      44,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_06a": {
+    "choices": [
+      "Detect/prevent sensitive data leaving approved",
+      "Treating Replace firewalls as enough protection here",
+      "Relying on Open VPN alone for this risk",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      46,
+      52,
+      39,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_06b": {
+    "choices": [
+      "TLS or VPN protecting data in transit",
+      "Only a badge reader as transit encryption",
+      "Only a honeypot as the transit crypto tool",
+      "Only AUP text as the encryption control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      37,
+      41,
+      42,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_06c": {
+    "choices": [
+      "Call every alert a corrective control",
+      "Reduce sensitive cleartext in app databases",
+      "Disable EDR agents to quiet the noise",
+      "Choosing Ignore classification instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      43,
+      37,
+      59
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_06d": {
+    "choices": [
+      "Assume VPN connect equals full trust",
+      "DLP forward control + disable legacy auth + CA",
+      "Choosing More internet RDP instead of the right control",
+      "Skip control language and only name the tool"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      46,
+      55,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_07_resilience_ha_p1": {
+    "choices": [
+      "Delete logs during response to reduce liability",
+      "Most ready / fastest failover, highest cost",
+      "Disable MFA to reduce user friction",
+      "Encryption of data so confidentiality holds in transit"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      43,
+      35,
+      54
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_07_resilience_ha_p2": {
+    "choices": [
+      "Guaranteed zero ransomware",
+      "Keep service available through component",
+      "Replace IR with a single status email thread",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      26,
+      40,
+      44,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_07_resilience_ha_p3": {
+    "choices": [
+      "Printer font inventory as a security metric",
+      "Attacks and failures both kill availability",
+      "Physical locks alone without cyber recovery",
+      "Change tickets alone without restore testing"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      43,
+      43,
+      43,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_07a": {
+    "choices": [
+      "Fully live twin always",
+      "Partial readiness between hot and cold",
+      "Using No power as the primary fix",
+      "Assuming Only SaaS closes the gap"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      38,
+      33,
+      33
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d3_07b": {
+    "choices": [
+      "Paper plans always work",
+      "Untested HA is a hope, not a control",
+      "It opens tcp/3389 as the main fix",
+      "Choosing It disables MFA instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      36,
+      33,
+      53
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_07c": {
+    "choices": [
+      "Confidentiality of Gmail",
+      "Availability of connectivity",
+      "Hashing a password so it cannot be reversed easily",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      24,
+      28,
+      50,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_07d": {
+    "choices": [
+      "Skip control language and only name the tool",
+      "Compromise of backup plane = kill resilience",
+      "Open more management ports for convenience",
+      "Treating Better DLP as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      44,
+      42,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_08_backup_rto_p1": {
+    "choices": [
+      "Tested restores and protected backup creds matter",
+      "Veeam alone fixes ransomware without restore drills or credential hygiene",
+      "Resilience is only a physical-site problem, never about backups",
+      "Never isolate hosts if any backup product is installed on the network"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      74,
+      42,
+      44,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_08_backup_rto_p2": {
+    "choices": [
+      "Service must be fully up within 1 hour",
+      "Up to about 1 hour of data loss is tolerable",
+      "Users must complete MFA every hour",
+      "Patches must install every hour"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      46,
+      35,
+      32
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_08_backup_rto_p3": {
+    "choices": [
+      "Printer toner shortages and lobby poster issues only",
+      "Ransomware targeting backup copies for encryption or deletion",
+      "Phishing awareness posters in the lobby without any technical control",
+      "Legacy authentication without MFA as the only risk in the story"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      39,
+      44,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_08a": {
+    "choices": [
+      "Max acceptable downtime to restore service",
+      "Using Password length as the primary fix",
+      "Assuming VLAN count closes the gap",
+      "Choosing Only classification instead of the right control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      40,
+      34,
+      57
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_08b": {
+    "choices": [
+      "Using Never as the primary fix",
+      "On a defined cadence",
+      "Assume VPN connect equals full trust",
+      "Only after firing analysts"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      30,
+      20,
+      36,
+      26
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_08c": {
+    "choices": [
+      "Allow faster password spray by relaxing lockouts",
+      "Survive online ransomware of backup targets",
+      "Disable EDR agents to quiet the noise",
+      "Treating Skip MFA as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      43,
+      37,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_08d": {
+    "choices": [
+      "Choosing Hardened instead of the right control",
+      "A resilience and security failure waiting to",
+      "Treating Required by ZT as enough protection here",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      46,
+      44,
+      49,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_08e": {
+    "choices": [
+      "Making RPO is met the whole answer",
+      "Backup frequency does not meet RPO",
+      "RTO is automatically zero",
+      "Turn off endpoint telemetry to quiet noise"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      34,
+      34,
+      25,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_09_continuity_testing_p1": {
+    "choices": [
+      "Only disk encryption math",
+      "People/process decisions under a scenario",
+      "Assuming Only NSG syntax closes the gap",
+      "Rely on awareness posters as the only control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      41,
+      39,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_09_continuity_testing_p2": {
+    "choices": [
+      "Using You are fine as the primary fix",
+      "You have a resilience gap to fix or",
+      "Choosing Disable backups instead of the right control",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      35,
+      53,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_09_continuity_testing_p3": {
+    "choices": [
+      "Treat every phishing report as confirmed compromise",
+      "Failed backups",
+      "Making Need for MFA the whole answer",
+      "Need for tickets without saying what control failed"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      14,
+      36,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_09a": {
+    "choices": [
+      "Keep critical business functions through",
+      "Open tcp/3389 from the public internet",
+      "Choosing Replace hashing instead of the right control",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      38,
+      53,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_09b": {
+    "choices": [
+      "A binder of plans that was never exercised",
+      "Dated restore test results versus RTO/RPO",
+      "More dashboards with no recovery evidence",
+      "A verbal vendor promise of fast restore"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      41,
+      41,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_09c": {
+    "choices": [
+      "Open more management ports for convenience",
+      "Update with lessons and owners",
+      "Treating Be deleted as enough protection here",
+      "Blame only the analyst"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      30,
+      45,
+      22
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_09d": {
+    "choices": [
+      "Tabletop and restore tests are identical checks",
+      "Tabletop stresses decisions; restore stresses recovery",
+      "Neither exercise is useful for readiness proof",
+      "Only OT environments need continuity testing"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      54,
+      46,
+      44
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_01_harden_compute_p1": {
+    "choices": [
+      "Treating Open more macros as enough protection here",
+      "ASR / block Office child processes + reduce",
+      "Disable EDR agents to quiet the noise",
+      "Ignore the alert and wait for user complaints"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      43,
+      37,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_01_harden_compute_p2": {
+    "choices": [
+      "Relying on Speed spray alone for this risk",
+      "Protect data if devices are lost",
+      "Assuming Replace SIEM closes the gap",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      32,
+      36,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_01_harden_compute_p3": {
+    "choices": [
+      "Least privilege hardening",
+      "Open inbound RDP from the internet",
+      "Disable MFA to reduce user friction",
+      "DNS change alone without identity or endpoint checks"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      25,
+      34,
+      35,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_01a": {
+    "choices": [
+      "Consistent hardened config you can audit",
+      "Using Random configs as the primary fix",
+      "Open tcp/3389 from the public internet",
+      "Delete logs during response to reduce liability"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      39,
+      38,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_01b": {
+    "choices": [
+      "4.1-style hardening / maintenance",
+      "Disable SIEM correlation to cut alert volume",
+      "Only physical locks with no cyber detection",
+      "Honeypots as the only detection strategy"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      33,
+      44,
+      43,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_01c": {
+    "choices": [
+      "Surface reduction hardening",
+      "Required internet expose",
+      "Making Awareness only the whole answer",
+      "RTO target alone without a tested restore path"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      27,
+      24,
+      38,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_01d": {
+    "choices": [
+      "Choosing Ignore accounts instead of the right control",
+      "Review local admin membership and monitoring",
+      "Open more management ports to the internet",
+      "Disable MFA to reduce user friction"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      53,
+      44,
+      42,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_02_harden_network_app_p1": {
+    "choices": [
+      "Leave ALLOW; add wallpaper",
+      "Change request to remove; VPN/PAM path",
+      "Disable logging to shrink storage costs",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      26,
+      38,
+      39,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_02_harden_network_app_p2": {
+    "choices": [
+      "Secure protocol hardening",
+      "Only physical locks with no cyber detection",
+      "Set an RTO number without testing recovery",
+      "Assuming SOAR disable closes the gap"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      25,
+      43,
+      42,
+      36
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_02_harden_network_app_p3": {
+    "choices": [
+      "Relying on Run everything alone for this risk",
+      "Only approved binaries run",
+      "Open tcp/3389 from the public internet",
+      "Delete SIEM rules after the first false positive"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      26,
+      38,
+      48
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_02a": {
+    "choices": [
+      "Identity protocols and legacy auth paths",
+      "Only printers as the hardening target",
+      "Only cages as the legacy auth control",
+      "Only RTO numbers as identity hardening"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      37,
+      37,
+      38
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_02b": {
+    "choices": [
+      "Assuming Fine forever closes the gap",
+      "Protocol hardening debt",
+      "Calling a honeypot hit a full incident close",
+      "Treating CHG noise only as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      23,
+      44,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_02d": {
+    "choices": [
+      "Making Never verify the whole answer",
+      "Verify with scan/firewall config + monitor for",
+      "Relying on Open 445 instead alone for this risk",
+      "Disable EDR agents to quiet the noise"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      46,
+      47,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_03_asset_management_p1": {
+    "choices": [
+      "Inventory/ownership of privileged identities",
+      "Open more management ports for convenience",
+      "Choosing RTO is zero instead of the right control",
+      "Making Hashing failed the whole answer"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      44,
+      42,
+      49,
+      38
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_03_asset_management_p2": {
+    "choices": [
+      "Lifecycle failure: asset with no owner or review",
+      "Proof of perfect Zero Trust already in place",
+      "Only Domain 1 vocabulary with no ops follow-up",
+      "A honeypot used instead of inventory ownership"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      48,
+      44,
+      46,
+      46
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_03_asset_management_p3": {
+    "choices": [
+      "Choosing Ignoring its logs instead of the right control",
+      "Higher monitoring / stricter change control",
+      "Opening more RDP listeners on servers",
+      "Relying on Deleting backups alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      55,
+      43,
+      37,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_03a": {
+    "choices": [
+      "Assuming Only mice closes the gap",
+      "Hosts, apps, data stores, identities, cloud",
+      "Only awareness posters in the break room",
+      "Rely on awareness posters as the only control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      33,
+      43,
+      40,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_03b": {
+    "choices": [
+      "Choosing Blame games only instead of the right control",
+      "Who approves changes and responds to findings",
+      "Treating Open ports as enough protection here",
+      "Disable MFA to reduce user friction"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      54,
+      45,
+      45,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_03c": {
+    "choices": [
+      "Treat every phishing report as confirmed compromise",
+      "Standing access abuse",
+      "Relying on Need for TLS alone for this risk",
+      "Need for tickets without saying what control failed"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      21,
+      43,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_03d": {
+    "choices": [
+      "Prioritizing DLP and response",
+      "Removing encryption need",
+      "Using Replacing IR as the primary fix",
+      "Assuming Forcing RDP closes the gap"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      29,
+      24,
+      37,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_04_vuln_lifecycle_p1": {
+    "choices": [
+      "Assuming Identical CRITICAL closes the gap",
+      "Authorized vuln activity vs exposure/incident",
+      "Making Both INFO the whole answer",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      45,
+      33,
+      44
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_04_vuln_lifecycle_p2": {
+    "choices": [
+      "Set an RTO number without testing recovery",
+      "No: remediate/verify or exception with owner",
+      "Call every alert a corrective control",
+      "Relying on Only if RDP open alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      44,
+      37,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_04_vuln_lifecycle_p3": {
+    "choices": [
+      "Assume VPN connect equals full trust",
+      "Asset exposure and blast radius",
+      "Printer font inventory treated as a security control",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      31,
+      52,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_04a": {
+    "choices": [
+      "Rescan / confirm fixed",
+      "Delete the finding always",
+      "Open more management ports to the internet",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      22,
+      25,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_04b": {
+    "choices": [
+      "Making Only CVE date the whole answer",
+      "Asset criticality + exploitability + exposure",
+      "Relying on Only analyst mood alone for this risk",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      45,
+      48,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_04c": {
+    "choices": [
+      "Treating Strong governance as enough protection here",
+      "Drift waiting to become an incident",
+      "Set an RTO number without testing recovery",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      52,
+      35,
+      42,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_04d": {
+    "choices": [
+      "Relying on Nation-state alone for this risk",
+      "Authorized scan FP if identity matches",
+      "Use the finding as proof to open 3389",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      43,
+      38,
+      37,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_05_vuln_scan_context_p1": {
+    "choices": [
+      "To confuse SIEM forever",
+      "So SOC can treat matching traffic as",
+      "Making To open RDP the whole answer",
+      "Treating To disable MFA as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      23,
+      36,
+      35,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_05_vuln_scan_context_p2": {
+    "choices": [
+      "Choosing Hides all vulns instead of the right control",
+      "Deeper visibility into missing patches/configs",
+      "Treating Replaces backups as enough protection here",
+      "Relying on Deletes logs alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      53,
+      46,
+      51,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_05_vuln_scan_context_p3": {
+    "choices": [
+      "Making Best practice the whole answer",
+      "Unauthorized and likely an incident you caused",
+      "Relying on Required by Sec+ alone for this risk",
+      "Replace IR with a single status email thread"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      46,
+      47,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_05a": {
+    "choices": [
+      "Knowing what is actually installed",
+      "Opening tcp/3389 without compensating controls",
+      "Relying on Disabling EDR alone for this risk",
+      "Using Skipping owners as the primary fix"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      34,
+      46,
+      44,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_05b": {
+    "choices": [
+      "Finding is wrong/not applicable",
+      "Always ignore CRITICAL",
+      "Using Ransomware confirmed as the primary fix",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      31,
+      22,
+      45,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_05c": {
+    "choices": [
+      "Call every alert a corrective control",
+      "Edge usually higher priority due to exposure",
+      "Assuming Lab always higher closes the gap",
+      "Assume VPN connect equals full trust"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      44,
+      41,
+      36
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_05d": {
+    "choices": [
+      "Change / vuln process records",
+      "Skip control language and only name the tool",
+      "Assume VPN connect equals full trust",
+      "Making Only Slack memes the whole answer"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      29,
+      44,
+      36,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_06_alerting_queue_p1": {
+    "choices": [
+      "pfirewall 445 DROPs only",
+      "SigninLogs / 4625 with time bound + failures",
+      "Replace IR with a single status email thread",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      24,
+      44,
+      44,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_06_alerting_queue_p2": {
+    "choices": [
+      "Disable SIEM correlation to cut alert volume",
+      "Tune allow-list / exception with CHG context",
+      "Open inbound RDP from the internet",
+      "Ignore CRITICAL forever"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      44,
+      34,
+      23
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_06_alerting_queue_p3": {
+    "choices": [
+      "Treating Alert was wrong as enough protection here",
+      "Alert correctly indicated bad/suspicious",
+      "Preventive block before the event succeeds",
+      "Detective alert after the event is seen"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      50,
+      40,
+      42,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_06a": {
+    "choices": [
+      "Set an RTO number without testing recovery",
+      "Severity, asset, context, correlated evidence",
+      "Using Only day of week as the primary fix",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      45,
+      41,
+      37
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_06b": {
+    "choices": [
+      "Increase noise forever",
+      "Improve signal quality",
+      "Assuming Delete all TP closes the gap",
+      "Open tcp/3389 from the public internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      22,
+      37,
+      38
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_06c": {
+    "choices": [
+      "Open more management ports for convenience",
+      "EDR process tree / endpoint timeline",
+      "Assume VPN connect equals full trust",
+      "Skip control language and only name the tool"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      36,
+      36,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_06d": {
+    "choices": [
+      "Skip control language and only name the tool",
+      "You suppress real attacks with the noise",
+      "Making Faster patching the whole answer",
+      "Better RTO automatically"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      40,
+      39,
+      24
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_07_siem_tools_p1": {
+    "choices": [
+      "Assume VPN connect equals full trust",
+      "EDR isolation action",
+      "Set an RTO number without testing recovery",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      20,
+      42,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_07_siem_tools_p2": {
+    "choices": [
+      "Relying on Replace all EDR alone for this risk",
+      "Correlate multi-source alerts for the queue",
+      "Open inbound RDP from the internet",
+      "Choosing Patch hypervisors instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      46,
+      43,
+      34,
+      55
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_07_siem_tools_p3": {
+    "choices": [
+      "Using Every INFO alert as the primary fix",
+      "When payload evidence is required and scoped",
+      "Assume VPN connect equals full trust",
+      "Making To disable MFA the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      44,
+      36,
+      38
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_07a": {
+    "choices": [
+      "Relying on Process trees alone for this risk",
+      "Connection metadata between hosts",
+      "Assuming Mailbox rules closes the gap",
+      "Choosing BitLocker keys instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      33,
+      37,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_07b": {
+    "choices": [
+      "Assume VPN connect equals full trust",
+      "Collateral lockouts / over-automation",
+      "Choosing Faster TLS instead of the right control",
+      "Making Better RPO magic the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      37,
+      48,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_07c": {
+    "choices": [
+      "4.4 monitoring skill",
+      "Skip control language and only name the tool",
+      "Only physical locks with no cyber detection",
+      "Open more management ports for convenience"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      20,
+      44,
+      43,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_07d": {
+    "choices": [
+      "Firewall ALLOW + identity success + EDR child",
+      "Open more management ports for convenience",
+      "Turn off endpoint telemetry to quiet noise",
+      "Accept risk with no owner and no review date"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      45,
+      42,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_07e": {
+    "choices": [
+      "Firewall ALLOW table only",
+      "EDR process tree / endpoint telemetry",
+      "Turn off endpoint telemetry to quiet noise",
+      "Using CVSS PDF as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      37,
+      42,
+      33
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_08_tune_capabilities_p1": {
+    "choices": [
+      "Delete SIEM rules after the first noisy alert",
+      "Block source, tighten lockout, hunt successes",
+      "Open tcp/3389 to make vendor support easier",
+      "Disable MFA so users stop generating failures"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      45,
+      43,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_08_tune_capabilities_p2": {
+    "choices": [
+      "Risky tuning drift: best match for this stem",
+      "Choosing Perfect forever instead of the right control",
+      "Making Required open RDP the whole answer",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      44,
+      53,
+      41,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_08_tune_capabilities_p3": {
+    "choices": [
+      "Assume VPN connect equals full trust",
+      "Tune thresholds + exception path",
+      "Treating Ignore users as enough protection here",
+      "Delete accounting records after the investigation"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      32,
+      47,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_08a": {
+    "choices": [
+      "Leave stack static forever",
+      "Improve controls based on what incidents",
+      "Choosing Only hire posters instead of the right control",
+      "Assume VPN connect equals full trust"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      26,
+      40,
+      55,
+      36
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_08b": {
+    "choices": [
+      "Assuming Undocumented forever closes the gap",
+      "Tracked with owner/context",
+      "Making Random the whole answer",
+      "Treating Only verbal as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      26,
+      30,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_08c": {
+    "choices": [
+      "Choosing Good instead of the right control",
+      "Real attacks suppressed: revisit the change",
+      "Treating RTO met as enough protection here",
+      "Relying on Encryption done alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      43,
+      42,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_08d": {
+    "choices": [
+      "Capability modification that closes a path",
+      "Turn off endpoint telemetry to quiet noise",
+      "Physical door locks with no cyber controls",
+      "Using Irrelevant as the primary fix"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      42,
+      42,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_09_iam_ops_p1": {
+    "choices": [
+      "Ignore the alert and wait for user complaints",
+      "Reset/revoke sessions, MFA, block source,",
+      "Open inbound RDP from the internet",
+      "Disable logging to shrink storage costs"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      41,
+      34,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_09_iam_ops_p2": {
+    "choices": [
+      "Standing domain admin for all",
+      "Time-bound elevation",
+      "Open tcp/3389 from the public internet",
+      "Delete SIEM rules after the first false positive"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      29,
+      20,
+      38,
+      48
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_09_iam_ops_p3": {
+    "choices": [
+      "No federation review because SSO feels faster",
+      "Auth decisions outsourced to a weak IdP path",
+      "Toner alerts treated as the identity priority",
+      "Only RPO numbers with no identity hunt window"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      44,
+      45,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_09a": {
+    "choices": [
+      "Assuming Optional wallpaper closes the gap",
+      "Core IAM containment",
+      "Skip control language and only name the tool",
+      "Physical door locks with no cyber controls"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      20,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_09b": {
+    "choices": [
+      "Choosing Weaker auth instead of the right control",
+      "Central authn with consistent controls",
+      "Open inbound RDP from the internet",
+      "Disable accounting so failed logons are not tracked"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      49,
+      38,
+      34,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_09c": {
+    "choices": [
+      "Turn off endpoint telemetry to quiet noise",
+      "Rare, monitored, alerted",
+      "Relying on Shared on Slack alone for this risk",
+      "Using Password Summer2026! as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      24,
+      46,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_09d": {
+    "choices": [
+      "Normal CHG without ticket",
+      "Investigate as incident-shaped IAM event",
+      "Ignore the alert and wait for user complaints",
+      "Open more management ports to the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      40,
+      45,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_10_automation_soar_p1": {
+    "choices": [
+      "Ignore the alert and wait for user complaints",
+      "Validate, restore false victim",
+      "Open tcp/3389 from the public internet",
+      "Close all as Defender FP"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      30,
+      38,
+      24
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_10_automation_soar_p2": {
+    "choices": [
+      "Format C: on any alert",
+      "Enrich + ticket + notify on high-confidence",
+      "Disable SIEM correlation to cut alert volume",
+      "Delete logs during response to reduce liability"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      43,
+      44,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_10_automation_soar_p3": {
+    "choices": [
+      "Assuming One tool only closes the gap",
+      "Coordinating multiple tools/actions in a",
+      "Only awareness posters in the break room",
+      "Only physical locks with no cyber detection"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      40,
+      40,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_10a": {
+    "choices": [
+      "Slow everything randomly",
+      "Prevent high-impact automation mistakes",
+      "Open inbound RDP from the internet",
+      "Choosing Skip tickets instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      24,
+      39,
+      34,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_10b": {
+    "choices": [
+      "Using No rollback as the primary fix",
+      "Clear steps, conditions, exception path",
+      "Only share memes about the outage in chat",
+      "Hardcoded domain admin password"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      39,
+      41,
+      31
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_10c": {
+    "choices": [
+      "Revoke sessions / disable rule with approval",
+      "Rely on awareness posters as the only control",
+      "Open tcp/3389 from the public internet",
+      "Turn off mailbox audit to quiet detections"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      44,
+      45,
+      38,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_10d": {
+    "choices": [
+      "Treat Base64 encoding as real encryption",
+      "Faster consistent response with acceptable",
+      "Treating Zero tickets as enough protection here",
+      "Turn off logging because alerts are noisy"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      42,
+      47,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_11_ir_phases_p1": {
+    "choices": [
+      "Isolate and preserve without notifying stakeholders",
+      "Leave host on LAN to see if files encrypt",
+      "Escalate immediately with no triage notes",
+      "Pull EDR tree into ticket"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      41,
+      41,
+      25
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_11_ir_phases_p2": {
+    "choices": [
+      "Relying on Recover → contain alone for this risk",
+      "Contain → eradicate → recover → lessons",
+      "Lessons → ignore contain",
+      "Rely on awareness posters as the only control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      39,
+      24,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_11_ir_phases_p3": {
+    "choices": [
+      "Using Only hoping as the primary fix",
+      "Playbooks, contacts, logging, roles practiced",
+      "Choosing Deleting SIEM instead of the right control",
+      "Disabling MFA across the tenant"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      45,
+      51,
+      31
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_11a": {
+    "choices": [
+      "Disable SIEM correlation to cut alert volume",
+      "Stop spread / reduce impact now",
+      "Rely on awareness posters as the only control",
+      "Open more management ports to the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      31,
+      45,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_11b": {
+    "choices": [
+      "Assuming Ignore persistence closes the gap",
+      "Remove attacker footholds/causes",
+      "Only restore from backup blindly",
+      "Disable accounting so failed logons are not tracked"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      32,
+      32,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_11c": {
+    "choices": [
+      "Restoring service securely and monitoring for",
+      "Making Re-opening 3389 the whole answer",
+      "Treating Skipping MFA as enough protection here",
+      "Relying on Deleting tickets alone for this risk"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      45,
+      39,
+      47,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_11d": {
+    "choices": [
+      "Making Trash only the whole answer",
+      "Detection tuning, training, risk register,",
+      "Preventive block before the event succeeds",
+      "Attacker blogs exclusively"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      34,
+      42,
+      42,
+      26
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_11e": {
+    "choices": [
+      "Lessons learned, then maybe contain tomorrow",
+      "Contain, then eradicate, then recover, then",
+      "Recovery first so users are happy, contain later",
+      "Preparation only, because dashboards look ready"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      43,
+      48,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_12_ir_comms_docs_p1": {
+    "choices": [
+      "Disable SIEM correlation to cut alert volume",
+      "Finance / payments owners immediately",
+      "Choosing Only the attacker instead of the right control",
+      "Rely on awareness posters as the only control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      37,
+      55,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_12_ir_comms_docs_p2": {
+    "choices": [
+      "Printer font inventory treated as a security control",
+      "Handoffs and interviews need clear evidence +",
+      "Making They open RDP the whole answer",
+      "Treating They replace MFA as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      52,
+      45,
+      37,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_12_ir_comms_docs_p3": {
+    "choices": [
+      "Smart deletion to shrink legal liability fast",
+      "Destructive and likely obstructive to evidence",
+      "Required cleanup once containment is declared",
+      "Honeypot decoy used instead of log preservation"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      46,
+      45,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_12a": {
+    "choices": [
+      "Who handled evidence when",
+      "Choosing Only CPU temp instead of the right control",
+      "Rely on awareness posters as the only control",
+      "Treating Only VLAN names as enough protection here"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      25,
+      51,
+      45,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_12b": {
+    "choices": [
+      "Random tweets by analysts",
+      "Coordinated via designated roles",
+      "Treat Base64 encoding as real encryption",
+      "Relying on Only in memes alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      32,
+      40,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_12c": {
+    "choices": [
+      "Map technique for hunt/lessons",
+      "Open tcp/3389 from the public internet",
+      "Disable SIEM correlation to cut alert volume",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      30,
+      38,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_12d": {
+    "choices": [
+      "Wipe disks immediately",
+      "Preserve relevant data as directed",
+      "Using Ignore counsel as the primary fix",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      22,
+      34,
+      39,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_13_sources_identity_p1": {
+    "choices": [
+      "Replace IR with a single status email thread",
+      "Mailbox audit/rules + SigninLogs + message",
+      "Turn off endpoint telemetry to quiet noise",
+      "Accept risk with no owner and no review date"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      42,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_13_sources_identity_p2": {
+    "choices": [
+      "IP, users, failure codes, time, any successes",
+      "Open inbound RDP from the internet",
+      "Accept risk with no owner and no review date",
+      "Replace IR with a single status email thread"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      45,
+      34,
+      44,
+      44
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_13_sources_identity_p3": {
+    "choices": [
+      "Pick log sources based on UI fashion trends",
+      "Keep queries usable inside the incident window",
+      "Disable MFA so identity queries stay quiet",
+      "Open inbound RDP while identity hunts run"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      43,
+      46,
+      42,
+      41
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_13a": {
+    "choices": [
+      "Failed logon evidence on Windows",
+      "Making Firewall allow the whole answer",
+      "Treating Mailbox forward as enough protection here",
+      "Relying on BitLocker key alone for this risk"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      32,
+      38,
+      50,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_13b": {
+    "choices": [
+      "BEC persistence proof",
+      "Keep legacy authentication protocols enabled",
+      "RTO target alone without a tested restore path",
+      "Only physical locks with no cyber detection"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      21,
+      44,
+      46,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_13c": {
+    "choices": [
+      "Travel FP vs odd auth patterns",
+      "Set an RTO number without testing recovery",
+      "Using Cold site cost as the primary fix",
+      "Assuming VLAN paint closes the gap"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      30,
+      42,
+      39,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_13d": {
+    "choices": [
+      "Pasted into ticket with",
+      "Kept only in your head",
+      "Deleted after 5 minutes",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      23,
+      22,
+      23,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_14_sources_endpoint_net_p1": {
+    "choices": [
+      "Only unrelated 445 DROPs",
+      "EDR tree + hash + mail metadata + isolate",
+      "Keep legacy authentication protocols enabled",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      24,
+      41,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_14_sources_endpoint_net_p2": {
+    "choices": [
+      "You need hostname↔IP mapping in a window",
+      "Relying on You want open RDP alone for this risk",
+      "Using You disable EDR as the primary fix",
+      "Assuming You set RPO closes the gap"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      48,
+      40,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_14_sources_endpoint_net_p3": {
+    "choices": [
+      "C2 domains / odd resolutions",
+      "Using BitLocker keys as the primary fix",
+      "Call every alert a corrective control",
+      "Choosing Only badges instead of the right control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      28,
+      39,
+      37,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_14a": {
+    "choices": [
+      "It shows tradecraft (-enc, downloads)",
+      "Treating It sets RTO as enough protection here",
+      "It opens tcp/3389 as the main fix",
+      "Using It replaces MFA as the primary fix"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      37,
+      46,
+      33,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_14b": {
+    "choices": [
+      "Source IP, time, dest, rule, any auth",
+      "Set an RTO number without testing recovery",
+      "Only awareness posters in the break room",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      37,
+      42,
+      40,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_14c": {
+    "choices": [
+      "Lateral connection patterns",
+      "Using Mailbox rules as the primary fix",
+      "Assuming BitLocker recovery closes the gap",
+      "Choosing AUP typos instead of the right control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      27,
+      38,
+      42,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_14d": {
+    "choices": [
+      "Containment state changes next steps",
+      "Printer font inventory treated as a security control",
+      "Assume VPN connect equals full trust",
+      "Skip control language and only name the tool"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      36,
+      52,
+      36,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_15_investigation_pack_p1": {
+    "choices": [
+      "Choosing Only 'looks bad' instead of the right control",
+      "Timeline, IOCs, sources, containment,",
+      "Delete logs during response to reduce liability",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      54,
+      37,
+      47,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_15_investigation_pack_p2": {
+    "choices": [
+      "File hash, sender, URLs, host, user",
+      "Treating Only wallpaper as enough protection here",
+      "Ignore the alert and wait for user complaints",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      35,
+      49,
+      45,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_15_investigation_pack_p3": {
+    "choices": [
+      "Treating Fine forever as enough protection here",
+      "Weak: next analyst cannot learn why",
+      "Treat the control as required with no risk review",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      35,
+      49,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_15a": {
+    "choices": [
+      "Order events for causality",
+      "Open tcp/3389 from the public internet",
+      "Disable MFA to reduce user friction",
+      "Assuming Set VLAN paint closes the gap"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      26,
+      38,
+      35,
+      38
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_15b": {
+    "choices": [
+      "Relying on Empty alone for this risk",
+      "Concrete ownerable actions",
+      "Assuming Only blame closes the gap",
+      "Choosing Only jokes instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      26,
+      34,
+      48
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_15c": {
+    "choices": [
+      "Naming techniques consistently",
+      "Assuming Replacing logs closes the gap",
+      "Opening inbound RDP for vendor convenience",
+      "Making Skipping IR the whole answer"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      30,
+      38,
+      42,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_15d": {
+    "choices": [
+      "Interviews and real handoffs",
+      "Skip control language and only name the tool",
+      "Open more management ports for convenience",
+      "Turn off endpoint telemetry to quiet noise"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      28,
+      44,
+      42,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_01_governance_policy_p1": {
+    "choices": [
+      "Using A firewall rule as the primary fix",
+      "A directive policy telling users acceptable",
+      "Choosing An EDR isolate instead of the right control",
+      "Making A hot site the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      43,
+      52,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_01_governance_policy_p2": {
+    "choices": [
+      "Assuming Success closes the gap",
+      "Failure: policy not enforced",
+      "Rely on awareness posters as the only control",
+      "Hashing a password so it cannot be reversed easily"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      31,
+      28,
+      45,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_01_governance_policy_p3": {
+    "choices": [
+      "How ops executes a standard/policy",
+      "Making A CVE the whole answer",
+      "Treating RPO number as enough protection here",
+      "Base64 encoding mistaken for real encryption"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      34,
+      29,
+      45,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_01a": {
+    "choices": [
+      "Claim tabletop and restore tests are identical",
+      "Standard is more specific/mandatory detail",
+      "Standard is only physical",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      46,
+      42,
+      25,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_01b": {
+    "choices": [
+      "Rely on awareness posters as the only control",
+      "Controls matching written intent",
+      "Open tcp/3389 from the public internet",
+      "Treating Disabled logging as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      32,
+      38,
+      51
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_01c": {
+    "choices": [
+      "Choosing Replacing ASR instead of the right control",
+      "Setting expectations + supporting awareness/HR",
+      "Opening inbound RDP for vendor convenience",
+      "Relying on Deleting SIEM alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      46,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_01d": {
+    "choices": [
+      "Making Self-enforce the whole answer",
+      "Rot: nobody updates or audits them",
+      "Relying on Patch DCs alone for this risk",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      34,
+      40,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_01e": {
+    "choices": [
+      "Governance success because a PDF was signed",
+      "Say/do gap: written intent not enforced (or",
+      "Automatic transfer of risk to the ISP",
+      "Proof that awareness posters are enough"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      43,
+      43,
+      37,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_02_roles_exceptions_p1": {
+    "choices": [
+      "Relying on Nothing alone for this risk",
+      "Governance exception",
+      "Assuming Only screensaver closes the gap",
+      "Deleting firewall logs"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      20,
+      40,
+      22
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_02_roles_exceptions_p2": {
+    "choices": [
+      "Using Ignoring classification as the primary fix",
+      "Accountability for data handling decisions",
+      "Opening tcp/3389 without compensating controls",
+      "Disabling MFA across the tenant"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      42,
+      46,
+      31
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_02_roles_exceptions_p3": {
+    "choices": [
+      "Printer font inventory treated as a security control",
+      "Clear who is Responsible/Accountable for",
+      "Keep legacy authentication protocols enabled",
+      "Treating It is a CVE as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      52,
+      40,
+      44,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_02a": {
+    "choices": [
+      "Force re-evaluation before risk becomes permanent",
+      "Open inbound RDP because the exception exists",
+      "Disable SIEM alerts for the accepted exception",
+      "Publicly shame users instead of reviewing risk"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      49,
+      45,
+      46,
+      46
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d5_02b": {
+    "choices": [
+      "Cross-functional risk decisions with authority",
+      "Pizza budget approvals as the security forum",
+      "Toner inventory reviews as governance theater",
+      "Meme threads replacing risk decision owners"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      46,
+      44,
+      45,
+      43
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d5_02c": {
+    "choices": [
+      "SOC owns patching always alone",
+      "Owner accountable for system risk",
+      "Neither documents anything",
+      "Owner opens 3389 freely"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      30,
+      33,
+      26,
+      23
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d5_02d": {
+    "choices": [
+      "Treating Strong governance as enough protection here",
+      "Weak: not auditable or time-boxed",
+      "Set an RTO number without testing recovery",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      52,
+      33,
+      42,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_03_risk_process_p1": {
+    "choices": [
+      "Using Closed risk as the primary fix",
+      "Untreated / poorly tracked risk",
+      "Choosing Encryption success instead of the right control",
+      "Open more management ports for convenience"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      31,
+      56,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_03_risk_process_p2": {
+    "choices": [
+      "Prioritize which risks to treat first",
+      "Open inbound RDP as the default treatment",
+      "Disable MFA to reduce risk scores quickly",
+      "Delete logs so the risk register looks clean"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      37,
+      41,
+      41,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_03_risk_process_p3": {
+    "choices": [
+      "Owner, rating, treatment, review date",
+      "Making Only jokes the whole answer",
+      "Only attacker IPs forever with no owners",
+      "Accept risk with no owner and no review date"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      37,
+      34,
+      40,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_03a": {
+    "choices": [
+      "Choosing Buy random tools instead of the right control",
+      "Identify what you care about",
+      "Open tcp/3389 from the public internet",
+      "Disable SIEM correlation to cut alert volume"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      54,
+      28,
+      38,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_03b": {
+    "choices": [
+      "Making Useless always the whole answer",
+      "Acceptable when consistent and action-driving",
+      "Only apply the control to OT networks",
+      "Using Forbidden as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      45,
+      37,
+      34
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d5_03c": {
+    "choices": [
+      "Treating Low forever as enough protection here",
+      "High/critical until removed",
+      "Using Informational only as the primary fix",
+      "Calling a honeypot hit a full incident close"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      46,
+      27,
+      43,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_03d": {
+    "choices": [
+      "Ignore the entry after filing the paperwork",
+      "Watch indicators that the risk is changing",
+      "Delete the risk register to reduce findings",
+      "Open more ports while the risk stays open"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      43,
+      42,
+      43,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_03e": {
+    "choices": [
+      "Inherent is after controls; residual is before",
+      "Inherent is before controls",
+      "They are identical on every exam item",
+      "Residual means the risk was deleted forever"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      46,
+      27,
+      37,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_04_risk_treatment_p1": {
+    "choices": [
+      "Assuming Avoidance closes the gap",
+      "Undocumented acceptance: the worst kind",
+      "Transfer to ISP of ransomware",
+      "Mitigate: OFF is a control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      33,
+      39,
+      29,
+      26
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d5_04_risk_treatment_p2": {
+    "choices": [
+      "Avoid / mitigate the exposure path",
+      "Making Transfer only the whole answer",
+      "Treating Accept forever as enough protection here",
+      "Open inbound RDP from the internet"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      34,
+      37,
+      49,
+      34
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_04_risk_treatment_p3": {
+    "choices": [
+      "Transfer (with caveats)",
+      "Mitigation that patches DCs",
+      "Physical cage lock around the rack",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      23,
+      27,
+      34,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_04a": {
+    "choices": [
+      "Ignore the alert and wait for user complaints",
+      "Reduce likelihood/impact with controls",
+      "Relying on Hope alone for this risk",
+      "Using Delete register as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      38,
+      35,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_04b": {
+    "choices": [
+      "Owner + rationale + review date",
+      "Relying on Silence alone for this risk",
+      "Using Open RDP secretly as the primary fix",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      31,
+      38,
+      42,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_04c": {
+    "choices": [
+      "How much risk leadership allows in pursuit of",
+      "Using Only CVE count as the primary fix",
+      "Call every alert a corrective control",
+      "Choosing Only RDP instead of the right control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      45,
+      39,
+      37,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_04d": {
+    "choices": [
+      "Using Complete safety as the primary fix",
+      "Misunderstanding: you still operate controls",
+      "Treat the control as required with no risk review",
+      "Making A backup the whole answer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      44,
+      49,
+      32
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_04e": {
+    "choices": [
+      "Assuming Silence and hope closes the gap",
+      "Owner, rationale, and review date",
+      "Skip control language and only name the tool",
+      "Deleting the risk register"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      33,
+      44,
+      26
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_05_third_party_p1": {
+    "choices": [
+      "Ignore vendor; only retrain CFO",
+      "Start third-party review",
+      "Give vendor domain admin",
+      "Accept forever with no register line"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      31,
+      24,
+      24,
+      36
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_05_third_party_p2": {
+    "choices": [
+      "Ignore the alert and wait for user complaints",
+      "Independent-ish assurance input",
+      "Relying on A firewall rule alone for this risk",
+      "RTO target alone without a tested restore path"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      45,
+      31,
+      46,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_05_third_party_p3": {
+    "choices": [
+      "Treating Never assess as enough protection here",
+      "Contractually inspect when risk warrants",
+      "Open inbound RDP from the internet",
+      "Disable MFA to reduce user friction"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      40,
+      34,
+      35
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_05a": {
+    "choices": [
+      "Who has data/access and how critical",
+      "Relying on Only lunch menus alone for this risk",
+      "Using Only attacker IPs as the primary fix",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      36,
+      47,
+      42,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_05b": {
+    "choices": [
+      "One questionnaire forever",
+      "Ongoing review as access/data changes",
+      "Call every alert a corrective control",
+      "Choosing Open their RDP instead of the right control"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      37,
+      37,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_05c": {
+    "choices": [
+      "Skip control language and only name the tool",
+      "High: privileged supply-chain style access",
+      "Assume VPN connect equals full trust",
+      "Calling a honeypot hit a full incident close"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      42,
+      36,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_05d": {
+    "choices": [
+      "Learning about their incidents that affect you",
+      "Opening tcp/3389 without compensating controls",
+      "Making Disabling SIEM the whole answer",
+      "Treating Skipping MFA as enough protection here"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      46,
+      46,
+      38,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_06_compliance_p1": {
+    "choices": [
+      "Relying on Identical always alone for this risk",
+      "Overlapping; compliance is required mapping,",
+      "Compliance replaces IR",
+      "Security forbids tickets"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      47,
+      44,
+      22,
+      24
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_06_compliance_p2": {
+    "choices": [
+      "Using Zero days always as the primary fix",
+      "Defined by investigation needs +",
+      "Infinite cleartext forever with no purpose",
+      "Treat Base64 encoding as real encryption"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      32,
+      42,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_06_compliance_p3": {
+    "choices": [
+      "Open inbound RDP from the internet",
+      "Lawful handling, minimization, breach",
+      "Disable MFA to reduce user friction",
+      "Treating Delete all SIEM as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      34,
+      37,
+      35,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_06a": {
+    "choices": [
+      "Policies, logs, access reviews, training",
+      "Only share memes about the outage in chat",
+      "Assuming Only open ports closes the gap",
+      "Call every alert a corrective control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      41,
+      39,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_06b": {
+    "choices": [
+      "Privacy / retention violations and breach",
+      "Assuming Better RTO magic closes the gap",
+      "Choosing Stronger MFA instead of the right control",
+      "Making Faster patching the whole answer"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      41,
+      40,
+      50,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_06c": {
+    "choices": [
+      "Assuming Optional vibes closes the gap",
+      "Binding compliance inputs for that customer",
+      "Skip control language and only name the tool",
+      "Physical door locks with no cyber controls"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      38,
+      43,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_06d": {
+    "choices": [
+      "Choosing Analyst mood instead of the right control",
+      "Law/contract: know the clock",
+      "Open more management ports for convenience",
+      "Relying on Only RDP alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      50,
+      28,
+      42,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_07_audits_assessments_p1": {
+    "choices": [
+      "Using Good governance as the primary fix",
+      "Unacceptable: hide findings destroys trust and",
+      "Choosing Required compliance instead of the right control",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      46,
+      57,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_07_audits_assessments_p2": {
+    "choices": [
+      "Assuming Free malware closes the gap",
+      "Independent examination against criteria",
+      "Open inbound RDP from the internet",
+      "Treating Disabled MFA as enough protection here"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      36,
+      40,
+      34,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_07_audits_assessments_p3": {
+    "choices": [
+      "Choosing Verbal claim instead of the right control",
+      "Policy + Entra CA screenshot/export + sample",
+      "Treat Base64 encoding as real encryption",
+      "Relying on Only hope alone for this risk"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      50,
+      44,
+      40,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_07a": {
+    "choices": [
+      "Compare current vs required controls",
+      "Open tcp/3389 from the public internet",
+      "Disable SIEM correlation to cut alert volume",
+      "Assume VPN connect equals full trust"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      36,
+      38,
+      44,
+      36
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_07b": {
+    "choices": [
+      "The same team grading its own homework without independence",
+      "Organized for objectivity as much as practical",
+      "Making Deleted the whole answer",
+      "Only share memes about the outage in chat"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      59,
+      46,
+      31,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_07c": {
+    "choices": [
+      "Assessment / assurance request",
+      "Making EDR isolate the whole answer",
+      "RTO target alone without a tested restore path",
+      "Base64 encoding mistaken for real encryption"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      30,
+      35,
+      46,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_07d": {
+    "choices": [
+      "Making Closed the whole answer",
+      "Likely to rot: demand owners and dates",
+      "Relying on Automatic mitigate alone for this risk",
+      "Physical door locks with no cyber controls"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      30,
+      38,
+      49,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_08_pen_vs_vuln_p1": {
+    "choices": [
+      "Only more CVEs automatically",
+      "Scoped exploit/chain attempt with narrative",
+      "Using Always unauthorized as the primary fix",
+      "Assume VPN connect equals full trust"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      28,
+      43,
+      44,
+      36
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_08_pen_vs_vuln_p2": {
+    "choices": [
+      "Paying researchers for valid vulnerability",
+      "Opening RDP to the world without rules",
+      "Disabling MFA across the tenant",
+      "Choosing A cold site instead of the right control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      38,
+      31,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_08_pen_vs_vuln_p3": {
+    "choices": [
+      "Using Wallpaper as the primary fix",
+      "Prioritized remediation with owners",
+      "Choosing Ignore CRITICAL instead of the right control",
+      "Open more management ports for convenience"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      34,
+      35,
+      53,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_08a": {
+    "choices": [
+      "Breadth and repeatability",
+      "Always proves ransomware",
+      "Making Replaces IR the whole answer",
+      "Treating Opens 3389 as enough protection here"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      25,
+      24,
+      35,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_08b": {
+    "choices": [
+      "Stealth/objectives beyond simple CVE checklist",
+      "Open more management ports for convenience",
+      "Turn off endpoint telemetry to quiet noise",
+      "Accept risk with no owner and no review date"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      46,
+      42,
+      42,
+      44
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d5_08c": {
+    "choices": [
+      "Making Fine pen test the whole answer",
+      "Possibly illegal/incident: need authorization",
+      "Relying on Required nightly alone for this risk",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      37,
+      45,
+      47,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_08d": {
+    "choices": [
+      "File risk + remediate (disable) with owner",
+      "Relying on Hide the finding alone for this risk",
+      "Open more RDP paths for faster support",
+      "Disable logging to shrink storage costs"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      47,
+      38,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_08e": {
+    "choices": [
+      "Only the scanner logo color",
+      "Scope, timing, contacts, data handling, and",
+      "Permission to attack any system anytime",
+      "A promise that findings need no owners"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      27,
+      43,
+      39,
+      38
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d5_09_awareness_basics_p1": {
+    "choices": [
+      "HR-specific phishing/macro briefing AND",
+      "Ignore the alert and wait for user complaints",
+      "Disable SIEM correlation to cut alert volume",
+      "Treating Turn off EDR as enough protection here"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      39,
+      45,
+      44,
+      47
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_09_awareness_basics_p2": {
+    "choices": [
+      "Choosing Improve reporting instead of the right control",
+      "Reduce reporting and hide future incidents",
+      "Treating Patch DCs as enough protection here",
+      "Set an RTO number without testing recovery"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      55,
+      42,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_09_awareness_basics_p3": {
+    "choices": [
+      "Making Punish only the whole answer",
+      "Measure/teach reporting and click resistance",
+      "Open inbound RDP from the internet",
+      "Replace backups with screenshots of dashboards"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      35,
+      44,
+      34,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_09a": {
+    "choices": [
+      "Usually incomplete without technical controls",
+      "Always enough when posters are printed",
+      "Forbidden by every security framework",
+      "Only required for OT network segments"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      45,
+      38,
+      37,
+      37
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d5_09b": {
+    "choices": [
+      "Easy, non-punitive reporting of",
+      "Accept risk with no owner and no review date",
+      "Replace IR with a single status email thread",
+      "Turn off endpoint telemetry to quiet noise"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      31,
+      44,
+      44,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_09c": {
+    "choices": [
+      "May miss role-specific risks like finance BEC",
+      "Relying on Fixes open RDP alone for this risk",
+      "Accept risk with no owner and no review date",
+      "Sets immutable backups"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      45,
+      45,
+      44,
+      22
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_09d": {
+    "choices": [
+      "Coach + ensure technical guardrails exist",
+      "Fire immediately always",
+      "Open tcp/3389 from the public internet",
+      "Choosing Delete mail logs instead of the right control"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      41,
+      23,
+      38,
+      54
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_10_awareness_role_p1": {
+    "choices": [
+      "Only generic password length",
+      "Callback on payment changes / BEC patterns",
+      "Opening inbound RDP for vendor convenience",
+      "Disabling MFA across the tenant"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      28,
+      42,
+      42,
+      31
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_10_awareness_role_p2": {
+    "choices": [
+      "Using Good awareness as the primary fix",
+      "Program failure",
+      "Choosing Required compliance instead of the right control",
+      "A honeypot used instead of real monitoring"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      15,
+      57,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_10_awareness_role_p3": {
+    "choices": [
+      "Attackers reset MFA/credentials via support",
+      "Turn off endpoint telemetry to quiet noise",
+      "Accept risk with no owner and no review date",
+      "Replace IR with a single status email thread"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      43,
+      42,
+      44,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_10a": {
+    "choices": [
+      "Relevant threats per job function",
+      "Disable SIEM correlation to cut alert volume",
+      "Open tcp/3389 from the public internet",
+      "Skip technical controls"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      33,
+      44,
+      38,
+      23
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_10b": {
+    "choices": [
+      "Unusual data staging / access outside role",
+      "Rely on awareness posters as the only control",
+      "Making Only TLS versions the whole answer",
+      "Treating Only VLAN names as enough protection here"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      45,
+      41,
+      50
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_10c": {
+    "choices": [
+      "Public info used in spearphish",
+      "Treat Base64 encoding as real encryption",
+      "Treating Only RTO math as enough protection here",
+      "Keep legacy authentication protocols enabled"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      30,
+      40,
+      48,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_10d": {
+    "choices": [
+      "BEC training, legacy auth off, DLP, callbacks",
+      "Awareness poster only with no mail controls",
+      "Shame the CFO only with no process change",
+      "Open OWA on tcp/3389 for finance convenience"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      45,
+      43,
+      41,
+      44
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d5_11_oversight_tieback_p1": {
+    "choices": [
+      "Skip control language and only name the tool",
+      "Owner+expiry for residual risk, vendor review,",
+      "Fire the analyst and declare victory",
+      "Omit repeats from reports"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      46,
+      36,
+      25
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d5_11_oversight_tieback_p2": {
+    "choices": [
+      "How long accepted risks sit without review",
+      "Relying on CPU temp only alone for this risk",
+      "Open more management ports for convenience",
+      "Assuming Only RDP latency closes the gap"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      44,
+      42,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d5_11_oversight_tieback_p3": {
+    "choices": [
+      "Incidents change controls, training, and",
+      "Using Freeze forever as the primary fix",
+      "Assuming Hide findings closes the gap",
+      "Open more management ports to the internet"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      39,
+      37,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_11a": {
+    "choices": [
+      "Theatre: lessons with no owners or dates",
+      "Actionable program change with owners",
+      "Automatic patch that closes every finding",
+      "Open inbound RDP as the lessons follow-up"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      37,
+      41,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_11b": {
+    "choices": [
+      "Faster containment/recovery craft",
+      "Making More open 3389 the whole answer",
+      "Treating Disabled logging as enough protection here",
+      "Relying on No tickets alone for this risk"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      33,
+      38,
+      51,
+      41
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_11c": {
+    "choices": [
+      "Preventive block before the event succeeds",
+      "Blocks correct risk treatment: unacceptable",
+      "Relying on Required by Sec+ alone for this risk",
+      "Using A backup strategy as the primary fix"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      43,
+      47,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d5_11d": {
+    "choices": [
+      "Portfolio case with residual risk + next",
+      "Only memorizing port numbers",
+      "Opening inbound RDP for vendor convenience",
+      "Disabling MFA across the tenant"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      28,
+      42,
+      31
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_03_vectors_remote_supply_p4": {
+    "choices": [
+      "Only CVE misconfiguration",
+      "Image-based / QR quishing path",
+      "Only OT PLC firmware in this scenario",
+      "Directive change ticket in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      25,
+      30,
+      37,
+      40
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_04_vulns_misconfig_p4": {
+    "choices": [
+      "Safe because scanners found no CVE in this scenario",
+      "Public object storage exposure / misconfig",
+      "Only a physical cage failure in this scenario",
+      "Proof of perfect DLP in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      42,
+      45,
+      37
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_07_ioc_bec_p4": {
+    "choices": [
+      "Trust the voice match and pay in this scenario",
+      "Out-of-band verify on a known callback channel",
+      "Open inbound RDP for finance in this scenario",
+      "Disable mailbox audit logging in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      46,
+      46,
+      45,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_11_mitigate_segment_p4": {
+    "choices": [
+      "Ignore as printer noise in this scenario",
+      "Deception detection; hunt and contain now",
+      "Proof DMARC alone is enough in this scenario",
+      "Only a directive AUP success in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      41,
+      44,
+      45
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d3_03_infra_network_p4": {
+    "choices": [
+      "Successful SSE deployment in this scenario",
+      "Privilege creep needing removal or JIT review",
+      "Out-of-band management success in this scenario",
+      "Proof NIDS alone is enough in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      42,
+      45,
+      47,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_10_automation_soar_p4": {
+    "choices": [
+      "A prettier chatbot theme in this scenario",
+      "Guardrails, scoped credentials, and human gates",
+      "More standing Domain Admin rights in this scenario",
+      "Open inbound RDP for speed in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      41,
+      47,
+      50,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_00b": {
+    "choices": [
+      "Decorating dashboards with unused IOCs in this scenario",
+      "Raising likelihood when indicators match your exposure",
+      "Deleting the need for vulnerability scanners in this scenario",
+      "Proving nation-state attribution from one IP in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      55,
+      54,
+      61,
+      61
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_00c": {
+    "choices": [
+      "Oldest ticket first, ignore scores in this scenario for the SOC ticket",
+      "Severity score plus exposure, exploit signals, and asset value",
+      "Alphabetical CVE order only in this scenario for the SOC ticket",
+      "Whatever the vendor marketing email says in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      70,
+      62,
+      63,
+      57
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_00d": {
+    "choices": [
+      "How funny the phishing lure looks in this scenario",
+      "How probable exploitation is in the environment you defend",
+      "The font size on the risk slide in this scenario for the SOC ticket",
+      "Whether CVSS can exceed 10.0 in this scenario for the SOC ticket"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      50,
+      58,
+      67,
+      64
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_03e": {
+    "choices": [
+      "A strong Zero Trust win in this scenario",
+      "IoT/OT vector and segmentation failure",
+      "Only a managerial poster issue in this scenario",
+      "Proof hashing is complete in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      38,
+      47,
+      42
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_04e": {
+    "choices": [
+      "Proof the firewall is fine in this scenario",
+      "Public repository / secret exposure surface",
+      "Only a managerial poster gap in this scenario",
+      "A successful honeypot in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      43,
+      43,
+      45,
+      38
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_07e": {
+    "choices": [
+      "Proof the host is clean in this scenario",
+      "Living-off-the-land style endpoint indicator",
+      "Only a managerial poster event in this scenario",
+      "Automatic travel FP in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      40,
+      44,
+      47,
+      36
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_12a": {
+    "choices": [
+      "Tricking the model past safety or policy guardrails",
+      "Patching the hypervisor on a jump host in this scenario",
+      "Rotating VPN certificates on a schedule in this scenario",
+      "Enabling BitLocker on a laptop at rest in this scenario"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      51,
+      55,
+      56,
+      55
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_12b": {
+    "choices": [
+      "Training, fine-tune, or retrieval corpora so behavior skews",
+      "Only the color theme of the SOC dashboard in this scenario",
+      "Badge readers in the lobby exclusively in this scenario",
+      "Backup tape labels in the offsite vault in this scenario"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      59,
+      58,
+      55,
+      56
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d2_12c": {
+    "choices": [
+      "It makes logos prettier on the intranet in this scenario",
+      "Hard-to-justify model decisions weaken audit and IR evidence",
+      "It raises CVSS scores automatically in this scenario",
+      "It replaces the need for access reviews in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      56,
+      60,
+      52,
+      56
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d2_12d": {
+    "choices": [
+      "Font rendering on the chatbot widget in this scenario",
+      "Code execution / high-impact tool abuse after injection",
+      "Mandatory use of public object storage in this scenario",
+      "Lower CVSS on unrelated VPN CVEs in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      53,
+      55,
+      55,
+      49
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_10e": {
+    "choices": [
+      "Replace EDR on laptops in this scenario",
+      "Tell receivers how to handle SPF/DKIM failures",
+      "Open inbound RDP safely in this scenario",
+      "Disable DNS entirely in this scenario for the SOC ticket"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      39,
+      46,
+      40,
+      56
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_11e": {
+    "choices": [
+      "A prettier laptop wallpaper in this scenario",
+      "Cross-signal correlation across tools/domains",
+      "Automatic open RDP for vendors in this scenario",
+      "Removal of the need for tickets in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      44,
+      45,
+      47,
+      48
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d3_03e": {
+    "choices": [
+      "A physical cage lock only in this scenario for the SOC ticket",
+      "Cloud-delivered edge controls for web/SaaS/app access",
+      "A replacement for all access reviews in this scenario",
+      "An excuse to open inbound RDP in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      61,
+      53,
+      53,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_09e": {
+    "choices": [
+      "A shared seasonal password in chat in this scenario",
+      "A phishing-resistant device-bound credential",
+      "A firewall ANY/ANY exception in this scenario",
+      "A honeypot file on a share in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      51,
+      44,
+      45,
+      43
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_10e": {
+    "choices": [
+      "It has unrestricted API keys and no approvals in this scenario",
+      "Guardrails, scoped credentials, and human gates bound its actions",
+      "It replaces all access reviews permanently in this scenario",
+      "It opens inbound RDP to speed enrichment in this scenario"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      62,
+      65,
+      59,
+      57
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_13_quishing_deepfake_p1": {
+    "choices": [
+      "Quishing via a hostile QR destination",
+      "Only a CVSS score on an offline printer",
+      "Successful disk encryption of the poster",
+      "Backup restore time objective met early"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      37,
+      39,
+      40,
+      39
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d2_13_quishing_deepfake_p2": {
+    "choices": [
+      "Approve the wire because the accent matched perfectly",
+      "Verify on the known-good callback channel before any change",
+      "Disable MFA tenant-wide so urgency drops for AP staff",
+      "Open inbound RDP so the CFO can watch the transfer"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      53,
+      59,
+      53,
+      50
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d2_13_quishing_deepfake_p3": {
+    "choices": [
+      "Ignore pushes because QR codes cannot steal passwords",
+      "Contain identity risk: revoke sessions and review new MFA methods",
+      "Delete SigninLogs so the pushes stop appearing in reports",
+      "Treat it only as a printer toner alert with no identity impact"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      53,
+      65,
+      57,
+      62
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d2_13a": {
+    "choices": [
+      "Phishing delivered through a scanned QR code",
+      "Patching hypervisors on a fixed monthly calendar",
+      "Encrypting laptop disks before travel begins",
+      "Tuning SIEM dashboards for prettier color themes"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      44,
+      48,
+      44,
+      48
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_13b": {
+    "choices": [
+      "Cameras may open URLs the mail gateway never fetched",
+      "QR codes automatically raise CVSS to 10.0",
+      "Firewalls must allow any QR destination by standard",
+      "Deepfake video is required before a QR can resolve"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      52,
+      41,
+      51,
+      50
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d2_13c": {
+    "choices": [
+      "Urgent money or access change plus refusal of known callback",
+      "A single DROP for tcp/445 on an unused lab VLAN",
+      "A successful BitLocker recovery with dual custody",
+      "A change ticket that documents a planned firewall deny"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      60,
+      47,
+      49,
+      54
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d2_13d": {
+    "choices": [
+      "Report the URL, do not reuse the password, expect a reset",
+      "Scan every poster QR twice to confirm the logo looks shiny",
+      "Approve all MFA pushes quickly so the attacker gets bored",
+      "Share the QR photo in a public social feed for crowdsourcing"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      57,
+      58,
+      57,
+      60
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d2_13e": {
+    "choices": [
+      "A social-engineering pressure tactic needing out-of-band verify",
+      "Proof that encryption at rest is automatically broken",
+      "A reason to disable all logging during finance close week",
+      "An asset inventory field that replaces owner assignment"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      63,
+      53,
+      57,
+      55
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_16_bimi_email_auth_p1": {
+    "choices": [
+      "Publish BIMI now; logos prove authenticity alone",
+      "Finish SPF/DKIM alignment and move DMARC toward enforce first",
+      "Delete all SPF records so BIMI can activate faster",
+      "Open inbound RDP so marketing can test mailbox themes"
+    ],
+    "answer_idx": 1,
+    "lens": [
+      48,
+      61,
+      50,
+      53
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_16_bimi_email_auth_p2": {
+    "choices": [
+      "Visibility and reporting without blocking spoofed mail yet",
+      "Automatic reject of every lookalike neighbor domain",
+      "Full disk encryption for all finance laptops overnight",
+      "Proof that BIMI logos are already phishing-proof"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      58,
+      51,
+      54,
+      48
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_16_bimi_email_auth_p3": {
+    "choices": [
+      "SPF, DKIM, and DMARC toward reject for your domain",
+      "BIMI logo upload with no authentication changes",
+      "Disable mailbox audit so users stop reporting phishing",
+      "Set RTO numbers without testing a restore path"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      50,
+      47,
+      54,
+      46
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_16a": {
+    "choices": [
+      "Brand logo display that depends on strong email authentication",
+      "A replacement for SPF, DKIM, and DMARC on every domain",
+      "A firewall rule that blocks all inbound TCP port 25",
+      "A backup encryption key stored in a break-glass envelope"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      62,
+      54,
+      51,
+      56
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_16b": {
+    "choices": [
+      "Cryptographically sign messages for authenticity checks",
+      "List every sending IP allowed without requiring signatures",
+      "Force MFA push approvals for every marketing newsletter",
+      "Store offline backup tapes for mail servers in cold sites"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      55,
+      58,
+      55,
+      57
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_16c": {
+    "choices": [
+      "They authenticate as themselves, not as your domain",
+      "DMARC automatically trusts any logo that looks familiar",
+      "SPF disables itself when unicode characters appear",
+      "BIMI blocks all neighbor domains by internet standard"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      51,
+      55,
+      50,
+      53
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_16d": {
+    "choices": [
+      "Inventory senders and fix alignment using aggregate reports",
+      "Publish BIMI and hope reports become unnecessary",
+      "Remove DKIM so SPF can work without competition",
+      "Disable external mail banners to reduce user confusion"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      59,
+      48,
+      47,
+      54
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_17_honeyfile_deception_p1": {
+    "choices": [
+      "Honeyfile detective deception on a share",
+      "Preventive firewall deny that blocks all SMB forever",
+      "Directive policy text with no technical monitoring",
+      "Corrective restore from backup without investigation"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      40,
+      52,
+      50,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_17_honeyfile_deception_p2": {
+    "choices": [
+      "Honeytoken detecting use of a decoy secret",
+      "Honeynet spanning three fake VLANs only",
+      "Passkey registration for passwordless staff login",
+      "DMARC reject policy for the marketing domain"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      42,
+      39,
+      49,
+      44
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_17_honeyfile_deception_p3": {
+    "choices": [
+      "High-signal detection while MFA, patching, and segmentation still run",
+      "Replace all preventive controls with a single internet honeypot",
+      "Store crown-jewel payroll inside the honeypot for realism",
+      "Disable logging on canary accounts to reduce noise permanently"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      69,
+      63,
+      57,
+      62
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_17a": {
+    "choices": [
+      "Never be used for real work; any sign-in is an alert",
+      "Be the daily shared admin login for the helpdesk team",
+      "Hold production payroll files as its home directory",
+      "Disable all SIEM rules attached to its object ID"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      52,
+      53,
+      51,
+      48
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_17b": {
+    "choices": [
+      "Honeypot is a decoy system/service; honeyfile is a decoy file",
+      "Honeypot encrypts disks; honeyfile replaces DMARC",
+      "Honeyfile blocks ransomware; honeypot only stores logos",
+      "They are identical terms with no operational difference"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      61,
+      49,
+      55,
+      55
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_17c": {
+    "choices": [
+      "Investigate the user/host that touched it and corroborate activity",
+      "Delete the alert and the decoy so dashboards stay green",
+      "Open inbound RDP to interview the attacker interactively",
+      "Disable EDR on that host to calm follow-on detections"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      66,
+      55,
+      56,
+      53
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_17d": {
+    "choices": [
+      "Detective: they notice interaction with decoy assets",
+      "Preventive encryption of every packet on the WAN",
+      "Directive posters that replace technical alerting",
+      "Compensating physical locks for missing patching forever"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      52,
+      48,
+      49,
+      56
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_18_cspm_bug_bounty_p1": {
+    "choices": [
+      "Misconfiguration still prioritizes by exposure and data impact",
+      "Ignore it until a CVE number is published for storage",
+      "Close as FP because bounty programs replace CSPM forever",
+      "Open more admin ports so the bucket can be patched faster"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      62,
+      53,
+      56,
+      57
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_18_cspm_bug_bounty_p2": {
+    "choices": [
+      "Lock down access now, verify, then complete disclosure handling",
+      "Ignore the researcher because an internal ticket already exists",
+      "Pay immediately without validating or removing public access",
+      "Disable CSPM so duplicate alerts stop embarrassing the team"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      63,
+      63,
+      60,
+      59
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_18_cspm_bug_bounty_p3": {
+    "choices": [
+      "Report privately and allow time to fix before publishing",
+      "Dump all customer data publicly on day zero for pressure",
+      "Run destructive DoS tests on production without scope limits",
+      "Demand admin VPN access as the only valid proof method"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      56,
+      56,
+      60,
+      54
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_18a": {
+    "choices": [
+      "Continuous checking of cloud configs for risky posture gaps",
+      "A physical cage lock around on-prem tape libraries only",
+      "A replacement for identity MFA on all human accounts",
+      "A DMARC reject policy for the corporate mail domain"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      59,
+      55,
+      52,
+      51
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_18b": {
+    "choices": [
+      "Re-check CSPM/manual access tests and attach evidence",
+      "Closing the ticket the same minute the engineer says done",
+      "Paying any email that claims to be a researcher",
+      "Deleting cloud audit logs so the finding cannot recur in reports"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      53,
+      57,
+      47,
+      64
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_18c": {
+    "choices": [
+      "Define allowed targets/tests and reject out-of-scope harm",
+      "Guarantee every spam email earns a cash payout",
+      "Authorize opening inbound RDP for all researchers globally",
+      "Disable vulnerability scanning inside the cloud accounts"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      57,
+      46,
+      58,
+      56
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_18d": {
+    "choices": [
+      "Internet exposure plus sensitive data class and blast radius",
+      "Alphabetical order of subscription display names only",
+      "Whatever alert has the prettiest dashboard widget color",
+      "Findings that lack CVE IDs are always lowest priority forever"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      60,
+      53,
+      55,
+      61
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_19_passkeys_jit_identity_p1": {
+    "choices": [
+      "Phishing-resistant passkeys or FIDO-class passwordless methods",
+      "Longer SMS codes with the same relayable approval pattern",
+      "Shared seasonal passwords posted in the helpdesk channel",
+      "Disable MFA so users stop clicking wrong prompts entirely"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      62,
+      57,
+      56,
+      57
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_19_passkeys_jit_identity_p2": {
+    "choices": [
+      "Just-in-time elevation with expiry plus access review removal",
+      "Leave standing admin and add a prettier dashboard widget",
+      "Move the contractor to a canary honeyfile on a finance share",
+      "Publish BIMI logos so admin portals look more trustworthy"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      61,
+      56,
+      60,
+      57
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "sp_d4_19_passkeys_jit_identity_p3": {
+    "choices": [
+      "Move it to a gMSA or managed service identity with least privilege",
+      "Print the wiki password larger so operators type it faster",
+      "Grant the service Domain Admin to avoid future permission tickets",
+      "Store the same password in three more shared mailboxes for HA"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      66,
+      58,
+      65,
+      61
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_19a": {
+    "choices": [
+      "A phishing-resistant authenticator-bound cryptographic credential",
+      "A shared mailbox password rotated every leap year only",
+      "A firewall ANY/ANY rule for privileged admin troubleshooting",
+      "A honeypot file placed on every user desktop overnight"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      65,
+      54,
+      60,
+      54
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_19b": {
+    "choices": [
+      "Short-lived privilege granted when needed, then removed",
+      "Permanent Domain Admin for anyone who opens a ticket once",
+      "Disabling all authentication during change freezes",
+      "Replacing asset inventory with a single emergency account"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      55,
+      57,
+      50,
+      57
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_19c": {
+    "choices": [
+      "Rarely used, tightly monitored, and not for daily admin work",
+      "The default login for all Tier-1 analysts every shift",
+      "Shared in cleartext inside public chat channels for speed",
+      "Excluded from logging so attackers cannot see the name"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      60,
+      53,
+      57,
+      54
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_19d": {
+    "choices": [
+      "Human-handled standing passwords on Windows service accounts",
+      "Deepfake voice verification for finance wire changes",
+      "DMARC logo publishing for consumer mail clients",
+      "Choosing paint colors for the SOC room acoustic panels"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      60,
+      52,
+      47,
+      54
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_19e": {
+    "choices": [
+      "Proving identity without typing a reusable password",
+      "Removing all authentication from admin portals permanently",
+      "Allowing blank passwords for service accounts in production",
+      "Disabling encryption so logons complete a few milliseconds faster"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      51,
+      58,
+      59,
+      65
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_20_agentic_ai_guardrails_p1": {
+    "choices": [
+      "Missing guardrails and human gates on high-impact tools",
+      "Insufficient CVSS scoring of the chatbot font package",
+      "Lack of BIMI logos on automated notification templates",
+      "Failure to store break-glass passwords inside the model prompt"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      55,
+      53,
+      54,
+      62
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_20_agentic_ai_guardrails_p2": {
+    "choices": [
+      "Auto-enrich and ticket; require approval for isolate/disable",
+      "Auto-disable all executives whenever a ticket says urgent",
+      "Grant Directory-wide write and mail-send with no audit trail",
+      "Remove kill switches so the agent cannot be interrupted mid-run"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      60,
+      57,
+      60,
+      63
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "sp_d4_20_agentic_ai_guardrails_p3": {
+    "choices": [
+      "Chatbots mainly draft text; agentic systems can call tools/actions",
+      "Chatbots always isolate hosts; agents only rewrite grammar",
+      "Both terms mean the same preventive firewall feature",
+      "Agentic AI cannot exist unless DMARC is at p=reject"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      66,
+      58,
+      52,
+      51
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_20a": {
+    "choices": [
+      "Bound what automated or agentic actions are allowed to do",
+      "Replace the need for any identity authentication forever",
+      "Guarantee that every model output is factually perfect",
+      "Disable logging so playbooks run with less storage cost"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      57,
+      56,
+      54,
+      55
+    ],
+    "severe": false,
+    "longest": true
+  },
+  "q_d4_20b": {
+    "choices": [
+      "The action is high impact or hard to reverse",
+      "The playbook only fetches a public IP reputation score",
+      "The chatbot drafts a non-binding study summary for training",
+      "The task is renaming a lab virtual machine color tag"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      44,
+      54,
+      59,
+      52
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_20c": {
+    "choices": [
+      "Tool scopes limited to the minimum APIs the playbook needs",
+      "Global Admin on the automation account for future flexibility",
+      "Shared use of the CEO break-glass account for faster demos",
+      "Unrestricted send-mail to all customers from the service principal"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      58,
+      61,
+      58,
+      66
+    ],
+    "severe": false,
+    "longest": false
+  },
+  "q_d4_20d": {
+    "choices": [
+      "Hostile text can trigger real actions through connected tools",
+      "It automatically raises CVSS scores on unrelated VPN appliances",
+      "It forces BIMI logos to render in every mailbox client",
+      "It converts honeyfiles into preventive firewalls by itself"
+    ],
+    "answer_idx": 0,
+    "lens": [
+      61,
+      63,
+      54,
+      58
+    ],
+    "severe": false,
+    "longest": false
+  }
+}

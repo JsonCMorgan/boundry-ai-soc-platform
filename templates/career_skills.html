@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — Job Skills</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { color: #00d4ff; font-weight: 800; letter-spacing: 0.04em; }
+    .topbar nav a { color: #7a9ab0; text-decoration: none; margin-left: 16px; font-size: 0.85em; }
+    .topbar nav a:hover { color: #00d4ff; }
+    .main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { margin: 0 0 6px; font-size: 1.5em; color: #fff; }
+    .sub { color: #7a9ab0; font-size: 0.9em; margin-bottom: 20px; line-height: 1.5; }
+    .counts {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 22px;
+    }
+    .chip {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 6px;
+      padding: 10px 14px; font-size: 0.82em;
+    }
+    .chip b { color: #00d4ff; font-size: 1.2em; }
+    .chip.green b { color: #00ff88; }
+    .chip.amber b { color: #ffcc00; }
+    .chip.foundation b { color: #7a9ab0; }
+    .chip.tomorrow b { color: #ff9900; }
+    .chip.owner b { color: #f472b6; }
+    .era {
+      display: inline-block; font-size: 0.65em; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px; margin-left: 6px;
+      vertical-align: middle; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .era-foundation { background: #1e3045; color: #7a9ab0; }
+    .era-tomorrow { background: #ff990022; color: #ff9900; border: 1px solid #ff990044; }
+    .era-owner { background: #f472b622; color: #f472b6; border: 1px solid #f472b644; }
+    .section { margin-bottom: 28px; }
+    .section h2 {
+      margin: 0 0 8px; font-size: 0.85em; color: #7a9ab0;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .section .hint { font-size: 0.78em; color: #556; margin-bottom: 12px; line-height: 1.45; }
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;
+    }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; display: block; text-decoration: none; color: inherit;
+    }
+    .card:hover { border-color: #00d4ff66; }
+    .card h3 { margin: 0 0 6px; font-size: 0.95em; color: #fff; }
+    .card .blurb { font-size: 0.78em; color: #8aa; line-height: 1.45; min-height: 2.6em; }
+    .card .meta { font-size: 0.72em; color: #667; margin-top: 8px; }
+    .card .why {
+      margin-top: 8px; font-size: 0.75em; color: #00d4ff; line-height: 1.4;
+      border-top: 1px solid #1a2533; padding-top: 8px;
+    }
+    .card.proficient { border-color: #00ff8844; }
+    .card.recommended { border-color: #00d4ff55; box-shadow: 0 0 18px #00d4ff10; }
+    .kw { font-size: 0.68em; color: #445; margin-top: 6px; }
+    .empty { color: #556; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <span class="brand">BOUNDRY.AI</span>
+      <span style="color:#445;margin-left:10px;font-size:0.8em;">Job Skills · foundation → tomorrow → owner</span>
+    </div>
+    <nav>
+      {% include "_navmenu.html" %}
+      <a href="/career">Career Hub</a>
+    </nav>
+  </div>
+
+  <div class="main">
+    <h1>Job Skills</h1>
+    <p class="sub">
+      Built from what you practice in Career Labs. <strong style="color:#cdd6e0;">Foundation</strong> is classic L1 hire work.
+      <strong style="color:#ff9900;">Tomorrow</strong> is SOAR chains and AI/agent oversight.
+      <strong style="color:#f472b6;">Owner</strong> is MSSP metrics and per-tenant automation policy.
+      After foundation greens, Work next boosts tomorrow and owner skills.
+    </p>
+
+    <div class="counts">
+      <div class="chip green"><b>{{ study_streak }}</b> day study streak</div>
+      {% if last_xp_date %}<div class="chip">Last XP: <b>{{ last_xp_date }}</b></div>{% endif %}
+      <div class="chip green"><b>{{ board.counts.proficient }}</b> proficient</div>
+      <div class="chip amber"><b>{{ board.counts.developing }}</b> building</div>
+      <div class="chip"><b>{{ board.counts.untouched }}</b> not started</div>
+      <div class="chip foundation"><b>{{ board.counts.era.foundation }}</b> foundation greens</div>
+      <div class="chip tomorrow"><b>{{ board.counts.era.tomorrow }}</b> tomorrow greens</div>
+      <div class="chip owner"><b>{{ board.counts.era.owner }}</b> owner greens</div>
+    </div>
+
+    <div class="section">
+      <h2>Work next (pairs with your strengths)</h2>
+      <div class="hint">
+        Highest-leverage skills next. Once foundation is proficient, tomorrow and owner skills rise in this list.
+      </div>
+      {% if board.recommended %}
+      <div class="grid">
+        {% for s in board.recommended %}
+        <a class="card recommended" href="{{ s.href }}">
+          <h3>{{ s.name }}<span class="era era-{{ s.era }}">{{ s.era_label }}</span></h3>
+          <div class="blurb">{{ s.blurb }}</div>
+          <div class="meta">{{ s.detail }}</div>
+          <div class="why">{{ s.why }}</div>
+          <div class="kw">JD: {{ s.jd_keywords | join(', ') }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty">Bank a few more reps — recommendations appear once something is proficient.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <h2>Proficient</h2>
+      <div class="hint">Keep these warm with occasional shifts or quizzes so they don’t go cold.</div>
+      {% if board.proficient %}
+      <div class="grid">
+        {% for s in board.proficient %}
+        <a class="card proficient" href="{{ s.href }}">
+          <h3>{{ s.name }}<span class="era era-{{ s.era }}">{{ s.era_label }}</span></h3>
+          <div class="blurb">{{ s.blurb }}</div>
+          <div class="meta">{{ s.detail }}</div>
+          <div class="kw">JD: {{ s.jd_keywords | join(', ') }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty">None yet — Sec+ lessons and Quick Shifts are the fastest path to first greens.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <h2>Building</h2>
+      <div class="hint">You’ve started these. Finish prove-it gates or more passes to flip them proficient.</div>
+      {% if board.developing %}
+      <div class="grid">
+        {% for s in board.developing %}
+        <a class="card" href="{{ s.href }}">
+          <h3>{{ s.name }}<span class="era era-{{ s.era }}">{{ s.era_label }}</span></h3>
+          <div class="blurb">{{ s.blurb }}</div>
+          <div class="meta">{{ s.detail }}</div>
+          <div class="kw">JD: {{ s.jd_keywords | join(', ') }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty">No in-progress skills — pick something from Work next.</p>
+      {% endif %}
+    </div>
+
+    {% if board.untouched %}
+    <div class="section">
+      <h2>Not started</h2>
+      <div class="hint">Still on the map for later. Don’t chase these until Work next is moving.</div>
+      <div class="grid">
+        {% for s in board.untouched %}
+        <a class="card" href="{{ s.href }}" style="opacity:0.75;">
+          <h3>{{ s.name }}<span class="era era-{{ s.era }}">{{ s.era_label }}</span></h3>
+          <div class="blurb">{{ s.blurb }}</div>
+          <div class="meta">{{ s.detail }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  <script src="/static/game.js"></script>
+</body>
+</html>

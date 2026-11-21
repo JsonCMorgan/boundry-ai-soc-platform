@@ -1,0 +1,94 @@
+{# Unified SecOps shell — left rail (Defender-like). Set secops_active before include. #}
+<style>
+  .secops-app {
+    display: flex;
+    min-height: 100vh;
+  }
+  .secops-rail {
+    width: 210px;
+    flex-shrink: 0;
+    background: var(--ops-surface, #0f1923);
+    border-right: 1px solid var(--ops-border, #1e3045);
+    padding: 14px 0 20px;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    min-height: 100vh;
+    z-index: 45;
+  }
+  .secops-rail-brand {
+    padding: 0 16px 12px;
+    font-size: 0.72em;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ops-muted, #7a9ab0);
+  }
+  .secops-rail-brand b { color: var(--ops-accent, #00d4ff); display: block; font-size: 1.15em; letter-spacing: 0.04em; text-transform: none; }
+  .secops-rail a {
+    display: block;
+    padding: 9px 16px;
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--ops-muted, #7a9ab0);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+  }
+  .secops-rail a:hover { color: var(--ops-text, #cdd6e0); background: #131d28; }
+  .secops-rail a.secops-on {
+    color: var(--ops-accent, #00d4ff);
+    border-left-color: var(--ops-accent, #00d4ff);
+    background: color-mix(in srgb, var(--ops-accent, #00d4ff) 10%, transparent);
+  }
+  .secops-rail .secops-section {
+    margin-top: 12px;
+    padding: 8px 16px 4px;
+    font-size: 0.65em;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ops-dim, #556);
+  }
+  .secops-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .secops-honesty {
+    background: #1a1808;
+    border-bottom: 1px solid #66550044;
+    color: var(--ops-practice, #ffcc00);
+    font-size: 0.72em;
+    font-weight: 600;
+    padding: 6px 16px;
+    text-align: center;
+  }
+  body.secops-accent-hq { --ops-accent: var(--ops-hq, #00b432); }
+  body.secops-accent-soar { --ops-accent: #ff9900; }
+  body.secops-accent-siem { --ops-accent: #00d4ff; }
+  @media (max-width: 900px) {
+    .secops-rail { width: 56px; }
+    .secops-rail-brand span, .secops-rail .secops-section, .secops-rail a span.lbl { display: none; }
+    .secops-rail a { padding: 10px 8px; text-align: center; font-size: 1.1em; }
+  }
+</style>
+<div class="secops-app">
+  <nav class="secops-rail" aria-label="SecOps navigation">
+    <div class="secops-rail-brand"><b>Boundry</b><span>Unified SecOps</span></div>
+    <div class="secops-section">Operate</div>
+    <a href="/control-room" class="{% if secops_active == 'home' %}secops-on{% endif %}" title="Control Room"><span class="lbl">🏠 Home</span></a>
+    <a href="/soc/mission" class="{% if secops_active == 'mission' %}secops-on{% endif %}" title="Mission Control"><span class="lbl">📋 Mission Control</span></a>
+    <a href="/soc" class="{% if secops_active == 'floor' %}secops-on{% endif %}" title="SOC Floor"><span class="lbl">🎫 SOC Floor</span></a>
+    <div class="secops-section">Investigate</div>
+    <a href="/siem" class="{% if secops_active == 'siem' %}secops-on{% endif %}" title="Log Activity"><span class="lbl">📡 Log Activity</span></a>
+    <a href="/siem/query" class="{% if secops_active == 'search' %}secops-on{% endif %}" title="SPL Search"><span class="lbl">🔎 Search</span></a>
+    <a href="/soar" class="{% if secops_active == 'soar' %}secops-on{% endif %}" title="SOAR Incidents"><span class="lbl">⚡ Incidents</span></a>
+    <div class="secops-section">Content</div>
+    <a href="/siem#detections-panel" class="{% if secops_active == 'detections' %}secops-on{% endif %}" title="Detections"><span class="lbl">🎯 Detections</span></a>
+    <a href="/playbooks" class="{% if secops_active == 'content' %}secops-on{% endif %}" title="Playbooks"><span class="lbl">📖 Playbooks</span></a>
+  </nav>
+  <div class="secops-main">
+    <div class="secops-honesty">Local simulation — not connected to Microsoft Sentinel, Splunk ES, QRadar, or CrowdStrike.</div>

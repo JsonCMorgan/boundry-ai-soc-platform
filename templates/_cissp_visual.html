@@ -1,0 +1,458 @@
+{# CISSP concept diagram panel — Approach B1 (keyword-matched topic pack). #}
+<style>
+  .cissp-visual {
+    margin: 0 0 16px; border: 1px solid #1e3045; border-radius: 8px; overflow: hidden;
+    background: #0a0e14;
+  }
+  .cissp-visual-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    padding: 8px 12px; background: #0f1923; border-bottom: 1px solid #1e3045;
+    font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.05em; color: #7a9ab0;
+  }
+  .cissp-visual-head .screen { color: #fff; font-weight: 800; letter-spacing: 0.04em; }
+  .cissp-visual-body { padding: 10px 12px 12px; }
+  .cissp-visual-title { font-size: 0.95em; font-weight: 700; color: #e0e6ed; margin-bottom: 8px; }
+  .cissp-visual-caption { font-size: 0.8em; color: #8aa; line-height: 1.55; margin-top: 10px; }
+  .cv-diagram {
+    width: 100%; max-width: 560px; margin: 0 auto; display: block;
+    background: #0f1923; border: 1px solid #1a2533; border-radius: 6px;
+  }
+  .cv-diagram text { font-family: "Cascadia Code", "Fira Code", Consolas, monospace; }
+</style>
+<script>
+function renderCisspVisual(el, v) {
+  if (!el || !v) { if (el) el.innerHTML = ''; return; }
+  var accent = v.accent || '#00ff88';
+  var label = v.label || 'Concept demo';
+  el.innerHTML =
+    '<div class="cissp-visual" style="border-color:' + accent + '55;">' +
+      '<div class="cissp-visual-head">' +
+        '<span><span class="screen" style="color:' + accent + ';">' + escHtml(label) + '</span>' +
+        ' · what this question is about</span>' +
+      '</div>' +
+      '<div class="cissp-visual-body">' +
+        '<div class="cissp-visual-title">' + escHtml(v.title || '') + '</div>' +
+        buildConceptDiagram(v.diagram_id, accent) +
+        '<div class="cissp-visual-caption">' + escHtml(v.caption || '') + '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function buildConceptDiagram(id, accent) {
+  var builders = {
+    cia_triad: cvCia,
+    risk: cvRisk,
+    policy_stack: cvPolicy,
+    classification: cvClass,
+    asset_lifecycle: cvLifecycle,
+    pki: cvPki,
+    crypto_types: cvCrypto,
+    hashing: cvHash,
+    security_models: cvModels,
+    defense_in_depth: cvDepth,
+    firewall_ids: cvFwIds,
+    vpn: cvVpn,
+    osi: cvOsi,
+    mfa: cvMfa,
+    federation: cvFed,
+    access_control: cvAccess,
+    auth_attacks: cvAuthAttacks,
+    vuln_vs_pentest: cvVulnPen,
+    audit: cvAudit,
+    ir_lifecycle: cvIr,
+    siem: cvSiem,
+    bcdr: cvBcdr,
+    owasp: cvOwasp,
+    sdlc: cvSdlc,
+    change_mgmt: cvChange,
+    encryption_states: cvEncStates,
+    physical: cvPhysical,
+    cloud_shared: cvCloud
+  };
+  var fn = builders[id] || cvRisk;
+  return fn(accent);
+}
+
+function cvSvg(inner, h) {
+  h = h || 160;
+  return '<svg class="cv-diagram" viewBox="0 0 520 ' + h + '" xmlns="http://www.w3.org/2000/svg">' + inner + '</svg>';
+}
+function cvBox(x, y, w, h, fill, stroke, label, fs) {
+  fs = fs || 11;
+  return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="6" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>' +
+    '<text x="' + (x + w / 2) + '" y="' + (y + h / 2 + 4) + '" text-anchor="middle" fill="#e0e6ed" font-size="' + fs + '" font-weight="700">' + label + '</text>';
+}
+function cvArrow(x1, y1, x2, y2, color) {
+  if (!window._cvArrN) window._cvArrN = 0;
+  window._cvArrN += 1;
+  var id = 'cvarr' + window._cvArrN;
+  return '<defs><marker id="' + id + '" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">' +
+    '<path d="M0,0 L6,3 L0,6 Z" fill="' + color + '"/></marker></defs>' +
+    '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + color + '" stroke-width="2" marker-end="url(#' + id + ')"/>';
+}
+function cvLabel(x, y, text, color, fs) {
+  return '<text x="' + x + '" y="' + y + '" fill="' + (color || '#8aa') + '" font-size="' + (fs || 10) + '">' + text + '</text>';
+}
+
+function cvCia(a) {
+  return cvSvg(
+    '<polygon points="260,28 360,150 160,150" fill="none" stroke="' + a + '" stroke-width="2"/>' +
+    cvBox(210, 40, 100, 32, a + '22', a, 'Confidentiality', 10) +
+    cvBox(145, 125, 90, 28, '#ff8c0022', '#ff8c00', 'Integrity', 10) +
+    cvBox(285, 125, 100, 28, '#00d4ff22', '#00d4ff', 'Availability', 10) +
+    cvLabel(160, 20, 'Protect the data', '#7a9ab0', 10), 175);
+}
+
+function cvRisk(a) {
+  return cvSvg(
+    cvBox(30, 55, 100, 44, '#ff444422', '#ff4444', 'Threat', 12) +
+    cvLabel(145, 78, '×', a, 18) +
+    cvBox(170, 55, 110, 44, '#ff8c0022', '#ff8c00', 'Vulnerability', 11) +
+    cvLabel(295, 78, '×', a, 18) +
+    cvBox(320, 55, 90, 44, '#ffcc0022', '#ffcc00', 'Impact', 12) +
+    cvLabel(420, 78, '=', a, 18) +
+    cvBox(440, 55, 60, 44, a + '33', a, 'RISK', 12) +
+    cvLabel(30, 130, 'Control reduces one or more factors → residual risk remains', '#8aa', 11), 155);
+}
+
+function cvPolicy(a) {
+  var y = 20;
+  var layers = [
+    [a, 'POLICY — mandatory direction'],
+    ['#9944ee', 'STANDARDS — required specifics'],
+    ['#00d4ff', 'PROCEDURES — step-by-step how'],
+    ['#7a9ab0', 'GUIDELINES — recommended advice']
+  ];
+  var html = '';
+  layers.forEach(function(L, i) {
+    html += cvBox(60 + i * 12, y + i * 34, 400 - i * 24, 28, L[0] + '22', L[0], L[1], 11);
+  });
+  return cvSvg(html, 175);
+}
+
+function cvClass(a) {
+  var levels = [
+    ['#ff4444', 'Top Secret'],
+    ['#ff8c00', 'Secret'],
+    ['#ffcc00', 'Confidential'],
+    ['#7a9ab0', 'Public']
+  ];
+  var html = cvLabel(30, 24, 'Higher sensitivity → stricter handling', '#8aa', 11);
+  levels.forEach(function(L, i) {
+    html += cvBox(40 + i * 8, 40 + i * 28, 420 - i * 16, 24, L[0] + '22', L[0], L[1], 11);
+  });
+  return cvSvg(html, 175);
+}
+
+function cvLifecycle(a) {
+  var steps = ['Create', 'Store', 'Use', 'Share', 'Archive', 'Destroy'];
+  var html = '';
+  steps.forEach(function(s, i) {
+    var x = 18 + i * 84;
+    html += cvBox(x, 55, 72, 40, a + '22', a, s, 10);
+    if (i < steps.length - 1) html += cvLabel(x + 74, 78, '→', a, 14);
+  });
+  html += cvLabel(18, 130, 'Controls change at each stage (access, encryption, retention, wipe)', '#8aa', 11);
+  return cvSvg(html, 155);
+}
+
+function cvPki(a) {
+  return cvSvg(
+    cvBox(30, 40, 100, 50, a + '22', a, 'Root CA', 12) +
+    cvArrow(130, 65, 175, 65, a) +
+    cvBox(180, 40, 120, 50, '#ff8c0022', '#ff8c00', 'Signs cert', 11) +
+    cvArrow(300, 65, 345, 65, a) +
+    cvBox(350, 40, 140, 50, '#00d4ff22', '#00d4ff', 'Server / User cert', 11) +
+    cvLabel(30, 120, 'Trust flows down the chain. Private key never leaves the subject.', '#8aa', 11) +
+    cvLabel(30, 140, 'Public key is in the certificate — anyone can verify signatures.', '#8aa', 11), 160);
+}
+
+function cvCrypto(a) {
+  return cvSvg(
+    cvBox(30, 30, 210, 100, a + '18', a, '', 11) +
+    cvLabel(135, 55, 'SYMMETRIC', a, 12) +
+    cvLabel(135, 78, 'AES — one shared key', '#cdd6e0', 11) +
+    cvLabel(135, 100, 'Fast · bulk data', '#8aa', 10) +
+    cvBox(280, 30, 210, 100, '#00d4ff18', '#00d4ff', '', 11) +
+    cvLabel(385, 55, 'ASYMMETRIC', '#00d4ff', 12) +
+    cvLabel(385, 78, 'RSA/ECC — key pair', '#cdd6e0', 11) +
+    cvLabel(385, 100, 'Slow · keys & signatures', '#8aa', 10), 150);
+}
+
+function cvHash(a) {
+  return cvSvg(
+    cvBox(40, 40, 80, 40, '#334455', '#7a9ab0', 'Data', 12) +
+    cvArrow(120, 60, 170, 60, a) +
+    cvBox(175, 35, 100, 50, a + '22', a, 'Hash fn', 12) +
+    cvArrow(275, 60, 325, 60, a) +
+    cvBox(330, 40, 140, 40, '#ffcc0022', '#ffcc00', 'Fixed digest', 11) +
+    cvLabel(40, 120, 'One-way: digest cannot be reversed to the original data', '#8aa', 11) +
+    cvLabel(40, 140, 'Change one bit of data → completely different hash', '#8aa', 11), 160);
+}
+
+function cvModels(a) {
+  return cvSvg(
+    cvBox(30, 25, 220, 110, a + '15', a, '', 11) +
+    cvLabel(140, 50, 'Bell-LaPadula', a, 12) +
+    cvLabel(140, 75, 'Confidentiality', '#cdd6e0', 11) +
+    cvLabel(140, 98, '★ No read UP', '#ff4444', 11) +
+    cvLabel(140, 118, '★ No write DOWN', '#ff8c00', 11) +
+    cvBox(270, 25, 220, 110, '#00d4ff15', '#00d4ff', '', 11) +
+    cvLabel(380, 50, 'Biba', '#00d4ff', 12) +
+    cvLabel(380, 75, 'Integrity', '#cdd6e0', 11) +
+    cvLabel(380, 98, '★ No read DOWN', '#ff4444', 11) +
+    cvLabel(380, 118, '★ No write UP', '#ff8c00', 11), 155);
+}
+
+function cvDepth(a) {
+  var rings = [
+    [260, 80, 70, 'Data'],
+    [260, 80, 95, 'App'],
+    [260, 80, 120, 'Host'],
+    [260, 80, 145, 'Network'],
+    [260, 80, 170, 'Physical']
+  ];
+  // draw from outside in via concentric-ish boxes instead
+  var html = '';
+  var layers = [
+    [20, 15, 480, 140, '#7a9ab022', '#7a9ab0', 'Physical'],
+    [55, 32, 410, 106, '#00d4ff22', '#00d4ff', 'Network'],
+    [95, 48, 330, 74, '#ff8c0022', '#ff8c00', 'Host'],
+    [140, 62, 240, 46, a + '22', a, 'App / Data']
+  ];
+  layers.forEach(function(L) {
+    html += '<rect x="' + L[0] + '" y="' + L[1] + '" width="' + L[2] + '" height="' + L[3] + '" rx="8" fill="' + L[4] + '" stroke="' + L[5] + '" stroke-width="1.5"/>';
+    html += '<text x="' + (L[0] + 12) + '" y="' + (L[1] + 18) + '" fill="' + L[5] + '" font-size="11" font-weight="700">' + L[6] + '</text>';
+  });
+  return cvSvg(html, 170);
+}
+
+function cvFwIds(a) {
+  return cvSvg(
+    cvBox(20, 55, 70, 40, '#334455', '#7a9ab0', 'Internet', 10) +
+    cvArrow(90, 75, 125, 75, a) +
+    cvBox(130, 45, 100, 60, a + '22', a, 'Firewall', 12) +
+    cvLabel(180, 115, 'Allow/Deny', '#8aa', 9) +
+    cvArrow(230, 75, 265, 75, a) +
+    cvBox(270, 45, 100, 60, '#ffcc0022', '#ffcc00', 'IDS/IPS', 12) +
+    cvLabel(320, 115, 'Detect / Block', '#8aa', 9) +
+    cvArrow(370, 75, 405, 75, a) +
+    cvBox(410, 55, 90, 40, '#00ff8822', '#00ff88', 'LAN', 11), 145);
+}
+
+function cvVpn(a) {
+  return cvSvg(
+    cvBox(30, 50, 90, 50, a + '22', a, 'Laptop', 12) +
+    '<path d="M130 75 C 200 40, 320 40, 390 75" fill="none" stroke="' + a + '" stroke-width="3" stroke-dasharray="8 4"/>' +
+    cvLabel(220, 48, 'Encrypted tunnel', a, 11) +
+    cvBox(400, 50, 90, 50, '#00d4ff22', '#00d4ff', 'Office', 12) +
+    cvLabel(130, 120, 'Untrusted internet underneath — tunnel hides the payload', '#8aa', 11), 150);
+}
+
+function cvOsi(a) {
+  var layers = [
+    ['7 Application', '#00ff88'],
+    ['4–6 Transport / Session', '#00d4ff'],
+    ['3 Network (IP)', '#ffcc00'],
+    ['2 Data Link (MAC)', '#ff8c00'],
+    ['1 Physical', '#7a9ab0']
+  ];
+  var html = '';
+  layers.forEach(function(L, i) {
+    html += cvBox(120, 12 + i * 28, 280, 24, L[1] + '22', L[1], L[0], 11);
+  });
+  return cvSvg(html, 165);
+}
+
+function cvMfa(a) {
+  return cvSvg(
+    cvBox(30, 40, 140, 70, a + '22', a, '', 11) +
+    cvLabel(100, 70, 'KNOW', a, 13) +
+    cvLabel(100, 92, 'password / PIN', '#8aa', 10) +
+    cvLabel(178, 78, '+', '#cdd6e0', 18) +
+    cvBox(195, 40, 140, 70, '#00d4ff22', '#00d4ff', '', 11) +
+    cvLabel(265, 70, 'HAVE', '#00d4ff', 13) +
+    cvLabel(265, 92, 'phone / token', '#8aa', 10) +
+    cvLabel(343, 78, '+', '#cdd6e0', 18) +
+    cvBox(360, 40, 140, 70, '#ff8c0022', '#ff8c00', '', 11) +
+    cvLabel(430, 70, 'ARE', '#ff8c00', 13) +
+    cvLabel(430, 92, 'fingerprint', '#8aa', 10) +
+    cvLabel(30, 140, 'True MFA = different factor types, not two passwords', '#8aa', 11), 160);
+}
+
+function cvFed(a) {
+  return cvSvg(
+    cvBox(30, 50, 120, 50, a + '22', a, 'User', 12) +
+    cvArrow(150, 75, 200, 75, a) +
+    cvBox(205, 40, 130, 70, '#ffcc0022', '#ffcc00', 'IdP', 13) +
+    cvLabel(270, 95, 'authenticates', '#8aa', 9) +
+    cvArrow(335, 75, 385, 75, a) +
+    cvBox(390, 50, 110, 50, '#00d4ff22', '#00d4ff', 'App (SP)', 11) +
+    cvLabel(30, 140, 'SSO: prove identity once → many apps trust the assertion', '#8aa', 11), 160);
+}
+
+function cvAccess(a) {
+  return cvSvg(
+    cvBox(20, 35, 150, 80, a + '18', a, '', 11) +
+    cvLabel(95, 65, 'DAC', a, 13) +
+    cvLabel(95, 88, 'Owner decides', '#8aa', 10) +
+    cvBox(185, 35, 150, 80, '#ff8c0018', '#ff8c00', '', 11) +
+    cvLabel(260, 65, 'MAC', '#ff8c00', 13) +
+    cvLabel(260, 88, 'Labels / clearance', '#8aa', 10) +
+    cvBox(350, 35, 150, 80, '#00d4ff18', '#00d4ff', '', 11) +
+    cvLabel(425, 65, 'RBAC', '#00d4ff', 13) +
+    cvLabel(425, 88, 'Role grants access', '#8aa', 10) +
+    cvLabel(20, 140, 'Always layer least privilege + need-to-know', '#8aa', 11), 160);
+}
+
+function cvAuthAttacks(a) {
+  return cvSvg(
+    cvBox(20, 30, 150, 90, '#ff444418', '#ff4444', '', 11) +
+    cvLabel(95, 55, 'Brute force', '#ff4444', 12) +
+    cvLabel(95, 78, 'Many passwords', '#cdd6e0', 10) +
+    cvLabel(95, 98, '→ one account', '#8aa', 10) +
+    cvBox(185, 30, 150, 90, '#ff8c0018', '#ff8c00', '', 11) +
+    cvLabel(260, 55, 'Password spray', '#ff8c00', 12) +
+    cvLabel(260, 78, 'One password', '#cdd6e0', 10) +
+    cvLabel(260, 98, '→ many accounts', '#8aa', 10) +
+    cvBox(350, 30, 150, 90, '#ffcc0018', '#ffcc00', '', 11) +
+    cvLabel(425, 55, 'Stuffing', '#ffcc00', 12) +
+    cvLabel(425, 78, 'Stolen pairs', '#cdd6e0', 10) +
+    cvLabel(425, 98, '→ reused logins', '#8aa', 10), 145);
+}
+
+function cvVulnPen(a) {
+  return cvSvg(
+    cvBox(40, 30, 200, 100, a + '18', a, '', 11) +
+    cvLabel(140, 60, 'Vuln scan', a, 13) +
+    cvLabel(140, 85, 'Automated list', '#cdd6e0', 11) +
+    cvLabel(140, 108, 'Breadth, not proof', '#8aa', 10) +
+    cvBox(280, 30, 200, 100, '#ff8c0018', '#ff8c00', '', 11) +
+    cvLabel(380, 60, 'Pen test', '#ff8c00', 13) +
+    cvLabel(380, 85, 'Human exploits', '#cdd6e0', 11) +
+    cvLabel(380, 108, 'Proves real impact', '#8aa', 10), 150);
+}
+
+function cvAudit(a) {
+  return cvSvg(
+    cvBox(40, 40, 130, 70, a + '22', a, 'Control', 12) +
+    cvArrow(170, 75, 220, 75, a) +
+    cvBox(225, 40, 130, 70, '#ffcc0022', '#ffcc00', 'Evidence', 12) +
+    cvArrow(355, 75, 405, 75, a) +
+    cvBox(410, 40, 90, 70, '#00ff8822', '#00ff88', 'Pass?', 12) +
+    cvLabel(40, 140, 'No evidence = finding, even if the control “probably” exists', '#8aa', 11), 160);
+}
+
+function cvIr(a) {
+  var steps = ['Prepare', 'Detect', 'Contain', 'Eradicate', 'Recover', 'Lessons'];
+  var html = '';
+  steps.forEach(function(s, i) {
+    var x = 12 + i * 85;
+    html += cvBox(x, 50, 78, 42, a + '22', a, s, 9);
+    if (i < steps.length - 1) html += cvLabel(x + 78, 74, '→', a, 12);
+  });
+  html += cvLabel(12, 125, 'Exam trap: contain before eradicate; lessons learned last', '#8aa', 11);
+  return cvSvg(html, 150);
+}
+
+function cvSiem(a) {
+  return cvSvg(
+    cvBox(20, 25, 80, 30, '#334455', '#7a9ab0', 'FW logs', 10) +
+    cvBox(20, 65, 80, 30, '#334455', '#7a9ab0', 'Auth', 10) +
+    cvBox(20, 105, 80, 30, '#334455', '#7a9ab0', 'EDR', 10) +
+    cvArrow(100, 80, 150, 80, a) +
+    cvBox(155, 50, 120, 60, a + '22', a, 'SIEM', 13) +
+    cvArrow(275, 80, 325, 80, a) +
+    cvBox(330, 50, 160, 60, '#ff444422', '#ff4444', 'Correlated alert', 11), 155);
+}
+
+function cvBcdr(a) {
+  return cvSvg(
+    cvBox(40, 35, 200, 90, a + '18', a, '', 11) +
+    cvLabel(140, 65, 'RTO', a, 14) +
+    cvLabel(140, 90, 'Time to restore', '#cdd6e0', 11) +
+    cvLabel(140, 110, 'service', '#8aa', 10) +
+    cvBox(280, 35, 200, 90, '#00d4ff18', '#00d4ff', '', 11) +
+    cvLabel(380, 65, 'RPO', '#00d4ff', 14) +
+    cvLabel(380, 90, 'Max data loss', '#cdd6e0', 11) +
+    cvLabel(380, 110, '(backup age)', '#8aa', 10), 150);
+}
+
+function cvOwasp(a) {
+  return cvSvg(
+    cvBox(30, 45, 100, 50, '#ff444422', '#ff4444', 'Attacker', 12) +
+    cvArrow(130, 70, 175, 70, '#ff4444') +
+    cvBox(180, 35, 160, 70, '#ff8c0022', '#ff8c00', 'Bad input', 12) +
+    cvLabel(260, 90, 'SQLi / XSS / CSRF', '#8aa', 10) +
+    cvArrow(340, 70, 385, 70, '#ff4444') +
+    cvBox(390, 45, 110, 50, a + '22', a, 'App / DB', 12) +
+    cvLabel(30, 130, 'Fix: validate · encode · parameterize · anti-CSRF tokens', '#8aa', 11), 155);
+}
+
+function cvSdlc(a) {
+  var steps = ['Req', 'Design', 'Code', 'Test', 'Deploy', 'Maintain'];
+  var html = cvLabel(20, 28, 'Shift security left — cheaper earlier', '#8aa', 11);
+  steps.forEach(function(s, i) {
+    var x = 20 + i * 84;
+    html += cvBox(x, 50, 74, 40, a + '22', a, s, 10);
+    if (i < steps.length - 1) html += cvLabel(x + 76, 74, '→', a, 12);
+  });
+  html += cvLabel(20, 125, 'Bolt-on security at Deploy is the expensive anti-pattern', '#8aa', 11);
+  return cvSvg(html, 150);
+}
+
+function cvChange(a) {
+  var steps = ['Request', 'Approve', 'Test', 'Implement', 'Verify'];
+  var html = '';
+  steps.forEach(function(s, i) {
+    var x = 25 + i * 95;
+    html += cvBox(x, 50, 85, 42, a + '22', a, s, 10);
+    if (i < steps.length - 1) html += cvLabel(x + 86, 74, '→', a, 12);
+  });
+  html += cvLabel(25, 125, 'Untracked changes → outages + failed audits', '#8aa', 11);
+  return cvSvg(html, 150);
+}
+
+function cvEncStates(a) {
+  return cvSvg(
+    cvBox(40, 35, 200, 90, a + '18', a, '', 11) +
+    cvLabel(140, 65, 'IN TRANSIT', a, 13) +
+    cvLabel(140, 90, 'TLS / VPN', '#cdd6e0', 11) +
+    cvLabel(140, 110, 'on the wire', '#8aa', 10) +
+    cvBox(280, 35, 200, 90, '#00d4ff18', '#00d4ff', '', 11) +
+    cvLabel(380, 65, 'AT REST', '#00d4ff', 13) +
+    cvLabel(380, 90, 'AES / BitLocker', '#cdd6e0', 11) +
+    cvLabel(380, 110, 'on disk / DB', '#8aa', 10), 150);
+}
+
+function cvPhysical(a) {
+  return cvSvg(
+    cvBox(30, 40, 100, 70, a + '22', a, 'Deter', 12) +
+    cvArrow(130, 75, 155, 75, a) +
+    cvBox(160, 40, 100, 70, '#ff8c0022', '#ff8c00', 'Delay', 12) +
+    cvArrow(260, 75, 285, 75, a) +
+    cvBox(290, 40, 100, 70, '#ffcc0022', '#ffcc00', 'Detect', 12) +
+    cvArrow(390, 75, 415, 75, a) +
+    cvBox(420, 40, 80, 70, '#ff444422', '#ff4444', 'Respond', 11) +
+    cvLabel(30, 140, 'Fences · mantraps · badges · cameras · guards', '#8aa', 11), 160);
+}
+
+function cvCloud(a) {
+  return cvSvg(
+    cvBox(40, 30, 200, 110, a + '18', a, '', 11) +
+    cvLabel(140, 55, 'PROVIDER', a, 12) +
+    cvLabel(140, 80, 'Hardware, hypervisor', '#cdd6e0', 10) +
+    cvLabel(140, 100, 'physical datacenter', '#8aa', 10) +
+    cvLabel(140, 120, '(varies by IaaS/PaaS/SaaS)', '#8aa', 9) +
+    cvBox(280, 30, 200, 110, '#00d4ff18', '#00d4ff', '', 11) +
+    cvLabel(380, 55, 'YOU', '#00d4ff', 12) +
+    cvLabel(380, 80, 'Data, identities', '#cdd6e0', 10) +
+    cvLabel(380, 100, 'access, configs', '#8aa', 10) +
+    cvLabel(380, 120, 'app security', '#8aa', 9), 160);
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+</script>

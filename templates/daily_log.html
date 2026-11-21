@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boundry.AI — Daily Log</title>
+    {% include '_writing_coach.html' %}
+    {% from '_writing_coach.html' import writing_coach_from_registry %}
     <style>
         *, *::before, *::after { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #0b0e17; color: #d4d4d4; margin: 0; }
@@ -185,7 +187,13 @@
                     <option value="for_peta">👀 Needs Your Eyes</option>
                     <option value="question">❓ Question for Peta</option>
                 </select>
-                <textarea name="note" class="note-input" placeholder="What do you want Peta to know?" rows="2"></textarea>
+                <div style="flex:1;min-width:200px;">
+                {{ writing_coach_from_registry('daily_log_note') }}
+                {% set _dl = get_coach('daily_log_note') %}
+                <textarea name="note" class="note-input" aria-describedby="coach-daily_log_note"
+                    data-writing-coach="daily_log_note"
+                    placeholder="{{ (_dl.placeholder_example if _dl else '') }}" rows="2"></textarea>
+                </div>
                 <button type="submit" class="add-btn">Add →</button>
             </div>
         </form>

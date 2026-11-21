@@ -2,6 +2,8 @@
 
 How to configure the two automated cron jobs on Railway.
 
+If Railway notifies you of an environment-variable breach, follow [RAILWAY_SECRET_ROTATION.md](RAILWAY_SECRET_ROTATION.md) first.
+
 ---
 
 ## Prerequisites

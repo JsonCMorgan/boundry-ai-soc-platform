@@ -35,6 +35,9 @@
         .acr {
             background: #12151f; border: 1px solid #1e2235; border-radius: 7px; padding: 12px 15px;
         }
+        .acr:target, .acr.gloss-target {
+            border-color: #9944ee; box-shadow: 0 0 0 2px #9944ee55;
+        }
         .acr-abbr { font-size: 0.98em; font-weight: 800; color: #bb77ff; font-family: monospace; }
         .acr-full { font-size: 0.85em; color: #ddd; margin: 2px 0 4px; }
         .acr-def  { font-size: 0.78em; color: #888; line-height: 1.5; }
@@ -56,8 +59,8 @@
 <div class="main">
     <div class="page-header">
         <div>
-            <h1>Security Acronym Glossary</h1>
-            <p>{{ total }} core cybersecurity &amp; CISSP acronyms. Search, study, then drill them in the quiz.</p>
+            <h1>Security Glossary</h1>
+            <p>{{ total }} terms used across Boundry — hover them in lessons, quizzes, SIEM, and Control Room. This page is the dictionary, not a separate daily grind. Sunday light quiz is optional.</p>
         </div>
         <a href="{{ url_for('glossary_quiz') }}" class="quiz-cta">🎯 Quiz Me →</a>
     </div>
@@ -73,10 +76,22 @@
             <div class="cat-label">{{ label }}</div>
             <div class="acr-grid">
                 {% for e in items %}
-                <div class="acr" data-search="{{ (e.abbr ~ ' ' ~ e.full ~ ' ' ~ e.def)|lower }}">
+                <div class="acr" id="gloss-{{ e.abbr|replace(' ', '-') }}" data-search="{{ (e.abbr ~ ' ' ~ e.full ~ ' ' ~ e.def ~ ' ' ~ (e.why or '') ~ ' ' ~ (e.analogy or ''))|lower }}">
                     <span class="acr-abbr">{{ e.abbr }}</span>
                     <div class="acr-full">{{ e.full }}</div>
                     <div class="acr-def">{{ e.def }}</div>
+                    {% if e.why %}
+                    <div class="acr-why" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e2235;font-size:0.82em;color:#9ab;line-height:1.45;">
+                        <span style="color:#9944ee;font-size:0.75em;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">On the job</span><br>
+                        {{ e.why }}
+                    </div>
+                    {% endif %}
+                    {% if e.analogy %}
+                    <div class="acr-analogy" style="margin-top:8px;font-size:0.82em;color:#cbb98a;line-height:1.45;font-style:italic;">
+                        <span style="color:#ffcc00;font-size:0.75em;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;font-style:normal;">Think of it like…</span><br>
+                        {{ e.analogy }}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -110,8 +125,36 @@
         countEl.textContent = q ? (shown + ' match' + (shown === 1 ? '' : 'es')) : '';
     }
     search.addEventListener('input', applyFilter);
+
+    function highlightCard(el) {
+        if (!el) return;
+        cards.forEach(function(c) { c.classList.remove('gloss-target'); });
+        el.classList.add('gloss-target');
+        el.scrollIntoView({ block: 'center' });
+    }
+
+    function jumpHash() {
+        var id = (location.hash || '').replace(/^#/, '');
+        if (id) {
+            highlightCard(document.getElementById(id));
+            return;
+        }
+        var q = '';
+        try { q = new URLSearchParams(location.search).get('q') || ''; } catch (e) {}
+        if (!q) return;
+        search.value = q;
+        applyFilter();
+        var needle = q.trim().toLowerCase();
+        var match = cards.filter(function(c) { return c.style.display !== 'none'; })[0];
+        cards.forEach(function(c) {
+            if (c.id && c.id.toLowerCase() === 'gloss-' + needle.replace(/ /g, '-')) match = c;
+        });
+        highlightCard(match);
+    }
+    requestAnimationFrame(jumpHash);
+    window.addEventListener('hashchange', jumpHash);
 </script>
 
-<script src="/static/glossary.js" defer></script>
+{% include '_jargon_tooltips.html' %}
 </body>
 </html>

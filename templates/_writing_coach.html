@@ -1,0 +1,93 @@
+{# Stacked writing coach — rubric stays visible while typing.
+   Jinja: {% from '_writing_coach.html' import writing_coach %}
+   JS: clone #writing-coach-tpl or use TicketFields.buildCoachHtml()
+#}
+<style>
+  .writing-coach {
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    border: 1px solid #1e3045;
+    border-radius: 6px;
+    background: #0f1923;
+    font-size: 0.78em;
+    line-height: 1.45;
+    color: #9ab;
+  }
+  .writing-coach-title {
+    font-weight: 800;
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #7a9ab0;
+    margin-bottom: 6px;
+  }
+  .writing-coach ol, .writing-coach ul {
+    margin: 0;
+    padding-left: 1.25em;
+    color: #cdd6e0;
+  }
+  .writing-coach li { margin: 3px 0; }
+  .writing-coach-tip {
+    margin-top: 8px;
+    font-size: 0.92em;
+    color: #7a9ab0;
+    border-top: 1px solid #1e3045;
+    padding-top: 6px;
+  }
+</style>
+
+{% macro writing_coach(coach_id, title, items, tip=none) %}
+<div class="writing-coach" id="coach-{{ coach_id }}" role="note" aria-label="{{ title }}">
+  <div class="writing-coach-title">{{ title }}</div>
+  {% if items %}
+  <ol>
+    {% for item in items %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+  {% if tip %}
+  <div class="writing-coach-tip">{{ tip }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro writing_coach_from_registry(coach_id) %}
+{% set c = get_coach(coach_id) %}
+{% if c %}
+{{ writing_coach(coach_id, c.title, c.get('items') or [], c.get('tip')) }}
+{% endif %}
+{% endmacro %}
+
+<template id="writing-coach-tpl" style="display:none;">
+  <div class="writing-coach" data-writing-coach-shell="1">
+    <div class="writing-coach-title" data-coach-title></div>
+    <ol data-coach-list></ol>
+    <div class="writing-coach-tip" data-coach-tip style="display:none;"></div>
+  </div>
+</template>
+
+<script>
+window.WritingCoach = {
+  buildHtml: function (coachId, title, items, tip) {
+    var esc = function (s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    var html = '<div class="writing-coach" id="coach-' + esc(coachId) + '" role="note">';
+    html += '<div class="writing-coach-title">' + esc(title) + '</div><ol>';
+    (items || []).forEach(function (it) {
+      html += '<li>' + esc(it) + '</li>';
+    });
+    html += '</ol>';
+    if (tip) {
+      html += '<div class="writing-coach-tip">' + esc(tip) + '</div>';
+    }
+    html += '</div>';
+    return html;
+  },
+  ariaFor: function (coachId) {
+    return 'coach-' + coachId;
+  }
+};
+</script>

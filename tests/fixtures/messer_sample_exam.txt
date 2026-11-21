@@ -1,0 +1,13 @@
+1) Which control type is a firewall rule?
+A) Detective
+B) Preventive
+C) Corrective
+D) Compensating
+Answer: B
+
+2) What does MFA provide?
+A) Encryption at rest
+B) Additional authentication factors
+C) Non-repudiation only
+D) Key escrow
+Answer: B

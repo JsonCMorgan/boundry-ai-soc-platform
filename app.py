@@ -5,6 +5,7 @@ Deliberately insecure for security audit practice.
 import os
 import re
 import hmac
+import time
 import sqlite3
 import logging
 from pathlib import Path
@@ -14,7 +15,7 @@ import bcrypt
 from datetime import datetime, timedelta
 from functools import wraps
 from markupsafe import Markup
-from flask import Flask, render_template, request, redirect, url_for, session, abort, flash, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, session, abort, flash, jsonify, Response, send_file, send_from_directory
 import siem_collector
 import spl_engine
 import splunk_forwarder
@@ -49,11 +50,29 @@ import career_instances
 import interview_gym
 import interview_variants
 import soc_lab
+import siem_views
+import mission_control
+import note_coaches
+import memory_retention
+import messer_layer
+import messer_catalog
+from messer_media import stream_messer_file
+from messer_paths import messer_root, messer_work_dir
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 
 app = Flask(__name__)
+app.jinja_env.globals["get_coach"] = note_coaches.get_coach
+
+
+@app.template_filter("format_notes")
+def _jinja_format_notes(body: str, section_heading: str = "") -> str:
+    """Structure Messer PDF notes for reading; does not rewrite note text."""
+    from messer_notes_format import format_notes_body
+
+    mode = "transcript" if (section_heading or "").strip() == "Transcript" else "notes"
+    return format_notes_body(body or "", mode=mode)
 
 # --- Database configuration ---
 # Railway sets DATABASE_URL automatically when you add a PostgreSQL service.
@@ -555,6 +574,7 @@ def _inject_globals():
         "origin_sim_label": "Demo" if client else "Sim",
         "ops_mode":         ops_mode,        # Analyst Live Ops view (no study notes/XP)
         "jargon_terms":     security_acronyms.hover_payload(),
+        "get_coach":        note_coaches.get_coach,
     }
 
 # --- Security logging (feeds into Splunk / Railway logs) ---
@@ -1853,6 +1873,26 @@ def init_db():
             created_at   TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS soc_case_tasks (
+            {id_col},
+            case_id     INTEGER NOT NULL,
+            title       TEXT NOT NULL DEFAULT '',
+            status      TEXT NOT NULL DEFAULT 'open',
+            owner       TEXT NOT NULL DEFAULT '',
+            due_at      TEXT,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS siem_saved_searches (
+            {id_col},
+            analyst_id  INTEGER NOT NULL,
+            name        TEXT NOT NULL DEFAULT '',
+            query_json  TEXT NOT NULL DEFAULT '{{}}',
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
     # Boundry Tickets migrations (existing DBs)
     if not DATABASE_URL:
         _soc_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(soc_cases)")]
@@ -1968,6 +2008,68 @@ def init_db():
         db_run("ALTER TABLE career_secplus_progress ADD COLUMN IF NOT EXISTS lesson_id TEXT NOT NULL DEFAULT ''")
         db_run("ALTER TABLE career_secplus_quiz ADD COLUMN IF NOT EXISTS lesson_id TEXT NOT NULL DEFAULT ''")
 
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS retention_items (
+            item_id      TEXT PRIMARY KEY,
+            track        TEXT NOT NULL DEFAULT 'mixed',
+            item_type    TEXT NOT NULL DEFAULT 'mcq',
+            payload_json TEXT NOT NULL DEFAULT '{{}}',
+            era          TEXT NOT NULL DEFAULT 'foundation',
+            created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS retention_cards (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            item_id      TEXT NOT NULL,
+            due_at       TEXT NOT NULL,
+            state_json   TEXT NOT NULL DEFAULT '{{}}',
+            reps         INTEGER NOT NULL DEFAULT 0,
+            lapses       INTEGER NOT NULL DEFAULT 0,
+            source       TEXT NOT NULL DEFAULT '',
+            created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(analyst_id, item_id)
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS retention_reviews (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            item_id      TEXT NOT NULL,
+            rating       INTEGER NOT NULL DEFAULT 3,
+            correct      INTEGER NOT NULL DEFAULT 0,
+            ms           INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS messer_items (
+            item_id            TEXT PRIMARY KEY,
+            source             TEXT NOT NULL DEFAULT '',
+            objective_ref      TEXT NOT NULL DEFAULT '',
+            boundry_lesson_id  TEXT NOT NULL DEFAULT '',
+            messer_session     TEXT NOT NULL DEFAULT '',
+            stem               TEXT NOT NULL,
+            choices_json       TEXT NOT NULL DEFAULT '[]',
+            answer_key         TEXT NOT NULL DEFAULT 'A',
+            explain            TEXT NOT NULL DEFAULT '',
+            provenance_json    TEXT NOT NULL DEFAULT '{{}}',
+            created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS messer_exam_attempts (
+            {id_col},
+            analyst_id   INTEGER NOT NULL,
+            exam_id      TEXT NOT NULL,
+            score_pct    INTEGER NOT NULL DEFAULT 0,
+            passed       INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
     # Persisted app settings (key/value) — e.g. the adjustable login rate limit.
     db_run(f"""
         CREATE TABLE IF NOT EXISTS app_settings (
@@ -2080,6 +2182,84 @@ def analyst_required(f):
     return decorated
 
 
+def messer_layer_required(f):
+    """Private Messer study routes: analyst + ENABLE_MESSER_LAYER (never demo/public)."""
+    @wraps(f)
+    @analyst_required
+    def decorated(*args, **kwargs):
+        if not messer_layer.messer_enabled():
+            abort(404)
+        if session.get("username") == "demo":
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _messer_companion_payload(lesson_id: str) -> dict | None:
+    """Notes/hacks/transcript excerpts for a lesson (private files, no full PDF)."""
+    if not messer_layer.messer_enabled():
+        return None
+    row = messer_catalog.companion_for_lesson(lesson_id)
+    if not row:
+        return None
+    import json as _json
+    work = messer_work_dir()
+    bullets: list[str] = []
+    hacks: list[str] = []
+    transcript_snip = ""
+    notes_pdf = row.get("notes_pdf") or ""
+    if notes_pdf:
+        extracted = work / "extracted"
+        for p in extracted.glob("*.json") if extracted.is_dir() else []:
+            if "course-notes" in p.name.lower() or "course_notes" in p.name.lower():
+                try:
+                    data = _json.loads(p.read_text(encoding="utf-8"))
+                    text = "\n".join(pg.get("text") or "" for pg in data.get("pages") or [])[:8000]
+                    for line in text.splitlines():
+                        line = line.strip()
+                        if line and len(line) > 20 and len(bullets) < 3:
+                            bullets.append(line[:220])
+                except Exception:
+                    pass
+                break
+    hacks_path = work / "extracted"
+    for p in hacks_path.glob("*.json") if hacks_path.is_dir() else []:
+        if "exam-hacks" in p.name.lower() or "exam_hacks" in p.name.lower():
+            try:
+                data = _json.loads(p.read_text(encoding="utf-8"))
+                text = "\n".join(pg.get("text") or "" for pg in data.get("pages") or [])
+                for line in text.splitlines():
+                    if "trap" in line.lower() or "remember" in line.lower():
+                        hacks.append(line.strip()[:240])
+                        if len(hacks) >= 2:
+                            break
+            except Exception:
+                pass
+            break
+    tp = row.get("transcript_path") or ""
+    if tp:
+        tfile = work / "transcripts" / (Path(tp).stem + ".txt")
+        if tfile.is_file():
+            transcript_snip = tfile.read_text(encoding="utf-8", errors="replace")[:1200]
+    elif row.get("audio_paths"):
+        audio_name = Path(row["audio_paths"][0]).stem
+        tfile = work / "transcripts" / f"{audio_name}.txt"
+        if tfile.is_file():
+            transcript_snip = tfile.read_text(encoding="utf-8", errors="replace")[:1200]
+    video_rel = ""
+    if row.get("video_paths"):
+        video_rel = (row["video_paths"][0] or "").replace("\\", "/").lstrip("/")
+    return {
+        "messer_session": row.get("messer_session"),
+        "messer_title": row.get("messer_title"),
+        "bullets": bullets,
+        "exam_hacks": hacks,
+        "transcript_snip": transcript_snip,
+        "video_rel": video_rel,
+        "notes_pdf_path": "",
+    }
+
+
 _PRESENCE_EVENT_TYPES = (
     "analyst_presence_arrived",
     "analyst_presence_away",
@@ -2145,7 +2325,7 @@ def _client_mode_route_guard():
     if session.get("role") not in ("client", "demo") and not session.get("is_demo"):
         return None
     path = request.path or "/"
-    if path.startswith("/static"):
+    if path.startswith("/static") or path == "/pitch" or path.startswith("/pitch/"):
         return None
     # Client/demo portal: reports (+ auth). Everything else ops/training is 404.
     allowed_prefixes = ("/reports", "/logout", "/login", "/demo")
@@ -2172,6 +2352,18 @@ def demo():
     session["role"]     = "client"
     session["is_demo"]  = True
     return redirect(url_for("reports"))
+
+
+_PITCH_PWA_DIR = Path(__file__).resolve().parent / "static" / "boundry-pitch"
+
+
+@app.route("/pitch")
+@app.route("/pitch/")
+def boundry_pitch_pwa():
+    """Public Boundry pitch quiz PWA (no login). Phone: use LAN IP, not localhost."""
+    if not (_PITCH_PWA_DIR / "index.html").is_file():
+        abort(404)
+    return send_from_directory(_PITCH_PWA_DIR, "index.html")
 
 
 # --- ROUTE 0: Login / Logout (A01: Broken Access Control, A07: Auth Failures) ---
@@ -3926,6 +4118,9 @@ def soar_dashboard():
                 break
         if not selected:
             selected = enriched[0]
+    playbook_steps = []
+    if selected:
+        playbook_steps = soar_engine.playbook_steps_for_incident(selected)
     return render_template(
         "soar.html",
         stats=stats,
@@ -3933,6 +4128,8 @@ def soar_dashboard():
         selected=selected,
         player=player,
         soar_enabled=_get_app_setting("soar_enabled", "1"),
+        playbook_steps=playbook_steps,
+        soar_metrics=soar_engine.metrics_7d(),
     )
 
 
@@ -4028,6 +4225,20 @@ def api_soar_from_finding(finding_id):
 def api_soar_stats():
     """JSON counters for Control Room widgets."""
     return jsonify(soar_engine.stats())
+
+
+@app.route("/api/soar/metrics")
+@analyst_required
+def api_soar_metrics():
+    """7-day SOAR execution metrics."""
+    return jsonify({"ok": True, "metrics": soar_engine.metrics_7d()})
+
+
+@app.route("/api/soar/playbooks")
+@analyst_required
+def api_soar_playbooks():
+    """Playbook catalog for SOAR workflow canvas."""
+    return jsonify({"ok": True, "playbooks": soar_engine.playbook_catalog()})
 
 
 # --- Live SOC Floor (hybrid real + practice queue) ---
@@ -4244,9 +4455,105 @@ def api_soc_cases_open():
 def api_soc_cases_get(case_id: int):
     """Ticket + timeline bundle."""
     analyst_id = session.get("user_id")
+    ws = request.args.get("workspace")
+    if ws == "1":
+        return jsonify(
+            soc_lab.get_case_workspace(db_fetchone, db_fetchall, case_id, analyst_id, ph=PH)
+        )
     return jsonify(
         soc_lab.get_case_bundle(db_fetchone, db_fetchall, case_id, analyst_id, ph=PH)
     )
+
+
+@app.route("/api/soc/cases/<int:case_id>/workspace")
+@analyst_required
+def api_soc_cases_workspace(case_id: int):
+    """Sentinel-style investigation workspace bundle."""
+    analyst_id = session.get("user_id")
+    return jsonify(
+        soc_lab.get_case_workspace(db_fetchone, db_fetchall, case_id, analyst_id, ph=PH)
+    )
+
+
+@app.route("/api/soc/cases/<int:case_id>/tasks", methods=["GET", "POST"])
+@analyst_required
+def api_soc_case_tasks(case_id: int):
+    """Investigation tasks on a ticket."""
+    analyst_id = session.get("user_id")
+    if request.method == "GET":
+        return jsonify(
+            {
+                "ok": True,
+                "tasks": soc_lab.list_case_tasks(db_fetchall, case_id, ph=PH),
+            }
+        )
+    data = request.get_json(silent=True) or {}
+    return jsonify(
+        soc_lab.add_case_task(
+            db_run, db_fetchone, db_fetchall, case_id, analyst_id, data.get("title") or "", ph=PH
+        )
+    )
+
+
+@app.route("/soc/mission")
+@analyst_required
+def soc_mission_control():
+    """Splunk ES-style unified analyst queue."""
+    analyst_id = session.get("user_id")
+    view = request.args.get("view") or "all"
+    queue = mission_control.mission_control_queue(
+        db_fetchall, analyst_id, view=view, ph=PH
+    )
+    return render_template(
+        "soc_mission.html",
+        queue=queue,
+        view=view,
+    )
+
+
+@app.route("/api/soc/mission/queue")
+@analyst_required
+def api_soc_mission_queue():
+    """JSON mission control queue."""
+    analyst_id = session.get("user_id")
+    view = request.args.get("view") or "all"
+    return jsonify(
+        {
+            "ok": True,
+            "items": mission_control.mission_control_queue(
+                db_fetchall, analyst_id, view=view, ph=PH
+            ),
+        }
+    )
+
+
+@app.route("/api/soc/mission/bulk-action", methods=["POST"])
+@analyst_required
+def api_soc_mission_bulk():
+    """Assign self / transition case from mission control."""
+    analyst_id = session.get("user_id")
+    data = request.get_json(silent=True) or {}
+    qtype = (data.get("queue_type") or "").strip()
+    item_id = int(data.get("id") or 0)
+    action = (data.get("action") or "").strip()
+    if qtype == "case" and action == "start_work":
+        return jsonify(
+            soc_lab.transition_case(
+                db_run,
+                db_fetchone,
+                item_id,
+                analyst_id,
+                to_status="working",
+                note="Started from Mission Control",
+                ph=PH,
+            )
+        )
+    if qtype == "finding" and action == "open_soar":
+        iid = soar_engine.open_incident_for_finding(item_id, force=True)
+        if not iid:
+            return jsonify({"ok": False, "error": "Could not open SOAR incident"}), 400
+        return jsonify({"ok": True, "incident_id": iid, "href": f"/soar?id={iid}"})
+    return jsonify({"ok": False, "error": "Unsupported action"}), 400
 
 
 @app.route("/api/soc/cases/<int:case_id>", methods=["POST"])
@@ -4492,6 +4799,147 @@ def _career_activity_counts(analyst_id: int) -> dict:
     }
 
 
+@app.route("/career/review")
+@analyst_required
+def career_review_page():
+    """Daily spaced review session (FSRS, local only)."""
+    analyst_id = session["user_id"]
+    mode = (request.args.get("mode") or "mix").strip().lower()
+    track = (request.args.get("track") or "").strip() or None
+    if mode not in ("mix", "focus"):
+        mode = "mix"
+    due_n = memory_retention.due_count(analyst_id)
+    return render_template(
+        "career_review.html",
+        mode=mode,
+        track=track,
+        due_count=due_n,
+        session_limit=memory_retention.DEFAULT_SESSION_LIMIT,
+        anti_cram=memory_retention.ANTI_CRAM_THRESHOLD,
+        reviews_today=memory_retention.reviews_today_session(analyst_id),
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/api/career/review/due")
+@analyst_required
+def api_career_review_due():
+    """JSON queue for review session."""
+    analyst_id = session["user_id"]
+    mode = (request.args.get("mode") or "mix").strip().lower()
+    track = (request.args.get("track") or "").strip() or None
+    limit = min(30, max(1, int(request.args.get("limit") or memory_retention.DEFAULT_SESSION_LIMIT)))
+    items = memory_retention.due_items(analyst_id, limit, mode=mode, track=track)
+    return jsonify({
+        "ok": True,
+        "items": items,
+        "due_total": memory_retention.due_count(analyst_id),
+        "reviews_today": memory_retention.reviews_today_session(analyst_id),
+    })
+
+
+@app.route("/api/career/review/grade", methods=["POST"])
+@analyst_required
+def api_career_review_grade():
+    """Grade one review step (MCQ pick or flashcard self-check)."""
+    data = request.get_json(silent=True) or {}
+    item_id = (data.get("item_id") or "").strip()
+    picked = data.get("picked") or ""
+    sub_q = data.get("question_id") or ""
+    if not item_id:
+        return jsonify({"error": "item_id required"}), 400
+    payload = memory_retention.get_item_payload(item_id)
+    display = memory_retention.resolve_display(item_id, payload)
+    if display.get("kind") == "mini_mcq" and sub_q:
+        for q in display.get("questions") or []:
+            if q.get("question_id") == sub_q:
+                display = q
+                break
+    if display.get("kind") == "mcq":
+        result = memory_retention.grade_mcq_answer(display, picked)
+    elif display.get("kind") in ("flashcard", "teach_back"):
+        result = {
+            "correct": True,
+            "feedback": display.get("back") or "Reveal the beats, then rate how hard recall felt.",
+            "self_grade": True,
+        }
+    else:
+        result = {"correct": False, "feedback": "Unknown item type.", "self_grade": True}
+    return jsonify({"ok": True, **result})
+
+
+@app.route("/api/career/review/rate", methods=["POST"])
+@analyst_required
+def api_career_review_rate():
+    """Record FSRS rating after feedback."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    item_id = (data.get("item_id") or "").strip()
+    rating = (data.get("rating") or "good").strip().lower()
+    correct = bool(data.get("correct"))
+    ms = int(data.get("ms") or 0)
+    if not item_id:
+        return jsonify({"error": "item_id required"}), 400
+    out = memory_retention.record_review(
+        analyst_id, item_id, rating=rating, correct=correct, ms=ms,
+    )
+    if not out.get("ok"):
+        return jsonify(out), 404
+    xp = None
+    if correct and rating in ("good", "easy"):
+        xp = award_xp(analyst_id, 2, "Retention review", "retention")
+    return jsonify({**out, "xp": xp, "due_remaining": memory_retention.due_count(analyst_id)})
+
+
+@app.route("/api/career/review/enroll-teach-back", methods=["POST"])
+@analyst_required
+def api_career_review_enroll_teach_back():
+    data = request.get_json(silent=True) or {}
+    lesson_id = (data.get("lesson_id") or "").strip()
+    if not lesson_id:
+        return jsonify({"error": "lesson_id required"}), 400
+    n = memory_retention.enroll_secplus_teach_back(session["user_id"], lesson_id)
+    return jsonify({"ok": True, "enrolled": n})
+
+
+@app.route("/api/career/review/enroll-term", methods=["POST"])
+@analyst_required
+def api_career_review_enroll_term():
+    data = request.get_json(silent=True) or {}
+    term = (data.get("term") or "").strip()
+    if not term:
+        return jsonify({"error": "term required"}), 400
+    n = memory_retention.enroll_secplus_term(session["user_id"], term)
+    return jsonify({"ok": True, "enrolled": n})
+
+
+@app.route("/api/career/review/enroll-flashcards", methods=["POST"])
+@analyst_required
+def api_career_review_enroll_flashcards():
+    """Add hub flashcards for net or logs to the shared review deck."""
+    data = request.get_json(silent=True) or {}
+    track = (data.get("track") or "").strip().lower()
+    cards_map = {"net": net_lab.FLASHCARDS, "logs": log_lab.FLASHCARDS}
+    cards = cards_map.get(track)
+    if not cards:
+        return jsonify({"error": "track must be net or logs"}), 400
+    n = memory_retention.enroll_hub_flashcards(session["user_id"], track, cards)
+    return jsonify({"ok": True, "enrolled": n})
+
+
+@app.route("/api/career/review/export")
+@analyst_required
+def api_career_review_export():
+    """Download retention review log as CSV (local analyst only)."""
+    analyst_id = session["user_id"]
+    csv_body = memory_retention.export_reviews_csv(analyst_id)
+    return Response(
+        csv_body,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=boundry_retention_reviews.csv"},
+    )
+
+
 @app.route("/career")
 @analyst_required
 def career_lab_hub():
@@ -4616,7 +5064,7 @@ def career_lab_hub():
         secplus_lessons_passed=secplus_passed_n,
         secplus_lessons_total=secplus_total,
         secplus_domains_passed=secplus_domains_green,
-        secplus_domains_total=len(secplus_learn.DOMAINS),
+        secplus_domains_total=len(secplus_learn.active_domains()),
         net_lessons_done=net_done_n,
         net_lessons_total=len(net_learn.LESSONS),
         net_quiz_passed=bool(net_quiz_pass),
@@ -4635,6 +5083,9 @@ def career_lab_hub():
     study_streak = int((player or {}).get("streak_days") or 0)
     last_xp = ((player or {}).get("last_xp_date") or "")[:10]
 
+    retention_due = memory_retention.due_count(analyst_id)
+    retention_week = memory_retention.reviews_completed_this_week(analyst_id)
+
     return render_template(
         "career.html",
         tracks=tracks,
@@ -4646,6 +5097,8 @@ def career_lab_hub():
         portfolio_count=port_n,
         study_streak=study_streak,
         last_xp_date=last_xp,
+        retention_due=retention_due,
+        retention_week=retention_week,
         today_drill=career_lab.point_saturday_secplus_cta(
             career_lab.get_today_drill(),
             secplus_weak,
@@ -5470,6 +5923,11 @@ def career_shift_complete():
         )
         added += 1
 
+    mitre_tag = ""
+    if alerts:
+        mitre_tag = (alerts[0].get("correct_mitre") or alerts[0].get("mitre") or "").strip()
+    memory_retention.enroll_shift_followup(analyst_id, mitre_tag)
+
     return jsonify({
         "ok": True,
         "result": result,
@@ -5968,8 +6426,19 @@ def api_career_intel_grade():
         )
         if bonus:
             xp_result = bonus
+    if result.get("passed"):
+        case = intel_lab.get_case(case_id) or {}
+        memory_retention.enroll_lab_case_pass(
+            analyst_id, "intel", case_id,
+            case.get("teach") or "",
+            case.get("title") or case_id,
+        )
     result["xp"] = xp_result
     result["next"] = intel_lab.next_after(case_id)
+    if result.get("passed"):
+        result["retention_hint"] = (
+            "You will see a short cold-recall check on this case in tomorrow's Daily Review."
+        )
     return jsonify(result)
 
 
@@ -6082,6 +6551,7 @@ def career_net_hub():
         pass_pct=net_learn.PASS_PCT,
         drills=drills,
         best_by_drill=best,
+        retention_due=memory_retention.track_due_count(analyst_id, "net"),
         tutor_track="net",
         tutor_context={"lab": "net", "title": net_learn.TRACK_TITLE},
         csrf_token=generate_csrf(),
@@ -6214,6 +6684,10 @@ def career_net_practice_check():
                 analyst_id, XP_REWARDS["net_practice"],
                 f"Net practice: {practice_id}", "net_learn",
             )
+    elif not result.get("correct"):
+        memory_retention.enroll_track_practice_wrong(
+            session["user_id"], "net", lesson_id, practice_id,
+        )
     return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
 
 
@@ -6285,6 +6759,9 @@ def career_net_quiz_submit(lesson_id: str):
             )
             if bonus:
                 xp = bonus
+    memory_retention.enroll_track_quiz_result(
+        analyst_id, "net", lesson_id, result.get("graded") or [], bool(result.get("passed")),
+    )
     return jsonify({"ok": True, "result": result, "xp": xp})
 
 
@@ -6488,8 +6965,19 @@ def api_career_vuln_grade():
         )
         if bonus:
             xp_result = bonus
+    if result.get("passed"):
+        case = vuln_lab.get_case(case_id) or {}
+        memory_retention.enroll_lab_case_pass(
+            analyst_id, "vuln", case_id,
+            case.get("teach") or "",
+            case.get("title") or case_id,
+        )
     result["xp"] = xp_result
     result["next"] = vuln_lab.next_after(case_id)
+    if result.get("passed"):
+        result["retention_hint"] = (
+            "You will see a short cold-recall check on this case in tomorrow's Daily Review."
+        )
     return jsonify(result)
 
 
@@ -7024,6 +7512,7 @@ def career_spl_hub():
         quiz_best=quiz_best,
         sample_count=sample_count,
         auto_seed_msg=(auto or {}).get("message") if auto else None,
+        retention_due=memory_retention.track_due_count(analyst_id, "spl"),
         csrf_token=generate_csrf(),
     )
 
@@ -7150,6 +7639,10 @@ def career_spl_practice_check():
                 practice_total=len(items),
                 lesson_done=1,
             )
+    elif not result.get("correct") and lesson_id and practice_id:
+        memory_retention.enroll_track_practice_wrong(
+            analyst_id, "spl", lesson_id, practice_id,
+        )
     return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
 
 
@@ -7194,6 +7687,9 @@ def career_spl_quiz_submit():
         )
         if bonus:
             xp = bonus
+    memory_retention.enroll_track_quiz_result(
+        analyst_id, "spl", None, result.get("graded") or [], bool(result.get("passed")),
+    )
     return jsonify({"ok": True, "result": result, "xp": xp})
 
 
@@ -7281,6 +7777,7 @@ def career_kql_hub():
         total_lessons=len(kql_learn.LESSONS),
         quizzes_passed=quizzes_passed,
         total_quizzes=len(kql_learn.LESSONS),
+        retention_due=memory_retention.track_due_count(analyst_id, "kql"),
         csrf_token=generate_csrf(),
     )
 
@@ -7400,6 +7897,10 @@ def career_kql_practice_check():
                 analyst_id, XP_REWARDS["kql_practice"],
                 f"KQL practice: {practice_id}", "kql_learn",
             )
+    elif not result.get("correct"):
+        memory_retention.enroll_track_practice_wrong(
+            session["user_id"], "kql", lesson_id, practice_id,
+        )
     return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
 
 
@@ -7472,13 +7973,17 @@ def career_kql_quiz_submit(lesson_id):
             (analyst_id, lesson_id),
         )
         # COUNT includes this insert — only bonus on first pass (c == 1).
+        bonus = None
         if int((prior_pass or {}).get("c") or 0) <= 1:
             bonus = award_xp(
                 analyst_id, XP_REWARDS["kql_quiz_pass"],
                 f"KQL quiz passed: {lesson_id}", "kql_learn",
             )
-            if bonus:
-                xp = bonus
+        if bonus:
+            xp = bonus
+    memory_retention.enroll_track_quiz_result(
+        analyst_id, "kql", lesson_id, result.get("graded") or [], bool(result.get("passed")),
+    )
     return jsonify({"ok": True, "result": result, "xp": xp})
 
 
@@ -7513,6 +8018,120 @@ def _secplus_upsert_progress(analyst_id: int, lesson_id: str, **fields) -> None:
     )
 
 
+@app.route("/career/secplus/messer")
+@messer_layer_required
+def career_secplus_messer_hub():
+    """Private Messer practice exams (ENABLE_MESSER_LAYER)."""
+    analyst_id = session["user_id"]
+    exams = messer_layer.list_exam_ids()
+    attempts = db_fetchall(
+        f"SELECT exam_id, score_pct, passed, created_at FROM messer_exam_attempts "
+        f"WHERE analyst_id = {PH} ORDER BY created_at DESC LIMIT 20",
+        (analyst_id,),
+    )
+    return render_template(
+        "career_secplus_messer.html",
+        exams=exams,
+        attempts=attempts,
+        messer_root=str(messer_root()),
+        retention_due=memory_retention.track_due_count(analyst_id, "messer"),
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/secplus/messer-exam/<exam_id>")
+@messer_layer_required
+def career_secplus_messer_exam(exam_id: str):
+    """Timed-style Messer MCQ session (answers graded server-side)."""
+    items = messer_layer.items_for_exam(exam_id)
+    if not items:
+        abort(404)
+    public = [messer_layer.public_mcq(it) for it in items]
+    return render_template(
+        "career_secplus_messer_exam.html",
+        exam_id=exam_id,
+        questions=public,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/secplus/messer-exam/<exam_id>/submit", methods=["POST"])
+@messer_layer_required
+def career_secplus_messer_exam_submit(exam_id: str):
+    """Grade Messer exam and enqueue retention cards."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    answers = data.get("answers") or {}
+    result = messer_layer.grade_exam(exam_id, answers)
+    db_run(
+        f"INSERT INTO messer_exam_attempts (analyst_id, exam_id, score_pct, passed) "
+        f"VALUES ({PH},{PH},{PH},{PH})",
+        (analyst_id, exam_id, result["pct"], 1 if result["passed"] else 0),
+    )
+    memory_retention.enroll_messer_exam_result(
+        analyst_id, result.get("graded") or [], bool(result.get("passed")),
+    )
+    return jsonify({"ok": True, "result": result})
+
+
+@app.route("/career/secplus/messer/media/<path:rel_path>")
+@messer_layer_required
+def career_secplus_messer_media(rel_path: str):
+    """Stream local Messer audio/video (browsers block file:// from localhost)."""
+    root = messer_root().resolve()
+    rel = (rel_path or "").replace("\\", "/").lstrip("/")
+    if ".." in rel.split("/"):
+        abort(403)
+    target = (root / rel).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        abort(403)
+    if not target.is_file():
+        abort(404)
+    return stream_messer_file(target)
+
+
+@app.route("/career/secplus/messer/pbq/firewall")
+@messer_layer_required
+def career_secplus_messer_pbq_firewall():
+    """Sample Firewall Configuration Exercise (from private extract)."""
+    import json as _json
+    pbq_path = messer_work_dir() / "extracted" / "pbq_firewall_config.json"
+    pbq = {}
+    if pbq_path.is_file():
+        pbq = _json.loads(pbq_path.read_text(encoding="utf-8"))
+    return render_template(
+        "career_secplus_messer_pbq.html",
+        pbq=pbq,
+        csrf_token=generate_csrf(),
+    )
+
+
+@app.route("/career/secplus/messer/pbq/firewall/complete", methods=["POST"])
+@messer_layer_required
+def career_secplus_messer_pbq_firewall_complete():
+    """Self-grade PBQ complete → cold recall in Review."""
+    analyst_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    ok = bool(data.get("completed"))
+    if ok:
+        memory_retention.enroll_items(
+            analyst_id,
+            [{
+                "item_id": "messer:pbq:firewall_config",
+                "track": "messer",
+                "item_type": "flashcard",
+                "payload": {
+                    "front": "Firewall configuration exercise (Messer PBQ)",
+                    "back": "Recall rule order, zones, and deny-by-default mindset from your worksheet.",
+                },
+            }],
+            source="messer_pbq",
+        )
+    return jsonify({"ok": True})
+
+
 @app.route("/career/secplus")
 @analyst_required
 def career_secplus_hub():
@@ -7540,7 +8159,7 @@ def career_secplus_hub():
     lessons_view = []
     done_lessons = 0
     quizzes_passed = 0
-    for lesson in secplus_learn.LESSONS:
+    for lesson in secplus_learn.active_lessons():
         p = prog.get(lesson["id"]) or {}
         practice_need = len(secplus_learn.get_practice(lesson["id"]))
         ok = int(p.get("practice_ok") or 0)
@@ -7551,6 +8170,7 @@ def career_secplus_hub():
         quiz_passed = bool(qbest and qbest.get("passed"))
         if quiz_passed:
             quizzes_passed += 1
+        has_quiz = secplus_learn.lesson_has_quiz(lesson["id"])
         lessons_view.append({
             **lesson,
             "lesson_done": lesson_done,
@@ -7559,13 +8179,14 @@ def career_secplus_hub():
             "practice_done": practice_need > 0 and ok >= practice_need,
             "pbq_ok": bool(p.get("pbq_ok")),
             "has_pbq": bool(lesson.get("has_pbq")),
+            "has_quiz": has_quiz,
             "quiz_best": qbest,
-            "quiz_passed": quiz_passed,
+            "quiz_passed": quiz_passed if has_quiz else False,
             "is_continue": bool(continue_lesson and continue_lesson["id"] == lesson["id"]),
         })
 
     domains_view = []
-    for domain in secplus_learn.DOMAINS:
+    for domain in secplus_learn.active_domains():
         d_lessons = [L for L in lessons_view if L["domain_id"] == domain["id"]]
         d_passed = sum(1 for L in d_lessons if L["quiz_passed"])
         d_total = len(d_lessons)
@@ -7579,19 +8200,22 @@ def career_secplus_hub():
 
     return render_template(
         "career_secplus.html",
-        track_title=secplus_learn.TRACK_TITLE,
-        track_blurb=secplus_learn.TRACK_BLURB,
+        track_title=secplus_learn.active_track_title(),
+        track_blurb=secplus_learn.active_track_blurb(),
         domains=domains_view,
         lessons=lessons_view,
         continue_lesson=continue_lesson,
         done_lessons=done_lessons,
-        total_lessons=len(secplus_learn.LESSONS),
+        total_lessons=len(secplus_learn.active_lessons()),
         quizzes_passed=quizzes_passed,
-        total_quizzes=len(secplus_learn.LESSONS),
+        total_quizzes=len(secplus_learn.active_lessons()),
         domains_green=sum(1 for d in domains_view if d["quiz_passed"]),
-        total_domains=len(secplus_learn.DOMAINS),
+        total_domains=len(secplus_learn.active_domains()),
         pass_pct=secplus_learn.PASS_PCT,
         term_count=len(secplus_learn.all_key_terms()),
+        retention_due=memory_retention.track_due_count(analyst_id, "secplus"),
+        messer_enabled=messer_layer.messer_enabled(),
+        messer_due=memory_retention.track_due_count(analyst_id, "messer") if messer_layer.messer_enabled() else 0,
         csrf_token=generate_csrf(),
     )
 
@@ -7599,12 +8223,12 @@ def career_secplus_hub():
 @app.route("/career/secplus/terms")
 @analyst_required
 def career_secplus_terms():
-    """Phase 1 curated Sec+ term bank (browse only — SM-2 deferred)."""
+    """Sec+ term bank with optional enroll into shared Review deck (FSRS)."""
     terms = secplus_learn.all_key_terms()
     return render_template(
         "career_secplus_terms.html",
         terms=terms,
-        track_title=secplus_learn.TRACK_TITLE,
+        track_title=secplus_learn.active_track_title(),
         csrf_token=generate_csrf(),
     )
 
@@ -7664,6 +8288,10 @@ def career_secplus_lesson(lesson_id):
         continue_lesson=continue_lesson,
         soft_nudge=nudge,
         pass_pct=secplus_learn.PASS_PCT,
+        messer_companion=_messer_companion_payload(lesson_id)
+        if not lesson_id.startswith("ms_")
+        else None,
+        messer_root=str(messer_root()) if messer_layer.messer_enabled() else "",
         csrf_token=generate_csrf(),
     )
 
@@ -7702,8 +8330,6 @@ def career_secplus_practice(lesson_id):
     if not lesson:
         abort(404)
     items = secplus_learn.public_practice(lesson_id)
-    if not items:
-        abort(404)
     pbq = secplus_learn.public_pbq(lesson_id)
     analyst_id = session["user_id"]
     prog = db_fetchone(
@@ -7716,6 +8342,7 @@ def career_secplus_practice(lesson_id):
         items=items,
         pbq=pbq,
         progress=prog,
+        has_quiz=secplus_learn.lesson_has_quiz(lesson_id),
         csrf_token=generate_csrf(),
     )
 
@@ -7764,6 +8391,10 @@ def career_secplus_practice_check():
                 analyst_id, XP_REWARDS["secplus_practice"],
                 f"Sec+ practice: {practice_id}", "secplus_learn",
             )
+    elif not result.get("correct"):
+        memory_retention.enroll_secplus_practice_wrong(
+            session["user_id"], lesson_id, practice_id,
+        )
     return jsonify({**result, "xp": xp, "already_solved": result.get("correct") and not xp})
 
 
@@ -7811,9 +8442,14 @@ def career_secplus_quiz_page(lesson_id):
             abort(404)
         return redirect(f"/career/secplus/quiz/{lessons[0]['id']}")
     lesson = secplus_learn.get_lesson(lesson_id)
-    questions = secplus_learn.public_quiz(lesson_id)
-    if not lesson or not questions:
+    if not lesson:
         abort(404)
+    questions = secplus_learn.public_quiz(lesson_id)
+    if not questions:
+        return render_template(
+            "career_secplus_quiz_empty.html",
+            lesson=lesson,
+        )
     analyst_id = session["user_id"]
     quiz_best = db_fetchone(
         f"SELECT score_pct, passed, created_at FROM career_secplus_quiz "
@@ -7901,6 +8537,15 @@ def career_secplus_quiz_submit(lesson_id):
         nxt = secplus_learn.next_incomplete_lesson(passed_ids)
         if nxt:
             next_lesson = {"id": nxt["id"], "title": nxt["title"]}
+    memory_retention.enroll_secplus_quiz_result(
+        analyst_id,
+        lesson_id,
+        result.get("graded") or [],
+        bool(result.get("passed")),
+    )
+    if result.get("passed") and messer_layer.messer_enabled():
+        if os.environ.get("USE_MESSER_MINI", "").strip().lower() in ("1", "true", "yes"):
+            memory_retention.enroll_messer_lesson_supplement(analyst_id, lesson_id, limit=3)
     return jsonify({"ok": True, "result": result, "xp": xp, "next_lesson": next_lesson})
 
 
@@ -8764,6 +9409,11 @@ Return ONLY valid JSON, no other text:
         )
         xp_events.append(xp_bonus)
     session["scenario_xp"] = xp_events
+    memory_retention.enroll_training_scenario(
+        analyst_id,
+        attempt["scenario_name"],
+        scenario_label,
+    )
 
     # Clear events from session
     session.pop("training_events", None)
@@ -8816,6 +9466,7 @@ def training_result(attempt_id):
         player=player,
         scenario_xp=scenario_xp,
         cissp_debrief=cissp_debrief,
+        retention_scheduled=True,
     )
 
 
@@ -8852,6 +9503,16 @@ def _hq_sort_attention_tickets(tickets: list) -> list:
 
 
 # --- ROUTE 4b: Analyst Control Room ---
+@app.route("/api/control-room/secops-summary")
+@analyst_required
+def api_control_room_secops_summary():
+    """SecOps KPI strip + attention queue for Control Room."""
+    analyst_id = session.get("user_id")
+    return jsonify(
+        {"ok": True, **mission_control.secops_summary(db_fetchone, db_fetchall, analyst_id, ph=PH)}
+    )
+
+
 @app.route("/control-room")
 @dashboard_required
 def control_room():
@@ -13136,6 +13797,10 @@ def player_profile_page():
         domain_stats[d] = row if row else {"attempts": 0, "correct": 0}
 
     readiness_score = _cissp_readiness_score(analyst_id)
+    retention_due = memory_retention.due_count(analyst_id)
+    retention_backlog = memory_retention.due_backlog(analyst_id)
+    retention_week = memory_retention.reviews_completed_this_week(analyst_id)
+    retention_streak = memory_retention.retention_streak_days(analyst_id)
 
     return render_template(
         "player_profile.html",
@@ -13146,6 +13811,10 @@ def player_profile_page():
         cissp_domains=CISSP_DOMAINS,
         readiness_score=readiness_score,
         level_thresholds=LEVEL_THRESHOLDS,
+        retention_due=retention_due,
+        retention_backlog=retention_backlog,
+        retention_week=retention_week,
+        retention_streak=retention_streak,
     )
 
 
@@ -14222,6 +14891,62 @@ def api_siem_event_detail(event_id: int):
             "correlated_finding": finding,
             "observables": observables,
         }
+    )
+
+
+@app.route("/api/siem/detections")
+@dashboard_required
+def api_siem_detections():
+    """Active correlation findings (notables list)."""
+    return jsonify({"ok": True, "detections": siem_views.list_detections(db_fetchall, ph=PH)})
+
+
+@app.route("/api/siem/events/group")
+@dashboard_required
+def api_siem_events_group():
+    """Grouped Log Activity counts."""
+    group_by = request.args.get("group_by") or "event_type"
+    hours = min(request.args.get("hours", 24, type=int), 168)
+    return jsonify(
+        {
+            "ok": True,
+            "groups": siem_views.group_events(
+                db_fetchall, group_by=group_by, hours=hours, ph=PH
+            ),
+        }
+    )
+
+
+@app.route("/api/siem/saved-searches", methods=["GET", "POST"])
+@analyst_required
+def api_siem_saved_searches():
+    """Per-analyst saved SIEM filters."""
+    analyst_id = session.get("user_id")
+    if request.method == "GET":
+        return jsonify(
+            {
+                "ok": True,
+                "searches": siem_views.list_saved_searches(db_fetchall, analyst_id, ph=PH),
+            }
+        )
+    data = request.get_json(silent=True) or {}
+    import json as _json
+
+    qj = _json.dumps(data.get("query") or {})
+    return jsonify(
+        siem_views.create_saved_search(
+            db_run, db_fetchone, analyst_id, data.get("name") or "", qj, ph=PH
+        )
+    )
+
+
+@app.route("/api/siem/saved-searches/<int:search_id>", methods=["DELETE"])
+@analyst_required
+def api_siem_saved_search_delete(search_id: int):
+    """Delete owned saved search."""
+    analyst_id = session.get("user_id")
+    return jsonify(
+        siem_views.delete_saved_search(db_run, analyst_id, search_id, ph=PH)
     )
 
 
@@ -15432,6 +16157,8 @@ def compliance():
 # init_db() must run at module level so gunicorn (production) initialises
 # the database on import, not just when running via `python app.py`.
 init_db()
+memory_retention.configure(db_fetchone, db_fetchall, db_run, PH)
+messer_layer.configure(db_fetchone, db_fetchall, db_run, PH)
 
 # ── Start SIEM collectors ─────────────────────────────────────────────────────
 # Only start background threads in the main process (not Flask's reloader child).
@@ -15496,4 +16223,13 @@ if not os.environ.get("WERKZEUG_RUN_MAIN") or os.environ.get("WERKZEUG_RUN_MAIN"
     _threading.Thread(target=_keep_ollama_warm, daemon=True).start()
 
 if __name__ == "__main__":
-    app.run(debug=_debug)
+    # threaded=True: concurrent Range requests while audio/video plays in-browser.
+    # FLASK_BIND_HOST defaults to localhost. Set 0.0.0.0 for home-LAN laptop study
+    # (Private firewall only. See docs/PRIVATE_STUDY_SOURCES.md Home LAN study).
+    _bind_host = os.environ.get("FLASK_BIND_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    try:
+        _bind_port = int(os.environ.get("FLASK_PORT", "5000").strip() or "5000")
+    except ValueError:
+        _bind_port = 5000
+    print(f"[flask] Binding http://{_bind_host}:{_bind_port} (FLASK_BIND_HOST / FLASK_PORT)")
+    app.run(host=_bind_host, port=_bind_port, debug=_debug, threaded=True)

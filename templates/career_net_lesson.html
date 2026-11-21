@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Net-for-SOC · N{{ lesson.order }} — {{ lesson.title }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #34d399; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 820px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; margin: 0 0 6px; }
+    .meta { color: #667; font-size: 0.8em; margin-bottom: 10px; }
+    .path { font-size: 0.75em; color: #556; margin-bottom: 16px; }
+    .path b { color: #34d399; }
+    .nudge {
+      background: #0f1923; border: 1px solid #34d39955; border-radius: 6px;
+      padding: 10px 12px; margin-bottom: 14px; font-size: 0.8em; color: #8aa;
+    }
+    .nudge a { color: #34d399; }
+    .section {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px 18px; margin-bottom: 12px;
+    }
+    .section h2 { margin: 0 0 10px; font-size: 0.95em; color: #34d399; }
+    .body-pre { white-space: pre-wrap; font-size: 0.82em; color: #9ab; line-height: 1.55; margin: 0; }
+    .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .keys code {
+      background: #0a0e14; border: 1px solid #1e3045; color: #00ff88;
+      padding: 4px 8px; border-radius: 4px; font-size: 0.75em;
+    }
+    .job { border-color: #34d39955; }
+    .job a { color: #34d399; text-decoration: none; font-size: 0.82em; display: block; padding: 4px 0; }
+    .job a:hover { text-decoration: underline; }
+    .why { font-size: 0.75em; color: #667; }
+    .btn {
+      padding: 10px 16px; border-radius: 6px; border: 1px solid #34d39966;
+      background: #34d39922; color: #34d399; font-weight: 800; cursor: pointer;
+      font-family: inherit; font-size: 0.85em; text-decoration: none; display: inline-block;
+    }
+    .btn-dim { background: #131d28; border-color: #1e3045; color: #9ab; margin-left: 8px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .msg { margin-top: 10px; font-size: 0.82em; color: #00ff88; display: none; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Net-for-SOC · N{{ lesson.order }} Show me</span>
+    <div>
+      {% include "_navmenu.html" %}
+      <a href="/career/net">← Lab hub</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ lesson.title }}</h1>
+    <div class="meta">~{{ lesson.minutes }} min · {{ lesson.goal }}</div>
+    <div class="path"><b>Show me</b> → Help me → Prove it → signal drills</div>
+
+    {% if soft_nudge and continue_lesson %}
+    <div class="nudge">
+      Hybrid unlock: Continue recommends
+      <a href="/career/net/lesson/{{ continue_lesson.id }}">{{ continue_lesson.title }}</a>
+      after you Prove-pass (≥{{ pass_pct }}%). You can still study this lesson now.
+    </div>
+    {% endif %}
+
+    {% for s in lesson.sections %}
+    <div class="section">
+      <h2>{{ s.heading }}</h2>
+      <div class="body-pre">{{ s.body }}</div>
+    </div>
+    {% endfor %}
+
+    <div class="section">
+      <h2>Key terms</h2>
+      <div class="keys">
+        {% for k in lesson.key_terms %}
+        <code>{{ k }}</code>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if lesson.job_ctas %}
+    <div class="section job">
+      <h2>Do the job (hub)</h2>
+      {% for c in lesson.job_ctas %}
+      <a href="{{ c.href }}">→ {{ c.label }} <span class="why">— {{ c.why }}</span></a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="margin-top:16px;">
+      <button class="btn" id="btn-done" type="button" onclick="markDone()"
+        {% if progress and progress.lesson_done %}disabled{% endif %}>
+        {% if progress and progress.lesson_done %}Show me marked{% else %}Mark Show me done{% endif %}
+      </button>
+      <a class="btn btn-dim" href="/career/net/practice/{{ lesson.id }}">Help me →</a>
+      <a class="btn btn-dim" href="/career/net/quiz/{{ lesson.id }}">Prove it →</a>
+      <div class="msg" id="msg"></div>
+    </div>
+  </div>
+{% set tutor_track = 'net' %}
+{% set tutor_lesson_id = lesson.id %}
+{% set tutor_context = {'lab': 'net', 'title': lesson.title, 'goal': lesson.goal, 'teach': lesson.sections[0].body[:1200] if lesson.sections else ''} %}
+{% include '_career_tutor.html' %}
+{% include '_jargon_tooltips.html' %}
+<script src="/static/game.js"></script>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+function markDone() {
+  var btn = document.getElementById('btn-done');
+  var msg = document.getElementById('msg');
+  btn.disabled = true;
+  fetch('/career/net/lesson/{{ lesson.id }}/complete', {
+    method: 'POST',
+    headers: {'X-CSRFToken': _csrf, 'Content-Type': 'application/json'},
+    body: '{}'
+  }).then(function(r){ return r.json(); }).then(function(d){
+    msg.style.display = 'block';
+    msg.textContent = d.already ? 'Already marked.' : 'Show me complete.';
+    btn.textContent = 'Show me marked';
+    if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+  }).catch(function(){
+    btn.disabled = false;
+    msg.style.display = 'block';
+    msg.style.color = '#ff8888';
+    msg.textContent = 'Request failed';
+  });
+}
+</script>
+</body>
+</html>

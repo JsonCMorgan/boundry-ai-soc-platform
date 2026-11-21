@@ -14,21 +14,34 @@ def test_index_ok(client):
     assert b"Boundry.AI" in resp.data
 
 
-def test_search_parameterized_no_error(logged_in_client):
+def test_search_parameterized_no_error(analyst_client):
     """Search with a normal substring should return 200 (parameterized query)."""
-    resp = logged_in_client.get("/search?q=alice")
+    resp = analyst_client.get("/search?q=alice")
     assert resp.status_code == 200
     assert b"alice" in resp.data.lower()
 
 
-def test_greeting_escapes_script_tag(logged_in_client):
+def test_search_sql_injection_payload_is_data(analyst_client):
+    """A classic ' OR '1'='1 payload must be treated as text, not change the query (A03)."""
+    resp = analyst_client.get("/search?q=" + quote("' OR '1'='1"))
+    assert resp.status_code == 200
+    assert b"bob" not in resp.data.lower()
+
+
+def test_client_role_cannot_reach_ops_routes(logged_in_client):
+    """Client-portal accounts get a plain 404 on ops/training routes (M3 route guard)."""
+    assert logged_in_client.get("/search?q=alice").status_code == 404
+    assert logged_in_client.get("/control-room").status_code == 404
+
+
+def test_greeting_escapes_script_tag(analyst_client):
     """
     Reflected name must not render raw HTML — script should be escaped in the body.
 
     If we removed default escaping or added |safe in the template, this test would fail.
     """
     payload = "<script>alert(1)</script>"
-    resp = logged_in_client.get("/greeting?name=" + quote(payload))
+    resp = analyst_client.get("/greeting?name=" + quote(payload))
     assert resp.status_code == 200
     assert b"<script>" not in resp.data
     assert b"&lt;script&gt;" in resp.data

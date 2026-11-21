@@ -1,0 +1,2 @@
+# Reviewed false positives (gitleaks generic-api-key on training scenario IDs in SQL text).
+7d0d52412a73cefa01611a5a315128355fa0de85:app.py:generic-api-key:2400

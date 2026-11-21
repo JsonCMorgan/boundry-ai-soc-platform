@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ scenario.title }} — Automation Policy</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"Cascadia Code","Fira Code",Consolas,monospace; background:#0a0e14; color:#cdd6e0; }
+    .topbar { background:#0f1923; border-bottom:1px solid #1e3045; padding:14px 28px; display:flex; justify-content:space-between; }
+    .brand { color:#f472b6; font-weight:800; }
+    .topbar a { color:#7a9ab0; text-decoration:none; margin-left:14px; font-size:0.85em; }
+    .main { max-width:860px; margin:0 auto; padding:28px 20px 80px; }
+    h1 { color:#fff; font-size:1.2em; }
+    .card { background:#0f1923; border:1px solid #1e3045; border-radius:8px; padding:14px; margin:12px 0; font-size:0.85em; line-height:1.5; }
+    table { width:100%; border-collapse:collapse; font-size:0.8em; }
+    th, td { border-bottom:1px solid #1e3045; padding:8px 6px; text-align:left; }
+    select { background:#0a0e14; border:1px solid #1e3045; color:#cdd6e0; border-radius:4px; padding:6px; font-family:inherit; }
+    label.opt { display:block; margin:8px 0; cursor:pointer; }
+    .btn { margin-top:10px; padding:9px 14px; border-radius:6px; border:1px solid #f472b666; background:#f472b622; color:#f472b6; font-weight:700; cursor:pointer; font-family:inherit; }
+    .result { display:none; margin-top:16px; background:#131d28; border:1px solid #1e3045; border-radius:8px; padding:14px; }
+    .result.show { display:block; }
+    .ok { color:#00ff88; } .bad { color:#ff8c00; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Automation Policy · G22</span>
+    <div><a href="/career/automation-policy">← Scenarios</a><a href="/career">Career</a></div>
+  </div>
+  <div class="main">
+    <div style="font-size:0.75em;color:#f472b6;">{{ scenario.difficulty }} · {{ scenario.kind }}</div>
+    <h1>{{ scenario.title }}</h1>
+    {% if scenario.kind == 'set_policy' %}
+    <div class="card">{{ scenario.brief }}</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Client</th><th>Enrich</th><th>Contain</th></tr></thead>
+        <tbody>
+          {% for client in scenario.clients %}
+          <tr>
+            <td>{{ client }}</td>
+            <td>
+              <select id="enrich-{{ client }}">
+                {% for m in scenario.modes_enrich %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+              </select>
+            </td>
+            <td>
+              <select id="contain-{{ client }}">
+                {% for m in scenario.modes_contain %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="btn" onclick="gradeSet()">Grade baseline</button>
+    </div>
+    {% else %}
+    <div class="card">{{ scenario.story }}</div>
+    <div class="card">
+      {% for c in scenario.choices %}
+      <label class="opt"><input type="radio" name="choice" value="{{ c.id }}"> {{ c.label }}</label>
+      {% endfor %}
+      <button type="button" class="btn" onclick="gradeApply()">Grade</button>
+    </div>
+    {% endif %}
+    <div class="result" id="result"></div>
+  </div>
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]')||{}).content || '';
+  var SID = {{ scenario.id | tojson }};
+  var CLIENTS = {{ scenario.clients | tojson }};
+  function show(d) {
+    BoundryRationale.renderResult(document.getElementById('result'), d);
+  }
+  function gradeSet() {
+    var policies = {};
+    CLIENTS.forEach(function(c){
+      policies[c] = {
+        enrich: document.getElementById('enrich-'+c).value,
+        contain: document.getElementById('contain-'+c).value
+      };
+    });
+    fetch('/api/career/policy/grade', {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body: JSON.stringify({ scenario_id: SID, policies: policies })
+    }).then(function(r){return r.json();}).then(show);
+  }
+  function gradeApply() {
+    var el = document.querySelector('input[name="choice"]:checked');
+    fetch('/api/career/policy/grade', {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body: JSON.stringify({ scenario_id: SID, choice: el ? el.value : '' })
+    }).then(function(r){return r.json();}).then(show);
+  }
+  </script>
+  {% include '_career_rationale.html' %}
+</body>
+</html>

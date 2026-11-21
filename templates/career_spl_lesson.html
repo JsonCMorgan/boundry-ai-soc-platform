@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>SPL Lesson — {{ lesson.title }}</title>
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #00d4ff; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 820px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { color: #fff; margin: 0 0 6px; }
+    .meta { color: #667; font-size: 0.8em; margin-bottom: 18px; }
+    .section {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px 18px; margin-bottom: 12px;
+    }
+    .section h2 { margin: 0 0 10px; font-size: 0.95em; color: #00d4ff; }
+    .section pre, .body-pre {
+      white-space: pre-wrap; font-size: 0.82em; color: #9ab; line-height: 1.55; margin: 0;
+    }
+    .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .keys code {
+      background: #0a0e14; border: 1px solid #1e3045; color: #00ff88;
+      padding: 4px 8px; border-radius: 4px; font-size: 0.75em;
+    }
+    .try {
+      border-color: #00d4ff55; background: #0f1923;
+    }
+    .ref-label {
+      font-size: 0.72em; color: #7a9ab0; text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .ref-query {
+      display: block; background: #0a0e14; border: 1px dashed #00d4ff55; padding: 10px 12px;
+      border-radius: 6px; color: #00d4ff; margin: 0 0 12px; font-size: 0.85em;
+      user-select: none; /* discourage copy-paste; look/type instead */
+    }
+    .type-box {
+      width: 100%; min-height: 64px; background: #0a0e14; border: 1px solid #1e3045;
+      color: #00d4ff; border-radius: 6px; padding: 10px 12px; font-family: inherit;
+      font-size: 0.85em; resize: vertical;
+    }
+    .type-box:focus { outline: none; border-color: #00d4ff88; }
+    .fb { margin-top: 10px; font-size: 0.82em; display: none; line-height: 1.45; }
+    .fb.ok { display: block; color: #00ff88; }
+    .fb.bad { display: block; color: #ff8888; }
+    .btn {
+      padding: 10px 16px; border-radius: 6px; border: 1px solid #00d4ff66;
+      background: #00d4ff22; color: #00d4ff; font-weight: 800; cursor: pointer;
+      font-family: inherit; font-size: 0.85em; text-decoration: none; display: inline-block;
+    }
+    .btn-dim { background: #131d28; border-color: #1e3045; color: #9ab; margin-left: 8px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .msg { margin-top: 10px; font-size: 0.82em; color: #00ff88; display: none; }
+    .why { font-size: 0.8em; color: #8aa; margin: 8px 0 12px; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">SPL · L{{ lesson.order }}</span>
+    <div>
+      <a href="/career/spl">← Track hub</a>
+      <a href="/siem/query">Live query</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ lesson.title }}</h1>
+    <div class="meta">~{{ lesson.minutes }} min · {{ lesson.goal }}</div>
+
+    {% for s in lesson.sections %}
+    <div class="section">
+      <h2>{{ s.heading }}</h2>
+      <div class="body-pre">{{ s.body }}</div>
+    </div>
+    {% endfor %}
+
+    <div class="section">
+      <h2>Commands to remember</h2>
+      <div class="keys">
+        {% for k in lesson.key_commands %}
+        <code>{{ k }}</code>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="section try">
+      <h2>Type it yourself (muscle memory)</h2>
+      <p class="why">
+        Real SPL work is typed into a search box — same as Splunk. Look at the target query,
+        then type it below. No autofill.
+      </p>
+      <div class="ref-label">Target query — look, don’t paste</div>
+      <code class="ref-query" id="target-q">{{ lesson.try_query }}</code>
+      <div class="why">{{ lesson.try_why }}</div>
+      <div class="ref-label">Your query</div>
+      {{ writing_coach_from_registry('spl_syntax') }}
+      {% set _sq = get_coach('spl_syntax') %}
+      <textarea class="type-box" id="typed-q" aria-describedby="coach-spl_syntax" data-writing-coach="spl_syntax"
+        placeholder="{{ (_sq.placeholder_example if _sq else '') }}" spellcheck="false" autocomplete="off"></textarea>
+      <div style="margin-top:12px;">
+        <button class="btn" type="button" onclick="checkTyped()">Check my typing</button>
+        <button class="btn btn-dim" type="button" id="btn-hide" onclick="toggleRef()">Hide target</button>
+        <a class="btn btn-dim" id="btn-live" href="/siem/query?ref={{ lesson.try_query | urlencode }}" style="pointer-events:none;opacity:0.4;">Run in live SIEM →</a>
+      </div>
+      <div class="fb" id="type-fb"></div>
+      <p class="why" style="margin-top:12px;">
+        Empty results? Load the sample pack on the
+        <a href="/career/spl" style="color:#00d4ff;">SPL Learn hub</a>
+        first (⚡ Load sample SIEM events).
+      </p>
+    </div>
+
+    <div style="margin-top:18px;">
+      <button class="btn" id="btn-done" onclick="markDone()">Mark lesson complete</button>
+      <a class="btn btn-dim" href="/career/spl/practice/{{ lesson.id }}">Practice this lesson →</a>
+      <div class="msg" id="msg">Saved — XP awarded if first time.</div>
+    </div>
+  </div>
+<script src="/static/game.js"></script>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+var TARGET = {{ lesson.try_query | tojson }};
+
+function norm(q) {
+  var s = String(q || '').trim().toLowerCase();
+  s = s.replace(/\s+/g, ' ');
+  s = s.replace(/\s*\|\s*/g, ' | ');
+  s = s.replace(/\s*=\s*/g, '=');
+  if (s.indexOf('search ') === 0) s = s.slice(7).trim();
+  return s;
+}
+function filtersMatch(a, b) {
+  // Allow reordering of filters before first pipe
+  var ap = a.split(' | ');
+  var bp = b.split(' | ');
+  if (ap.length !== bp.length) return false;
+  var a0 = ap[0].split(' ').sort().join(' ');
+  var b0 = bp[0].split(' ').sort().join(' ');
+  if (a0 !== b0) return false;
+  for (var i = 1; i < ap.length; i++) if (ap[i] !== bp[i]) return false;
+  return true;
+}
+function checkTyped() {
+  var typed = document.getElementById('typed-q').value;
+  var fb = document.getElementById('type-fb');
+  var ok = filtersMatch(norm(typed), norm(TARGET)) || norm(typed) === norm(TARGET);
+  if (ok) {
+    fb.className = 'fb ok';
+    fb.textContent = '✓ CORRECT — muscle memory check passed. You can run it live now.';
+    var live = document.getElementById('btn-live');
+    live.style.pointerEvents = '';
+    live.style.opacity = '1';
+  } else {
+    fb.className = 'fb bad';
+    fb.textContent = '✗ WRONG — compare pipes, field=value spelling, and head/stats order.';
+  }
+}
+function toggleRef() {
+  var el = document.getElementById('target-q');
+  var btn = document.getElementById('btn-hide');
+  if (el.style.visibility === 'hidden') {
+    el.style.visibility = '';
+    el.style.height = '';
+    el.style.overflow = '';
+    el.style.marginBottom = '';
+    btn.textContent = 'Hide target';
+  } else {
+    el.style.visibility = 'hidden';
+    el.style.height = '0';
+    el.style.overflow = 'hidden';
+    el.style.marginBottom = '0';
+    btn.textContent = 'Show target';
+  }
+}
+function markDone() {
+  fetch('/career/spl/lesson/{{ lesson.id }}/complete', {
+    method: 'POST',
+    headers: {'X-CSRFToken': _csrf, 'Content-Type': 'application/json'},
+    body: '{}'
+  }).then(function(r){ return r.json(); }).then(function(d){
+    document.getElementById('msg').style.display = 'block';
+    if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+    if (d.already) document.getElementById('msg').textContent = 'Already marked complete.';
+  });
+}
+</script>
+{% set tutor_track = 'spl' %}
+{% set tutor_lesson_id = lesson.id %}
+{% include '_career_tutor.html' %}
+</body>
+</html>

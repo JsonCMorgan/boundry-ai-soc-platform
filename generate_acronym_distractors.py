@@ -2,9 +2,10 @@
 One-time (re-runnable) generator for acronym quiz distractors.
 
 For every acronym in security_acronyms.py, asks the local LLM (Ollama) to invent
-3 plausible-but-WRONG expansions where each word starts with the acronym's
-letters — so quiz options can't be solved by letter-matching. Results are cached
-to acronym_distractors.json, which the app loads at import time.
+3 plausible-but-WRONG expansions that mirror the real answer's word structure.
+That keeps entries like C2 from becoming obvious because only the correct answer
+has the right "Command and Control" shape. Results are cached to
+acronym_distractors.json, which the app loads at import time.
 
 Run:   python generate_acronym_distractors.py
 Then:  commit acronym_distractors.json so Railway uses it too.
@@ -15,6 +16,7 @@ distractors unless you pass --all.
 """
 import os, re, sys, json, time
 import urllib.request
+from typing import Any, Dict, List, Optional
 
 import security_acronyms
 
@@ -37,27 +39,51 @@ def _ollama(prompt, timeout=120):
         return json.loads(r.read().decode()).get("response", "")
 
 
-def _letters_ok(phrase, abbr):
-    """Best-effort: each word's initial should follow the acronym's letters."""
-    letters = [c for c in abbr if c.isalnum()]
-    words = re.findall(r"[A-Za-z0-9]+", phrase)
-    # allow small joiner words (and, of, the) to be skipped
-    words = [w for w in words if w.lower() not in ("and", "of", "the", "for", "a")]
-    if len(words) < max(2, len(letters) - 1):
+JOINERS = {"and", "of", "the", "for", "a", "to", "in", "on", "or"}
+
+
+def _content_tokens(phrase: str) -> List[Dict[str, Any]]:
+    """Return cleaned phrase tokens with joiners marked."""
+    tokens = []
+    for raw in phrase.split():
+        clean = re.sub(r"[^A-Za-z]", "", raw)
+        if clean:
+            tokens.append({"clean": clean, "joiner": clean.lower() in JOINERS})
+    return tokens
+
+
+def _shape_ok(phrase: str, full: str) -> bool:
+    """Check that a fake mirrors the real answer's word count and initials."""
+    fake_tokens = _content_tokens(phrase)
+    real_tokens = _content_tokens(full)
+    if len(fake_tokens) != len(real_tokens):
         return False
-    initials = "".join(w[0].upper() for w in words)
-    target = "".join(letters).upper()
-    # loose match: initials should contain the target letters in order
-    return target[:3] in initials  # first few letters line up
+    for fake, real in zip(fake_tokens, real_tokens):
+        if fake["joiner"] != real["joiner"]:
+            return False
+        if real["joiner"] and fake["clean"].lower() != real["clean"].lower():
+            return False
+        if not real["joiner"] and fake["clean"][0].upper() != real["clean"][0].upper():
+            return False
+    return phrase.strip().lower() != full.strip().lower()
 
 
-def gen_for(abbr, full, definition):
+def gen_for(abbr: str, full: str, definition: str) -> Optional[List[str]]:
+    real_tokens = _content_tokens(full)
+    shape = " ".join(
+        token["clean"].lower() if token["joiner"] else token["clean"][0].upper() + "..."
+        for token in real_tokens
+    )
     prompt = (
         f"You write distractor answers for a cybersecurity acronym quiz.\n"
         f"Acronym: {abbr}\nReal meaning: {full}\n"
+        f"Definition: {definition}\n"
+        f"Required answer shape: {shape}\n"
         f"Invent exactly 3 FAKE expansions of '{abbr}' that:\n"
         f"- are NOT the real meaning\n"
-        f"- have each word start with the corresponding letter of '{abbr}'\n"
+        f"- have the same number of words as the real meaning\n"
+        f"- keep connector words in the exact same positions, such as and/of/the\n"
+        f"- make every non-connector word start with the same letter as the real meaning's word in that position\n"
         f"- sound like plausible real security/IT terms\n"
         f"Return ONLY a JSON array of 3 strings, nothing else."
     )
@@ -71,7 +97,7 @@ def gen_for(abbr, full, definition):
             out = []
             for s in arr:
                 s = str(s).strip()
-                if s and s.lower() != full.lower() and s not in out and _letters_ok(s, abbr):
+                if s and s.lower() != full.lower() and s not in out and _shape_ok(s, full):
                     out.append(s)
             if len(out) >= 3:
                 return out[:3]
@@ -88,7 +114,8 @@ def main():
     done = skipped = failed = 0
     for e in security_acronyms.ACRONYMS:
         abbr = e["abbr"]
-        if not REGEN_ALL and abbr in cache and len(cache[abbr]) == 3:
+        cached = cache.get(abbr, [])
+        if not REGEN_ALL and len(cached) == 3 and all(_shape_ok(str(s), e["full"]) for s in cached):
             skipped += 1
             continue
         print(f"Generating {abbr} …")

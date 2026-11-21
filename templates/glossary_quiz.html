@@ -44,6 +44,25 @@
         .feedback.no  { background: #1a0a0a; border-left: 4px solid #ff4444; }
         .feedback strong { color: #fff; }
         .feedback .def { color: #999; margin-top: 6px; }
+        .feedback .why {
+            margin-top: 10px; padding: 10px 12px; border-radius: 6px;
+            background: #0a0e14; border: 1px solid #1e2235;
+            color: #cdd6e0; font-size: 0.92em; line-height: 1.55;
+        }
+        .feedback .why-label {
+            display: block; font-size: 0.72em; text-transform: uppercase;
+            letter-spacing: 0.06em; color: #9944ee; font-weight: 700; margin-bottom: 4px;
+        }
+        .feedback .analogy {
+            margin-top: 8px; padding: 10px 12px; border-radius: 6px;
+            background: #12100a; border: 1px solid #3a3020;
+            color: #e8dcc8; font-size: 0.92em; line-height: 1.55; font-style: italic;
+        }
+        .feedback .analogy-label {
+            display: block; font-size: 0.72em; text-transform: uppercase;
+            letter-spacing: 0.06em; color: #ffcc00; font-weight: 700; margin-bottom: 4px;
+            font-style: normal;
+        }
 
         .btn-next { margin-top: 16px; background: #9944ee; color: #fff; border: none; padding: 11px 24px;
             border-radius: 6px; font-size: 0.9em; font-weight: 700; cursor: pointer; display: none; }
@@ -148,13 +167,35 @@
     function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
     // Word bank (by first letter) from all real expansions — fallback distractors.
+    // Joiner words are preserved from the real answer so options share the same shape.
+    var JOINERS = { 'and':1, 'of':1, 'the':1, 'for':1, 'a':1, 'to':1, 'in':1, 'on':1, 'or':1 };
     var WORDBANK = {};
     ACRONYMS.forEach(function(a) {
         a.full.split(/\s+/).forEach(function(w) {
-            var c = w[0] ? w[0].toUpperCase() : '';
-            if (/[A-Z]/.test(c)) { (WORDBANK[c] = WORDBANK[c] || []); if (WORDBANK[c].indexOf(w) < 0) WORDBANK[c].push(w); }
+            var clean = w.replace(/[^A-Za-z]/g, '');
+            if (!clean || JOINERS[clean.toLowerCase()]) return;
+            var display = w.replace(/[(),.;:]/g, '');
+            var c = clean[0].toUpperCase();
+            (WORDBANK[c] = WORDBANK[c] || []); if (WORDBANK[c].indexOf(display) < 0) WORDBANK[c].push(display);
         });
     });
+    function contentTokens(phrase) {
+        return phrase.split(/\s+/).map(function(raw) {
+            var clean = raw.replace(/[^A-Za-z]/g, '');
+            return { raw: raw, clean: clean, isJoiner: clean && JOINERS[clean.toLowerCase()] };
+        }).filter(function(t) { return t.clean; });
+    }
+    function sameAnswerShape(candidate, answer) {
+        var candTokens = contentTokens(candidate);
+        var realTokens = contentTokens(answer.full);
+        if (candTokens.length !== realTokens.length) return false;
+        for (var i = 0; i < realTokens.length; i++) {
+            if (candTokens[i].isJoiner !== realTokens[i].isJoiner) return false;
+            if (realTokens[i].isJoiner && candTokens[i].clean.toLowerCase() !== realTokens[i].clean.toLowerCase()) return false;
+            if (!realTokens[i].isJoiner && candTokens[i].clean[0].toUpperCase() !== realTokens[i].clean[0].toUpperCase()) return false;
+        }
+        return candidate.toLowerCase() !== answer.full.toLowerCase();
+    }
 
     // Adaptive weighting: unseen or frequently-missed acronyms show more often.
     function weightFor(a) {
@@ -173,22 +214,29 @@
         return weighted[Math.floor(Math.random() * weighted.length)];
     }
 
-    function fakeExpansion(abbr) {
-        return abbr.replace(/[^A-Za-z]/g, '').split('').map(function(L) {
-            var bank = WORDBANK[L.toUpperCase()];
-            return (bank && bank.length) ? bank[Math.floor(Math.random() * bank.length)] : L;
+    function fakeExpansion(answer) {
+        return contentTokens(answer.full).map(function(token) {
+            if (token.isJoiner) return token.raw.toLowerCase();
+            var initial = token.clean[0].toUpperCase();
+            var bank = (WORDBANK[initial] || []).filter(function(w) {
+                return w.replace(/[^A-Za-z]/g, '').toLowerCase() !== token.clean.toLowerCase();
+            });
+            var pick = (bank && bank.length) ? bank[Math.floor(Math.random() * bank.length)] : token.clean;
+            return pick;
         }).join(' ');
     }
     function expandDistractors(answer) {
-        if (answer.distractors && answer.distractors.length >= 3) {
-            return shuffle(answer.distractors.slice()).slice(0, 3);
-        }
         var out = [], guard = 0;
-        while (out.length < 3 && guard++ < 50) {
-            var f = fakeExpansion(answer.abbr);
-            if (f !== answer.full && out.indexOf(f) < 0) out.push(f);
+        if (answer.distractors && answer.distractors.length >= 3) {
+            shuffle(answer.distractors.slice()).forEach(function(d) {
+                if (out.length < 3 && sameAnswerShape(d, answer) && out.indexOf(d) < 0) out.push(d);
+            });
         }
-        while (out.length < 3) out.push(fakeExpansion(answer.abbr));
+        while (out.length < 3 && guard++ < 50) {
+            var f = fakeExpansion(answer);
+            if (sameAnswerShape(f, answer) && out.indexOf(f) < 0) out.push(f);
+        }
+        while (out.length < 3) out.push(fakeExpansion(answer));
         return out;
     }
     function otherAbbrs(answer, n) {
@@ -273,7 +321,13 @@
         fb.className = 'feedback show ' + (correct ? 'ok' : 'no');
         fb.innerHTML = (correct ? '✓ Correct! ' : '✗ Not quite. ') +
             '<strong>' + esc(current.answer.abbr) + '</strong> = ' + esc(current.answer.full) +
-            '<div class="def">' + esc(current.answer.def) + '</div>';
+            '<div class="def">' + esc(current.answer.def) + '</div>' +
+            (current.answer.why
+                ? '<div class="why"><span class="why-label">On the job</span>' + esc(current.answer.why) + '</div>'
+                : '') +
+            (current.answer.analogy
+                ? '<div class="analogy"><span class="analogy-label">Think of it like…</span>' + esc(current.answer.analogy) + '</div>'
+                : '');
         var nb = document.getElementById('btn-next');
         nb.textContent = (SESSION.num >= QUIZ_LEN) ? 'See Results →' : 'Next Question →';
         nb.className = 'btn-next show';
@@ -332,7 +386,14 @@
                 mhtml += '<div style="padding:9px 0;border-bottom:1px solid #14171f;font-size:0.86em;">'
                       + '<b style="color:#bb77ff;font-family:monospace;">' + esc(m.abbr) + '</b> — '
                       + '<span style="color:#ddd;">' + esc(m.full) + '</span>'
-                      + '<div style="color:#888;margin-top:2px;">' + esc(m.def) + '</div></div>';
+                      + '<div style="color:#888;margin-top:2px;">' + esc(m.def) + '</div>'
+                      + (m.why ? '<div style="color:#cdd6e0;margin-top:6px;padding:8px 10px;background:#0a0e14;border:1px solid #1e2235;border-radius:5px;line-height:1.5;">'
+                        + '<span style="color:#9944ee;font-size:0.75em;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">On the job</span><br>'
+                        + esc(m.why) + '</div>' : '')
+                      + (m.analogy ? '<div style="color:#e8dcc8;margin-top:6px;padding:8px 10px;background:#12100a;border:1px solid #3a3020;border-radius:5px;line-height:1.5;font-style:italic;">'
+                        + '<span style="color:#ffcc00;font-size:0.75em;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-style:normal;">Think of it like…</span><br>'
+                        + esc(m.analogy) + '</div>' : '')
+                      + '</div>';
             });
             mhtml += '</div>';
         } else {

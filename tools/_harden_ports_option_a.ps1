@@ -1,8 +1,34 @@
-# Boundry Option A port harden (run elevated once)
+# Boundry Option A port harden (Administrator required)
 # - Disable LanmanServer (stops SMB 445 / NetBIOS 139 listening)
-# - Ensure inbound Block rules: 135, 139, 137, 138, 445, 8080
+# - Ensure inbound Block rules: 135, 139, 137, 138, 445, 8080, 11434, 5000
 # - Restart Open WebUI bound to 127.0.0.1 only
+#
+# Non-admin shells fail with "Access is denied" on Set-NetFirewallRule.
+# Use: tools\run_harden_ports_elevated.bat  (UAC prompt, then runs this script)
+param(
+    [switch]$StayOpen
+)
+
 $ErrorActionPreference = 'Stop'
+
+$isAdmin = (
+    [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Host ''
+    Write-Host 'ERROR: This script must run as Administrator (firewall + LanmanServer).'
+    Write-Host ''
+    Write-Host 'From repo root, double-click or run:'
+    Write-Host '  C:\Dev\MSSP\tools\run_harden_ports_elevated.bat'
+    Write-Host ''
+    Write-Host 'Or: Start PowerShell as Administrator, then:'
+    Write-Host '  Set-ExecutionPolicy Bypass -Scope Process -Force'
+    Write-Host '  & C:\Dev\MSSP\tools\_harden_ports_option_a.ps1 -StayOpen'
+    Write-Host ''
+    exit 5
+}
+
 $log = @()
 
 function Ensure-BlockRule {
@@ -24,6 +50,8 @@ Ensure-BlockRule 'BoundryAI Block NetBIOS Session 139' 'TCP' '139'
 Ensure-BlockRule 'BoundryAI Block NetBIOS Name 137' 'UDP' '137'
 Ensure-BlockRule 'BoundryAI Block NetBIOS Datagram 138' 'UDP' '138'
 Ensure-BlockRule 'BoundryAI Block Open WebUI 8080' 'TCP' '8080'
+Ensure-BlockRule 'BoundryAI Block Ollama 11434' 'TCP' '11434'
+Ensure-BlockRule 'BoundryAI Block Flask 5000' 'TCP' '5000'
 
 # Disable Server service (file/printer sharing from this PC)
 Stop-Service LanmanServer -Force
@@ -59,3 +87,8 @@ $outPath = 'C:\Dev\MSSP\tools\_harden_ports_option_a_result.txt'
 $log | Set-Content -Path $outPath -Encoding UTF8
 Write-Host ($log -join "`n")
 Write-Host "`nRESULT_FILE=$outPath"
+
+if ($StayOpen) {
+    Write-Host ''
+    Read-Host 'Press Enter to close this Administrator window'
+}

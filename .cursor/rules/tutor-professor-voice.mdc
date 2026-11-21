@@ -39,8 +39,29 @@ After you define a term once, reuse the short form. Prefer plain words when poss
 8. **How to answer** — numbered steps for exam day
 9. **Common trap** — tech near-miss wrong answer in plain English
 10. **Remember** — one reusable line
+11. **Teach it back** — listener prompt, 60-second explain-aloud script, define three terms, one desk line, one exam trap (Sec+ Show-me UI + `teach_back` in build)
 
 Help / quiz / PBQ explains: `Correct. <why>. Common trap: <near-miss>. Remember: <hook>.`
+
+## Answering Jason's questions in chat
+
+When Jason asks a concept question (what is X, how does Y work), structure the answer as:
+
+1. **Short answer first** (one or two sentences)
+2. **Analogy** that maps 1:1 to the concept (bouncer/venue/door work lands well)
+3. **Technical specifics** with terms defined before use
+4. **Where it lives in your code**: always include this section. Cite the real file and lines in his repos (`C:\Dev\MSSP` or the portfolio repos) where the concept is used, and explain each part of the snippet. If the concept is not in his code yet, say so and name where it would go.
+5. **Interview / exam line**: one sentence he can say out loud
+
+## Daily Review (retention queue)
+
+Review feedback uses the same tutor shape. Define any acronym in the explain before you lean on it.
+After Prove pass, spacing **adds** reviews; it does not remove Prove gates.
+Wrong Help-me items should enqueue with priority so they return before easy wins from other lessons.
+
+## UI copy (Writing Coach)
+
+Multi-item rubrics, syntax step lists, and “include these elements” checklists belong in the stacked **Writing Coach** panel above textareas (`note_coaches.py`), not in HTML `placeholder` text.
 
 ## Banned patterns
 

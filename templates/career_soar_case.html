@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ scenario.title }} — SOAR Chain</title>
+  {% include '_writing_coach.html' %}
+  {% from '_writing_coach.html' import writing_coach_from_registry %}
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"Cascadia Code","Fira Code",Consolas,monospace; background:#0a0e14; color:#cdd6e0; }
+    .topbar { background:#0f1923; border-bottom:1px solid #1e3045; padding:14px 28px; display:flex; justify-content:space-between; }
+    .brand { color:#ff9900; font-weight:800; }
+    .topbar a { color:#7a9ab0; text-decoration:none; margin-left:14px; font-size:0.85em; }
+    .main { max-width:820px; margin:0 auto; padding:28px 20px 80px; }
+    h1 { color:#fff; font-size:1.2em; margin:0 0 8px; }
+    .chain {
+      display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 16px; font-size:0.72em;
+    }
+    .chain span {
+      padding:6px 10px; border-radius:6px; border:1px solid #ff990044;
+      background:#ff990012; color:#ff9900; font-weight:700;
+    }
+    .chain .dim { border-color:#1e3045; background:#0f1923; color:#7a9ab0; font-weight:600; }
+    .step { background:#0f1923; border:1px solid #1e3045; border-radius:8px; padding:14px; margin:12px 0; }
+    .step.locked { opacity:0.55; }
+    .step h2 { margin:0 0 8px; font-size:0.8em; color:#ff9900; text-transform:uppercase; }
+    .btn { margin-top:8px; padding:9px 14px; border-radius:6px; border:1px solid #ff990066; background:#ff990022; color:#ff9900; font-weight:700; cursor:pointer; font-family:inherit; font-size:0.8em; }
+    .btn:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-dim { border-color:#1e3045; background:#0a0e14; color:#9ab; }
+    textarea, select { width:100%; background:#0a0e14; border:1px solid #1e3045; color:#cdd6e0; border-radius:6px; padding:10px; font-family:inherit; font-size:0.85em; }
+    textarea { min-height:90px; }
+    textarea:disabled, select:disabled { opacity:0.5; }
+    .result { display:none; margin-top:16px; background:#131d28; border:1px solid #1e3045; border-radius:8px; padding:14px; font-size:0.85em; line-height:1.5; }
+    .result.show { display:block; }
+    .done { color:#00ff88; font-size:0.75em; }
+    .coach {
+      display:none; margin-top:10px; padding:10px 12px; border-left:3px solid #ff9900;
+      background:#0a0e14; font-size:0.8em; line-height:1.5; color:#cdd6e0;
+    }
+    .coach.show { display:block; }
+    .coach b { color:#ff9900; }
+    .coach ul { margin:6px 0 0; padding-left:1.2em; color:#9ab; }
+    .rep { color:#00d4ff; font-weight:700; }
+    details.raw { margin-top:8px; font-size:0.72em; color:#667; }
+    details.raw pre { white-space:pre-wrap; color:#8aa; margin:6px 0 0; }
+    .secplus { font-size:0.78em; color:#7a9ab0; margin:0 0 12px; line-height:1.45; }
+    .secplus a { color:#00d4ff; }
+    .lock-hint { display:none; font-size:0.72em; color:#ff8c00; margin-top:6px; }
+    .lock-hint.show { display:block; }
+    .tf-blurb { font-size:0.75em; color:#7a9ab0; margin:0 0 10px; line-height:1.45; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">SOAR Chain · G13</span>
+    <div>
+      <a href="/career/soar">← All scenarios</a>
+      <a href="{{ scenario.secplus_href }}">Sec+ SOAR lesson</a>
+      <a href="/career">Career</a>
+    </div>
+  </div>
+  <div class="main">
+    <div style="font-size:0.75em;color:#ff9900;margin-bottom:8px;">{{ scenario.client }} · {{ scenario.difficulty }}</div>
+    <h1>{{ scenario.title }}</h1>
+    <p style="color:#7a9ab0;font-size:0.85em;">{{ scenario.teach }}</p>
+    <p class="secplus">
+      Desk habit lab (human gate). Exam definitions:
+      <a href="{{ scenario.secplus_href }}">Sec+ Show-me — Automation and SOAR with a human gate</a>
+    </p>
+
+    <div class="chain" aria-label="SOAR chain steps">
+      <span>1 Enrich</span>
+      <span class="dim">2 Propose</span>
+      <span class="dim">3 Gate</span>
+      <span class="dim">4 Ticket fields</span>
+    </div>
+
+    <div class="step">
+      <h2>Alert</h2>
+      <p style="font-size:0.85em;line-height:1.45;margin:0;">{{ scenario.alert }}</p>
+    </div>
+
+    <div class="step">
+      <h2>1. Enrich IOC: {{ scenario.ioc }}</h2>
+      <p style="font-size:0.78em;color:#7a9ab0;margin:0 0 8px;">
+        Enrich means look up the indicator before you contain. This button uses a local practice stub (nothing leaves this machine).
+      </p>
+      <button type="button" class="btn" id="btn-enrich" onclick="doEnrich()">Run enrich (local stub)</button>
+      <div class="done" id="enrich-done" style="display:none;margin-top:6px;">Enriched. Read the coach below before you gate.</div>
+      <div class="coach" id="enrich-coach">
+        <div>Reputation: <span class="rep" id="enrich-rep"></span></div>
+        <p id="enrich-coach-text" style="margin:8px 0;"></p>
+        <b>Cite these facts in your reason</b>
+        <ul id="look-for"></ul>
+        <details class="raw">
+          <summary>Raw stub JSON (optional)</summary>
+          <pre id="enrich-out"></pre>
+        </details>
+      </div>
+    </div>
+
+    <div class="step">
+      <h2>2. Proposed action</h2>
+      <p style="font-size:0.85em;margin:0;">{{ scenario.proposed_action }}</p>
+      <p style="font-size:0.75em;color:#7a9ab0;margin:8px 0 0;">
+        Propose means automation suggested this. It is not done until you approve or deny.
+      </p>
+    </div>
+
+    <div class="step locked" id="step-gate">
+      <h2>3. Human gate</h2>
+      <div class="lock-hint show" id="gate-lock">Run enrich first. Grading requires the enrich step.</div>
+      <select id="decision" disabled>
+        <option value="">Choose…</option>
+        <option value="approve">Approve</option>
+        <option value="deny">Deny</option>
+      </select>
+      <label style="display:block;font-size:0.75em;color:#7a9ab0;margin:10px 0 4px;">Reason (cite case facts)</label>
+      {{ writing_coach_from_registry('career_soar_reason') }}
+      {% set _sr = get_coach('career_soar_reason') %}
+      <textarea id="reason" aria-describedby="coach-career_soar_reason" data-writing-coach="career_soar_reason"
+        placeholder="{{ (_sr.placeholder_example if _sr else '') }}" disabled></textarea>
+      <button type="button" class="btn btn-dim" id="btn-reason-scaffold" onclick="insertScaffold('reason')" disabled>
+        Insert reason scaffold
+      </button>
+    </div>
+
+    <div class="step locked" id="step-ticket">
+      <h2>4. Ticket fields</h2>
+      <div class="lock-hint show" id="ticket-lock">Run enrich first.</div>
+      <p class="tf-blurb">
+        Fill each field the way a real ticket queue asks. Dropdowns for client / priority / disposition.
+        Typed lines for what happened, evidence, actions, and next action.
+      </p>
+      <div id="ticket-console"></div>
+      <button type="button" class="btn" id="btn-grade" onclick="grade()" disabled>Grade chain</button>
+    </div>
+    <div class="result" id="result"></div>
+  </div>
+  {% include '_ticket_field_console.html' %}
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]')||{}).content || '';
+  var SID = {{ scenario.id | tojson }};
+  var ENRICH = {{ scenario.enrich_stub | tojson }};
+  var ENRICH_COACH = {{ scenario.enrich_coach | tojson }};
+  var LOOK_FOR = {{ scenario.look_for | tojson }};
+  var REASON_SCAFFOLD = {{ scenario.reason_scaffold | tojson }};
+  var TICKET_FIELDS = {{ scenario.ticket_fields | tojson }};
+  var TICKET_SEED = {{ scenario.ticket_seed | tojson }};
+  var enriched = false;
+
+  TicketFields.mount('#ticket-console', {
+    fields: TICKET_FIELDS || [],
+    seed: TICKET_SEED || {},
+    showSeedBtn: true
+  });
+  TicketFields.lock(true);
+
+  function unlockAfterEnrich() {
+    enriched = true;
+    ['decision','reason','btn-reason-scaffold','btn-grade'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.disabled = false;
+    });
+    document.getElementById('step-gate').classList.remove('locked');
+    document.getElementById('step-ticket').classList.remove('locked');
+    document.getElementById('gate-lock').classList.remove('show');
+    document.getElementById('ticket-lock').classList.remove('show');
+    TicketFields.lock(false);
+    // Seed dropdowns + evidence placeholder from enrich (typed story still yours)
+    TicketFields.applySeed(TICKET_SEED || {}, false);
+  }
+
+  function doEnrich() {
+    document.getElementById('enrich-rep').textContent = ENRICH.reputation || 'unknown';
+    document.getElementById('enrich-coach-text').textContent = ENRICH_COACH || '';
+    var ul = document.getElementById('look-for');
+    ul.innerHTML = '';
+    (LOOK_FOR || []).forEach(function (line) {
+      var li = document.createElement('li');
+      li.textContent = line;
+      ul.appendChild(li);
+    });
+    document.getElementById('enrich-out').textContent = JSON.stringify(ENRICH, null, 2);
+    document.getElementById('enrich-coach').classList.add('show');
+    document.getElementById('enrich-done').style.display = 'block';
+    unlockAfterEnrich();
+  }
+
+  function insertScaffold(which) {
+    if (!enriched) return;
+    if (which === 'reason') {
+      var r = document.getElementById('reason');
+      if (!r.value.trim()) r.value = REASON_SCAFFOLD || '';
+      else if (confirm('Replace your reason with the scaffold?')) r.value = REASON_SCAFFOLD || '';
+    }
+  }
+
+  function grade() {
+    if (!enriched) { alert('Run enrich first'); return; }
+    var fields = TicketFields.collect();
+    fetch('/api/career/soar/grade', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body: JSON.stringify({
+        scenario_id: SID,
+        enriched: enriched,
+        decision: document.getElementById('decision').value,
+        reason: document.getElementById('reason').value,
+        ticket_fields: fields,
+        ticket_note: fields.what_happened || ''
+      })
+    }).then(function(r){return r.json();}).then(function(d){
+      if (d && d.field_results) TicketFields.applyResults(d.field_results);
+      if (d && d.ok && d.model_note) {
+        d.extra_html =
+          '<div style="margin-top:8px;color:#7a9ab0;font-size:0.75em;">Composed ticket note</div>' +
+          '<div style="background:#0a0e14;padding:10px;border-left:3px solid #ff9900;font-size:0.8em;white-space:pre-wrap;">' +
+          BoundryRationale.esc(d.model_note) + '</div>';
+      }
+      BoundryRationale.renderResult(document.getElementById('result'), d);
+    });
+  }
+  </script>
+  {% include '_career_rationale.html' %}
+</body>
+</html>

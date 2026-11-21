@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>SOAR — Boundry.AI</title>
+{% include '_live_ops_shell.html' %}
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0a0e14; color: #cdd6e0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace; min-height: 100vh; }
@@ -75,26 +76,20 @@
   .btn-close { background: #1e3045; color: #cdd6e0; margin-top: 16px; }
   .btn:hover { opacity: 0.9; }
   .empty { padding: 40px 20px; text-align: center; color: #556; font-size: 0.9em; }
+  .wf-canvas { margin: 12px 0 16px; padding: 12px; background: #0a0e14; border: 1px solid #1e3045; border-radius: 6px; }
+  .wf-step {
+    padding: 8px 10px; margin: 0 0 6px; border-left: 3px solid #ff9900;
+    background: #131d28; font-size: 0.82em;
+  }
+  .wf-step.current { border-left-color: #00ff88; background: #0f2818; }
+  .wf-phase { font-size: 0.68em; color: #556; text-transform: uppercase; }
 </style>
 </head>
-<body>
+<body class="ops-shell secops-accent-soar">
+{% set secops_active = 'soar' %}
+{% include '_secops_layout.html' %}
 
-<div class="topbar">
-  <span class="logo">⚡ SOAR</span>
-  <a href="/control-room">Control Room</a>
-  <a href="/siem">SIEM</a>
-  <a href="/playbooks">Playbooks</a>
-  <a href="/soar" style="color:#ff9900;">SOAR</a>
-  {% include "_navmenu.html" %}
-  <div class="topbar-right">
-    {% if player %}
-    <span style="font-size:12px;color:#7a9ab0;">{{ player.level_icon }} Lv.{{ player.level }}</span>
-    {% endif %}
-    <a href="/logout" style="color:#ff8888;">Log Out</a>
-  </div>
-</div>
-
-<main>
+<main style="max-width:1200px;margin:0 auto;padding:20px;">
   <h1>Security Orchestration</h1>
   <p class="sub">
     HIGH/CRITICAL SIEM findings auto-open incidents, attach IR playbooks, and propose response actions.
@@ -106,6 +101,8 @@
     <div class="stat"><div class="v">{{ stats.open }}</div><div class="l">Open</div></div>
     <div class="stat"><div class="v" style="color:#ffcc00;">{{ stats.pending_approvals }}</div><div class="l">Awaiting Approval</div></div>
     <div class="stat"><div class="v" style="color:#00d4ff;">{{ stats.opened_today }}</div><div class="l">Opened Today</div></div>
+    <div class="stat"><div class="v" style="color:#88cc88;font-size:1.1em;">{{ soar_metrics.approval_rate_pct }}%</div><div class="l">Approve rate (7d)</div></div>
+    <div class="stat"><div class="v" style="font-size:1.1em;">{{ soar_metrics.incidents_opened_7d }}</div><div class="l">Incidents (7d)</div></div>
   </div>
 
   <div class="layout">
@@ -159,6 +156,18 @@
           <strong>Playbook:</strong>
           <a href="/playbooks/{{ selected.playbook_id }}" style="color:#ff9900;">{{ selected.playbook_title or selected.playbook_id }}</a>
         </div>
+        {% if playbook_steps %}
+        <div class="wf-canvas">
+          <div style="font-size:0.72em;color:#7a9ab0;text-transform:uppercase;margin-bottom:8px;">Workflow (read-only)</div>
+          {% for step in playbook_steps %}
+          <div class="wf-step {% if loop.first %}current{% endif %}">
+            <div class="wf-phase">{{ step.phase }}</div>
+            <strong>{{ step.index }}.</strong> {{ step.label }}
+            {% if step.action_type %}<span style="color:#556;font-size:0.85em;"> · {{ step.action_type }}</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
         {% endif %}
 
         <div class="panel-h" style="margin: 8px -20px 12px; border-top:1px solid #1e3045;">Proposed Actions</div>
@@ -207,5 +216,6 @@
 
 <script src="/static/game.js"></script>
 <script src="/static/glossary.js" defer></script>
+{% include '_secops_layout_end.html' %}
 </body>
 </html>

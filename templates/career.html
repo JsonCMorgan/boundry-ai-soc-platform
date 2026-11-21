@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Boundry.AI — Career Lab (GTA SOC)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { color: #00d4ff; font-weight: 800; letter-spacing: 0.04em; }
+    .topbar nav a { color: #7a9ab0; text-decoration: none; margin-left: 16px; font-size: 0.85em; }
+    .topbar nav a:hover { color: #00d4ff; }
+    .main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { margin: 0 0 6px; font-size: 1.6em; color: #fff; }
+    .sub { color: #7a9ab0; font-size: 0.9em; margin-bottom: 22px; line-height: 1.5; }
+    .hero {
+      display: grid; grid-template-columns: 160px 1fr; gap: 20px; align-items: center;
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 20px; margin-bottom: 22px;
+    }
+    .score {
+      text-align: center; font-size: 3em; font-weight: 800; color: #00d4ff;
+      text-shadow: 0 0 18px #00d4ff44; line-height: 1;
+    }
+    .score span { display: block; font-size: 0.28em; color: #7a9ab0; letter-spacing: 0.08em; margin-top: 6px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .btn {
+      display: inline-block; padding: 10px 16px; border-radius: 6px; text-decoration: none;
+      font-weight: 700; font-size: 0.85em; border: 1px solid transparent;
+    }
+    .btn-cyan { background: #00d4ff22; color: #00d4ff; border-color: #00d4ff66; }
+    .btn-green { background: #00ff8822; color: #00ff88; border-color: #00ff8866; }
+    .btn-dim { background: #131d28; color: #9ab; border-color: #1e3045; }
+    .stats { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.82em; color: #8aa; margin-top: 8px; }
+    .stats b { color: #e0e6ed; }
+    .today-drill {
+      background: #0f1923; border: 1px solid #00d4ff55; border-radius: 8px;
+      padding: 18px 20px; margin-bottom: 22px;
+      box-shadow: 0 0 24px #00d4ff12;
+    }
+    .today-drill .eyebrow {
+      font-size: 0.72em; color: #00d4ff; letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .today-drill h2 {
+      margin: 0 0 4px; font-size: 1.15em; color: #fff; font-weight: 700;
+    }
+    .today-drill .dur { color: #7a9ab0; font-size: 0.82em; margin-bottom: 12px; }
+    .today-drill ul {
+      margin: 0 0 14px; padding-left: 1.2em; color: #cdd6e0; font-size: 0.88em; line-height: 1.55;
+    }
+    .today-drill li { margin-bottom: 4px; }
+    .today-drill .outside-tip {
+      font-size: 0.8em; color: #9ab; background: #131d28; border-left: 3px solid #ff8c00;
+      padding: 8px 12px; margin: 0 0 14px; line-height: 1.45;
+    }
+    .week-peek { margin-bottom: 22px; }
+    .week-peek summary {
+      cursor: pointer; color: #7a9ab0; font-size: 0.8em; letter-spacing: 0.04em;
+      list-style: none; user-select: none;
+    }
+    .week-peek summary::-webkit-details-marker { display: none; }
+    .week-peek summary:hover { color: #00d4ff; }
+    .week-peek summary::before { content: "▸ "; color: #445; }
+    .week-peek[open] summary::before { content: "▾ "; }
+    .week-strip {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
+    }
+    .week-chip {
+      flex: 1 1 120px; min-width: 110px; background: #131d28; border: 1px solid #1e3045;
+      border-radius: 6px; padding: 8px 10px; font-size: 0.72em; color: #8aa;
+    }
+    .week-chip.is-today { border-color: #00d4ff66; color: #cdd6e0; }
+    .week-chip .d { color: #00d4ff; font-weight: 700; display: block; margin-bottom: 2px; }
+    .week-chip.is-today .d { color: #00ff88; }
+    .gates {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 16px 18px; margin-bottom: 22px;
+    }
+    .gates h2 {
+      margin: 0 0 4px; font-size: 0.85em; color: #7a9ab0;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .gates .blurb { font-size: 0.78em; color: #556; margin-bottom: 12px; }
+    .gate-row {
+      display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center;
+      padding: 8px 0; border-top: 1px solid #1a2533; font-size: 0.82em;
+    }
+    .gate-row:first-of-type { border-top: none; }
+    .gate-check { color: #00ff88; font-weight: 800; text-align: center; }
+    .gate-check.open { color: #445; }
+    .gate-label { color: #e0e6ed; font-weight: 700; }
+    .gate-detail { color: #7a9ab0; font-size: 0.92em; margin-top: 2px; }
+    .gate-target { color: #556; font-size: 0.72em; margin-top: 2px; }
+    .gate-bar {
+      width: 90px; height: 6px; background: #0a0e14; border-radius: 3px;
+      border: 1px solid #1e3045; overflow: hidden;
+    }
+    .gate-bar > i { display: block; height: 100%; background: #00d4ff; }
+    .gate-bar.done > i { background: #00ff88; }
+    .gate-row a { color: inherit; text-decoration: none; }
+    .gate-row a:hover .gate-label { color: #00d4ff; }
+    .framing {
+      margin-bottom: 22px; font-size: 0.8em;
+    }
+    .framing summary {
+      cursor: pointer; color: #7a9ab0; list-style: none; user-select: none;
+    }
+    .framing summary::-webkit-details-marker { display: none; }
+    .framing summary:hover { color: #00d4ff; }
+    .framing summary::before { content: "▸ "; color: #445; }
+    .framing[open] summary::before { content: "▾ "; }
+    .framing-body {
+      margin-top: 8px; padding: 12px 14px; background: #131d28; border: 1px solid #1e3045;
+      border-radius: 6px; color: #9ab; line-height: 1.5; font-style: italic;
+    }
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;
+    }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 16px;
+    }
+    .card h3 { margin: 0 0 6px; font-size: 1em; color: #fff; }
+    .card .goal { font-size: 0.78em; color: #8aa; line-height: 1.45; min-height: 2.8em; }
+    .bar { height: 8px; background: #0a0e14; border-radius: 4px; overflow: hidden; margin: 10px 0 6px; border: 1px solid #1e3045; }
+    .bar > i { display: block; height: 100%; border-radius: 4px; }
+    .meta { font-size: 0.75em; color: #667; display: flex; justify-content: space-between; }
+    .drills { margin-top: 10px; }
+    .drills a {
+      display: block; font-size: 0.78em; color: #00d4ff; text-decoration: none;
+      padding: 4px 0; border-top: 1px solid #1a2533;
+    }
+    .drills a:hover { text-decoration: underline; }
+    .kw { font-size: 0.68em; color: #556; margin-top: 8px; }
+    .recent { margin-top: 28px; }
+    .recent h2 { font-size: 0.95em; color: #7a9ab0; text-transform: uppercase; letter-spacing: 0.06em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1e3045; }
+    th { color: #667; font-weight: 600; }
+    @media (max-width: 700px) { .hero { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <span class="brand">BOUNDRY.AI</span>
+      <span style="color:#445;margin-left:10px;font-size:0.8em;">Career Lab · GTA SOC path</span>
+    </div>
+    <nav>
+      {% include "_navmenu.html" %}
+      <a href="/control-room">Control Room</a>
+    </nav>
+  </div>
+
+  <div class="main">
+    <h1>Career Skills Lab</h1>
+    <p class="sub">
+      Built for <strong style="color:#cdd6e0;">GTA SOC Analyst</strong> hiring — volume triage, SIEM/IR notes, MITRE tagging.
+      Start with <strong style="color:#00d4ff;">Quick Shifts (15–20 min)</strong>; move up to Standard (45–60) when ready.
+    </p>
+
+    <div class="hero">
+      <div class="score">{{ readiness }}%<span>READINESS</span></div>
+      <div>
+        <div class="stats">
+          <span>Study streak: <b style="color:#00ff88;">{{ study_streak }}</b> day{% if study_streak != 1 %}s{% endif %}</span>
+          <span>Review due: <b style="color:#ffd700;">{{ retention_due|default(0) }}</b>
+            {% if retention_due %}<a href="/career/review" style="color:#ffd700;margin-left:6px;">Start →</a>{% endif %}
+          </span>
+          <span>Reviews this week: <b>{{ retention_week|default(0) }}</b></span>
+          {% if last_xp_date %}<span>Last XP day: <b>{{ last_xp_date }}</b></span>{% endif %}
+          <span>Shifts done: <b>{{ shift_completed }}</b></span>
+          <span>Avg shift score: <b>{{ shift_avg }}%</b></span>
+          <span>Portfolio cases: <b>{{ portfolio_count }}</b></span>
+        </div>
+        <div class="actions">
+          <a class="btn btn-green" href="/career/review">🧠 Daily Review{% if retention_due %} ({{ retention_due }}){% endif %}</a>
+          <a class="btn btn-green" href="/career/skills">🎯 Job Skills · Work next</a>
+          <a class="btn btn-cyan" href="/career/shift">▶ Start Quick Shift</a>
+          <a class="btn btn-cyan" href="/career/spl">📚 SPL Learn</a>
+          <a class="btn btn-cyan" href="/career/kql">🔎 KQL Learn</a>
+          <a class="btn btn-cyan" href="/career/secplus">🛡️ Security+ Lab</a>
+          <a class="btn btn-cyan" href="/career/email">📧 Email Triage</a>
+          <a class="btn btn-cyan" href="/career/edr">🖥️ EDR Console</a>
+          <a class="btn btn-cyan" href="/career/logs">📜 Log Sources</a>
+          <a class="btn btn-cyan" href="/career/intel">🔎 IOC Enrichment</a>
+          <a class="btn btn-cyan" href="/career/net">🌐 Net-for-SOC</a>
+          <a class="btn btn-cyan" href="/career/vuln">🩹 Vuln Queue</a>
+          <a class="btn btn-cyan" href="/career/sentinel">📡 Sentinel Workspace</a>
+          <a class="btn btn-cyan" href="/career/entra">🪪 Entra CA</a>
+          <a class="btn btn-cyan" href="/career/interview">🎤 Interview Gym</a>
+          <a class="btn btn-cyan" href="/career/comms">💬 Comms Gym</a>
+          <a class="btn btn-cyan" href="/career/soar">⚡ SOAR Chain</a>
+          <a class="btn btn-cyan" href="/career/oversight">🤖 Oversight Gym</a>
+          <a class="btn btn-cyan" href="/career/tune">🎛️ Tune or Tolerate</a>
+          <a class="btn btn-cyan" href="/career/metrics">📈 Ops Metrics</a>
+          <a class="btn btn-cyan" href="/career/automation">🧩 Automation Lite</a>
+          <a class="btn btn-cyan" href="/career/automation-policy">🛂 Automation Policy</a>
+          <a class="btn btn-cyan" href="/career/skills">🎯 Job Skills</a>
+          <a class="btn btn-green" href="/career/portfolio">📁 Portfolio</a>
+          <a class="btn btn-dim" href="/career/portfolio/pdf">⬇ Export PDF</a>
+        </div>
+      </div>
+    </div>
+
+    {% if today_drill %}
+    <div class="today-drill">
+      <div class="eyebrow">Today's drill · {{ today_drill.day_name }}</div>
+      <h2>{{ today_drill.title }}</h2>
+      {% if today_drill.duration %}<div class="dur">{{ today_drill.duration }}</div>{% endif %}
+      <ul>
+        {% for b in today_drill.bullets %}
+        <li>{{ b }}</li>
+        {% endfor %}
+      </ul>
+      {% if today_drill.outside_tip %}
+      <div class="outside-tip">Outside Hub: {{ today_drill.outside_tip }}</div>
+      {% endif %}
+      <div class="actions">
+        {% for c in today_drill.ctas %}
+        <a class="btn {% if loop.first %}btn-cyan{% else %}btn-dim{% endif %}" href="{{ c.href }}">{{ c.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if week_plan %}
+    <details class="week-peek">
+      <summary>Rest of week</summary>
+      <div class="week-strip">
+        {% for d in week_plan %}
+        <div class="week-chip{% if today_drill and d.weekday == today_drill.weekday %} is-today{% endif %}">
+          <span class="d">{{ d.day_name[:3] }}</span>
+          {{ d.title }}
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+
+    {% if prove_it_gates %}
+    <div class="gates">
+      <h2>Prove-it gates</h2>
+      <div class="blurb">Hire-stack targets — soft progress, not locks. Green when the bar is met.</div>
+      {% for g in prove_it_gates %}
+      <div class="gate-row">
+        <div class="gate-check {% if not g.done %}open{% endif %}">{% if g.done %}✓{% else %}○{% endif %}</div>
+        <a href="{{ g.href }}">
+          <div class="gate-label">{{ g.label }}</div>
+          <div class="gate-detail">{{ g.detail }}</div>
+          <div class="gate-target">{{ g.target_blurb }}</div>
+        </a>
+        <div class="gate-bar {% if g.done %}done{% endif %}" title="{{ g.pct }}%">
+          <i style="width:{{ g.pct }}%;"></i>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if application_framing %}
+    <details class="framing">
+      <summary>Application framing (honest portfolio sentence)</summary>
+      <div class="framing-body">{{ application_framing }}</div>
+    </details>
+    {% endif %}
+
+    <div class="grid">
+      {% for t in tracks %}
+      <div class="card" style="border-color: {{ t.color }}44;">
+        <h3><span style="margin-right:6px;">{{ t.icon }}</span>{{ t.name }}</h3>
+        <div class="goal">{{ t.goal }}</div>
+        <div class="bar"><i style="width:{{ t.pct }}%;background:{{ t.color }};"></i></div>
+        <div class="meta">
+          <span>{{ t.count }} / {{ t.target }} reps</span>
+          <span style="color:{{ t.color }};">{{ t.pct }}%</span>
+        </div>
+        <div class="drills">
+          {% for d in t.drills %}
+          <a href="{{ d.href }}">→ {{ d.label }}</a>
+          {% endfor %}
+        </div>
+        <div class="kw">JD keywords: {{ t.jd_keywords | join(', ') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="recent">
+      <h2>Recent shifts</h2>
+      {% if recent_shifts %}
+      <table>
+        <tr><th>Mode</th><th>Score</th><th>Completed</th></tr>
+        {% for s in recent_shifts %}
+        <tr>
+          <td>{{ s.mode }}</td>
+          <td>{{ s.score_pct }}%</td>
+          <td>{{ (s.completed_at or '')[:16] }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <p style="color:#556;font-size:0.85em;">No shifts yet — run a Quick Shift to start banking reps.</p>
+      {% endif %}
+    </div>
+  </div>
+  <script src="/static/game.js"></script>
+</body>
+</html>

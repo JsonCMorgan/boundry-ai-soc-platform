@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e14">
+  <title>Boundry.AI — HQ Access (Portfolio)</title>
+  <meta name="description" content="Step inside Jason Morgan's Boundry command center: SIEM, SOC shift, and analyst training lab.">
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --surface: #0f1923;
+      --card: #131d28;
+      --border: #1e3045;
+      --text: #cdd6e0;
+      --dim: #7a9ab0;
+      --hq: #00ff88;
+      --siem: #00d4ff;
+      --warn: #ff8c00;
+      --font: "Cascadia Code", "Consolas", "Segoe UI", monospace;
+      --shot-w: min(92vw, 520px);
+      --shot-w-single: min(98vw, 740px);
+      --shot-w-stack: min(88vw, 440px);
+      --shot-h-stack: min(30vh, 280px);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    ::selection { background: rgba(0, 255, 136, 0.25); }
+    a { color: var(--siem); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Boot overlay */
+    #boot {
+      position: fixed; inset: 0; z-index: 200;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px;
+      transition: opacity 0.6s ease, visibility 0.6s;
+    }
+    #boot.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+  .boot-title {
+      color: var(--hq);
+      font-size: clamp(1rem, 4vw, 1.35rem);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .boot-log {
+      width: min(520px, 92vw);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      font-size: 0.78rem;
+      color: var(--dim);
+      min-height: 120px;
+    }
+    .boot-log .ok { color: var(--hq); }
+    .boot-skip {
+      margin-top: 20px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      padding: 10px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .boot-skip:hover { border-color: var(--hq); color: var(--hq); }
+
+    /* HUD chrome */
+    .hud {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 14, 20, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .hud-brand { color: var(--hq); font-weight: 700; font-size: 0.95rem; }
+    .hud-brand span { color: var(--dim); font-weight: 400; }
+    .hud-nav { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; }
+    .hud-nav a {
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--dim);
+      text-decoration: none;
+    }
+    .hud-nav a:hover { color: var(--hq); border-color: var(--hq); }
+
+    /* Chapters */
+    .chapter {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr;
+      border-bottom: 1px solid var(--border);
+    }
+    @media (min-width: 900px) {
+      .chapter { grid-template-columns: 1fr 1fr; align-items: start; }
+    }
+    .brief, .viewport { min-width: 0; }
+    .brief {
+      padding: 48px 24px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    @media (min-width: 900px) {
+      .brief { margin: 0 0 0 auto; padding: 64px 40px 64px 48px; }
+    }
+    .kicker {
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--siem);
+      margin-bottom: 10px;
+    }
+    .brief h2 {
+      font-size: clamp(1.35rem, 3vw, 1.75rem);
+      color: var(--hq);
+      margin: 0 0 14px;
+      line-height: 1.25;
+    }
+    .brief p { color: var(--dim); margin: 0 0 12px; font-size: 0.9rem; }
+    .brief ul {
+      margin: 12px 0 0;
+      padding-left: 1.1rem;
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+    .brief li { margin-bottom: 6px; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+    .tag {
+      font-size: 0.68rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--dim);
+    }
+    .tag.live { border-color: var(--hq); color: var(--hq); }
+
+    .viewport {
+      position: relative;
+      background: #060810;
+      min-height: 280px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 32px;
+      overflow-x: hidden;
+    }
+    @media (min-width: 900px) {
+      .viewport { padding: 48px 32px 48px 24px; min-height: 100vh; }
+      .viewport.stack { min-height: 0; padding: 40px 20px 48px 16px; }
+    }
+    .viewport.stack {
+      gap: 14px;
+    }
+    .viewport:not(.stack) .screen {
+      max-width: var(--shot-w-single);
+    }
+    @media (min-width: 900px) {
+      :root { --shot-w-single: min(100%, 800px); }
+    }
+    .screen {
+      position: relative;
+      width: 100%;
+      max-width: var(--shot-w);
+      height: fit-content;
+      align-self: center;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(0, 255, 136, 0.06), 0 24px 48px rgba(0, 0, 0, 0.5);
+      background: var(--card);
+    }
+    .screen-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.7rem;
+      color: var(--dim);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #334455; }
+    .dot.g { background: var(--hq); }
+    .screen img {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: linear-gradient(160deg, #0f1923 0%, #0a0e14 100%);
+    }
+    .viewport.stack .screen {
+      max-width: var(--shot-w-stack);
+    }
+    .viewport.stack .screen img {
+      max-height: var(--shot-h-stack);
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      object-position: top center;
+    }
+    .screen .fallback {
+      aspect-ratio: 16/10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      color: var(--dim);
+      font-size: 0.8rem;
+      border-top: 1px dashed var(--border);
+    }
+    .scanlines {
+      pointer-events: none;
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
+      opacity: 0.35;
+    }
+
+    .intro {
+      padding: 80px 24px 48px;
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .intro h1 {
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      color: var(--text);
+      margin: 0 0 12px;
+    }
+    .intro h1 em { color: var(--hq); font-style: normal; }
+    .intro p { color: var(--dim); font-size: 0.95rem; }
+    .scroll-hint {
+      margin-top: 32px;
+      font-size: 0.75rem;
+      color: var(--dim);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    .debrief {
+      padding: 56px 24px 80px;
+      max-width: 640px;
+      margin: 0 auto;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+    .debrief h2 { color: var(--hq); font-size: 1.15rem; }
+    .debrief p { color: var(--dim); font-size: 0.88rem; }
+    .cta { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
+    .btn {
+      padding: 11px 20px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+    .btn.primary { border-color: var(--hq); color: var(--hq); }
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.72rem;
+      color: #445566;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="boot" role="dialog" aria-label="Loading">
+    <div class="boot-title">Boundry HQ</div>
+    <div class="boot-log" id="bootLog" aria-live="polite"></div>
+    <button type="button" class="boot-skip" id="bootSkip">Skip intro</button>
+  </div>
+
+  <header class="hud">
+    <div class="hud-brand">BOUNDRY<span>.AI</span> // portfolio</div>
+    <nav class="hud-nav" aria-label="Tour">
+      <a href="#intro">Brief</a>
+      <a href="#ops">Ops</a>
+      <a href="#siem">SIEM</a>
+      <a href="#floor">SOC</a>
+      <a href="#client">Client</a>
+      <a href="#career">Career</a>
+      <a href="#debrief">Exit</a>
+    </nav>
+  </header>
+
+  <section class="intro" id="intro">
+    <p class="kicker">You have visitor clearance</p>
+    <h1>Walk the floor of a <em>private</em> security lab</h1>
+    <p>
+      This is Jason Morgan's offline-first command center: ingest, triage, reporting, and analyst training built for SMB MSSP workflows.
+      Scroll like you're clocking a shift. Everything below is real UI from the Flask stack (screenshots from lab hardware).
+    </p>
+    <p class="scroll-hint">Scroll to begin tour</p>
+  </section>
+
+  <article class="chapter" id="ops">
+    <div class="brief">
+      <p class="kicker">Chapter 1</p>
+      <h2>Control Room</h2>
+      <p>Start where a Tier-1 analyst starts: VPN status, findings, and bridges into live tooling.</p>
+      <ul>
+        <li>Single pane before you dive into SIEM</li>
+        <li>Green operations theme (Boundry HQ accent)</li>
+        <li>Built for honest junior scale, not fake enterprise scale</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag live">live ops</span>
+        <span class="tag">offline-first</span>
+      </div>
+    </div>
+    <div class="viewport">
+      <div class="screen">
+        <div class="screen-bar"><span class="dot g"></span><span class="dot"></span><span class="dot"></span> control-room / dashboard</div>
+        <img src="images/control-room.png" alt="Control Room screenshot" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;fallback&quot;>Feed offline on this build. Run capture_boundry_showcase_screenshots.py on the lab PC.</div>'">
+        <p class="scanlines"></p>
+      </div>
+    </div>
+  </article>
+
+  <article class="chapter" id="siem">
+    <div class="brief">
+      <p class="kicker">Chapter 2</p>
+      <h2>SIEM stream and SPL-lite</h2>
+      <p>Events from Windows, firewall, syslog, and app middleware land in SQLite. Query with a Splunk-flavored subset before you touch a vendor tenant.</p>
+      <ul>
+        <li>Live timeline + severity discipline</li>
+        <li>SPL-lite at <code style="color:var(--siem)">/siem/query</code></li>
+        <li>Correlation rules fire findings you triage in-app</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag live">SIEM</span>
+        <span class="tag">#00d4ff accent</span>
+      </div>
+    </div>
+    <div class="viewport stack">
+      <div class="screen">
+        <div class="screen-bar"><span class="dot g"></span> siem / live stream</div>
+        <img src="images/siem.png" alt="SIEM dashboard" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;fallback&quot;>SIEM screenshot pending capture.</div>'">
+        <p class="scanlines"></p>
+      </div>
+      <div class="screen">
+        <div class="screen-bar"> spl-lite / query</div>
+        <img src="images/siem-query.png" alt="SPL query" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;fallback&quot;>SPL query screenshot pending.</div>'">
+        <p class="scanlines"></p>
+      </div>
+    </div>
+  </article>
+
+  <article class="chapter" id="floor">
+    <div class="brief">
+      <p class="kicker">Chapter 3</p>
+      <h2>SOC shift floor</h2>
+      <p>Practice the MSSP muscle: multi-client queue, SLA pressure, ticket hygiene. Fictional tenants (Contoso-style), not real client names.</p>
+      <ul>
+        <li>Shift start/end and case workflow</li>
+        <li>Disposition language hiring managers listen for</li>
+        <li>Bridges from alert to narrative you can tell in interviews</li>
+      </ul>
+    </div>
+    <div class="viewport">
+      <div class="screen">
+        <div class="screen-bar"><span class="dot" style="background:var(--warn)"></span> soc / shift floor</div>
+        <img src="images/soc-floor.png" alt="SOC shift floor" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;fallback&quot;>SOC floor screenshot pending.</div>'">
+        <p class="scanlines"></p>
+      </div>
+    </div>
+  </article>
+
+  <article class="chapter" id="client">
+    <div class="brief">
+      <p class="kicker">Chapter 4</p>
+      <h2>What the client sees</h2>
+      <p>Plain-language incident reports. The public <code>/demo</code> path auto-opens seeded sample data so prospects never touch analyst keys.</p>
+      <ul>
+        <li>Business-readable write-ups</li>
+        <li>PDF export path on the full stack</li>
+        <li>Separation: client portal vs analyst operations</li>
+      </ul>
+    </div>
+    <div class="viewport">
+      <div class="screen">
+        <div class="screen-bar"> client portal / demo reports</div>
+        <img src="images/client-reports.png" alt="Client reports demo" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;fallback&quot;>Run capture with Flask up; /demo works without analyst login.</div>'">
+        <p class="scanlines"></p>
+      </div>
+    </div>
+  </article>
+
+  <article class="chapter" id="career">
+    <div class="brief">
+      <p class="kicker">Chapter 5</p>
+      <h2>Career wing</h2>
+      <p>The same repo trains the analyst operating the stack: Interview Gym, Security+ Learn, KQL/SPL labs, comms drills.</p>
+      <ul>
+        <li>Guided to Coached to Live interview scenarios</li>
+        <li>SY0-801-aligned original curriculum (no dumps)</li>
+        <li>Portfolio export for job search evidence</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">hire-aligned</span>
+        <span class="tag">local Ollama tutors</span>
+      </div>
+    </div>
+    <div class="viewport stack">
+      <div class="screen">
+        <div class="screen-bar"> career / hub</div>
+        <img src="images/career-hub.png" alt="Career hub" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;fallback&quot;>Career hub screenshot pending.</div>'">
+      </div>
+      <div class="screen">
+        <div class="screen-bar"> interview gym</div>
+        <img src="images/interview-gym.png" alt="Interview Gym" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;fallback&quot;>Interview Gym screenshot pending.</div>'">
+      </div>
+      <div class="screen">
+        <div class="screen-bar"> security+ learn</div>
+        <img src="images/secplus-learn.png" alt="Security+ learn" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;fallback&quot;>Security+ screenshot pending.</div>'">
+      </div>
+    </div>
+  </article>
+
+  <section class="debrief" id="debrief">
+    <p class="kicker">End of tour</p>
+    <h2>Back to reality</h2>
+    <p>
+      Pre-revenue portfolio build. CompTIA CC. Security+ in progress. Happy to demo live on a laptop at an event or walk through any panel above.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="mailto:jason.morgan@boundry.ai">Email Jason</a>
+      <a class="btn" href="__JASON_LINKEDIN_URL__" rel="noopener noreferrer">LinkedIn</a>
+    </div>
+  </section>
+
+  <footer>Static showcase. No live tenant. Data stays on Jason's lab machine.</footer>
+
+  <script>
+    (function () {
+      var lines = [
+        "handshake: visitor mode",
+        "auth: portfolio clearance (read-only)",
+        "load: control_room module",
+        "load: siem_ingest module",
+        "load: career_hub module",
+        "status: <span class='ok'>READY</span>"
+      ];
+      var log = document.getElementById("bootLog");
+      var boot = document.getElementById("boot");
+      var i = 0;
+      function endBoot() {
+        boot.classList.add("hide");
+        try { sessionStorage.setItem("boundry_showcase_booted", "1"); } catch (e) {}
+      }
+      function tick() {
+        if (i >= lines.length) {
+          setTimeout(endBoot, 400);
+          return;
+        }
+        log.innerHTML += (i ? "<br>" : "") + "&gt; " + lines[i++];
+        setTimeout(tick, 380);
+      }
+      tick();
+      document.getElementById("bootSkip").onclick = endBoot;
+      if (sessionStorage.getItem("boundry_showcase_booted")) {
+        endBoot();
+      }
+    })();
+  </script>
+</body>
+</html>

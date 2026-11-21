@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ track_title }} — Boundry.AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #00d4ff; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 70px; }
+    h1 { color: #fff; margin: 0 0 8px; }
+    .sub { color: #7a9ab0; font-size: 0.9em; line-height: 1.5; margin-bottom: 20px; max-width: 720px; }
+
+    .path {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px;
+    }
+    .path-card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+      position: relative;
+    }
+    .path-card.on { border-color: #00d4ff66; background: #0a1822; }
+    .path-card.lock { opacity: 0.55; }
+    .path-card h3 { margin: 0 0 6px; font-size: 0.95em; color: #00d4ff; }
+    .path-card p { margin: 0; font-size: 0.75em; color: #8aa; line-height: 1.4; }
+    .badge {
+      display: inline-block; font-size: 0.65em; padding: 2px 7px; border-radius: 10px;
+      border: 1px solid #1e3045; color: #8aa; margin-bottom: 8px;
+    }
+    .badge.go { color: #00ff88; border-color: #00ff8866; background: #00ff8812; }
+    .badge.lock { color: #ffcc00; border-color: #665500; }
+
+    .skeleton {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 20px; font-size: 0.78em; color: #8aa;
+    }
+    .skeleton b { color: #00d4ff; }
+    .skel-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .skel-steps span {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 4px;
+      padding: 4px 8px; color: #9ab; font-size: 0.72em;
+    }
+
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;
+    }
+    .card {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px; padding: 14px;
+      display: flex; flex-direction: column; gap: 8px;
+      transition: border-color 0.15s, transform 0.12s;
+    }
+    .card:hover { border-color: #00d4ff55; transform: translateY(-1px); }
+    .card .ord { font-size: 0.7em; color: #556; }
+    .card h3 { margin: 0; font-size: 0.95em; color: #fff; }
+    .tag {
+      display: inline-block; font-size: 0.65em; color: #00d4ff;
+      background: #00d4ff15; border: 1px solid #00d4ff33; padding: 2px 7px; border-radius: 10px;
+    }
+    .prompt { font-size: 0.78em; color: #9ab; line-height: 1.45; flex: 1; }
+    .why { font-size: 0.7em; color: #667; line-height: 1.35; }
+    .dots { display: flex; gap: 6px; font-size: 0.7em; }
+    .dot { padding: 2px 7px; border-radius: 10px; border: 1px solid #1e3045; color: #556; }
+    .dot.done { color: #00ff88; border-color: #00ff8866; }
+    .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .btn {
+      display: inline-block; padding: 7px 11px; border-radius: 6px; text-decoration: none;
+      font-size: 0.75em; font-weight: 700; border: 1px solid #00d4ff55;
+      background: #00d4ff18; color: #00d4ff; cursor: pointer; font-family: inherit;
+    }
+    .btn:hover { background: #00d4ff28; }
+    .btn.dim, .btn-dim { background: #0a0e14; border-color: #1e3045; color: #9ab; }
+    .btn.dim[disabled], .btn:disabled {
+      opacity: 0.4; cursor: not-allowed; pointer-events: none;
+    }
+    .prog {
+      margin-bottom: 16px; font-size: 0.8em; color: #8aa;
+    }
+    .prog b { color: #cdd6e0; }
+    @media (max-width: 800px) { .path { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Interview Gym</span>
+    <div>
+      <a href="/career">← Career Lab</a>
+      <a href="/career/spl">SPL Learn</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <h1>{{ track_title }}</h1>
+    <p class="sub">{{ track_blurb }}</p>
+
+    <div class="path">
+      <div class="path-card on">
+        <span class="badge go">START HERE</span>
+        <h3>1. Guided</h3>
+        <p>Click-through steps, pick the best phrase, reveal the talk track. Training wheels on.</p>
+      </div>
+      <div class="path-card {% if unlocks.coached %}on{% else %}lock{% endif %}">
+        <span class="badge {% if unlocks.coached %}go{% else %}lock{% endif %}">
+          {% if unlocks.coached %}UNLOCKED{% else %}LOCKED · {{ unlocks.guided_done_count }}/{{ unlocks.total }} Guided{% endif %}
+        </span>
+        <h3>2. Coached</h3>
+        <p>You write each step. Hints available. Model answer after you submit.</p>
+      </div>
+      <div class="path-card {% if unlocks.live %}on{% else %}lock{% endif %}">
+        <span class="badge {% if unlocks.live %}go{% else %}lock{% endif %}">
+          {% if unlocks.live %}UNLOCKED{% else %}LOCKED · finish Coached set{% endif %}
+        </span>
+        <h3>3. Live</h3>
+        <p>120-second timer. Say it like the interview. Ollama scores + tips.</p>
+      </div>
+    </div>
+
+    <div class="skeleton">
+      <div><b>Every answer uses the same 6-step routine</b> (memorize this — HMs listen for process):</div>
+      <div class="skel-steps">
+        {% for s in steps %}
+        <span>{{ s.label }}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="prog">
+      Guided done: <b>{{ unlocks.guided_done_count }}</b> / {{ unlocks.total }}
+      · Coached: <b>{{ unlocks.coached_done_count }}</b> / {{ unlocks.total }}
+    </div>
+
+    <div class="grid">
+      {% for s in scenarios %}
+      <div class="card">
+        <div class="ord">Scenario {{ s.order }} · <span class="tag">{{ s.tag }}</span></div>
+        <h3>{{ s.title }}</h3>
+        <div class="prompt">{{ s.prompt }}</div>
+        <div class="why">Why HMs ask this: {{ s.why_hm }}</div>
+        <div class="dots">
+          <span class="dot {% if s.guided_done %}done{% endif %}">Guided{% if s.guided_done %} ✓{% endif %}</span>
+          <span class="dot {% if s.coached_done %}done{% endif %}">Coached{% if s.coached_done %} ✓{% endif %}</span>
+          <span class="dot {% if s.live_done %}done{% endif %}">Live{% if s.live_best %} {{ s.live_best }}%{% endif %}</span>
+        </div>
+        <div class="why">Angles practiced: {{ s.angles_practiced }} · curated packs: {{ s.curated_angles }} (+ AI)</div>
+        <div class="actions">
+          <a class="btn" href="/career/interview/{{ s.id }}?mode=guided">▶ Guided</a>
+          <a class="btn {% if not unlocks.coached %}dim{% endif %}"
+             href="{% if unlocks.coached %}/career/interview/{{ s.id }}?mode=coached{% else %}#{% endif %}"
+             {% if not unlocks.coached %}aria-disabled="true"{% endif %}>Coached</a>
+          <a class="btn {% if not unlocks.live %}dim{% endif %}"
+             href="{% if unlocks.live %}/career/interview/{{ s.id }}?mode=live{% else %}#{% endif %}"
+             {% if not unlocks.live %}aria-disabled="true"{% endif %}>Live</a>
+          <button type="button" class="btn btn-dim" onclick="newAngle('{{ s.id }}', 'guided')">New angle</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <script src="/static/game.js"></script>
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+  function newAngle(scenarioId, mode) {
+    var btns = document.querySelectorAll('button.btn');
+    btns.forEach(function (b) { b.disabled = true; });
+    fetch('/api/career/interview/new-angle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ scenario_id: scenarioId, source: 'auto', mode: mode || 'guided' })
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.d.url) {
+        alert(res.d.error || 'Could not build a new angle.');
+        btns.forEach(function (b) { b.disabled = false; });
+        return;
+      }
+      location.href = res.d.url;
+    })
+    .catch(function () {
+      alert('Network error creating a new angle.');
+      btns.forEach(function (b) { b.disabled = false; });
+    });
+  }
+  </script>
+  {% set tutor_track = 'interview' %}
+  {% include '_career_tutor.html' %}
+  {% include '_jargon_tooltips.html' %}
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Firewall PBQ — Messer</title>
+  <style>
+    body { margin:0; font-family:"Cascadia Code",Consolas,monospace; background:#0a0e14; color:#cdd6e0; }
+    .main { max-width:900px; margin:0 auto; padding:24px 16px 48px; }
+    pre { white-space:pre-wrap; background:#131d28; border:1px solid #1e3045; padding:16px; border-radius:8px; line-height:1.5; }
+    .btn { padding:10px 16px; border-radius:6px; border:1px solid #ffd70066; background:#ffd70022;
+      color:#ffd700; font-weight:700; cursor:pointer; font-family:inherit; margin-top:14px; }
+  </style>
+</head>
+<body>
+  <div class="main">
+    <h1 style="color:#ffd700;">Sample Firewall Configuration Exercise</h1>
+    <p><a href="/career/secplus/messer" style="color:#7a9ab0;">← Messer hub</a></p>
+    {% if pbq.text %}
+    <pre>{{ pbq.text }}</pre>
+    <p style="color:#7a9ab0;font-size:0.85em;">Work the scenario on paper or in your lab notes. When done, queue a cold-recall card for tomorrow's Review.</p>
+    <button type="button" class="btn" id="done">I completed the PBQ — add Review card</button>
+    {% else %}
+    <p>PBQ text not extracted yet. Run <code>tools/messer_extract.py</code> after syncing the Sample Firewall file locally.</p>
+    {% endif %}
+  </div>
+  <script>
+  var btn = document.getElementById('done');
+  if (btn) btn.onclick = function(){
+    var csrf = document.querySelector('meta[name="csrf-token"]').content;
+    fetch('/career/secplus/messer/pbq/firewall/complete', {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
+      body: JSON.stringify({completed: true})
+    }).then(function(){ btn.textContent = 'Queued for Daily Review'; btn.disabled = true; });
+  };
+  </script>
+</body>
+</html>

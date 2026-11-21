@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Messer exam — {{ exam_id }}</title>
+  <style>
+    body { margin:0; font-family:"Cascadia Code",Consolas,monospace; background:#0a0e14; color:#cdd6e0; }
+    .main { max-width:760px; margin:0 auto; padding:24px 16px 48px; }
+    .q { background:#131d28; border:1px solid #1e3045; border-radius:8px; padding:14px; margin-bottom:12px; }
+    label { display:block; margin:6px 0; cursor:pointer; }
+    .btn { margin-top:16px; padding:10px 16px; border-radius:6px; border:1px solid #ffd70066;
+      background:#ffd70022; color:#ffd700; font-weight:700; cursor:pointer; font-family:inherit; }
+    .fb { margin-top:12px; padding:10px; background:#0a0e14; border-left:3px solid #00ff88; font-size:0.85em; }
+    .fb.bad { border-left-color:#ff8c00; }
+  </style>
+</head>
+<body>
+  <div class="main">
+    <h1 style="color:#ffd700;font-size:1.1em;">Messer practice: {{ exam_id }}</h1>
+    <p style="color:#7a9ab0;font-size:0.85em;"><a href="/career/secplus/messer" style="color:#7a9ab0;">← Back</a></p>
+    <div id="form">
+      {% for q in questions %}
+      <div class="q" data-id="{{ q.id }}">
+        <div>{{ loop.index }}. {{ q.q }}</div>
+        {% for letter, text in q.choices.items() %}
+        <label><input type="radio" name="{{ q.id }}" value="{{ letter }}"> {{ letter }}. {{ text }}</label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      <button type="button" class="btn" id="submit">Submit exam</button>
+    </div>
+    <div id="out"></div>
+  </div>
+  <script>
+  var csrf = document.querySelector('meta[name="csrf-token"]').content;
+  document.getElementById('submit').onclick = function(){
+    var answers = {};
+    document.querySelectorAll('.q').forEach(function(el){
+      var id = el.getAttribute('data-id');
+      var pick = (el.querySelector('input[type=radio]:checked')||{}).value || '';
+      answers[id] = pick;
+    });
+    fetch('/career/secplus/messer-exam/{{ exam_id }}/submit', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
+      body: JSON.stringify({answers: answers})
+    }).then(function(r){ return r.json(); }).then(function(d){
+      var r = d.result || {};
+      var html = '<h2>Score: '+r.pct+'% ('+r.correct+'/'+r.total+')</h2>';
+      html += '<p>Missed items were added to <a href="/career/review?mode=focus&track=messer" style="color:#ffd700;">Daily Review</a>.</p>';
+      (r.graded||[]).forEach(function(g,i){
+        html += '<div class="fb '+(g.correct?'':'bad')+'"><strong>Q'+(i+1)+'</strong> '+g.q+
+          '<br>'+(g.correct?'Correct.':'Missed.')+' '+ (g.explain||'')+'</div>';
+      });
+      document.getElementById('form').style.display='none';
+      document.getElementById('out').innerHTML = html;
+    });
+  };
+  </script>
+</body>
+</html>

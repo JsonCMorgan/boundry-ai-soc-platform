@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ case.title }} — Entra CA Lab</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #818cf8; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 920px; margin: 0 auto; padding: 24px 18px 90px; }
+    h1 { color: #fff; margin: 0 0 8px; font-size: 1.25em; }
+    .teach { color: #9ab; font-size: 0.85em; line-height: 1.45; margin-bottom: 14px; }
+    .panel {
+      background: #0f1923; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px; margin-bottom: 14px;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 0.9em; color: #818cf8; }
+    .grid2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+    .kv {
+      background: #0a0e14; border: 1px solid #1e3045; border-radius: 6px;
+      padding: 10px; font-size: 0.78em; line-height: 1.45;
+    }
+    .kv .k { color: #7a9ab0; font-size: 0.9em; }
+    .kv .v { color: #fff; margin-top: 2px; }
+    .alert-box {
+      border-left: 3px solid #ff8c00; padding: 10px 12px; margin-top: 10px;
+      background: #131d28; font-size: 0.8em; line-height: 1.45; color: #cdd6e0;
+    }
+    label.chk {
+      display: block; font-size: 0.8em; margin: 6px 0; cursor: pointer; color: #cdd6e0;
+    }
+    select, button { font-family: inherit; font-size: 0.8em; }
+    select {
+      width: 100%; background: #0a0e14; border: 1px solid #1e3045; color: #cdd6e0;
+      border-radius: 6px; padding: 8px; margin-top: 6px;
+    }
+    .btn {
+      margin-top: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid #818cf866;
+      background: #818cf818; color: #818cf8; font-weight: 800; cursor: pointer;
+    }
+    .result {
+      display: none; margin-top: 14px; padding: 12px; border-radius: 8px;
+      border: 1px solid #1e3045; background: #131d28; font-size: 0.82em; line-height: 1.45;
+      white-space: normal;
+    }
+    .result.show { display: block; }
+    .meta { font-size: 0.78em; color: #7a9ab0; margin-bottom: 10px; }
+    .meta b { color: #fff; }
+  
+    .btn-next { border-color: #00ff8866; background: #00ff8818; color: #00ff88; display: none; text-decoration: none; }
+    .btn-next.show { display: inline-block; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Entra Conditional Access</span>
+    <div>
+      <a href="/career/entra">← Lab hub</a>
+      <a href="/career">Career</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ case.title }}</h1>
+    <p class="teach">{{ case.teach }}</p>
+    <div class="meta">Client: <b>{{ case.client }}</b> · difficulty {{ case.difficulty }}</div>
+
+    <div class="panel">
+      <h2>1. Show me — sign-in storyboard</h2>
+      <div class="grid2">
+        <div class="kv"><div class="k">User</div><div class="v">{{ sb.user }}</div></div>
+        <div class="kv"><div class="k">App</div><div class="v">{{ sb.app }}</div></div>
+        <div class="kv"><div class="k">IP / location</div><div class="v">{{ sb.ip }} · {{ sb.location }}</div></div>
+        <div class="kv"><div class="k">Device</div><div class="v">{{ sb.device }}</div></div>
+        <div class="kv"><div class="k">Sign-in risk</div><div class="v">{{ sb.risk }}</div></div>
+        <div class="kv"><div class="k">Sign-in result</div><div class="v">{{ sb.signin_result }}</div></div>
+      </div>
+      <div class="grid2" style="margin-top:10px;">
+        <div class="kv"><div class="k">CA policy</div><div class="v">{{ sb.policy_name }}</div></div>
+        <div class="kv"><div class="k">CA status</div><div class="v">{{ sb.ca_status }}</div></div>
+        <div class="kv"><div class="k">Conditions</div><div class="v">{{ sb.policy_conditions }}</div></div>
+        <div class="kv"><div class="k">Grant control</div><div class="v">{{ sb.grant_control }}</div></div>
+      </div>
+      <div class="alert-box"><b>Alert / ticket:</b> {{ sb.alert_text }}</div>
+    </div>
+
+    <div class="panel">
+      <h2>2. Prove it — checklist + CA outcome + disposition</h2>
+      {% for c in checklist %}
+      <label class="chk"><input type="checkbox" id="c-{{ c.id }}"> {{ c.label }}</label>
+      {% endfor %}
+      <label style="display:block;margin-top:12px;font-size:0.8em;color:#9ab;">
+        What does the CA outcome mean?
+      </label>
+      <select id="outcome">
+        <option value="">Select…</option>
+        {% for o in outcomes %}
+        <option value="{{ o.id }}">{{ o.label }}</option>
+        {% endfor %}
+      </select>
+      <label style="display:block;margin-top:12px;font-size:0.8em;color:#9ab;">Disposition</label>
+      <select id="disposition">
+        <option value="">Select…</option>
+        {% for d in dispositions %}
+        <option value="{{ d.id }}">{{ d.label }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn" onclick="grade()">Submit Entra CA triage</button>
+      <div class="result" id="result"></div>
+      <a class="btn btn-next" id="next-scenario" href="{{ next_preview.url if next_preview else '#' }}">Next scenario →</a>
+
+    </div>
+  </div>
+  <script>
+  var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+  function showNext(d) {
+    var nb = document.getElementById('next-scenario');
+    if (!nb) return;
+    if (d && d.next && d.next.url) nb.href = d.next.url;
+    nb.classList.add('show');
+  }
+  var CASE_ID = {{ case.id | tojson }};
+
+  function grade() {
+    var checklist = {};
+    {{ checklist | map(attribute='id') | list | tojson }}.forEach(function (id) {
+      checklist[id] = !!(document.getElementById('c-' + id) || {}).checked;
+    });
+    var outcome = document.getElementById('outcome').value;
+    if (!outcome) { alert('Pick what the CA outcome means'); return; }
+    var disposition = document.getElementById('disposition').value;
+    if (!disposition) { alert('Pick a disposition'); return; }
+    fetch('/api/career/entra/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({
+        case_id: CASE_ID,
+        checklist: checklist,
+        outcome_id: outcome,
+        disposition: disposition
+      })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      BoundryRationale.renderResult(document.getElementById('result'), d);
+      if (d && d.ok) showNext(d);
+    });
+  }
+  </script>
+  {% include '_career_rationale.html' %}
+  {% include '_career_tutor.html' %}
+</body>
+</html>

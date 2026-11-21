@@ -1,0 +1,1051 @@
+{
+  "version": 1,
+  "decks": {
+    "elevator": [
+      {
+        "type": "mcq",
+        "q": "What is Boundry.AI's primary focus in the MSSP market?",
+        "choices": [
+          "A) Building a 24/7 staffed SOC",
+          "B) Providing offline-first privacy solutions",
+          "C) Offering separate marketing tools for MSSPs",
+          "D) Selling Fortune 500 clients"
+        ],
+        "answer_idx": 1,
+        "explain": "Focus on offline-first privacy for SMBs."
+      },
+      {
+        "type": "mcq",
+        "q": "How does Jason at Boundry.AI differentiate Boundry.AI's command center from other MSSP platforms?",
+        "choices": [
+          "A) It's a separate marketing tool",
+          "B) It's built on a Flask stack and integrates with SIEM and triage",
+          "C) It's a 24/7 staffed SOC",
+          "D) It's a Fortune 500 client"
+        ],
+        "answer_idx": 1,
+        "explain": "Built on a Flask stack and integrated tools."
+      },
+      {
+        "type": "mcq",
+        "q": "What is not a claim you should make in a junior SOC interview?",
+        "choices": [
+          "A) Our platform is offline-first",
+          "B) We're not 24/7 staffed",
+          "C) We don't use separate marketing tools",
+          "D) We have Fortune 500 clients"
+        ],
+        "answer_idx": 3,
+        "explain": "Don't claim Fortune 500 clients."
+      },
+      {
+        "type": "mcq",
+        "q": "What is Boundry.AI's current scale and revenue status?",
+        "choices": [
+          "A) Pre-revenue with a small team",
+          "B) Fully funded with a large team",
+          "C) Revenue-generating with a large team",
+          "D) Publicly traded with a large team"
+        ],
+        "answer_idx": 0,
+        "explain": "Pre-revenue with a small team."
+      },
+      {
+        "type": "mcq",
+        "q": "How does Boundry.AI's approach to privacy align with its target market?",
+        "choices": [
+          "A) By offering separate marketing tools",
+          "B) By focusing on offline-first solutions for SMBs",
+          "C) By targeting Fortune 500 clients",
+          "D) By providing 24/7 staffed SOC"
+        ],
+        "answer_idx": 1,
+        "explain": "Focuses on offline-first privacy for SMBs."
+      },
+      {
+        "type": "flash",
+        "term": "SMB",
+        "prompt": "What does SMB stand for?",
+        "model": "Small and Medium-sized Business"
+      },
+      {
+        "type": "flash",
+        "term": "MSSP",
+        "prompt": "What is MSSP?",
+        "model": "Managed Security Service Provider"
+      },
+      {
+        "type": "flash",
+        "term": "Flask",
+        "prompt": "What Python web framework does Boundry.AI use for its command center?",
+        "model": "Flask"
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is NOT a benefit of Boundry.AI's offline-first approach?",
+        "choices": [
+          "a) Increased data security",
+          "b) Reduced reliance on internet connectivity",
+          "c) Lower operational costs",
+          "d) Improved user experience"
+        ],
+        "answer_idx": 2,
+        "explain": "Offline-first improves user experience by ensuring reliable access to services without internet connection."
+      },
+      {
+        "type": "mcq",
+        "q": "What does Jason at Boundry.AI focus on when building the Flask command center?",
+        "choices": [
+          "a) Integrating third-party marketing tools",
+          "b) Enhancing SIEM capabilities",
+          "c) Developing AI-driven triage systems",
+          "d) Creating a separate marketing platform"
+        ],
+        "answer_idx": 1,
+        "explain": "Jason focuses on enhancing SIEM capabilities when building the Flask command center."
+      },
+      {
+        "type": "mcq",
+        "q": "What should a junior SOC professional avoid claiming during an interview?",
+        "choices": [
+          "a) Boundry.AI's pre-revenue status",
+          "b) The company's scale and revenue",
+          "c) The product's unique features",
+          "d) The company's privacy commitment"
+        ],
+        "answer_idx": 1,
+        "explain": "A junior SOC professional should avoid claiming the company's scale and revenue during an interview."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a benefit of using Boundry.AI's Flask command center for an MSSP?",
+        "choices": [
+          "a) Reduced need for external tools",
+          "b) Increased reliance on third-party services",
+          "c) Higher operational costs",
+          "d) Decreased user experience"
+        ],
+        "answer_idx": 0,
+        "explain": "A benefit of using Boundry.AI's Flask command center for an MSSP is reduced need for external tools."
+      },
+      {
+        "type": "mcq",
+        "q": "What does Boundry.AI's pre-revenue status mean for its current operations?",
+        "choices": [
+          "a) They are not currently generating revenue",
+          "b) They are not currently hiring staff",
+          "c) They are not currently offering services",
+          "d) They are not currently providing training"
+        ],
+        "answer_idx": 0,
+        "explain": "Boundry.AI's pre-revenue status means they are not currently generating revenue."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following best describes Boundry.AI's approach to offline-first privacy?",
+        "choices": [
+          "A. Boundry.AI does not prioritize offline-first privacy.",
+          "B. Boundry.AI ensures data remains accessible offline while maintaining privacy.",
+          "C. Boundry.AI only uses online data for privacy.",
+          "D. Boundry.AI prioritizes online data for privacy."
+        ],
+        "answer_idx": 1,
+        "explain": "B. Boundry.AI ensures data remains accessible offline while maintaining privacy."
+      },
+      {
+        "type": "mcq",
+        "q": "How does Boundry.AI's Flask command center differ from separate marketing tools?",
+        "choices": [
+          "A. Boundry.AI's Flask command center is a separate marketing tool.",
+          "B. Boundry.AI's Flask command center is integrated into marketing tools.",
+          "C. Boundry.AI's Flask command center is a standalone product.",
+          "D. Boundry.AI's Flask command center is part of a larger marketing platform."
+        ],
+        "answer_idx": 2,
+        "explain": "C. Boundry.AI's Flask command center is a standalone product."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a benefit of Boundry.AI's Flask command center for an MSSP?",
+        "choices": [
+          "a) It requires 24/7 staffed SOC",
+          "b) It integrates with separate marketing tools",
+          "c) It provides an offline-first privacy solution",
+          "d) It offers unlimited scalability"
+        ],
+        "answer_idx": 2,
+        "explain": "The Flask command center offers an offline-first privacy solution."
+      }
+    ],
+    "live": [
+      {
+        "type": "mcq",
+        "q": "Which of the following is a valid SIEM ingest source in Boundry.AI?",
+        "choices": [
+          "a) Windows Events",
+          "b) Firewall Logs",
+          "c) Syslog",
+          "d) Email"
+        ],
+        "answer_idx": 0,
+        "explain": "Windows Events are a valid SIEM ingest source."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the correct order of severities in Boundry.AI?",
+        "choices": [
+          "a) Critical > High > Medium > Low",
+          "b) High > Critical > Medium > Low",
+          "c) Critical > Medium > High > Low",
+          "d) Low > Medium > High > Critical"
+        ],
+        "answer_idx": 0,
+        "explain": "The correct order is Critical > High > Medium > Low."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool is used for real-time monitoring in Boundry.AI?",
+        "choices": [
+          "a) Control Room",
+          "b) SIEM",
+          "c) Flask Middleware",
+          "d) VPN Monitor"
+        ],
+        "answer_idx": 0,
+        "explain": "Control Room is used for real-time monitoring."
+      },
+      {
+        "type": "mcq",
+        "q": "What is SPL-lite in Boundry.AI?",
+        "choices": [
+          "a) A full-featured SIEM solution",
+          "b) A lightweight SIEM solution",
+          "c) A data visualization tool",
+          "d) A backup system"
+        ],
+        "answer_idx": 1,
+        "explain": "SPL-lite is a lightweight SIEM solution."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the purpose of the NordVPN local state alerts in Boundry.AI?",
+        "choices": [
+          "a) To monitor network traffic",
+          "b) To detect unexpected VPN drops",
+          "c) To manage firewall rules",
+          "d) To perform SIEM ingest"
+        ],
+        "answer_idx": 1,
+        "explain": "The purpose is to detect unexpected VPN drops."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool is optional for forwarding logs to Boundry.AI?",
+        "choices": [
+          "a) SIEM",
+          "b) Control Room",
+          "c) Splunk HEC Forwarder",
+          "d) Flask Middleware"
+        ],
+        "answer_idx": 2,
+        "explain": "Splunk HEC Forwarder is optional."
+      },
+      {
+        "type": "flash",
+        "term": "SIEM",
+        "prompt": "What does SIEM stand for?",
+        "model": "Security Information and Event Management"
+      },
+      {
+        "type": "flash",
+        "term": "SPL-Lite",
+        "prompt": "What is a database used for storing logs in Boundry.AI?",
+        "model": "SPL-Lite is a database used for storing logs in Boundry.AI."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a valid severity level in Boundry.AI?",
+        "choices": [
+          "Critical",
+          "High",
+          "Medium",
+          "Low"
+        ],
+        "answer_idx": 0,
+        "explain": "Critical"
+      },
+      {
+        "type": "mcq",
+        "q": "What is the purpose of the Control Room in Boundry.AI?",
+        "choices": [
+          "For real-time monitoring and incident response",
+          "For managing firewall rules",
+          "For storing logs",
+          "For forwarding logs to Splunk"
+        ],
+        "answer_idx": 0,
+        "explain": "For real-time monitoring and incident response"
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is NOT a valid SIEM ingest source in Boundry.AI?",
+        "choices": [
+          "Windows Events",
+          "Firewall Logs",
+          "Syslog",
+          "VPN Monitor"
+        ],
+        "answer_idx": 3,
+        "explain": "VPN Monitor is a valid source, but it's not one of the primary ingest sources."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the correct order of severities in Boundry.AI from highest to lowest?",
+        "choices": [
+          "Critical",
+          "High",
+          "Medium",
+          "Low"
+        ],
+        "answer_idx": 0,
+        "explain": "Critical is the highest severity, followed by High, Medium, and Low."
+      },
+      {
+        "type": "flash",
+        "term": "Flask middleware",
+        "prompt": "What is Flask middleware in the context of Boundry.AI?",
+        "model": "Flask middleware in Boundry.AI refers to software components that can be added to the web application to perform specific functions such as logging, authentication, and caching."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary purpose of the Control Room in Boundry.AI?",
+        "choices": [
+          "a) To manage SIEM ingest sources",
+          "b) To monitor and respond to incidents in real-time",
+          "c) To store and archive logs",
+          "d) To configure Flask middleware"
+        ],
+        "answer_idx": 1,
+        "explain": "The Control Room is used for real-time monitoring and incident response."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool is used for forwarding logs to Boundry.AI, making it optional?",
+        "choices": [
+          "a) Splunk HEC forwarder",
+          "b) Ollama local AI",
+          "c) NordVPN local state alerts",
+          "d) Flask middleware"
+        ],
+        "answer_idx": 0,
+        "explain": "Splunk HEC forwarder is an optional tool for forwarding logs to Boundry.AI."
+      }
+    ],
+    "mssp": [
+      {
+        "type": "mcq",
+        "q": "Which of the following is a common SIEM alert that an MSSP SOC analyst might investigate?",
+        "choices": [
+          "a) A user logged in from an unknown location",
+          "b) A high CPU usage on a server",
+          "c) A failed login attempt from a known user",
+          "d) A network scan from an unfamiliar IP"
+        ],
+        "answer_idx": 0,
+        "explain": "An unknown location login is a typical SIEM alert that requires investigation."
+      },
+      {
+        "type": "mcq",
+        "q": "How should an MSSP SOC analyst handle a client reporting a potential data breach?",
+        "choices": [
+          "a) Ignore the report if it's not from a major client",
+          "b) Escalate the case to the client's legal department immediately",
+          "c) Conduct a thorough investigation and report back to the client",
+          "d) Offer a discount on the next service engagement"
+        ],
+        "answer_idx": 2,
+        "explain": "A thorough investigation is necessary to address any potential data breaches."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a key responsibility of an MSSP SOC analyst in a pre-revenue lab?",
+        "choices": [
+          "a) Developing and implementing new security solutions",
+          "b) Providing 24/7 customer support",
+          "c) Monitoring and responding to security incidents",
+          "d) Conducting internal company training"
+        ],
+        "answer_idx": 2,
+        "explain": "Monitoring and responding to security incidents is a primary responsibility in a pre-revenue lab."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the typical duration for a weekly SIEM report in an MSSP SOC?",
+        "choices": [
+          "a) 1 hour",
+          "b) 2 hours",
+          "c) 3 hours",
+          "d) 4 hours"
+        ],
+        "answer_idx": 1,
+        "explain": "A 2-hour weekly SIEM report is a standard practice."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a common practice for triaging a password spray incident?",
+        "choices": [
+          "a) Immediately resetting all affected passwords",
+          "b) Ignoring the incident if it's from a low-risk user",
+          "c) Isolating the affected accounts and reviewing login patterns",
+          "d) Offering a discount on password management services"
+        ],
+        "answer_idx": 2,
+        "explain": "Isolating and reviewing login patterns is a standard practice for triaging password spray incidents."
+      },
+      {
+        "type": "mcq",
+        "q": "How should an MSSP SOC analyst document their findings and recommendations after investigating a client's security incident?",
+        "choices": [
+          "a) Only in the client's email",
+          "b) In a shared document accessible by all team members",
+          "c) In a private, secure platform",
+          "d) On a publicly accessible cloud storage"
+        ],
+        "answer_idx": 2,
+        "explain": "Using a private, secure platform ensures the confidentiality of the findings."
+      },
+      {
+        "type": "flash",
+        "term": "SIEM",
+        "prompt": "What does SIEM stand for?",
+        "model": "Security Information and Event Management"
+      },
+      {
+        "type": "flash",
+        "term": "Triage",
+        "prompt": "What is the first step in the incident response process?",
+        "model": "Identifying and prioritizing the incident"
+      },
+      {
+        "type": "mcq",
+        "q": "What is a key responsibility of an MSSP SOC analyst in a pre-revenue lab?",
+        "choices": [
+          "a) 24/7 monitoring",
+          "b) Client reporting",
+          "c) Incident response planning",
+          "d) Real-time threat detection"
+        ],
+        "answer_idx": 2,
+        "explain": "Incident response planning is a key responsibility."
+      },
+      {
+        "type": "mcq",
+        "q": "How should an MSSP SOC analyst document their findings and recommendations after investigating a client's potential data breach?",
+        "choices": [
+          "a) Email the client without any details",
+          "b) Provide a detailed report with recommendations",
+          "c) Log the incident internally",
+          "d) Delete the evidence"
+        ],
+        "answer_idx": 1,
+        "explain": "Provide a detailed report with recommendations."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a common disposition for a client case in an MSSP?",
+        "choices": [
+          "Closed - No Issue",
+          "Closed - Issue Resolved",
+          "Pending - Further Investigation",
+          "Closed - Not Applicable"
+        ],
+        "answer_idx": 1,
+        "explain": "A closed disposition with the issue resolved is typical when the client's concerns are addressed."
+      },
+      {
+        "type": "mcq",
+        "q": "How should an MSSP SOC analyst document their findings and recommendations after investigating a client case?",
+        "choices": [
+          "Send an email report",
+          "Create a detailed written report",
+          "Provide a verbal update",
+          "Post findings on a shared drive"
+        ],
+        "answer_idx": 1,
+        "explain": "Creating a detailed written report ensures all findings and recommendations are properly documented."
+      },
+      {
+        "type": "flash",
+        "term": "Password Spray Triage",
+        "prompt": "What is the first step in triaging a password spray incident?",
+        "model": "Isolate the affected accounts and investigate the source of the attack."
+      },
+      {
+        "type": "flash",
+        "term": "SIEM report",
+        "prompt": "What is the typical frequency of an MSSP SOC's SIEM report?",
+        "model": "Weekly"
+      },
+      {
+        "type": "flash",
+        "term": "SIEM report frequency",
+        "prompt": "How often should an MSSP SOC generate a weekly SIEM report?",
+        "model": "A weekly SIEM report is typical for an MSSP SOC."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary responsibility of an MSSP SOC analyst in a pre-revenue lab?",
+        "choices": [
+          "Performing 24/7 client support",
+          "Developing and implementing security solutions",
+          "Handling all client cases immediately",
+          "Managing the SOC's 24/7 operations"
+        ],
+        "answer_idx": 1,
+        "explain": "Developing and implementing security solutions is the primary responsibility of an MSSP SOC analyst in a pre-revenue lab."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a common disposition for a client case in an MSSP lab?",
+        "choices": [
+          "Closed - No Issue",
+          "Closed - Issue Resolved",
+          "Open - Follow-Up Required",
+          "Pending - Further Investigation"
+        ],
+        "answer_idx": 1,
+        "explain": "Closed - Issue Resolved is the most common disposition for a client case when the issue is successfully resolved."
+      }
+    ],
+    "career": [
+      {
+        "type": "mcq",
+        "q": "Which tool is used for SIEM data analysis in Boundry's lab?",
+        "choices": [
+          "Splunk",
+          "ELK Stack",
+          "Ollama AI",
+          "Messer"
+        ],
+        "answer_idx": 0,
+        "explain": "Splunk is used for SIEM data analysis in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary language for KQL (Kibana Query Language) in Boundry's lab?",
+        "choices": [
+          "Python",
+          "SQL",
+          "KQL",
+          "JavaScript"
+        ],
+        "answer_idx": 2,
+        "explain": "KQL is the primary language for Kibana Query Language in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is NOT a valid email header field?",
+        "choices": [
+          "From",
+          "To",
+          "Subject",
+          "Body"
+        ],
+        "answer_idx": 3,
+        "explain": "Body is not a valid email header field."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the purpose of EDR (Endpoint Detection and Response) in Boundry's lab?",
+        "choices": [
+          "Preventing cyber threats",
+          "Monitoring network traffic",
+          "Analyzing SIEM data",
+          "Providing email headers"
+        ],
+        "answer_idx": 0,
+        "explain": "EDR is used to prevent cyber threats in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool is used for local AI in Boundry's lab?",
+        "choices": [
+          "Ollama AI",
+          "Messer",
+          "Splunk",
+          "ELK Stack"
+        ],
+        "answer_idx": 0,
+        "explain": "Ollama AI is used for local AI in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the main advantage of using a pre-revenue lab for SOC training?",
+        "choices": [
+          "24/7 staffed",
+          "Real-time threat analysis",
+          "Cost-effective",
+          "Access to Fortune 500 clients"
+        ],
+        "answer_idx": 2,
+        "explain": "A pre-revenue lab is cost-effective for SOC training."
+      },
+      {
+        "type": "flash",
+        "term": "KQL",
+        "prompt": "What is KQL?",
+        "model": "KQL stands for Kibana Query Language, used for querying and analyzing data in the SIEM environment."
+      },
+      {
+        "type": "flash",
+        "term": "EDR",
+        "prompt": "What is EDR?",
+        "model": "EDR stands for Endpoint Detection and Response, used to monitor and respond to threats on endpoints."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a valid email header field?",
+        "choices": [
+          "From",
+          "To",
+          "Subject",
+          "Content-Type"
+        ],
+        "answer_idx": 2,
+        "explain": "Subject is a valid email header field."
+      },
+      {
+        "type": "mcq",
+        "q": "What language is used for Kibana Query Language (KQL) in Boundry's lab?",
+        "choices": [
+          "Python",
+          "SQL",
+          "KQL",
+          "JavaScript"
+        ],
+        "answer_idx": 2,
+        "explain": "KQL is the language used for Kibana Query Language in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary advantage of using a pre-revenue lab for SOC training?",
+        "choices": [
+          "Cost savings",
+          "Real-world experience",
+          "Access to high-tech tools",
+          "24/7 support"
+        ],
+        "answer_idx": 1,
+        "explain": "Real-world experience is the primary advantage of using a pre-revenue lab for SOC training."
+      },
+      {
+        "type": "flash",
+        "term": "Messer",
+        "prompt": "What is the private layer option in Boundry's lab?",
+        "model": "Messer is a private layer option in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary language used for Kibana Query Language (KQL) in Boundry's lab?",
+        "choices": [
+          "Python",
+          "Java",
+          "JavaScript",
+          "KQL"
+        ],
+        "answer_idx": 3,
+        "explain": "KQL is the primary language used for Kibana Query Language in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary language used for KQL (Kibana Query Language) in Boundry's lab?",
+        "choices": [
+          "Python",
+          "SPL",
+          "KQL",
+          "JavaScript"
+        ],
+        "answer_idx": 2,
+        "explain": "KQL stands for Kibana Query Language, which is the primary language used for querying and analyzing data in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool is used for triage in Boundry's lab?",
+        "choices": [
+          "Messer",
+          "Ollama",
+          "SIEM",
+          "EDR"
+        ],
+        "answer_idx": 2,
+        "explain": "SIEM is used for triage in Boundry's lab."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary tool used for SIEM data analysis in Boundry's lab?",
+        "choices": [
+          "Splunk",
+          "ELK Stack",
+          "Messer",
+          "Ollama"
+        ],
+        "answer_idx": 0,
+        "explain": "Splunk is the primary tool used for SIEM data analysis in Boundry's lab."
+      }
+    ],
+    "tech": [
+      {
+        "type": "mcq",
+        "q": "Which tool does Boundry.AI use for its offline-first SOC training?",
+        "choices": [
+          "MSSP lab",
+          "24/7 staffed SOC",
+          "AI policy engine",
+          "Local Flask stack"
+        ],
+        "answer_idx": 3,
+        "explain": "Boundry.AI uses a local Flask stack for its offline-first SOC training."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary fallback for Anthropic in Boundry.AI?",
+        "choices": [
+          "SQLite/PH pattern",
+          "Ollama local AI",
+          "Bai PowerShell module",
+          "SOAR approve gates"
+        ],
+        "answer_idx": 1,
+        "explain": "Ollama local AI is the primary fallback for Anthropic in Boundry.AI."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is NOT a background thread in Boundry.AI's SIEM?",
+        "choices": [
+          "Offline-first training",
+          "Real-time threat detection",
+          "Client data analysis",
+          "Incident response automation"
+        ],
+        "answer_idx": 2,
+        "explain": "Client data analysis is NOT a background thread in Boundry.AI's SIEM."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the purpose of the SOAR approve gates in Boundry.AI?",
+        "choices": [
+          "To automate incident response",
+          "To manage client data",
+          "To ensure adherence to policy",
+          "To facilitate offline training"
+        ],
+        "answer_idx": 2,
+        "explain": "SOAR approve gates are used to ensure adherence to policy in Boundry.AI."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool is used for triage in Boundry.AI's SOC training?",
+        "choices": [
+          "MSSP lab",
+          "SIEM",
+          "Offline-first training",
+          "Bai PowerShell module"
+        ],
+        "answer_idx": 1,
+        "explain": "SIEM is used for triage in Boundry.AI's SOC training."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary use case for the SQLite/PH pattern in Boundry.AI?",
+        "choices": [
+          "Offline-first training",
+          "Real-time threat detection",
+          "Client data management",
+          "Incident response automation"
+        ],
+        "answer_idx": 0,
+        "explain": "The SQLite/PH pattern is primarily used for offline-first training in Boundry.AI."
+      },
+      {
+        "type": "flash",
+        "term": "Ollama",
+        "prompt": "What is Ollama in Boundry.AI?",
+        "model": "Ollama is a local AI tool used as a fallback for Anthropic in Boundry.AI's SOC training."
+      },
+      {
+        "type": "flash",
+        "term": "Offline-first",
+        "prompt": "What does 'offline-first' mean in the context of Boundry.AI?",
+        "model": "Offline-first means that Boundry.AI's SOC training can continue without an internet connection."
+      },
+      {
+        "type": "flash",
+        "term": "SIEM",
+        "prompt": "What does SIEM stand for in the context of Boundry.AI?",
+        "model": "Security Information and Event Management"
+      },
+      {
+        "type": "mcq",
+        "q": "What tool does Boundry.AI use for its offline-first SOC training lab?",
+        "choices": [
+          "a) Ollama",
+          "b) SQLite/PH pattern",
+          "c) bai PowerShell module",
+          "d) SOAR"
+        ],
+        "answer_idx": 2,
+        "explain": "The bai PowerShell module is used for its offline-first SOC training lab."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a key feature of Boundry.AI's offline-first SOC training?",
+        "choices": [
+          "a) 24/7 staffed SOC",
+          "b) Silent cloud storage of client data",
+          "c) Background SIEM threads",
+          "d) AI policy enforcement"
+        ],
+        "answer_idx": 2,
+        "explain": "Background SIEM threads are a key feature of Boundry.AI's offline-first SOC training."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool is used for the SQLite/PH pattern in Boundry.AI?",
+        "choices": [
+          "PowerShell Module",
+          "BAI",
+          "SIEM",
+          "Ollama"
+        ],
+        "answer_idx": 0,
+        "explain": "PowerShell Module is used for the SQLite/PH pattern in Boundry.AI."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool does Boundry.AI use for its offline-first SOC training lab?",
+        "choices": [
+          "SIEM",
+          "Ollama",
+          "PowerShell module",
+          "BAI"
+        ],
+        "answer_idx": 1,
+        "explain": "Ollama is used for the offline-first SOC training lab."
+      },
+      {
+        "type": "mcq",
+        "q": "Which tool does Boundry.AI use as its primary fallback for Anthropic?",
+        "choices": [
+          "Ollama",
+          "GPT-4",
+          "Claude",
+          "Davinci"
+        ],
+        "answer_idx": 0,
+        "explain": "Ollama is the primary fallback for Anthropic in Boundry.AI."
+      },
+      {
+        "type": "mcq",
+        "q": "What is the primary use case for the SQLite/PH pattern in Boundry.AI's SOC training?",
+        "choices": [
+          "Real-time threat detection",
+          "Offline data analysis",
+          "Incident response planning",
+          "User authentication"
+        ],
+        "answer_idx": 1,
+        "explain": "The SQLite/PH pattern is primarily used for offline data analysis in Boundry.AI's SOC training."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following is a key feature of Boundry.AI's offline-first SOC training lab?",
+        "choices": [
+          "24/7 support",
+          "Silent cloud data storage",
+          "Offline-first architecture",
+          "Real-time threat analysis"
+        ],
+        "answer_idx": 2,
+        "explain": "Offline-first architecture is a key feature of Boundry.AI's SOC training lab."
+      }
+    ],
+    "recruiter": [
+      {
+        "type": "mcq",
+        "q": "Which of the following best describes your experience with local SIEM tools?",
+        "choices": [
+          "a) Proficient in Splunk",
+          "b) Familiar with ELK stack",
+          "c) Experienced with Graylog",
+          "d) None of the above"
+        ],
+        "answer_idx": 2,
+        "explain": "Local SOC often uses Graylog for SIEM."
+      },
+      {
+        "type": "mcq",
+        "q": "How would you handle a sudden spike in alerts during a shift?",
+        "choices": [
+          "a) Ignore the alerts and continue with current tasks",
+          "b) Notify the team and escalate if needed",
+          "c) Use AI to filter out false positives",
+          "d) Disable alerts to avoid noise"
+        ],
+        "answer_idx": 1,
+        "explain": "A junior SOC should prioritize communication and escalation."
+      },
+      {
+        "type": "mcq",
+        "q": "What is your approach to triage in a high-volume incident?",
+        "choices": [
+          "a) Focus on critical issues first",
+          "b) Handle all incidents equally",
+          "c) Delegate tasks to team members",
+          "d) Wait for senior team input"
+        ],
+        "answer_idx": 0,
+        "explain": "Effective triage requires prioritizing critical incidents."
+      },
+      {
+        "type": "mcq",
+        "q": "How do you ensure the accuracy of incident reports?",
+        "choices": [
+          "a) Use automated tools for reporting",
+          "b) Cross-check with colleagues",
+          "c) Submit reports without verification",
+          "d) Submit reports immediately"
+        ],
+        "answer_idx": 1,
+        "explain": "Cross-checking is crucial for accurate reports."
+      },
+      {
+        "type": "mcq",
+        "q": "What is your preferred method for learning new technologies in the SOC?",
+        "choices": [
+          "a) Online courses and self-study",
+          "b) Hands-on experience in lab exercises",
+          "c) Formal training sessions",
+          "d) Reading industry publications"
+        ],
+        "answer_idx": 1,
+        "explain": "Hands-on experience is valuable in a lab setting."
+      },
+      {
+        "type": "mcq",
+        "q": "How do you handle sensitive data during a SOC shift?",
+        "choices": [
+          "a) Store data on personal devices",
+          "b) Use encrypted storage and access controls",
+          "c) Share data freely with team members",
+          "d) Keep data on unsecured networks"
+        ],
+        "answer_idx": 1,
+        "explain": "Data security is paramount in a SOC."
+      },
+      {
+        "type": "flash",
+        "term": "SIEM",
+        "prompt": "What is SIEM?",
+        "model": "SIEM stands for Security Information and Event Management, which is a system for collecting, analyzing, and reporting security events."
+      },
+      {
+        "type": "flash",
+        "term": "Triage",
+        "prompt": "What is triage in the context of a SOC?",
+        "model": "Triage in a SOC involves prioritizing and responding to security incidents based on their severity and impact."
+      },
+      {
+        "type": "flash",
+        "term": "Ollama",
+        "prompt": "What AI tool do we use for our local lab?",
+        "model": "Ollama is our local AI tool for natural language processing and analysis."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following best describes your experience with a portfolio lab?",
+        "choices": [
+          "a) I have experience with a small, offline-first SOC lab focused on incident response and security operations.",
+          "b) I have experience with a large, 24/7 staffed MSSP lab.",
+          "c) I have experience with a hybrid cloud environment.",
+          "d) I have experience with a managed security service provider (MSSP) for a Fortune 500 client."
+        ],
+        "answer_idx": 0,
+        "explain": "We're looking for an honest answer about a junior SOC experience in a local, offline-first lab."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following best describes your approach to incident triage?",
+        "choices": [
+          "a) Prioritize based on the severity and impact of the incident.",
+          "b) Handle all incidents equally.",
+          "c) Delegate all incidents to more experienced team members.",
+          "d) Focus on the most recent incidents."
+        ],
+        "answer_idx": 0,
+        "explain": "We want to know how you prioritize and manage incidents based on their impact."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following best describes your experience with Ollama local AI?",
+        "choices": [
+          "a) I have experience with using Ollama for incident response and threat hunting.",
+          "b) I have experience with using Ollama for data analysis and reporting.",
+          "c) I have experience with using Ollama for customer support.",
+          "d) I have experience with using Ollama for marketing."
+        ],
+        "answer_idx": 0,
+        "explain": "We're interested in your hands-on experience with Ollama in a SOC context."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following best describes your preferred method for learning new technologies in the SOC?",
+        "choices": [
+          "a) Hands-on experience through practical exercises and labs.",
+          "b) Reading technical documentation and attending webinars.",
+          "c) Attending training sessions and workshops.",
+          "d) Watching tutorial videos."
+        ],
+        "answer_idx": 0,
+        "explain": "We want to know how you stay up-to-date with new technologies in a practical, real-world setting."
+      },
+      {
+        "type": "mcq",
+        "q": "Which of the following best describes your experience with handling sensitive data during a SOC shift?",
+        "choices": [
+          "a) I have experience with handling sensitive data according to strict confidentiality and access controls.",
+          "b) I have experience with handling sensitive data without any restrictions.",
+          "c) I have experience with handling sensitive data in a public cloud environment.",
+          "d) I have experience with handling sensitive data in a hybrid environment."
+        ],
+        "answer_idx": 0,
+        "explain": "We want to know how you manage sensitive data in a secure and compliant manner."
+      },
+      {
+        "type": "mcq",
+        "q": "Which scenario best demonstrates your ability to handle a sudden spike in alerts during a shift?",
+        "choices": [
+          "A) You experienced a sudden spike in alerts and escalated them to the team, ensuring all critical incidents were addressed promptly.",
+          "B) You ignored the spike in alerts and continued with your regular tasks.",
+          "C) You waited for the alerts to decrease before addressing them.",
+          "D) You escalated all alerts to management without checking their validity."
+        ],
+        "answer_idx": 0,
+        "explain": "A) Demonstrates quick thinking and prioritization."
+      },
+      {
+        "type": "mcq",
+        "q": "How would you ensure the accuracy of incident reports during a high-volume incident?",
+        "choices": [
+          "A) By verifying the information with multiple sources and cross-referencing data.",
+          "B) By assuming all information is accurate until proven otherwise.",
+          "C) By relying on initial reports without further investigation.",
+          "D) By only reporting what you know, even if it might be incomplete."
+        ],
+        "answer_idx": 0,
+        "explain": "A) Ensures reliable and comprehensive reporting."
+      }
+    ]
+  },
+  "generated_at": "2026-11-17T03:34:30.581183+00:00",
+  "model": "qwen2.5-coder:7b"
+}

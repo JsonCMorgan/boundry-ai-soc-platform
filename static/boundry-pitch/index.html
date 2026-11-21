@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Boundry Pitch Quiz</title>
+<link rel="manifest" href="/static/boundry-pitch/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/static/boundry-pitch/icon-192.png">
+<style>
+:root{--bg:#0a0e14;--card:#131d28;--border:#1e3045;--text:#cdd6e0;--dim:#7a9ab0;--accent:#00ff88;}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+h1{font-size:1.15rem;margin:0 0 4px;color:var(--accent)}
+.sub{font-size:0.8rem;color:var(--dim);margin-bottom:12px}
+.deck{display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;cursor:pointer}
+.deck span{color:var(--dim);font-size:0.85rem}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.btn{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.95rem;cursor:pointer}
+.btn.primary{border-color:var(--accent);color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+.q{font-size:1.05rem;line-height:1.4;margin-bottom:12px}
+.choice{display:block;width:100%;text-align:left;padding:10px;margin:6px 0;background:#0f1923;border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:0.95rem}
+.choice.ok{border-color:var(--accent)}
+.choice.bad{border-color:#ff4444}
+.explain{margin-top:10px;font-size:0.9rem;color:var(--dim);line-height:1.45}
+.flash-term{font-size:1.2rem;color:var(--accent);margin-bottom:8px}
+.flash-prompt{color:var(--dim);margin-bottom:12px}
+.flash-model{display:none;margin-top:12px;padding:12px;border-left:3px solid var(--accent);background:#0f1923}
+.flash-model.show{display:block}
+.stat{font-size:0.85rem;color:var(--dim)}
+#screen-home{display:block}
+#screen-quiz{display:none}
+#screen-quiz.active{display:block}
+</style>
+</head>
+<body>
+<div id="screen-home" class="active">
+  <h1 style="color:#00ff88">Boundry Pitch Quiz</h1>
+  <p class="sub">Offline drill for recruiters and interviews. SMB security story. Progress stays on this phone.</p>
+  <p class="stat" id="install-hint" style="color:#cdd6e0">Loading decks…</p>
+  <div id="deck-list"></div>
+</div>
+<div id="screen-quiz">
+  <div class="bar">
+    <button type="button" class="btn" id="btn-back">Back</button>
+    <button type="button" class="btn primary" id="btn-next">Next</button>
+  </div>
+  <p class="stat" id="progress"></p>
+  <div class="card" id="quiz-card"></div>
+</div>
+<script src="/static/boundry-pitch/quiz-data.js" defer></script>
+<script src="/static/boundry-pitch/app.js" defer></script>
+</body>
+</html>

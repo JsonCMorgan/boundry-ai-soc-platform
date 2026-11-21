@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Net-for-SOC Prove · {{ lesson.title }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #0a0e14; color: #cdd6e0;
+    }
+    .topbar {
+      background: #0f1923; border-bottom: 1px solid #1e3045;
+      padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { color: #34d399; font-weight: 800; }
+    .topbar a { color: #7a9ab0; text-decoration: none; margin-left: 14px; font-size: 0.85em; }
+    .main { max-width: 780px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { color: #fff; }
+    .sub { color: #7a9ab0; font-size: 0.85em; margin-bottom: 18px; }
+    .q {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .q h3 { margin: 0 0 10px; font-size: 0.9em; color: #fff; line-height: 1.4; }
+    label {
+      display: block; font-size: 0.82em; color: #9ab; padding: 6px 8px; margin: 3px 0;
+      border-radius: 4px; cursor: pointer; border: 1px solid transparent;
+    }
+    label:hover { background: #0a0e14; }
+    input { margin-right: 8px; }
+    .btn {
+      padding: 12px 18px; border-radius: 6px; border: 1px solid #34d39966;
+      background: #34d39922; color: #34d399; font-weight: 800; cursor: pointer;
+      font-family: inherit; font-size: 0.9em;
+    }
+    #results { display: none; margin-top: 20px; }
+    .score { font-size: 2.4em; font-weight: 800; color: #00ff88; }
+    .g { border-bottom: 1px solid #1e3045; padding: 10px 0; font-size: 0.82em; }
+    .ok { color: #00ff88; }
+    .bad { color: #ff8888; }
+    .job { margin-top: 18px; font-size: 0.82em; }
+    .job a { color: #34d399; margin-right: 12px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Net-for-SOC · N{{ lesson.order }} Prove it</span>
+    <div>
+      <a href="/career/net/practice/{{ lesson.id }}">← Help me</a>
+      <a href="/career/net">Lab hub</a>
+    </div>
+  </div>
+  <div class="main">
+    <h1>{{ lesson.title }}: prove it</h1>
+    <p class="sub">
+      {{ questions|length }} original Boundry questions. Pass at {{ pass_pct }}%+ so Continue advances.
+      {% if quiz_best %}
+        Best so far: <b style="color:#fff;">{{ quiz_best.score_pct }}%</b>
+        {% if quiz_best.passed %}<span class="ok"> · passed</span>{% endif %}
+      {% endif %}
+    </p>
+
+    <div id="form">
+      {% for q in questions %}
+      <div class="q" data-qid="{{ q.id }}">
+        <h3>{{ loop.index }}. {{ q.q }}</h3>
+        {% for letter, text in q.choices.items() %}
+        <label><input type="radio" name="{{ q.id }}" value="{{ letter }}"> {{ letter }}. {{ text }}</label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      <button class="btn" onclick="submitQuiz()">Submit quiz</button>
+    </div>
+
+    <div id="results">
+      <div class="score" id="r-pct">—%</div>
+      <div id="r-sub" style="color:#8aa;margin-bottom:14px;"></div>
+      <div id="r-graded"></div>
+      <div class="job">
+        {% if lesson.job_ctas %}
+        Do the job:
+        {% for c in lesson.job_ctas %}
+        <a href="{{ c.href }}">{{ c.label }}</a>
+        {% endfor %}
+        {% endif %}
+        <div style="margin-top:10px;">
+          <a href="/career/net" style="color:#34d399;">Back to Net hub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+<script src="/static/game.js"></script>
+<script>
+var _csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+var LESSON = {{ lesson.id | tojson }};
+function submitQuiz() {
+  var answers = {};
+  document.querySelectorAll('.q').forEach(function(el){
+    var id = el.getAttribute('data-qid');
+    var picked = el.querySelector('input:checked');
+    if (picked) answers[id] = picked.value;
+  });
+  fetch('/career/net/quiz/' + encodeURIComponent(LESSON) + '/submit', {
+    method: 'POST',
+    headers: {'X-CSRFToken': _csrf, 'Content-Type': 'application/json'},
+    body: JSON.stringify({ answers: answers })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d.ok) { alert(d.error || 'Submit failed'); return; }
+    var res = d.result;
+    document.getElementById('form').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('r-pct').textContent = res.pct + '%';
+    document.getElementById('r-pct').style.color = res.passed ? '#00ff88' : '#ff8888';
+    document.getElementById('r-sub').textContent =
+      res.correct + '/' + res.total + ' correct' + (res.passed ? ' · LESSON GREEN. Continue unlocked' : ' · retry Help me, then Prove again');
+    var html = '';
+    (res.graded || []).forEach(function(g){
+      html += '<div class="g ' + (g.correct ? 'ok' : 'bad') + '">' +
+        (g.correct ? '✓ ' : '✗ ') + g.q + '<br><span style="color:#8aa;">' +
+        (g.explain || '') + '</span></div>';
+    });
+    document.getElementById('r-graded').innerHTML = html;
+    if (d.xp && window.handleXpResult) handleXpResult(d.xp);
+  }).catch(function(){ alert('Submit failed'); });
+}
+</script>
+</body>
+</html>

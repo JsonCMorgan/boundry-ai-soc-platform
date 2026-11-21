@@ -9,11 +9,12 @@ from __future__ import annotations
 from typing import Any
 
 import career_rationale
+import note_coaches
 
 CLIENT_OPTIONS = [
     {"id": "Contoso", "label": "Contoso"},
     {"id": "NorthPeak", "label": "NorthPeak"},
-    {"id": "Harbor", "label": "Harbor Cannabis"},
+    {"id": "Harbor", "label": "Harbor Retail"},
 ]
 
 PRIORITY_OPTIONS = [
@@ -68,6 +69,7 @@ STANDARD_FIELDS: list[dict[str, Any]] = [
         "required": True,
         "hint": "Short summary of the alert / story.",
         "placeholder": "e.g. Password spray from one IP against 12 Contoso users…",
+        "coach_id": "ticket_what_happened",
     },
     {
         "id": "evidence",
@@ -76,6 +78,7 @@ STANDARD_FIELDS: list[dict[str, Any]] = [
         "required": True,
         "hint": "Cite the indicator and what enrich found.",
         "placeholder": "e.g. IOC 203.0.113.44 — enrich suspicious, no allowlist…",
+        "coach_id": "ticket_evidence",
     },
     {
         "id": "actions_taken",
@@ -84,6 +87,7 @@ STANDARD_FIELDS: list[dict[str, Any]] = [
         "required": True,
         "hint": "What you approved, denied, or already did.",
         "placeholder": "e.g. Approved 24h edge block; sessions still under watch…",
+        "coach_id": "ticket_actions_taken",
     },
     {
         "id": "next_action",
@@ -92,16 +96,31 @@ STANDARD_FIELDS: list[dict[str, Any]] = [
         "required": True,
         "hint": "Who does what next (you, IR, client, Ops).",
         "placeholder": "e.g. Monitor for successful logons; escalate if any succeed…",
+        "coach_id": "ticket_next_action",
     },
 ]
 
 FIELD_IDS = [f["id"] for f in STANDARD_FIELDS]
 
 
+def _attach_coaches(fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Copy field defs and attach writing coach copy for textarea fields."""
+    out: list[dict[str, Any]] = []
+    for f in fields:
+        row = dict(f)
+        cid = row.get("coach_id")
+        if cid:
+            coach = note_coaches.get_coach(str(cid))
+            if coach:
+                row["coach"] = coach
+        out.append(row)
+    return out
+
+
 def fields_for_ui(*, omit: list[str] | None = None) -> list[dict[str, Any]]:
     """Return field defs for template JSON, optionally omitting ids (e.g. Shift client)."""
     skip = set(omit or [])
-    return [dict(f) for f in STANDARD_FIELDS if f["id"] not in skip]
+    return _attach_coaches([dict(f) for f in STANDARD_FIELDS if f["id"] not in skip])
 
 
 def fields_for_live_ops() -> list[dict[str, Any]]:

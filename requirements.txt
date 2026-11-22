@@ -42,7 +42,7 @@ requests==2.33.1
 resend==2.30.1
 
 # 2FA — TOTP (Google Authenticator compatible)
-pyotp==2.9.0
+pyotp==2.12.1
 qrcode[pil]==8.1
 
 # Production server

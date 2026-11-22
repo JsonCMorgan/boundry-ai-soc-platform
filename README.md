@@ -7,7 +7,7 @@
 
 ## Start here
 
-I'm Jason (GTA). This repo is where I practice **SOC-style work** for real: alert triage, investigation notes, ticket hygiene, SIEM queries, incident reports, and drills when I'm not at the day job.
+This repo is where I practice **SOC-style work** for real: alert triage, investigation notes, ticket hygiene, SIEM queries, incident reports, and drills when I'm not at the day job.
 
 - **What it is:** my practice platform and Boundry build, not a shrink-wrapped vendor product
 - **Peek first:** [screenshots](#a-quick-tour), then [docs/SECURITY.md](docs/SECURITY.md) for how I hardened it

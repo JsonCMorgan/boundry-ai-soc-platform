@@ -1,6 +1,6 @@
 # How I'd walk you through this repo (2-minute skim)
 
-**Who wrote this:** Jason Morgan (`JsonCMorgan`)
+**Repo:** `JsonCMorgan/boundry-ai-soc-platform` (see [profile README](https://github.com/JsonCMorgan/JsonCMorgan) for who I am)
 
 **Why it exists:** If you're curious how this project fits together, this is the short path I use when someone asks "what should I click first?"
 

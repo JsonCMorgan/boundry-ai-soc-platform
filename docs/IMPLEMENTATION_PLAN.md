@@ -2,7 +2,7 @@
 
 **Source of truth for product intent:** [`docs/PRD.md`](PRD.md)  
 **How agents use this file:** see `.cursor/rules/boundry-context-work.mdc`  
-**Last updated:** 2026-10-11
+**Last updated:** 2026-11-22
 
 Work **one stage at a time**. Prefer Career/Sec+ when they conflict with Live (PRD Q7). Do not invent features outside the PRD Won’t list.
 
@@ -153,6 +153,41 @@ See [`docs/PRE_CLIENT_HARDENING.md`](PRE_CLIENT_HARDENING.md).
 - [ ] Meet Roy; decide merge shape
 - [ ] Unlock tiers + demo bar in PRD
 - [ ] Revisit Won’t list if needed
+
+---
+
+## Stage 6 — Security Portfolio Roadmap (mentor GitHub)
+
+**Goal:** Ship Tier A–D items from `security_portfolio_roadmap` (agent store plan + Boundry HQ canvas). One repo or hygiene pass at a time; push after Jason confirms.
+
+**Progress (Jason, 2026-11-22):**
+
+- [x] #1 Portfolio hygiene (`boundry-ai-soc-platform` pushed)
+- [x] #2 Security Onion lab (GitHub)
+- [x] #3 Juice Shop lab (GitHub)
+- [x] #4 Phishing email analyzer ([phishing-email-analyzer](https://github.com/JsonCMorgan/phishing-email-analyzer))
+- [ ] #5 IOC extractor (local `C:\Dev\ioc-extractor`; push when confirmed)
+- [ ] #6–#19 per roadmap order (Jason picks next)
+- [x] #7 Sigma pack (`soc-detection-rules`) — shipped earlier
+
+**Done when:** Profile README promises match green, mentor-visible repos for chosen items.
+
+---
+
+## Stage 6b — SIEM on-demand IOC enrichment (after Stage 6)
+
+**Goal:** Wire **analyst-triggered** enrichment into Live SIEM (local stub only in v1). Not background enrich on ingest.
+
+**Spec:** [`docs/handoffs/SPEC-siem-on-demand-ioc-enrichment.md`](handoffs/SPEC-siem-on-demand-ioc-enrichment.md)
+
+- [ ] `POST /api/siem/enrich` (+ event_id parsing)
+- [ ] SIEM UI panel on selected event (`templates/siem.html`)
+- [ ] Docs + pytest smoke
+- [ ] Demo: event → Enrich → stub verdict + defanged IOC in panel
+
+**Do not start until** Jason says portfolio queue is far enough along (default: after current Tier B stretch or explicit “start 6b”).
+
+**Done when:** Acceptance checks in SPEC are checked; no outbound calls on default path.
 
 ---
 

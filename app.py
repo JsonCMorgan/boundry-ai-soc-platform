@@ -52,6 +52,7 @@ import interview_variants
 import soc_lab
 import siem_views
 import mission_control
+import command_catalog
 import note_coaches
 import memory_retention
 import messer_layer
@@ -2784,6 +2785,7 @@ def account():
         business_name  = request.form.get("business_name", "").strip()[:120]
 
         # Validate industry against allowlist
+        new_industry = _normalize_industry_key(new_industry)
         if new_industry not in INDUSTRY_LABELS:
             new_industry = "general"
 
@@ -3104,7 +3106,7 @@ RISK_CONTROLS = [
 
 # Per-industry profile: data-sensitivity factor + baseline annual attack rate.
 RISK_INDUSTRIES = {
-    "cannabis":              {"label": "Cannabis / Dispensary",  "factor": 1.2, "base_aro": 0.50},
+    "regulated_retail":      {"label": "Regulated retail",       "factor": 1.2, "base_aro": 0.50},
     "healthcare":            {"label": "Healthcare / Medical",   "factor": 1.5, "base_aro": 0.50},
     "legal":                 {"label": "Legal / Law Firm",       "factor": 1.2, "base_aro": 0.40},
     "financial":             {"label": "Financial / Accounting", "factor": 1.3, "base_aro": 0.50},
@@ -12000,6 +12002,26 @@ def run_breach_intel():
     return redirect(url_for("control_room"))
 
 
+@app.route("/ops/commands")
+@analyst_required
+def ops_command_dashboard():
+    """Searchable catalog of stack scripts, bai, MCP, routes, and dev CLIs."""
+    data = command_catalog.command_catalog()
+    return render_template(
+        "command_dashboard.html",
+        categories=data["categories"],
+        commands=data["commands"],
+        kinds=data["kinds"],
+    )
+
+
+@app.route("/api/ops/commands")
+@analyst_required
+def api_ops_commands():
+    """JSON command catalog for widgets or external tooling."""
+    return jsonify(command_catalog.command_catalog())
+
+
 @app.route("/daily-log")
 @analyst_required
 def daily_log():
@@ -15422,10 +15444,20 @@ def _siem_flask_logger(response):
 
 # ── Compliance Module ─────────────────────────────────────────────────────────
 
+# Map legacy DB values to current industry keys (portfolio hygiene / neutral GTM).
+INDUSTRY_LEGACY_ALIASES = {"cannabis": "regulated_retail"}
+
+
+def _normalize_industry_key(industry: str | None) -> str:
+    """Resolve stored industry slug to an allowlisted compliance key."""
+    slug = (industry or "general").strip()
+    return INDUSTRY_LEGACY_ALIASES.get(slug, slug)
+
+
 # Industry definitions — display label + description shown in account settings
 INDUSTRY_LABELS = {
     "general":      "General Business",
-    "cannabis":     "Cannabis / Dispensary",
+    "regulated_retail": "Regulated retail",
     "healthcare":   "Healthcare / Medical",
     "legal":        "Legal / Law Firm",
     "financial":    "Financial / Accounting",
@@ -15497,13 +15529,13 @@ _PCI_CONTROLS = [
 # Industry-specific compliance control sets
 _INDUSTRY_CONTROLS = {
 
-    "cannabis": [
-        {"id":"C1","title":"State Cannabis License","risk":"HIGH",
-         "description":"Active, current state-issued cannabis retail/dispensary/cultivation license on file.",
+    "regulated_retail": [
+        {"id":"C1","title":"State license / permit on file","risk":"HIGH",
+         "description":"Active state or provincial license for regulated retail operations.",
          "guidance":"License must be displayed and renewed before expiry. Digital copy secured and backed up."},
-        {"id":"C2","title":"Seed-to-Sale Tracking (METRC/BioTrack)","risk":"HIGH",
-         "description":"All inventory tracked in the state-mandated seed-to-sale system.",
-         "guidance":"Secure METRC API credentials; review access logs monthly; restrict staff logins to role-based access."},
+        {"id":"C2","title":"State traceability / inventory system","risk":"HIGH",
+         "description":"Inventory tracked in the regulator-mandated traceability system.",
+         "guidance":"Secure API credentials; review access logs monthly; restrict staff logins to role-based access."},
         {"id":"C3","title":"Employee Background Screening","risk":"MEDIUM",
          "description":"All employees with access to cash, inventory, or systems pass background checks.",
          "guidance":"Document results; retain for employment duration + 3 years. Check state-specific criminal history restrictions."},
@@ -15516,9 +15548,9 @@ _INDUSTRY_CONTROLS = {
         {"id":"C6","title":"Customer Data & ID Scan Protection","risk":"HIGH",
          "description":"Customer purchase history, ID scans, and loyalty data stored securely and encrypted.",
          "guidance":"ID scan data encrypted at rest. Retention limited to legal minimum. Never store on unsecured local drives."},
-        {"id":"C7","title":"Banking & MSB Compliance","risk":"MEDIUM",
-         "description":"BSA/AML programme in place; Currency Transaction Reports filed for cash transactions over $10,000.",
-         "guidance":"Cannabis businesses are Money Services Businesses (MSBs) under federal law. CTR filings are mandatory regardless of state status."},
+        {"id":"C7","title":"Banking & AML compliance","risk":"MEDIUM",
+         "description":"AML programme in place; large cash transactions documented per policy.",
+         "guidance":"High-cash retail should document CTR/SAR obligations with counsel and file when thresholds apply."},
         {"id":"C8","title":"Incident Response Plan","risk":"MEDIUM",
          "description":"Written plan for data breach, cyberattack, or regulatory investigation.",
          "guidance":"Plan must include: who to call, how to contain, state/federal reporting obligations, and customer notification procedures."},
@@ -16063,11 +16095,11 @@ def compliance():
     user_row = db_fetchone(
         f"SELECT industry, business_name FROM users WHERE id = {PH}", (user_id,)
     ) or {}
-    industry      = user_row.get("industry") or "general"
+    industry      = _normalize_industry_key(user_row.get("industry"))
     business_name = user_row.get("business_name") or ""
 
     # Analyst preview override — lets analyst switch framework without changing their account
-    preview = request.args.get("industry_preview", "").strip()
+    preview = _normalize_industry_key(request.args.get("industry_preview", "").strip())
     if role == "analyst" and preview in _INDUSTRY_CONTROLS:
         industry = preview
 

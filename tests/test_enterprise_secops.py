@@ -51,6 +51,17 @@ def test_saved_search_crud(analyst_client):
     assert any(s["name"] == "Test filter" for s in listed["searches"])
 
 
+def test_ops_command_dashboard(analyst_client):
+    r = analyst_client.get("/ops/commands")
+    assert r.status_code == 200
+    assert b"Command Center" in r.data
+    api = analyst_client.get("/api/ops/commands")
+    assert api.status_code == 200
+    body = api.get_json()
+    assert "commands" in body
+    assert len(body["commands"]) >= 10
+
+
 def test_mission_control_queue(analyst_client):
     r = analyst_client.get("/api/soc/mission/queue")
     assert r.status_code == 200

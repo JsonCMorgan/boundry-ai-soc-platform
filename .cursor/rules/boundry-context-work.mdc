@@ -18,6 +18,7 @@ Keep this rule small. Load sibling docs on demand; do not paste them into every 
 | Hire skill gaps (G#) | `docs/soc-l1-skills-roadmap.md` |
 | Engineering conventions | `.cursorrules` |
 | Tutor lesson voice | `.cursor/rules/tutor-professor-voice.mdc` |
+| MCP plan/implement/tutor triage | `.cursor/rules/llm-mcp-auto-triage.mdc` |
 
 ## Behaviour
 

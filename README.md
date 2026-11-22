@@ -13,6 +13,7 @@ This repo is my hands-on practice platform for **junior SOC / security operation
 - **Day-job proof:** L1/L2 client support and triage at Legal Aid Ontario, plus long-form technical customer ops
 - **How to read it:** an independent practice platform, not a vendor pitch
 - **Start here:** the [screenshots](#a-quick-tour), then [docs/SECURITY.md](docs/SECURITY.md) for how I hardened it
+- **2-minute verify:** [docs/PORTFOLIO_VERIFICATION_GUIDE.md](docs/PORTFOLIO_VERIFICATION_GUIDE.md) · security contact: [SECURITY.md](SECURITY.md)
 
 LinkedIn: https://www.linkedin.com/in/jason-morgan-110656289/
 

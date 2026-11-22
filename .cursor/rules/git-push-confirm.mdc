@@ -1,0 +1,12 @@
+---
+description: Git push workflow — agent may commit; push only after Jason confirms
+alwaysApply: true
+---
+
+# Git push (Jason)
+
+- **Commits:** The agent may stage and commit locally when finishing agreed work, unless Jason says commit-only or no commit.
+- **Push:** Never run `git push` (any remote/branch) until Jason explicitly confirms in that chat (e.g. "yes push", "go ahead and push").
+- **Before asking to push:** Show a short summary: repo path, branch, commit message(s) or `git log origin/main..HEAD --oneline`, and whether secrets scan / tests were run if relevant.
+- **Multi-repo:** List each repo in the confirmation request; push only the repos Jason approves.
+- **Profile repo:** Default branch for JsonCMorgan profile README is `main`, not feature branches.

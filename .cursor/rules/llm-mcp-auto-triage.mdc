@@ -1,0 +1,44 @@
+---
+description: On each Jason request, decide if boundry-ai MCP (plan/implement/tutor) helps before coding
+alwaysApply: true
+---
+
+# Local LLM MCP auto-triage (Boundry)
+
+When Jason asks for work in this repo (or Boundry MCP stack), **decide first** whether to use **boundry-ai** MCP tools on loopback Ollama (`boundry_plan`, `boundry_implement`, `boundry_tutor`) or handle directly in Composer.
+
+## Always triage (silent checklist, then act)
+
+1. **Intent:** code change, explanation/study, ops command, git/docs only, or meta (canvas/rules)?
+2. **Scope:** one line / one file vs multi-file, routes, DB, new feature?
+3. **Stack:** plan/implement need Ollama at `127.0.0.1:11434`. If likely down, say so and offer to start stack or proceed without MCP.
+4. **Privacy:** never pass secrets, `.env`, `app.db`, or client paste into MCP tasks.
+
+## Use MCP when helpful
+
+| Tool | Use when |
+|------|----------|
+| `boundry_tutor` | Explain concepts, Sec+/SOC/interview, "what is X", no file edits requested |
+| `boundry_plan` | Multi-file or unclear design; Jason said plan/spec/handoff; new lab/route; portfolio feature; before large `app.py` edits |
+| `boundry_implement` | After a plan Jason accepts; scoped SPEC under `docs/handoffs/`; draft diffs before Composer applies |
+
+## Skip MCP (Composer only)
+
+- Trivial fix Jason named exactly (typo, missing import, single test assert)
+- Jason said "no MCP" / "just do it in chat"
+- Docs-only, canvas-only, rule-only, or copy edits with no codegen
+- User message is purely social or status ("thanks", "is stack up?") unless they ask to start stack
+
+## How to behave
+
+1. **Say one line** when choosing MCP: e.g. "This is multi-file; I'll call `boundry_plan` first (Ollama)."
+2. **SPEC:** For non-trivial builds, prompt Jason to use `docs/handoffs/SPEC-template.md` or draft the SPEC in chat, then pass `spec_path` to MCP.
+3. **After implement MCP:** Apply diffs, run scoped `pytest`, respect `git-push-confirm` (no push without explicit yes).
+4. **MCP missing or fails:** Continue in Composer; note that `setup_cursor_boundry_mcp.ps1` + enable boundry-ai fixes tools.
+5. **Command Center:** For "what command do I run", answer from `command_catalog.py` or Boundry HQ canvas; do not require MCP.
+
+## Jason cue phrases (default to triage + MCP if fit)
+
+"Build", "implement", "add feature", "new route", "plan this", "use the loop", "follow SPEC", "portfolio item", "explain like tutor" → run triage and prefer matching MCP tool when stack is available.
+
+Reference: `docs/LLM_ROUTING_WORKFLOW.md`, Boundry HQ canvas LLM loop steps.

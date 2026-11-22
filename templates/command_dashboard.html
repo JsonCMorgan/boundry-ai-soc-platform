@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundry.AI — Command Center</title>
+    <style>
+        :root {
+            --bg: #0a0e14;
+            --surface: #0f1923;
+            --card: #131d28;
+            --border: #1e3045;
+            --text: #cdd6e0;
+            --muted: #7a9ab0;
+            --gold: #ffd700;
+            --hq: #00ff88;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+        }
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+        .brand { font-weight: 800; color: var(--gold); font-size: 1.05em; }
+        .brand span { color: var(--muted); font-weight: 600; }
+        .topbar a { color: var(--muted); text-decoration: none; font-size: 0.85em; margin-left: 16px; }
+        .topbar a:hover { color: var(--hq); }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 64px; }
+        h1 { margin: 0 0 6px; font-size: 1.35em; color: #fff; }
+        .lede { color: var(--muted); font-size: 0.88em; line-height: 1.55; margin: 0 0 22px; max-width: 720px; }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        #search {
+            flex: 1;
+            min-width: 220px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9em;
+        }
+        #search:focus { outline: none; border-color: var(--hq); }
+        .stat-chip {
+            font-size: 0.78em;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 12px;
+        }
+        .cat-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        .cat-btn {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.78em;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .cat-btn:hover, .cat-btn.active {
+            border-color: var(--hq);
+            color: var(--hq);
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section-head {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 12px;
+            border-left: 3px solid var(--cat-accent, var(--hq));
+            padding-left: 12px;
+        }
+        .section-head h2 { margin: 0; font-size: 1em; color: #fff; }
+        .section-head p { margin: 0; font-size: 0.78em; color: var(--muted); }
+        .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .cmd-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px 16px;
+            align-items: start;
+        }
+        .cmd-card.hidden { display: none; }
+        .cmd-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px; }
+        .kind-badge {
+            font-size: 0.68em;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+        .cmd-name { font-weight: 700; color: #fff; font-size: 0.92em; }
+        .cmd-summary { font-size: 0.82em; color: var(--muted); line-height: 1.45; margin: 0; }
+        .cmd-detail { font-size: 0.76em; color: #5a7a90; margin: 6px 0 0; line-height: 1.4; }
+        .cmd-line-wrap { grid-column: 1 / -1; display: flex; gap: 8px; align-items: flex-start; }
+        code.cmd-line {
+            flex: 1;
+            display: block;
+            background: #0a1218;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 0.8em;
+            color: var(--hq);
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        .copy-btn, .go-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 0.75em;
+            cursor: pointer;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .copy-btn:hover, .go-btn:hover { border-color: var(--gold); color: var(--gold); }
+        .kind-legend {
+            margin-top: 28px;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.78em;
+            color: var(--muted);
+        }
+        .kind-legend dt { color: var(--text); font-weight: 700; margin-top: 8px; }
+        .kind-legend dt:first-child { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">Command Center <span>/ ops</span></div>
+        <nav>
+            <a href="/control-room">Control Room</a>
+            <a href="/daily-log">Daily Log</a>
+            <a href="/career">Career Lab</a>
+        </nav>
+    </header>
+
+    <main class="wrap">
+        <h1>Commands & features</h1>
+        <p class="lede">
+            Searchable catalog: stack scripts, <strong style="color:#ffd700;font-weight:600;">bai</strong> terminal,
+            Cursor MCP tools, live routes, dev CLIs, and doc paths. Data lives in
+            <code style="color:#00ff88;">command_catalog.py</code> so this page stays in sync.
+        </p>
+
+        <div class="toolbar">
+            <input type="search" id="search" placeholder="Filter: siem, mcp, bai, pytest…" autocomplete="off">
+            <span class="stat-chip" id="visible-count"></span>
+        </div>
+
+        <div class="cat-nav" id="cat-nav">
+            <button type="button" class="cat-btn active" data-cat="all">All</button>
+            {% for cat in categories %}
+            <button type="button" class="cat-btn" data-cat="{{ cat.id }}">{{ cat.title }}</button>
+            {% endfor %}
+        </div>
+
+        {% for cat in categories %}
+        <section class="section" data-section="{{ cat.id }}" style="--cat-accent: {{ cat.accent }};">
+            <div class="section-head">
+                <h2>{{ cat.title }}</h2>
+                <p>{{ cat.subtitle }}</p>
+            </div>
+            <div class="grid">
+                {% for cmd in commands if cmd.category == cat.id %}
+                <article class="cmd-card"
+                    data-category="{{ cmd.category }}"
+                    data-search="{{ (cmd.name ~ ' ' ~ cmd.command ~ ' ' ~ cmd.summary ~ ' ' ~ (cmd.detail or '') ~ ' ' ~ (cmd.tags | join(' '))) | lower }}">
+                    <div>
+                        <div class="cmd-meta">
+                            <span class="kind-badge">{{ cmd.kind }}</span>
+                            <span class="cmd-name">{{ cmd.name }}</span>
+                        </div>
+                        <p class="cmd-summary">{{ cmd.summary }}</p>
+                        {% if cmd.detail %}
+                        <p class="cmd-detail">{{ cmd.detail }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        {% if cmd.href and cmd.kind == 'url' %}
+                        <a class="go-btn" href="{{ cmd.href }}">Open</a>
+                        {% endif %}
+                    </div>
+                    <div class="cmd-line-wrap">
+                        <code class="cmd-line">{{ cmd.command }}</code>
+                        <button type="button" class="copy-btn" data-copy="{{ cmd.command }}">Copy</button>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+
+        <dl class="kind-legend">
+            <dt>Legend</dt>
+            {% for kind, desc in kinds.items() %}
+            <dt>{{ kind }}</dt>
+            <dd>{{ desc }}</dd>
+            {% endfor %}
+        </dl>
+    </main>
+
+    <script>
+        const searchEl = document.getElementById('search');
+        const cards = document.querySelectorAll('.cmd-card');
+        const sections = document.querySelectorAll('.section');
+        const countEl = document.getElementById('visible-count');
+        let activeCat = 'all';
+
+        function applyFilter() {
+            const q = (searchEl.value || '').trim().toLowerCase();
+            let visible = 0;
+            cards.forEach((card) => {
+                const cat = card.dataset.category;
+                const hay = card.dataset.search || '';
+                const catOk = activeCat === 'all' || cat === activeCat;
+                const textOk = !q || hay.includes(q);
+                const show = catOk && textOk;
+                card.classList.toggle('hidden', !show);
+                if (show) visible += 1;
+            });
+            sections.forEach((sec) => {
+                const id = sec.dataset.section;
+                if (activeCat !== 'all' && id !== activeCat) {
+                    sec.style.display = 'none';
+                    return;
+                }
+                const any = sec.querySelector('.cmd-card:not(.hidden)');
+                sec.style.display = any ? 'block' : 'none';
+            });
+            countEl.textContent = visible + ' command' + (visible === 1 ? '' : 's');
+        }
+
+        searchEl.addEventListener('input', applyFilter);
+
+        document.getElementById('cat-nav').addEventListener('click', (e) => {
+            const btn = e.target.closest('.cat-btn');
+            if (!btn) return;
+            document.querySelectorAll('.cat-btn').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeCat = btn.dataset.cat;
+            applyFilter();
+        });
+
+        document.querySelectorAll('.copy-btn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const text = btn.dataset.copy || '';
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const old = btn.textContent;
+                    btn.textContent = 'Copied';
+                    setTimeout(() => { btn.textContent = old; }, 1200);
+                } catch (err) {
+                    btn.textContent = 'Select manual';
+                }
+            });
+        });
+
+        applyFilter();
+    </script>
+</body>
+</html>

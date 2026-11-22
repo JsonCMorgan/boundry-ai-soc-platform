@@ -212,7 +212,20 @@ Adjust Notion URL to match your plugin's documented endpoint. Restart Cursor aft
 
 ## Boundry.AI local MCP (separate)
 
-`C:\Dev\boundry-mcp-server\server.py` — Claude Desktop integration with 7 security tools (`get_recent_threats`, `lookup_ip_reputation`, etc.). Requires VirusTotal + Shodan API keys. **Not the same** as Stripe/Notion/Slack business MCPs above.
+`C:\Dev\boundry-mcp-server\server.py` — stdio MCP for Claude Desktop **and Cursor**:
+
+- **SOC tools:** `get_recent_threats`, `lookup_ip_reputation`, etc. (optional VirusTotal + Shodan keys)
+- **LLM routing (loopback Ollama):** `boundry_plan`, `boundry_implement`, `boundry_tutor`
+
+**Cursor one-liner:**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Dev\MSSP\tools\setup_cursor_boundry_mcp.ps1
+```
+
+Then restart Cursor and enable **boundry-ai**. Workflow: [LLM_ROUTING_WORKFLOW.md](./LLM_ROUTING_WORKFLOW.md). Security: [LLM_MCP_SECURITY.md](./LLM_MCP_SECURITY.md).
+
+**Not the same** as Stripe/Notion/Slack business MCPs above.
 
 ---
 

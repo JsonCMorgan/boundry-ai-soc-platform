@@ -24,7 +24,7 @@ typing-inspection==0.4.2
 Flask-WTF
 
 # Report rendering
-Markdown==3.10.2
+Markdown==3.11.3
 
 # YAML playbook loading
 PyYAML==6.0.2

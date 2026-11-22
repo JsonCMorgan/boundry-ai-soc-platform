@@ -5,17 +5,16 @@
 ![Secrets scan](https://img.shields.io/badge/secrets%20scan-gitleaks-orange)
 ![AI](https://img.shields.io/badge/AI-local%20Ollama%20first-green)
 
-## For hiring managers and mentors (60-second skim)
+## Start here
 
-This repo is my hands-on practice platform for **junior SOC / security operations** work: alert triage, investigation notes, ticket hygiene, SIEM queries, incident reports, and interview walkthroughs.
+I'm Jason (GTA). This repo is where I practice **SOC-style work** for real: alert triage, investigation notes, ticket hygiene, SIEM queries, incident reports, and drills when I'm not at the day job.
 
-- **Builder:** Jason Morgan (GTA, Canada) · ISC² CC · York University Advanced Cyber Security (2024)
-- **Day-job proof:** L1/L2 client support and triage at Legal Aid Ontario, plus long-form technical customer ops
-- **How to read it:** an independent practice platform, not a vendor pitch
-- **Start here:** the [screenshots](#a-quick-tour), then [docs/SECURITY.md](docs/SECURITY.md) for how I hardened it
-- **2-minute verify:** [docs/PORTFOLIO_VERIFICATION_GUIDE.md](docs/PORTFOLIO_VERIFICATION_GUIDE.md) · security contact: [SECURITY.md](SECURITY.md)
+- **What it is:** my practice platform and Boundry build, not a shrink-wrapped vendor product
+- **Peek first:** [screenshots](#a-quick-tour), then [docs/SECURITY.md](docs/SECURITY.md) for how I hardened it
+- **Want the map?** [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) and [docs/PORTFOLIO_VERIFICATION_GUIDE.md](docs/PORTFOLIO_VERIFICATION_GUIDE.md) (how I'd walk someone through the repo)
+- **Report a security issue:** [SECURITY.md](SECURITY.md)
 
-LinkedIn: https://www.linkedin.com/in/jason-morgan-110656289/
+[LinkedIn](https://www.linkedin.com/in/jason-morgan-110656289/) · [My other labs](https://github.com/JsonCMorgan)
 
 ---
 
@@ -67,7 +66,7 @@ Built to close the gap between "I passed a cert" and "I can work a queue on day 
 | Interview Gym | Guided, coached, and live walkthroughs of real interview scenarios |
 | Comms, Oversight, Tune, Metrics, Automation | Stakeholder updates, reviewing AI verdicts, tuning noisy rules, MTTD/MTTR, automation policy |
 
-> **🗣️ Real Talk:** Nobody hires a bouncer who's only read about bar fights. This is my sparring gym. Every drill is a situation I'll face on a real SOC shift, and every case I work can go into a portfolio PDF.
+> **🗣️ Real Talk:** I don't want to read about bar fights and call it training. This is my sparring gym. Every drill is a situation I expect on a real SOC shift, and every case I work can turn into a portfolio PDF when I need one.
 
 ---
 
@@ -140,6 +139,16 @@ The SQLite database builds itself on first run. Secrets (API keys, `SECRET_KEY`)
 | `analyst` | Full platform: SIEM, SPL, SOC Floor, training, all client reports |
 | `client` | Their own reports portal, nothing else |
 | `demo` | Sealed sandbox with fake data only |
+
+## GitHub and portfolio upkeep
+
+I keep notes here on how I maintain the public repos tied to this build:
+
+| Doc | Use |
+|-----|-----|
+| [docs/GITHUB_INDUSTRY_AUDIT.md](docs/GITHUB_INDUSTRY_AUDIT.md) | Full rubric, scores, and 30/60/90 remediation |
+| [docs/PORTFOLIO_VERIFICATION_GUIDE.md](docs/PORTFOLIO_VERIFICATION_GUIDE.md) | How I'd walk through this repo in two minutes |
+| [docs/GITHUB_AUDIT_QUARTERLY_CHECKLIST.md](docs/GITHUB_AUDIT_QUARTERLY_CHECKLIST.md) | Monthly re-audit checklist |
 
 ## Live today vs. roadmap
 

@@ -2,11 +2,16 @@
 
 **Purpose:** Keep agents oriented without dumping the whole repo into chat.  
 **Update when:** major modules or top-level folders change.  
-**Last updated:** 2026-10-17
+**Last updated:** 2026-11-22
 
 ```
 MSSP/
 ├── app.py                 # Flask app (routes, init_db, XP, career, soc, …)
+├── tenant_ops.py          # MSSP tenant slug helpers + SIEM filters
+├── ingest_map.py          # /api/ingest → SIEM type mapping
+├── client_product.py      # Onboard wizard, client status, privacy, M365 ingest route
+├── boundry_deliverables.py # Weekly/monthly client deliverable builders
+├── m365_ingest.py         # M365 audit JSON → SIEM (Phase 1)
 ├── ticket_fields.py       # Shared Ticket Field Console schema + grade + compose_note
 ├── *.py labs/engines      # siem_collector, siem_ingest_tunes, siem_fp_templates,
 │                          # spl_engine, siem_views, mission_control, soc_ioc_stub,
@@ -24,6 +29,9 @@ MSSP/
 │   ├── secplus-objective-coverage.md
 │   ├── net-for-soc-outline.md
 │   ├── SIEM_FP_PHASE_A.md
+│   ├── GITHUB_INDUSTRY_AUDIT.md      # GitHub vs industry standards (rubric + roadmap)
+│   ├── PORTFOLIO_VERIFICATION_GUIDE.md
+│   ├── GITHUB_AUDIT_QUARTERLY_CHECKLIST.md
 │   └── …
 ├── .cursor/rules/         # tutor-professor-voice, boundry-skills, boundry-context-work
 ├── agent_skills/          # Boundry ops skills (weekly report, onboarding, triage)
@@ -52,6 +60,11 @@ MSSP/
 | Labs | `/career/{email,edr,logs,intel,net,vuln,sentinel,entra,spl,kql,interview,comms}` | Simulated |
 | CISSP | `/cissp` | Deeper / later after Sec+ |
 | Pre-client | `docs/PRE_CLIENT_HARDENING.md` | M1–M8 gate |
+| Client status | `/client/status` | Monitoring heartbeat (client role) |
+| Onboard wizard | `/analyst/onboard` | Analyst client onboarding |
+| Privacy | `/privacy` | M7 one-pager in-app |
+| M365 ingest | `POST /api/m365/ingest` | Phase-1 audit JSON |
+| Monthly summary | `POST /cron/monthly-summary` | Per-client report rows |
 
 ## Rules of placement
 

@@ -1,6 +1,6 @@
 # SPEC: SIEM on-demand IOC enrichment (Boundry MSSP)
 
-**Status:** Backlog — implement **after** Security Portfolio Roadmap items Jason is actively building (do not block Tier A–B repos).
+**Status:** Shipped v1 (2026-11-23). See `docs/SIEM_IOC_ENRICHMENT.md`.
 
 **Maps to:** G6 (intel enrich habit), Live SIEM UX (Stage 4b), `intel_lab.lookup_ioc` stub.
 
@@ -40,10 +40,10 @@ Analyst triggers **Enrich indicators** from the SIEM UI on a **selected event** 
 
 ## Acceptance
 
-- [ ] Logged-in analyst enriches a real `siem_events` row.
-- [ ] Stub hit/miss for known IPs (e.g. `203.0.113.88`, `8.8.8.8`).
-- [ ] No outbound HTTP on default path.
-- [ ] `tests/test_enterprise_secops.py` or sibling covers API.
+- [x] Logged-in analyst enriches a real `siem_events` row.
+- [x] Stub hit/miss for known IPs (e.g. `203.0.113.88`, `8.8.8.8`).
+- [x] No outbound HTTP on default path.
+- [x] `tests/test_siem_event_detail.py` covers API.
 
 ## Commit message (when shipped)
 

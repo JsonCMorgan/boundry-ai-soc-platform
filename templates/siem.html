@@ -375,6 +375,24 @@
         .triage-actions .btn-drawer-primary { border-color:#00d4ff66; color:#00d4ff; background:#00d4ff11; }
         .triage-actions .btn-drawer-primary:hover { background:#00d4ff22; }
         .triage-actions .btn-drawer-warn { border-color:#ff444466; color:#ff8888; }
+        .triage-enrich-panel {
+            margin-top:12px; padding:10px 12px; border:1px solid #00d4ff33;
+            border-radius:6px; background:#03141f; font-size:0.8em;
+        }
+        .triage-enrich-panel .enrich-stub-label {
+            color:#00d4ff; font-size:0.72em; text-transform:uppercase; letter-spacing:0.05em;
+            margin-bottom:6px;
+        }
+        .triage-enrich-panel .enrich-summary { color:#cdd6e0; line-height:1.45; margin-bottom:8px; }
+        .triage-enrich-row {
+            display:grid; grid-template-columns:1fr auto; gap:6px; align-items:start;
+            padding:6px 0; border-top:1px solid #1e2235;
+        }
+        .triage-enrich-row:first-of-type { border-top:none; }
+        .enrich-verdict-malicious { color:#ff6666; font-weight:700; text-transform:uppercase; font-size:0.75em; }
+        .enrich-verdict-suspicious { color:#ffaa44; font-weight:700; text-transform:uppercase; font-size:0.75em; }
+        .enrich-verdict-benign { color:#66cc88; font-weight:700; text-transform:uppercase; font-size:0.75em; }
+        .enrich-verdict-unknown { color:#8899aa; font-weight:700; text-transform:uppercase; font-size:0.75em; }
         .triage-related { margin-top:12px; border-top:1px solid #1e2235; padding-top:10px; }
         .triage-related-item {
             padding:6px 0; border-bottom:1px solid #0f1118; cursor:pointer; color:#aaa;
@@ -479,6 +497,19 @@
             {% if user_role != 'analyst' %}<a href="/account">Account</a>{% endif %}
             <a href="/logout" style="color:#ff8888;font-weight:bold;border:1px solid #662222;background:#2a0d0d;padding:4px 12px;border-radius:5px;margin-left:16px;">🚪 Log Out</a>
         </nav>
+        {% if user_role in ('analyst', 'demo') %}
+        <form method="get" id="siem-tenant-scope" style="margin:0;display:flex;align-items:center;gap:8px;background:#031a2a;border:1px solid #00d4ff66;border-radius:6px;padding:4px 10px;">
+            <label for="siem-tenant-select" style="font-size:0.72em;color:#00d4ff;text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;font-weight:700;">Client scope</label>
+            <select name="tenant" id="siem-tenant-select" class="filter-select" onchange="this.form.submit()" style="min-width:150px;border-color:#00d4ff44;">
+                <option value="__all__" {% if not selected_tenant %}selected{% endif %}>All tenants</option>
+                {% for t in tenant_picker or [] %}
+                <option value="{{ t.client_id }}" {% if selected_tenant == t.client_id %}selected{% endif %}>
+                    {{ t.display_name }}{% if t.is_practice %} (Practice){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
         {% if user_role == 'analyst' %}
         <form action="/set-mode" method="post" style="margin:0;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -510,6 +541,16 @@
                      color:#00d4ff;font-weight:bold;">④ SIEM Live Feed ◀</span>
     </div>
     <span style="color:#555;margin-left:auto;">💬 <em style="color:#888;">"This updates in real time — every login, scan, and alert hits this screen."</em></span>
+</div>
+{% endif %}
+
+{% if user_role in ('analyst', 'demo') and selected_tenant %}
+<div style="background:#031a2a;border-bottom:1px solid #00d4ff33;padding:6px 32px;font-size:0.8em;color:#00d4ff;">
+    Scoped to tenant <strong>{{ selected_tenant }}</strong> — stats and live feed are filtered. Choose <strong>All tenants</strong> in the top bar to reset.
+</div>
+{% elif user_role in ('analyst', 'demo') and not (tenant_picker or []) %}
+<div style="background:#1a1400;border-bottom:1px solid #ffcc0044;padding:6px 32px;font-size:0.8em;color:#ffdd88;">
+    No <code>mssp_tenants</code> rows yet. Use <a href="/analyst/onboard" style="color:#00d4ff;">Onboard wizard</a> to add a client; then Client scope will list them.
 </div>
 {% endif %}
 
@@ -1362,6 +1403,71 @@ function openEventDrawer(eventId) {
     });
 }
 
+function drawerEnrichIndicators() {
+  if (!drawerEventId) return;
+    const slot = document.getElementById('triage-enrich-slot');
+    if (!slot) return;
+    slot.innerHTML = '<p style="color:#556;">Looking up indicators (offline stub)…</p>';
+    csrfFetch('/api/siem/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: drawerEventId }),
+    })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok) {
+                slot.innerHTML = `<p style="color:#ff6666;">${d.error || 'Enrich failed'}</p>`;
+                return;
+            }
+            renderEnrichPanel(slot, d);
+        })
+        .catch(() => {
+            slot.innerHTML = '<p style="color:#ff6666;">Enrich request failed.</p>';
+        });
+}
+
+function renderEnrichPanel(slot, data) {
+    slot.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.className = 'triage-enrich-panel';
+    panel.innerHTML = '<div class="enrich-stub-label">Practice stub only · no cloud lookup</div>';
+    const sum = document.createElement('div');
+    sum.className = 'enrich-summary';
+    sum.textContent = data.plain_summary || '';
+    panel.appendChild(sum);
+    const rows = data.enrichment || [];
+    if (!rows.length) {
+        const none = document.createElement('p');
+        none.style.color = '#667';
+        none.textContent = 'No indicators found on this event.';
+        panel.appendChild(none);
+    } else {
+        rows.forEach(row => {
+            const line = document.createElement('div');
+            line.className = 'triage-enrich-row';
+            const left = document.createElement('div');
+            const vClass = 'enrich-verdict-' + (row.verdict || 'unknown');
+            left.innerHTML = `<div style="color:#aab;">${(row.kind || '').toUpperCase()} · ${row.defanged || row.indicator}</div>`
+                + `<div style="color:#778;font-size:0.9em;margin-top:2px;">${row.summary || ''}</div>`;
+            const right = document.createElement('div');
+            right.className = vClass;
+            right.textContent = row.verdict || 'unknown';
+            const copy = document.createElement('button');
+            copy.type = 'button';
+            copy.className = 'btn-drawer';
+            copy.style.marginTop = '4px';
+            copy.style.fontSize = '0.75em';
+            copy.textContent = 'Copy defanged';
+            copy.onclick = () => navigator.clipboard.writeText(row.defanged || row.indicator).catch(() => {});
+            left.appendChild(copy);
+            line.appendChild(left);
+            line.appendChild(right);
+            panel.appendChild(line);
+        });
+    }
+    slot.appendChild(panel);
+}
+
 function closeEventDrawer() {
     drawerOpen = false;
     drawerEventId = null;
@@ -1412,11 +1518,11 @@ function renderTriageDrawer(ev, finding, related, observables) {
             copyBtn.onclick = () => navigator.clipboard.writeText(primary).catch(() => {});
             act.appendChild(copyBtn);
         }
-        const socBtn = document.createElement('button');
-        socBtn.type = 'button';
-        socBtn.textContent = 'Enrich on SOC Floor →';
-        socBtn.onclick = () => drawerGoSoc();
-        act.appendChild(socBtn);
+        const enrichBtn = document.createElement('button');
+        enrichBtn.type = 'button';
+        enrichBtn.textContent = 'Enrich indicators (local stub)';
+        enrichBtn.onclick = () => drawerEnrichIndicators();
+        act.appendChild(enrichBtn);
         obsWrap.appendChild(act);
         body.appendChild(obsWrap);
     }
@@ -1512,6 +1618,17 @@ function renderTriageDrawer(ev, finding, related, observables) {
         hint.textContent = 'Log in as an analyst to open Boundry Tickets from SIEM.';
         actions.appendChild(hint);
     }
+
+    const enrichSlot = document.createElement('div');
+    enrichSlot.id = 'triage-enrich-slot';
+    body.appendChild(enrichSlot);
+
+    const btnEnrich = document.createElement('button');
+    btnEnrich.type = 'button';
+    btnEnrich.className = 'btn-drawer btn-drawer-primary';
+    btnEnrich.textContent = 'Enrich indicators (local stub)';
+    btnEnrich.onclick = () => drawerEnrichIndicators();
+    actions.appendChild(btnEnrich);
 
     const btnSpl = document.createElement('button');
     btnSpl.type = 'button';
@@ -1769,10 +1886,13 @@ function applySourceFilter() {
 // ═══════════════════════════════════════════════════════════════════
 //  LIVE EVENT POLLING
 // ═══════════════════════════════════════════════════════════════════
+const SIEM_TENANT_FILTER = {{ (selected_tenant or '')|tojson }};
+
 function loadEvents(force = false) {
     if (currentMode !== 'live' || drawerOpen || streamPaused) return;
     let url = `/api/siem/events?limit=50&after=${maxSeenId}`;
     if (activeSource !== 'all') url += `&source=${activeSource}`;
+    if (SIEM_TENANT_FILTER) url += `&tenant=${encodeURIComponent(SIEM_TENANT_FILTER)}`;
 
     fetch(url)
         .then(r => r.json())

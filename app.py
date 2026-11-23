@@ -55,6 +55,9 @@ import mission_control
 import command_catalog
 import note_coaches
 import memory_retention
+import tenant_ops
+import boundry_audit
+import ingest_map
 import messer_layer
 import messer_catalog
 from messer_media import stream_messer_file
@@ -112,6 +115,21 @@ else:
         stacklevel=2,
     )
 app.secret_key = _secret
+DEV_SECRET_IN_USE = not bool(_secret_env) and not bool(DATABASE_URL)
+
+
+def boundry_live_mode() -> bool:
+    """True when BOUNDRY_MODE=live (training/demo surface disabled)."""
+    return (os.environ.get("BOUNDRY_MODE") or "").strip().lower() == "live"
+
+
+_LIVE_TRAINING_PREFIXES = (
+    "/training",
+    "/career",
+    "/cissp",
+    "/demo",
+    "/simulate-attack",
+)
 
 # --- Session cookie hardening ---
 # HTTPONLY blocks JS read access; SAMESITE=Lax blocks cross-site CSRF on
@@ -246,17 +264,54 @@ def generate_plain_summary(report_id, content, threat_count):
         return ""
 
 
-def send_email(to_address: str, subject: str, html_body: str) -> bool:
+def _log_alert_delivery(
+    *,
+    recipient: str,
+    subject: str,
+    ok: bool,
+    severity: str = "INFO",
+    ref_type: str = "",
+    ref_id: str = "",
+) -> None:
+    """Persist outbound alert attempt (GAP-006)."""
+    try:
+        db_run(
+            f"INSERT INTO alert_log (channel, recipient, subject, severity, ref_type, ref_id, ok) "
+            f"VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})",
+            ("email", recipient, subject[:500], severity, ref_type, ref_id, 1 if ok else 0),
+        )
+    except Exception as exc:
+        security_log.warning(f"alert_log insert failed: {exc}")
+
+
+def send_email(
+    to_address: str,
+    subject: str,
+    html_body: str,
+    *,
+    severity: str = "INFO",
+    ref_type: str = "",
+    ref_id: str = "",
+) -> bool:
     """Send a transactional email via Resend.
 
     Returns True on success, False on any error.
     RESEND_API_KEY must be set as an environment variable (Railway secret).
     FROM_EMAIL defaults to the Resend onboarding address until a custom domain
     is verified (set FROM_EMAIL=Boundry.AI <alerts@yourdomain.com>).
+    Gmail on-prem path: alert_monitor.py (see PRE_CLIENT_HARDENING).
     """
     api_key = os.environ.get("RESEND_API_KEY", "").strip()
     if not api_key:
         security_log.warning("send_email: RESEND_API_KEY not set — skipping")
+        _log_alert_delivery(
+            recipient=to_address,
+            subject=subject,
+            ok=False,
+            severity=severity,
+            ref_type=ref_type,
+            ref_id=ref_id,
+        )
         return False
     if not to_address or "@" not in to_address:
         return False
@@ -270,9 +325,25 @@ def send_email(to_address: str, subject: str, html_body: str) -> bool:
             "subject": subject,
             "html": html_body,
         })
+        _log_alert_delivery(
+            recipient=to_address,
+            subject=subject,
+            ok=True,
+            severity=severity,
+            ref_type=ref_type,
+            ref_id=ref_id,
+        )
         return True
     except Exception as exc:
         security_log.warning(f"send_email failed to={to_address!r}: {exc}")
+        _log_alert_delivery(
+            recipient=to_address,
+            subject=subject,
+            ok=False,
+            severity=severity,
+            ref_type=ref_type,
+            ref_id=ref_id,
+        )
         return False
 
 
@@ -364,9 +435,12 @@ def notify_client_of_report(report_id: int, owner_id: int, threat_count: int) ->
 """
 
     sent = send_email(
-        to_address=email_addr,
-        subject=f"⚠️ Security Alert — {badge_text} | Boundry.AI",
-        html_body=html_body,
+        email_addr,
+        f"⚠️ Security Alert — {badge_text} | Boundry.AI",
+        html_body,
+        severity="CRITICAL",
+        ref_type="report",
+        ref_id=str(report_id),
     )
     security_log.info(
         f"NOTIFY_CLIENT report_id={report_id} owner_id={owner_id} "
@@ -576,6 +650,9 @@ def _inject_globals():
         "ops_mode":         ops_mode,        # Analyst Live Ops view (no study notes/XP)
         "jargon_terms":     security_acronyms.hover_payload(),
         "get_coach":        note_coaches.get_coach,
+        "dev_secret_warning": DEV_SECRET_IN_USE and session.get("role") == "analyst",
+        "boundry_live_mode":  boundry_live_mode(),
+        "analyst_tenant_filter": (session.get("analyst_tenant") or "").strip() or None,
     }
 
 # --- Security logging (feeds into Splunk / Railway logs) ---
@@ -910,6 +987,16 @@ def init_db():
         db_run(f"UPDATE users SET api_key = {PH} WHERE id = {PH}",
                (_secrets.token_urlsafe(32), u["id"]))
 
+    if DATABASE_URL:
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key_grace TEXT")
+        db_run("ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key_grace_until TEXT")
+    else:
+        _u_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(users)")]
+        if "api_key_grace" not in _u_cols:
+            db_run("ALTER TABLE users ADD COLUMN api_key_grace TEXT")
+        if "api_key_grace_until" not in _u_cols:
+            db_run("ALTER TABLE users ADD COLUMN api_key_grace_until TEXT")
+
     # Reports table — stores AI-generated incident reports persistently.
     # On Railway the filesystem is ephemeral (wiped on redeploy), so we keep
     # reports in PostgreSQL so they survive deployments.
@@ -951,6 +1038,14 @@ def init_db():
         existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
         if "simulated" not in existing_cols:
             db_run("ALTER TABLE reports ADD COLUMN simulated INTEGER NOT NULL DEFAULT 0")
+
+    # Migration: report_type — incident | monthly | weekly
+    if DATABASE_URL:
+        db_run("ALTER TABLE reports ADD COLUMN IF NOT EXISTS report_type TEXT NOT NULL DEFAULT 'incident'")
+    else:
+        existing_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(reports)")]
+        if "report_type" not in existing_cols:
+            db_run("ALTER TABLE reports ADD COLUMN report_type TEXT NOT NULL DEFAULT 'incident'")
 
     # Security events table — stores simulated / real attack events for the agent to read.
     # On Railway there is no LOG_FILE, so /simulate-attack writes here instead.
@@ -1289,6 +1384,29 @@ def init_db():
             )
         except Exception:
             pass
+    # Migration: user_id on mssp_tenants
+    try:
+        if DATABASE_URL:
+            db_run("ALTER TABLE mssp_tenants ADD COLUMN IF NOT EXISTS user_id INTEGER")
+        else:
+            _mt_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(mssp_tenants)")]
+            if "user_id" not in _mt_cols:
+                db_run("ALTER TABLE mssp_tenants ADD COLUMN user_id INTEGER")
+    except Exception:
+        pass
+
+    # Syslog source IP → tenant mapping (GAP-022)
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS syslog_sources (
+            {id_col},
+            src_ip     TEXT NOT NULL UNIQUE,
+            client_id  TEXT NOT NULL,
+            label      TEXT NOT NULL DEFAULT '',
+            enabled    INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
     try:
         _sf_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(system_findings)")]
         if "client_id" not in _sf_cols:
@@ -1377,6 +1495,32 @@ def init_db():
             context   TEXT NOT NULL DEFAULT '',
             category  TEXT NOT NULL DEFAULT 'general',
             xp_awarded INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS alert_log (
+            {id_col},
+            channel    TEXT NOT NULL DEFAULT 'email',
+            recipient  TEXT NOT NULL DEFAULT '',
+            subject    TEXT NOT NULL DEFAULT '',
+            severity   TEXT NOT NULL DEFAULT 'INFO',
+            ref_type   TEXT NOT NULL DEFAULT '',
+            ref_id     TEXT NOT NULL DEFAULT '',
+            ok         INTEGER NOT NULL DEFAULT 0,
+            {ts_col}
+        )
+    """)
+
+    db_run(f"""
+        CREATE TABLE IF NOT EXISTS analyst_audit (
+            {id_col},
+            {ts_col},
+            analyst_id     INTEGER,
+            action         TEXT NOT NULL DEFAULT '',
+            detail         TEXT NOT NULL DEFAULT '',
+            target_user_id INTEGER,
+            ref_id         TEXT NOT NULL DEFAULT ''
         )
     """)
 
@@ -1497,7 +1641,8 @@ def init_db():
             description   TEXT NOT NULL DEFAULT '',
             raw_data      TEXT NOT NULL DEFAULT '{{}}',
             correlated_finding_id INTEGER,
-            dismissed     INTEGER NOT NULL DEFAULT 0
+            dismissed     INTEGER NOT NULL DEFAULT 0,
+            client_id     TEXT NOT NULL DEFAULT 'boundry_self'
         )
     """)
 
@@ -1524,6 +1669,7 @@ def init_db():
         db_run("ALTER TABLE siem_events ADD COLUMN IF NOT EXISTS dismissed INTEGER NOT NULL DEFAULT 0")
         db_run("ALTER TABLE siem_events ADD COLUMN IF NOT EXISTS correlated_finding_id INTEGER")
         db_run("ALTER TABLE siem_events ADD COLUMN IF NOT EXISTS simulated INTEGER NOT NULL DEFAULT 0")
+        db_run("ALTER TABLE siem_events ADD COLUMN IF NOT EXISTS client_id TEXT NOT NULL DEFAULT 'boundry_self'")
         db_run("ALTER TABLE siem_rules  ADD COLUMN IF NOT EXISTS enabled INTEGER NOT NULL DEFAULT 1")
     else:
         existing_siem_event_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(siem_events)")]
@@ -1533,6 +1679,8 @@ def init_db():
             db_run("ALTER TABLE siem_events ADD COLUMN correlated_finding_id INTEGER")
         if "simulated" not in existing_siem_event_cols:
             db_run("ALTER TABLE siem_events ADD COLUMN simulated INTEGER NOT NULL DEFAULT 0")
+        if "client_id" not in existing_siem_event_cols:
+            db_run("ALTER TABLE siem_events ADD COLUMN client_id TEXT NOT NULL DEFAULT 'boundry_self'")
 
         existing_siem_rule_cols = [r["name"] for r in db_fetchall("PRAGMA table_info(siem_rules)")]
         if "enabled" not in existing_siem_rule_cols:
@@ -2321,6 +2469,28 @@ def dashboard_required(f):
 
 
 @app.before_request
+def _boundry_live_training_guard():
+    """GAP-008: hide training/demo attack surface when serving real clients."""
+    if not boundry_live_mode():
+        return None
+    path = request.path or "/"
+    if path.startswith("/static"):
+        return None
+    if any(path == p or path.startswith(p + "/") for p in _LIVE_TRAINING_PREFIXES):
+        abort(404)
+    return None
+
+
+@app.before_request
+def _analyst_tenant_filter_sync():
+    """GAP-003: persist ?tenant= slug for analyst SIEM/SOC views."""
+    if session.get("role") not in ("analyst", "demo"):
+        return None
+    tenant_ops.sync_analyst_tenant_from_request(request.args.get("tenant"), session)
+    return None
+
+
+@app.before_request
 def _client_mode_route_guard():
     """M3: hard-block ops/training routes so demo/client cannot see real ops data."""
     if session.get("role") not in ("client", "demo") and not session.get("is_demo"):
@@ -2329,7 +2499,7 @@ def _client_mode_route_guard():
     if path.startswith("/static") or path == "/pitch" or path.startswith("/pitch/"):
         return None
     # Client/demo portal: reports (+ auth). Everything else ops/training is 404.
-    allowed_prefixes = ("/reports", "/logout", "/login", "/demo")
+    allowed_prefixes = ("/reports", "/client", "/privacy", "/assets", "/compliance", "/account", "/logout", "/login", "/demo", "/ransomware-protection")
     if path == "/" or any(path == p or path.startswith(p + "/") for p in allowed_prefixes):
         return None
     abort(404)
@@ -2425,6 +2595,16 @@ def login():
             session["user_id"]  = row["id"]
             session["role"]     = row.get("role", "client")
             security_log.info(f"LOGIN_SUCCESS username={username} ip={request.remote_addr}")
+            if session.get("role") == "analyst":
+                try:
+                    boundry_audit.log_analyst_audit(
+                        db_run, PH,
+                        analyst_id=row["id"],
+                        action="login",
+                        detail=f"ip={request.remote_addr}",
+                    )
+                except Exception:
+                    pass
             # Analyst + demo → Control Room (full ops dashboard)
             # Client → reports portal
             if session["role"] in ("analyst", "demo"):
@@ -2435,6 +2615,8 @@ def login():
                     src_ip=get_remote_address() or request.remote_addr or "",
                 )
                 return redirect(url_for("control_room"))
+            if session.get("role") == "client":
+                return redirect(url_for("client_status"))
             return redirect(url_for("reports"))
         else:
             security_log.warning(f"LOGIN_FAILED username={username} ip={request.remote_addr}")
@@ -2556,6 +2738,8 @@ def login_2fa():
                     src_ip=get_remote_address() or request.remote_addr or "",
                 )
                 return redirect(url_for("control_room"))
+            if session.get("role") == "client":
+                return redirect(url_for("client_status"))
             return redirect(url_for("reports"))
         else:
             # Put the pending back — let them retry
@@ -2971,7 +3155,8 @@ def reports():
     # Analysts use /control-room which shows all reports.
     user_id = session.get("user_id")
     report_list = db_fetchall(
-        f"SELECT id, created_at, threat_count, event_count, simulated, status FROM reports "
+        f"SELECT id, created_at, threat_count, event_count, simulated, status, "
+        f"COALESCE(report_type, 'incident') AS report_type FROM reports "
         f"WHERE owner_id = {PH} ORDER BY id DESC",
         (user_id,),
     )
@@ -3079,6 +3264,17 @@ def report_pdf(report_id):
             simulated    = bool(row.get("simulated")),
         )
         filename = f"BoundryAI_Incident_Report_{report_id}.pdf"
+        if session.get("role") == "analyst":
+            try:
+                boundry_audit.log_analyst_audit(
+                    db_run, PH,
+                    analyst_id=session.get("user_id"),
+                    action="report_export",
+                    detail=f"report_id={report_id}",
+                    ref_id=str(report_id),
+                )
+            except Exception:
+                pass
         return Response(
             pdf_bytes,
             mimetype="application/pdf",
@@ -4273,7 +4469,9 @@ def soc_tickets_list():
     """Boundry Tickets history / filter list."""
     analyst_id = session.get("user_id")
     status = (request.args.get("status") or "open").strip()
-    client = (request.args.get("client") or "").strip()
+    client = (
+        (request.args.get("client") or session.get("analyst_tenant") or "").strip()
+    )
     q = (request.args.get("q") or "").strip()
     tickets = soc_lab.list_tickets(
         db_fetchall, analyst_id,
@@ -4346,8 +4544,9 @@ def api_ops_presence():
 def api_soc_queue():
     """Unified Real + Practice alert queue."""
     lane = (request.args.get("lane") or "all").strip().lower()
-    items = soc_lab.build_queue(db_fetchall, lane=lane, ph=PH)
-    return jsonify({"ok": True, "lane": lane, "items": items, "count": len(items)})
+    tenant = (request.args.get("tenant") or session.get("analyst_tenant") or "").strip()
+    items = soc_lab.build_queue(db_fetchall, lane=lane, ph=PH, tenant=tenant)
+    return jsonify({"ok": True, "lane": lane, "tenant": tenant or None, "items": items, "count": len(items)})
 
 
 @app.route("/api/soc/practice/inject", methods=["POST"])
@@ -4450,6 +4649,17 @@ def api_soc_cases_open():
             db_fetchall, int(c["id"]), ph=PH,
         )
     return jsonify(result)
+
+
+@app.route("/api/soc/cases/<int:case_id>/client-update", methods=["GET"])
+@analyst_required
+def api_soc_case_client_update(case_id: int):
+    """Plain one-line client stakeholder update (GAP-016)."""
+    analyst_id = session.get("user_id")
+    bundle = soc_lab.get_case_bundle(db_fetchone, db_fetchall, case_id, analyst_id, ph=PH)
+    if not bundle.get("ok"):
+        return jsonify(ok=False, error=bundle.get("error", "not found")), 404
+    return jsonify(ok=True, text=soc_lab.client_update_line(bundle["case"]))
 
 
 @app.route("/api/soc/cases/<int:case_id>", methods=["GET"])
@@ -4626,6 +4836,16 @@ def api_soc_cases_close(case_id: int):
         result["timeline"] = soc_lab.get_ticket_timeline(db_fetchall, case_id, ph=PH)
         try:
             award_xp(analyst_id, 15, "Boundry Ticket closed", "soc")
+        except Exception:
+            pass
+        try:
+            boundry_audit.log_analyst_audit(
+                db_run, PH,
+                analyst_id=analyst_id,
+                action="case_close",
+                detail=data.get("disposition") or "",
+                ref_id=str(case_id),
+            )
         except Exception:
             pass
     return jsonify(result)
@@ -9683,6 +9903,11 @@ def control_room():
         login_rate_preset=_get_app_setting("login_rate_preset", LOGIN_RATE_DEFAULT),
         login_rate_presets=LOGIN_RATE_PRESETS,
         client_risk=_client_risk_map(),
+        analyst_audit_log=db_fetchall(
+            "SELECT a.created_at, a.action, a.detail, a.ref_id, u.username AS analyst_name "
+            "FROM analyst_audit a LEFT JOIN users u ON u.id = a.analyst_id "
+            "ORDER BY a.id DESC LIMIT 20"
+        ) or [],
         now=datetime.utcnow(),
     )
 
@@ -11228,7 +11453,24 @@ def add_client():
     </div>"""
     emailed = send_email(email, "Set up your Boundry.AI account", html_body)
 
+    tenant_ops.ensure_tenant(
+        db_run, db_fetchone, PH, new_id, username,
+        display_name=business_name or username,
+        tier="Silver",
+        is_practice=0,
+    )
     security_log.info(f"CLIENT_ADDED username={username} id={new_id} by={session.get('username','')} emailed={emailed}")
+    try:
+        boundry_audit.log_analyst_audit(
+            db_run, PH,
+            analyst_id=session.get("user_id"),
+            action="client_create",
+            detail=f"username={username}",
+            target_user_id=new_id,
+            ref_id=str(new_id),
+        )
+    except Exception:
+        pass
     if emailed:
         flash(f"Client '{username}' created — setup link emailed to {email}.", "success")
     else:
@@ -11381,7 +11623,8 @@ def analyst_integration(client_id):
     client's API key. Jason uses this to install monitoring on a client's app.
     """
     client = db_fetchone(
-        f"SELECT id, username, api_key FROM users WHERE id = {PH} AND role = 'client'",
+        f"SELECT id, username, api_key, api_key_grace, api_key_grace_until "
+        f"FROM users WHERE id = {PH} AND role = 'client'",
         (client_id,),
     )
     if not client:
@@ -11401,8 +11644,37 @@ def analyst_integration(client_id):
         api_key=client["api_key"],
         ingest_url=ingest_url,
         client_username=client["username"],
+        client_id=client_id,
+        api_key_grace_until=client.get("api_key_grace_until") or "",
         analyst_mode=True,
     )
+
+
+@app.route("/analyst/client/<int:client_id>/rotate-api-key", methods=["POST"])
+@analyst_required
+def analyst_rotate_api_key(client_id: int):
+    """Rotate client ingest key; old key works 24 hours (GAP-024)."""
+    result = boundry_audit.rotate_client_api_key(db_run, db_fetchone, PH, client_id)
+    if not result.get("ok"):
+        flash(result.get("error") or "Rotation failed", "danger")
+        return redirect(url_for("control_room"))
+    try:
+        boundry_audit.log_analyst_audit(
+            db_run, PH,
+            analyst_id=session.get("user_id"),
+            action="api_key_rotate",
+            detail=f"user={result.get('username')} grace_until={result.get('grace_until')}",
+            target_user_id=client_id,
+            ref_id=str(client_id),
+        )
+    except Exception:
+        pass
+    flash(
+        f"New API key issued for {result.get('username')}. "
+        f"Previous key works until {result.get('grace_until')} UTC.",
+        "success",
+    )
+    return redirect(url_for("analyst_integration", client_id=client_id))
 
 
 # --- ROUTE 4f: Event Ingest API ---
@@ -11422,20 +11694,14 @@ def api_ingest():
     Content-Type: application/json
     { "event_type": "LOGIN_FAILED", "username": "admin", "ip": "1.2.3.4", "extra": "" }
     """
-    VALID_EVENT_TYPES = {
-        "LOGIN_FAILED", "LOGIN_SUCCESS", "SEARCH", "REGISTER_SUCCESS",
-        "XSS_ATTEMPT", "DIRECTORY_TRAVERSAL", "PRIV_ESC_ATTEMPT", "ACCOUNT_ENUM",
-    }
+    VALID_EVENT_TYPES = ingest_map.VALID_INGEST_TYPES
 
     api_key = request.headers.get("X-API-Key", "").strip()
     if not api_key:
         return jsonify(error="Missing X-API-Key header"), 401
 
-    user = db_fetchone(f"SELECT id, api_key FROM users WHERE api_key = {PH}", (api_key,))
-    # Always call hmac.compare_digest — never short-circuit on `not user`.
-    # Without this, response timing leaks whether the key exists in the DB.
-    stored_key = (user["api_key"] or "") if user else ""
-    if not hmac.compare_digest(api_key.encode(), stored_key.encode()) or not user:
+    user = boundry_audit.resolve_ingest_api_key(db_fetchone, PH, api_key)
+    if not user:
         return jsonify(error="Invalid API key"), 401
 
     data = request.get_json(silent=True)
@@ -11456,9 +11722,31 @@ def api_ingest():
         (event_type, username, ip, extra, user["id"]),
     )
 
+    slug = tenant_ops.resolve_tenant_slug(db_fetchone, PH, user["id"])
+    siem_etype, siem_sev = ingest_map.siem_mapping(event_type)
+    desc = f"Ingest {event_type} user={username} ip={ip}"
+    if extra:
+        desc = f"{desc} — {extra[:200]}"
+    try:
+        siem_collector.ingest_event(
+            source="api_ingest",
+            event_id=event_type,
+            event_type=siem_etype,
+            severity=siem_sev,
+            host="client-app",
+            user=username,
+            src_ip=ip[:60],
+            description=desc,
+            raw={"ingest_type": event_type, "extra": extra},
+            client_id=slug,
+            correlate=True,
+        )
+    except Exception as exc:
+        security_log.warning(f"INGEST_SIEM_MIRROR_FAILED owner={user['id']} err={exc}")
+
     security_log.info(
         f"INGEST event_type={event_type} username={username} "
-        f"ip={ip} owner_id={user['id']}"
+        f"ip={ip} owner_id={user['id']} tenant={slug}"
     )
     return jsonify(status="ok", event_type=event_type), 201
 
@@ -11526,6 +11814,36 @@ def run_agent():
     return jsonify(**result)
 
 
+def _cron_auth_or_abort() -> None:
+    """GAP-009: CRON_SECRET required in live mode; failed auth → SIEM + 404."""
+    expected = os.environ.get("CRON_SECRET", "").strip()
+    if boundry_live_mode() and not expected:
+        abort(404)
+    provided = request.headers.get("X-Cron-Secret", "")
+    if expected and provided and hmac.compare_digest(
+        provided.encode("utf-8"),
+        expected.encode("utf-8"),
+    ):
+        return
+    if not expected or not hmac.compare_digest(
+        (provided or "").encode("utf-8"),
+        (expected or "").encode("utf-8"),
+    ):
+        try:
+            siem_collector.ingest_event(
+                source="flask_app",
+                event_id="cron_auth",
+                event_type="cron_auth_failed",
+                severity="HIGH",
+                description=f"Cron auth failed path={request.path}",
+                raw={"path": request.path},
+                correlate=False,
+            )
+        except Exception:
+            pass
+        abort(404)
+
+
 # --- ROUTE 7: Cron endpoint (no session — authenticated by CRON_SECRET header) ---
 @app.route("/cron/run", methods=["POST"])
 @csrf.exempt  # auth via X-Cron-Secret header — Railway scheduler is not a browser
@@ -11541,13 +11859,7 @@ def cron_run():
         curl -s -X POST https://<your-app>/cron/run \\
              -H "X-Cron-Secret: $CRON_SECRET"
     """
-    expected = os.environ.get("CRON_SECRET", "")
-    provided = request.headers.get("X-Cron-Secret", "")
-    if not expected or not hmac.compare_digest(
-        (provided or "").encode("utf-8"),
-        (expected or "").encode("utf-8"),
-    ):
-        abort(404)
+    _cron_auth_or_abort()
 
     # Run per client — each client gets their own simulated events and report
     clients = db_fetchall("SELECT id FROM users WHERE role = 'client'")
@@ -11594,13 +11906,7 @@ def cron_breach_intel():
     Call this from cron-job.org every 6 hours.
     Auth: same X-Cron-Secret header as /cron/run.
     """
-    expected = os.environ.get("CRON_SECRET", "")
-    provided = request.headers.get("X-Cron-Secret", "")
-    if not expected or not hmac.compare_digest(
-        (provided or "").encode("utf-8"),
-        (expected or "").encode("utf-8"),
-    ):
-        abort(404)
+    _cron_auth_or_abort()
 
     saved = _fetch_breach_intel()
     security_log.info(f"CRON_BREACH_INTEL saved={saved}")
@@ -11622,13 +11928,7 @@ def cron_weekly_digest():
         curl -s -X POST https://<your-app>/cron/weekly-digest \\
              -H "X-Cron-Secret: $CRON_SECRET"
     """
-    expected = os.environ.get("CRON_SECRET", "")
-    provided = request.headers.get("X-Cron-Secret", "")
-    if not expected or not hmac.compare_digest(
-        (provided or "").encode("utf-8"),
-        (expected or "").encode("utf-8"),
-    ):
-        abort(404)
+    _cron_auth_or_abort()
 
     clients = db_fetchall(
         f"SELECT id, username, email, email_alerts FROM users "
@@ -11804,6 +12104,66 @@ def cron_weekly_digest():
     return jsonify(status="ok", digests_sent=sent_count, clients_eligible=len(clients))
 
 
+@app.route("/cron/monthly-summary", methods=["POST"])
+@csrf.exempt
+def cron_monthly_summary():
+    """Generate per-client monthly summary reports (markdown + optional AI)."""
+    _cron_auth_or_abort()
+
+    clients = db_fetchall(f"SELECT id, username FROM users WHERE role = {PH}", ("client",))
+    created = 0
+    for client in clients or []:
+        uid = client["id"]
+        slug = tenant_ops.resolve_tenant_slug(db_fetchone, PH, uid)
+        md, threats, events = boundry_deliverables.build_monthly_summary_markdown(
+            db_fetchall, PH, bool(DATABASE_URL), uid, client["username"], slug
+        )
+        try:
+            summary = _generate_report_with_ai(
+                f"Rewrite this monthly SMB security summary in plain English:\n\n{md[:6000]}"
+            )
+        except Exception:
+            summary = md
+        db_run(
+            f"INSERT INTO reports (content, threat_count, event_count, owner_id, simulated, "
+            f"report_type, plain_summary) VALUES ({PH},{PH},{PH},{PH},0,'monthly',{PH})",
+            (summary, threats, events, uid, md[:2000]),
+        )
+        created += 1
+    security_log.info(f"CRON_MONTHLY_SUMMARY created={created}")
+    return jsonify(status="ok", reports_created=created)
+
+
+@app.route("/health")
+def health_check():
+    """Liveness: DB + SIEM collectors (GAP-010)."""
+    ok_db = True
+    try:
+        db_fetchone("SELECT 1 AS n", ())
+    except Exception:
+        ok_db = False
+    port = getattr(siem_collector, "syslog_port", 0) or 0
+    ollama_url = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+    ollama_ok = False
+    try:
+        import urllib.request as _ur
+
+        with _ur.urlopen(f"{ollama_url}/api/tags", timeout=2) as resp:
+            ollama_ok = resp.status == 200
+    except Exception:
+        ollama_ok = False
+    live = boundry_live_mode()
+    ok = ok_db and (not live or ollama_ok)
+    return jsonify(
+        ok=ok,
+        db=ok_db,
+        siem_syslog_port=port,
+        ollama_ok=ollama_ok,
+        ollama_url=ollama_url,
+        boundry_mode="live" if live else "dev",
+    )
+
+
 # --- ROUTE 8a2: Daily EOD Report (8 PM — build progress update for Peta) ---
 @app.route("/cron/daily-report", methods=["POST"])
 @csrf.exempt
@@ -11824,13 +12184,7 @@ def cron_daily_report():
         curl -s -X POST https://<your-app>/cron/daily-report \\
              -H "X-Cron-Secret: $CRON_SECRET"
     """
-    expected = os.environ.get("CRON_SECRET", "")
-    provided = request.headers.get("X-Cron-Secret", "")
-    if not expected or not hmac.compare_digest(
-        (provided or "").encode("utf-8"),
-        (expected or "").encode("utf-8"),
-    ):
-        abort(404)
+    _cron_auth_or_abort()
 
     from datetime import datetime as _dt
 
@@ -14761,18 +15115,24 @@ def _siem_open_case_for_event(event_id: int) -> dict | None:
 def siem_dashboard():
     """GET /siem — SIEM live event stream dashboard."""
     analyst_id = session.get("user_id") or _terminal_analyst_id()
+    tenant = (session.get("analyst_tenant") or "").strip() or None
+    t_clause, t_params = tenant_ops.tenant_filter_sql(tenant, PH)
 
     # Recent 100 active events
     events = db_fetchall(
         "SELECT id, created_at AS timestamp, source, event_id, event_type, severity, "
-        "host, user_account, src_ip, dst_ip, description, "
+        "host, user_account, src_ip, dst_ip, description, client_id, "
         "COALESCE(simulated, 0) AS simulated "
-        "FROM siem_events WHERE dismissed = 0 "
-        "ORDER BY id DESC LIMIT 100"
+        f"FROM siem_events WHERE dismissed = 0{t_clause} "
+        "ORDER BY id DESC LIMIT 100",
+        t_params,
     )
 
     def _count(where, params=()):
-        r = db_fetchone(f"SELECT COUNT(*) AS n FROM siem_events WHERE {where}", params)
+        r = db_fetchone(
+            f"SELECT COUNT(*) AS n FROM siem_events WHERE {where}{t_clause}",
+            params + t_params,
+        )
         return (r or {}).get("n", 0)
 
     stats = {
@@ -14792,7 +15152,9 @@ def siem_dashboard():
 
     rules         = db_fetchall("SELECT * FROM siem_rules ORDER BY id")
     siem_findings = db_fetchall(
-        "SELECT * FROM system_findings WHERE scan_type='siem' AND resolved=0 ORDER BY id DESC"
+        f"SELECT * FROM system_findings WHERE scan_type='siem' AND resolved=0{t_clause} "
+        "ORDER BY id DESC",
+        t_params,
     )
     suppressions  = db_fetchall("SELECT * FROM siem_suppression ORDER BY id DESC")
     player        = get_player_profile(analyst_id)
@@ -14805,9 +15167,14 @@ def siem_dashboard():
     ransomware_indicators = db_fetchall(
         f"SELECT id, created_at, event_type, severity, user_account, src_ip, description, host "
         f"FROM siem_events "
-        f"WHERE event_type IN ({ransomware_event_types}) AND dismissed = 0 "
-        f"ORDER BY id DESC LIMIT 50"
+        f"WHERE event_type IN ({ransomware_event_types}) AND dismissed = 0{t_clause} "
+        f"ORDER BY id DESC LIMIT 50",
+        t_params,
     ) or []
+
+    tenant_picker = tenant_ops.list_tenants_for_picker(db_fetchall)
+    if not tenant_picker:
+        tenant_picker = [{"client_id": "boundry_self", "display_name": "Boundry (self)", "is_practice": 0}]
 
     return render_template("siem.html",
         events=events,
@@ -14818,6 +15185,8 @@ def siem_dashboard():
         player=player,
         syslog_port=siem_collector.syslog_port,
         ransomware_indicators=ransomware_indicators,
+        tenant_picker=tenant_picker,
+        selected_tenant=tenant,
     )
 
 
@@ -14842,11 +15211,15 @@ def api_siem_events():
     if source:
         filters.append(f"source = {PH}")
         params.append(source)
+    tenant = (request.args.get("tenant") or "").strip()
+    if tenant:
+        filters.append(f"client_id = {PH}")
+        params.append(tenant)
 
     where  = " AND ".join(filters)
     events = db_fetchall(
         f"SELECT id, created_at AS timestamp, source, event_id, event_type, severity, "
-        f"host, user_account, src_ip, dst_ip, description, "
+        f"host, user_account, src_ip, dst_ip, description, client_id, "
         f"COALESCE(simulated, 0) AS simulated "
         f"FROM siem_events WHERE {where} ORDER BY id DESC LIMIT {limit}",
         tuple(params),
@@ -14914,6 +15287,79 @@ def api_siem_event_detail(event_id: int):
             "observables": observables,
         }
     )
+
+
+@app.route("/api/siem/enrich", methods=["POST"])
+@dashboard_required
+def api_siem_enrich():
+    """POST — on-demand offline IOC enrichment for a SIEM event or single indicator."""
+    import json as _json
+
+    import siem_ioc_enrich
+
+    payload = request.get_json(silent=True) or {}
+    single_ioc = (payload.get("ioc") or "").strip()
+    event_id_raw = payload.get("event_id")
+
+    if event_id_raw is not None:
+        try:
+            event_id = int(event_id_raw)
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "event_id must be an integer"}), 400
+
+        row = db_fetchone(
+            f"SELECT id, src_ip, dst_ip, description, raw_data "
+            f"FROM siem_events WHERE id = {PH}",
+            (event_id,),
+        )
+        if not row:
+            return jsonify({"ok": False, "error": "Event not found"}), 404
+
+        raw_parsed: dict | list | None = None
+        raw_str = (row.get("raw_data") or "").strip()
+        if raw_str:
+            try:
+                raw_parsed = _json.loads(raw_str)
+            except (_json.JSONDecodeError, TypeError):
+                raw_parsed = None
+
+        observables = soc_lab.observables_for_ticket(
+            db_fetchone, "siem", str(event_id), ph=PH
+        )
+        entities = observables.get("entities") if observables else []
+        indicators = siem_ioc_enrich.extract_indicators_from_event(
+            row, raw_parsed, entities
+        )
+        if single_ioc:
+            seen_keys = {f'{i["kind"]}:{i["value"].lower()}' for i in indicators}
+            siem_ioc_enrich._add_indicator(indicators, seen_keys, "manual", single_ioc)
+        if not indicators:
+            return jsonify(
+                {
+                    "ok": True,
+                    "source": "local_stub",
+                    "event_id": event_id,
+                    "indicators_found": [],
+                    "enrichment": [],
+                    "defanged": {},
+                    "plain_summary": siem_ioc_enrich.plain_language_summary([]),
+                }
+            )
+        return jsonify(
+            siem_ioc_enrich.build_enrich_payload(indicators, event_id=event_id)
+        )
+
+    if single_ioc:
+        import soc_ioc_stub
+
+        lookup = soc_ioc_stub.lookup_ioc(single_ioc)
+        kind = lookup.get("ioc_type") or "unknown"
+        if kind == "hash":
+            kind = "sha256"
+        indicators = [{"kind": kind, "value": lookup.get("ioc") or single_ioc}]
+        return jsonify(siem_ioc_enrich.build_enrich_payload(indicators))
+
+    return jsonify({"ok": False, "error": "Provide event_id and/or ioc"}), 400
 
 
 @app.route("/api/siem/detections")
@@ -15226,12 +15672,16 @@ def siem_query_page():
         f"SELECT * FROM player_profile WHERE analyst_id=(SELECT id FROM users WHERE role={PH} LIMIT 1)",
         ("analyst",),
     )
+    tenant_picker = tenant_ops.list_tenants_for_picker(db_fetchall)
+    selected_tenant = (session.get("analyst_tenant") or "").strip() or None
     return render_template(
         "siem_query.html",
         profile=profile,
         examples=spl_engine.EXAMPLE_QUERIES,
         prefill_q=request.args.get("q", ""),
         ref_q=request.args.get("ref", ""),
+        tenant_picker=tenant_picker,
+        selected_tenant=selected_tenant,
     )
 
 
@@ -16190,6 +16640,34 @@ def compliance():
 # the database on import, not just when running via `python app.py`.
 init_db()
 memory_retention.configure(db_fetchone, db_fetchall, db_run, PH)
+import boundry_deliverables
+import client_product
+
+app.config["BOUNDARY_DB_RUN"] = db_run
+app.config["BOUNDARY_DB_FETCHONE"] = db_fetchone
+app.config["BOUNDARY_DB_FETCHALL"] = db_fetchall
+app.config["BOUNDARY_DB_INSERT"] = db_insert
+app.config["BOUNDARY_PH"] = PH
+app.config["BOUNDARY_DATABASE_URL"] = DATABASE_URL
+app.config["BOUNDARY_ANALYST_REQUIRED"] = analyst_required
+app.config["BOUNDARY_LOGIN_REQUIRED"] = login_required
+app.config["BOUNDARY_SEND_EMAIL"] = send_email
+app.config["BOUNDARY_HEALTH_SCORE"] = compute_health_score
+app.config["BOUNDARY_RISK_CONTROLS"] = RISK_CONTROLS
+app.config["BOUNDARY_RISK_INDUSTRIES"] = RISK_INDUSTRIES
+app.config["BOUNDARY_RISK_FN"] = _compute_risk_assessment
+app.config["BOUNDARY_VALIDATE_PASSWORD"] = validate_password
+app.config["BOUNDARY_SIEM"] = siem_collector
+app.config["BOUNDARY_SECURITY_LOG"] = security_log
+try:
+    from pdf_generator import generate_report_pdf as _pdf_fn
+
+    app.config["BOUNDARY_PDF_FN"] = _pdf_fn
+except Exception:
+    app.config["BOUNDARY_PDF_FN"] = None
+client_product.register_client_product_routes(app)
+csrf.exempt(app.view_functions["api_m365_ingest"])
+
 messer_layer.configure(db_fetchone, db_fetchall, db_run, PH)
 
 # ── Start SIEM collectors ─────────────────────────────────────────────────────
@@ -16216,6 +16694,9 @@ if not os.environ.get("WERKZEUG_RUN_MAIN") or os.environ.get("WERKZEUG_RUN_MAIN"
             ph=PH,
             ai_fn=_generate_report_with_ai,
             soar_fn=soar_engine.open_incident_for_finding,
+        )
+        siem_collector.set_syslog_resolver(
+            lambda ip: tenant_ops.resolve_syslog_client(db_fetchone, PH, ip)
         )
     except Exception as _siem_err:
         print(f"[siem] Collector startup failed (non-fatal): {_siem_err}")

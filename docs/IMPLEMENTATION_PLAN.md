@@ -180,12 +180,12 @@ See [`docs/PRE_CLIENT_HARDENING.md`](PRE_CLIENT_HARDENING.md).
 
 **Spec:** [`docs/handoffs/SPEC-siem-on-demand-ioc-enrichment.md`](handoffs/SPEC-siem-on-demand-ioc-enrichment.md)
 
-- [ ] `POST /api/siem/enrich` (+ event_id parsing)
-- [ ] SIEM UI panel on selected event (`templates/siem.html`)
-- [ ] Docs + pytest smoke
-- [ ] Demo: event → Enrich → stub verdict + defanged IOC in panel
+- [x] `POST /api/siem/enrich` (+ event_id parsing)
+- [x] SIEM UI panel on selected event (`templates/siem.html`)
+- [x] Docs + pytest smoke (`docs/SIEM_IOC_ENRICHMENT.md`)
+- [ ] Demo: event → Enrich → stub verdict + defanged IOC in panel (Jason walkthrough)
 
-**Do not start until** Jason says portfolio queue is far enough along (default: after current Tier B stretch or explicit “start 6b”).
+**Started:** 2026-11-23 (Jason).
 
 **Done when:** Acceptance checks in SPEC are checked; no outbound calls on default path.
 

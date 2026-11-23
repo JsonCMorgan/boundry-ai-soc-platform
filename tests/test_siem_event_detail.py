@@ -90,6 +90,43 @@ def test_soc_open_case_idempotent_for_siem(analyst_client, client):
     assert detail["event"]["existing_case"]["id"] == d1["case"]["id"]
 
 
+def test_siem_enrich_event_stub(analyst_client, client):
+    import app as app_module
+
+    app_module.db_run(
+        f"INSERT INTO siem_events (created_at, source, event_id, event_type, severity, "
+        f"description, src_ip, dismissed) "
+        f"VALUES (datetime('now'), 'flask_app', 'enr', 'c2_callback', 'HIGH', "
+        f"{app_module.PH}, {app_module.PH}, 0)",
+        ("Callback to documentation C2", "203.0.113.88"),
+    )
+    row = app_module.db_fetchone("SELECT id FROM siem_events ORDER BY id DESC LIMIT 1")
+    eid = int(row["id"])
+    resp = analyst_client.post("/api/siem/enrich", json={"event_id": eid})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["ok"] is True
+    assert data["source"] == "local_stub"
+    assert data["event_id"] == eid
+    assert any(e["indicator"] == "203.0.113.88" for e in data["enrichment"])
+    hit = next(e for e in data["enrichment"] if e["indicator"] == "203.0.113.88")
+    assert hit["verdict"] == "malicious"
+    assert "203[.]0[.]113[.]88" == hit["defanged"]
+    assert data["plain_summary"]
+
+
+def test_siem_enrich_single_ioc_benign(analyst_client):
+    resp = analyst_client.post("/api/siem/enrich", json={"ioc": "8.8.8.8"})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["enrichment"][0]["verdict"] == "benign"
+
+
+def test_siem_enrich_requires_body(analyst_client):
+    resp = analyst_client.post("/api/siem/enrich", json={})
+    assert resp.status_code == 400
+
+
 def test_observables_from_siem_description(client):
     """IPs embedded in description appear when src_ip column is empty."""
     import app as app_module

@@ -12376,6 +12376,31 @@ def api_ops_commands():
     return jsonify(command_catalog.command_catalog())
 
 
+@app.route("/ops/link-check")
+@analyst_required
+def ops_link_check_page():
+    """Mobile-friendly offline URL triage before click."""
+    return render_template("ops_link_check.html", csrf_token=generate_csrf())
+
+
+@app.route("/api/ops/link-check", methods=["POST"])
+@analyst_required
+def api_ops_link_check():
+    """POST JSON {url, claimed_brand?} — offline link analysis (no fetch, no cloud)."""
+    import link_triage
+
+    payload = request.get_json(silent=True) or {}
+    url = (payload.get("url") or "").strip()
+    claimed = (payload.get("claimed_brand") or "").strip()
+    if not url:
+        return jsonify({"ok": False, "error": "url is required"}), 400
+    try:
+        result = link_triage.analyze_link(url, claimed_brand=claimed)
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 503
+    return jsonify(result)
+
+
 @app.route("/daily-log")
 @analyst_required
 def daily_log():

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Link Check — Boundry</title>
+    <style>
+        :root { --bg:#0a0e14; --card:#131d28; --border:#1e3045; --text:#cdd6e0; --muted:#7a9ab0; --accent:#00ff88; --warn:#ffaa44; --bad:#ff6666; }
+        * { box-sizing: border-box; }
+        body { font-family: "Cascadia Code", Consolas, monospace; background: var(--bg); color: var(--text); margin:0; padding:16px; }
+        h1 { font-size:1.15em; color: var(--accent); margin:0 0 8px; }
+        .lede { font-size:0.82em; color: var(--muted); line-height:1.5; margin-bottom:16px; }
+        label { display:block; font-size:0.72em; color: var(--muted); text-transform:uppercase; margin:12px 0 4px; }
+        input, textarea {
+            width:100%; background:var(--card); border:1px solid var(--border); color:var(--text);
+            padding:10px; border-radius:6px; font-family:inherit; font-size:0.9em;
+        }
+        button {
+            margin-top:14px; width:100%; padding:12px; background:#00ff8822; border:1px solid #00ff8866;
+            color:var(--accent); font-weight:700; border-radius:6px; cursor:pointer; font-family:inherit;
+        }
+        #out { margin-top:18px; display:none; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; }
+        .risk-high { color: var(--bad); font-weight:800; }
+        .risk-elevated { color: var(--warn); font-weight:800; }
+        .risk-low { color: var(--accent); }
+        .defanged { word-break:break-all; color:#8899aa; font-size:0.85em; margin-top:8px; }
+        ul { margin:8px 0 0; padding-left:18px; font-size:0.85em; color:var(--muted); }
+        a.back { color:var(--muted); font-size:0.8em; }
+    </style>
+</head>
+<body>
+    <a class="back" href="/control-room">← Control Room</a>
+    <h1>Link check (offline)</h1>
+    <p class="lede">Paste a link from SMS, email, or LinkedIn. We parse the host and compare it to the company name you expect. <strong>No click, no cloud scan.</strong></p>
+
+    <label for="url">URL</label>
+    <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="https://...">
+
+    <label for="claimed">They claimed to be (optional)</label>
+    <input id="claimed" type="text" placeholder="e.g. Intact Financial">
+
+    <button type="button" id="go">Check link</button>
+
+    <div id="out"></div>
+
+    <script>
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        function csrfFetch(url, opts) {
+            opts = opts || {};
+            opts.headers = opts.headers || {};
+            if (csrf) opts.headers['X-CSRFToken'] = csrf;
+            opts.credentials = 'same-origin';
+            return fetch(url, opts);
+        }
+        document.getElementById('go').onclick = async () => {
+            const url = document.getElementById('url').value.trim();
+            const claimed = document.getElementById('claimed').value.trim();
+            const out = document.getElementById('out');
+            out.style.display = 'block';
+            out.innerHTML = '<div class="panel">Checking…</div>';
+            try {
+                const r = await csrfFetch('/api/ops/link-check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, claimed_brand: claimed }),
+                });
+                const d = await r.json();
+                if (!d.ok) {
+                    out.innerHTML = '<div class="panel" style="color:#ff6666;">' + (d.error || 'Failed') + '</div>';
+                    return;
+                }
+                const risk = d.risk_level || 'low';
+                const riskClass = risk === 'high' ? 'risk-high' : (risk === 'elevated' ? 'risk-elevated' : 'risk-low');
+                let html = '<div class="panel">';
+                html += '<div class="' + riskClass + '">Risk: ' + risk.toUpperCase() + '</div>';
+                html += '<p style="margin:10px 0;line-height:1.5;">' + (d.plain_summary || '') + '</p>';
+                html += '<div class="defanged">Defanged: ' + (d.defanged || '') + '</div>';
+                if (d.notes && d.notes.length) {
+                    html += '<ul>';
+                    d.notes.forEach(n => { html += '<li>' + n + '</li>'; });
+                    html += '</ul>';
+                }
+                html += '<p style="font-size:0.72em;color:#556;margin-top:12px;">Offline stub only. Type the official company URL yourself when unsure.</p>';
+                html += '</div>';
+                out.innerHTML = html;
+            } catch (e) {
+                out.innerHTML = '<div class="panel" style="color:#ff6666;">Request failed.</div>';
+            }
+        };
+    </script>
+</body>
+</html>

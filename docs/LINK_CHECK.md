@@ -1,6 +1,8 @@
 # Link check
 
-**Public product:** `C:\Dev\link-check` → `python public_app/app.py` (port **5055**) or deploy Docker image. Share that URL with recruiters; do not send them to the full MSSP.
+**Public product:** `C:\Dev\link-check` → port **5055** or deploy Docker image. Share that URL with recruiters; do not send them to the full MSSP.
+
+**Local updates:** After template/package changes, run `C:\Dev\link-check\scripts\restart-public-app.ps1` (kills stale listeners, `pip install -e`, restarts). Hard refresh the browser. Cursor rule: `link-check/.cursor/rules/link-check-dev.mdc`.
 
 ## Surfaces
 

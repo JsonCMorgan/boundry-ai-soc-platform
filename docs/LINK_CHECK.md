@@ -16,7 +16,7 @@ Logic lives in the **link-check** package. Boundry loads it via `link_triage.py`
 
 ## Privacy
 
-v0.1 is **offline**: no HTTP fetch to the link, no VirusTotal unless you add opt-in later.
+v0.2: **offline by default**; optional careers fetch hits only configured employer URLs (never the pasted link). Curated `allowed_vendor_hosts` (e.g. Intact + `paradox.ai`).
 
 ## Your Intact / Paradox case
 

@@ -1,16 +1,16 @@
-# Link check (Option B)
+# Link check
 
-Personal/MSSP helper to **paste a URL before you click** (SMS, email, conference follow-ups).
+**Public product:** `C:\Dev\link-check` → `python public_app/app.py` (port **5055**) or deploy Docker image. Share that URL with recruiters; do not send them to the full MSSP.
 
 ## Surfaces
 
 | Where | URL / command |
 |--------|----------------|
-| Phone (same LAN) | `http://<pc>:5000/ops/link-check` after analyst login |
-| API | `POST /api/ops/link-check` JSON `url`, optional `claimed_brand` |
-| PC CLI | `pip install -e C:\Dev\link-check` then `python -m link_check "..." --claimed "..."` |
+| **Public web (primary)** | `http://127.0.0.1:5055` locally; deployed URL when live |
+| Boundry (legacy / personal) | `/ops/link-check` after analyst login |
+| CLI | `python -m link_check "..." --claimed "..."` |
 
-Logic lives in portfolio repo `C:\Dev\link-check`. Boundry loads it via `link_triage.py` (sibling path or pip install).
+Logic lives in the **link-check** package. Boundry loads it via `link_triage.py` (sibling path or `pip install -e`).
 
 ## Privacy
 

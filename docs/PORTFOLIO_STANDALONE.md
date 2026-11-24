@@ -16,6 +16,9 @@
 | 7 | [soc-detection-rules](https://github.com/JsonCMorgan/soc-detection-rules) | `C:\Dev\soc-detection-rules` | Sigma → Splunk/KQL in CI | Boundry can *consume* rules; repo stays separate |
 | — | [link-check](https://github.com/JsonCMorgan/link-check) *(public product)* | `C:\Dev\link-check` | Pre-click link/QR triage for hiring smish | Optional `/ops/link-check`; **5055 app is the pitch** |
 | 5 | [ioc-extractor](https://github.com/JsonCMorgan/ioc-extractor) | `C:\Dev\ioc-extractor` | Paste report → IOC JSON/CSV; opt-in enrich | MSSP **6b** = on-demand enrich in SIEM; **not** this package |
+| 6 | [windows-evtx-hunter](https://github.com/JsonCMorgan/windows-evtx-hunter) | `C:\Dev\windows-evtx-hunter` | EVTX → JSON + HTML timeline | None |
+| 8 | [linux-authlog-analyzer](https://github.com/JsonCMorgan/linux-authlog-analyzer) | `C:\Dev\linux-authlog-analyzer` | auth.log SSH / sudo / cron | None |
+| 10 | [hibp-password-check](https://github.com/JsonCMorgan/hibp-password-check) | `C:\Dev\hibp-password-check` | HIBP k-anonymity CLI | None |
 
 ---
 
@@ -23,10 +26,7 @@
 
 | # | Tool | Repo name (suggested) | Why standalone | Priority |
 |---|------|----------------------|----------------|----------|
-| 6 | Windows Event Log Hunter | `windows-evtx-hunter` | Classic “read the EVTX” interview skill; HTML timeline | **High** — pairs with G8 |
-| 8 | Linux auth.log analyzer | `linux-authlog-analyzer` | SSH brute / sudo / persistence | High — closes G10 gap |
-| 9 | PCAP triage | `pcap-triage` | Beaconing + DNS noise; pairs with Security Onion lab | Medium |
-| 10 | Breached password checker | `hibp-password-check` | HIBP k-anonymity privacy story | Medium (fast build) |
+| 9 | PCAP triage | `pcap-triage` | Beaconing + DNS noise; pairs with Security Onion lab | **Next** |
 | 11 | Network asset change detector | `network-asset-diff` | nmap diff over time; **do not** port whole `system_scanner` | Lower (overlap with flagship) |
 
 **Rule:** CLI + README screenshot + pytest + GitHub Actions badge. No Flask dashboard unless it’s a tiny public app like Link Check.

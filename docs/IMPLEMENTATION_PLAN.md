@@ -168,8 +168,12 @@ See [`docs/PRE_CLIENT_HARDENING.md`](PRE_CLIENT_HARDENING.md).
 - [x] #2 Security Onion lab (GitHub)
 - [x] #3 Juice Shop lab (GitHub)
 - [x] #4 Phishing email analyzer ([phishing-email-analyzer](https://github.com/JsonCMorgan/phishing-email-analyzer))
-- [ ] #5 IOC extractor (local `C:\Dev\ioc-extractor`; push when confirmed)
-- [ ] #6–#19 per roadmap order (Jason picks next)
+- [x] #5 IOC extractor ([ioc-extractor](https://github.com/JsonCMorgan/ioc-extractor))
+- [x] #6 Windows EVTX hunter (`C:\Dev\windows-evtx-hunter`)
+- [x] #8 Linux auth.log (`C:\Dev\linux-authlog-analyzer`)
+- [x] #10 HIBP password check (`C:\Dev\hibp-password-check`)
+- [x] Link Check public product (`C:\Dev\link-check`)
+- [ ] #9 PCAP triage, #11+ per [`PORTFOLIO_STANDALONE.md`](PORTFOLIO_STANDALONE.md)
 - [x] #7 Sigma pack (`soc-detection-rules`) — shipped earlier
 
 **Done when:** Profile README promises match green, mentor-visible repos for chosen items.

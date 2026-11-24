@@ -160,6 +160,8 @@ See [`docs/PRE_CLIENT_HARDENING.md`](PRE_CLIENT_HARDENING.md).
 
 **Goal:** Ship Tier A–D items from `security_portfolio_roadmap` (agent store plan + Boundry HQ canvas). One repo or hygiene pass at a time; push after Jason confirms.
 
+**Standalone vs MSSP:** See [`docs/PORTFOLIO_STANDALONE.md`](PORTFOLIO_STANDALONE.md) — recruiter-facing tools stay **separate repos**; flagship absorbs only Tier D + operator features (6b enrich, etc.).
+
 **Progress (Jason, 2026-11-22):**
 
 - [x] #1 Portfolio hygiene (`boundry-ai-soc-platform` pushed)

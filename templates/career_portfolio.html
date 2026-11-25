@@ -52,6 +52,24 @@
       font-size: 0.72em; padding: 5px 10px; border-radius: 4px; cursor: pointer;
       border: 1px solid #1e3045; background: #0a0e14; color: #8aa; font-family: inherit;
     }
+    .guide {
+      background: #131d28; border: 1px solid #1e3045; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 20px; font-size: 0.84em; line-height: 1.5;
+    }
+    .guide h2 { margin: 0 0 8px; font-size: 0.9em; color: #00ff88; }
+    .guide p { margin: 0 0 10px; color: #9ab; }
+    .guide ul { margin: 8px 0 0; padding-left: 1.15rem; color: #cdd6e0; }
+    .guide li { margin-bottom: 6px; }
+    .guide .paths { margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e3045; }
+    .guide .paths strong { color: #00d4ff; font-weight: 700; }
+    .field-help {
+      font-size: 0.72em; color: #667; margin: -2px 0 6px; line-height: 1.4;
+    }
+    .scenario-pick {
+      font-size: 0.78em; color: #7a9ab0; margin: 0 0 12px; padding: 10px 12px;
+      background: #0a0e14; border-radius: 6px; border: 1px dashed #1e3045; line-height: 1.45;
+    }
+    .scenario-pick strong { color: #cdd6e0; }
   </style>
 </head>
 <body>
@@ -64,20 +82,46 @@
   </div>
   <div class="main">
     <h1>Job portfolio</h1>
-    <p class="sub">Cases for GTA SOC applications. Correct shift findings auto-add; you can also log manual evidence.</p>
+    <p class="sub">Proof for job applications: short write-ups of investigations you ran in Boundry (practice clients only).</p>
+
+    <div class="guide">
+      <h2>What you are doing here</h2>
+      <p>
+        Each <strong>case</strong> is one situation you handled like a Tier-1 analyst: what you saw, why it mattered,
+        what you decided, and what you would do next. Recruiters see the PDF export, not raw SIEM noise.
+      </p>
+      <ul>
+        <li><strong>One case = one story.</strong> Example: password spray on a VPN, phishing report, or a finding you closed as false positive.</li>
+        <li><strong>Write for a hiring manager.</strong> Plain English. Name the alert, 1–3 facts from logs, and your decision.</li>
+        <li><strong>MITRE</strong> is optional. Add a technique ID only if it fits (e.g. T1110 for password guessing).</li>
+      </ul>
+      <div class="paths">
+        <p style="margin:0 0 6px;color:#7a9ab0;font-size:0.82em;"><strong>Two ways cases get here</strong></p>
+        <ul style="margin:0;">
+          <li><strong>Quick Shift:</strong> Finish a shift with good ticket notes and Boundry can auto-add a case.</li>
+          <li><strong>Add below:</strong> You document a drill, lab alert, or practice scenario by hand.</li>
+        </ul>
+      </div>
+    </div>
+
     <div class="actions">
       <a class="btn btn-cyan" href="/career/portfolio/pdf">⬇ Download PDF</a>
       <a class="btn" href="/career/shift">▶ Quick Shift</a>
     </div>
 
     <div class="form">
-      <h2>Add case — ticket hygiene</h2>
-      <p style="font-size:0.75em;color:#667;margin:0 0 10px;line-height:1.4;">
-        ServiceNow-style fields for HM-aligned write-ups. Subject = title; body stores What / Why / Disposition / MITRE / Next.
+      <h2>Add a case (manual)</h2>
+      <p class="scenario-pick">
+        <strong>Pick a scenario to document.</strong>
+        Something you actually worked in Boundry: a Shift alert, SIEM search, email triage, machine scan finding,
+        Interview Gym story, or Training scenario. Fictional client names only (Contoso-style).
+        If you are stuck, run <a href="/career/shift" style="color:#00d4ff">Quick Shift</a> first, then copy your notes here.
       </p>
-      <label>Subject (title)</label>
-      <input id="f-title" placeholder="e.g. Password spray triage — blocked source IP">
-      <label>Track</label>
+      <label>Case title</label>
+      <p class="field-help">Short headline for the PDF. Not the full story.</p>
+      <input id="f-title" placeholder="e.g. Password spray on VPN — source IP blocked">
+      <label>Category</label>
+      <p class="field-help">Which bucket this story best fits for your job search.</p>
       <select id="f-track">
         <option value="siem">SIEM Triage</option>
         <option value="ir">Incident Response</option>
@@ -87,29 +131,35 @@
         <option value="automation">SOAR / Automation</option>
         <option value="reporting">Analyst Reporting</option>
       </select>
-      <label>What (observed)</label>
+      <label>What happened (facts)</label>
+      <p class="field-help">Alert name, time window, source IP or user, and 1–3 evidence bullets from logs or the console.</p>
       {{ writing_coach_from_registry('portfolio_what') }}
       {% set _pw = get_coach('portfolio_what') %}
       <textarea id="f-what" aria-describedby="coach-portfolio_what" data-writing-coach="portfolio_what"
         placeholder="{{ (_pw.placeholder_example if _pw else '') }}"></textarea>
-      <label>Why (it matters)</label>
+      <label>Why it matters (risk)</label>
+      <p class="field-help">What could go wrong if you ignored it, and why this is not an obvious false positive.</p>
       {{ writing_coach_from_registry('portfolio_why') }}
       {% set _py = get_coach('portfolio_why') %}
       <textarea id="f-why" style="min-height:56px;" aria-describedby="coach-portfolio_why" data-writing-coach="portfolio_why"
         placeholder="{{ (_py.placeholder_example if _py else '') }}"></textarea>
-      <label>Disposition</label>
-      <input id="f-disp" placeholder="true_positive / false_positive / escalate">
-      <label>MITRE</label>
-      <input id="f-mitre" placeholder="T1110.003">
-      <label>Next (actions)</label>
+      <label>Your decision</label>
+      <p class="field-help">Type one of: true_positive, false_positive, escalate, monitor, or close with reason.</p>
+      <input id="f-disp" placeholder="e.g. escalate — admin account targeted">
+      <label>MITRE technique (optional)</label>
+      <p class="field-help">Leave blank if unsure. Example: T1110.003 (password spray).</p>
+      <input id="f-mitre" placeholder="e.g. T1110.003">
+      <label>Next steps</label>
+      <p class="field-help">What Tier-2 or the client should do, or what you did to close the case.</p>
       {{ writing_coach_from_registry('portfolio_next') }}
       {% set _pn = get_coach('portfolio_next') %}
       <textarea id="f-next" style="min-height:56px;" aria-describedby="coach-portfolio_next" data-writing-coach="portfolio_next"
         placeholder="{{ (_pn.placeholder_example if _pn else '') }}"></textarea>
       <label>Tools used</label>
-      <input id="f-tools" placeholder="Boundry SIEM, SPL, SOAR">
+      <p class="field-help">What you used in Boundry or on the exam path (SIEM, SPL query, SOAR, EDR sim, etc.).</p>
+      <input id="f-tools" placeholder="e.g. Boundry SIEM, SPL query, Shift case console">
       <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn" type="button" onclick="pasteTemplate()">Insert blank template into What</button>
+        <button class="btn" type="button" onclick="pasteTemplate()">Insert outline into What happened</button>
         <button class="btn btn-cyan" type="button" onclick="addCase()">Save case</button>
       </div>
     </div>
@@ -130,7 +180,7 @@
       </div>
     </div>
     {% else %}
-    <p style="color:#556;">No cases yet — finish a Quick Shift or add one above.</p>
+    <p style="color:#556;">No cases yet. Run Quick Shift and write ticket notes, or add one case above from any lab alert.</p>
     {% endfor %}
   </div>
 
@@ -145,7 +195,7 @@ function csrfFetch(url, opts) {
 function pasteTemplate() {
   var el = document.getElementById('f-what');
   if (el.value && !confirm('Replace current What text with blank ticket template?')) return;
-  el.value = 'Subject: \nWhat: \nWhy: \nDisposition: \nMITRE: \nNext: ';
+  el.value = 'Alert / scenario:\nKey evidence (1–3 bullets):\nClient or host context:\n';
   el.focus();
 }
 function addCase() {

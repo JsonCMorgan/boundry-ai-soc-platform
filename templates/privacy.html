@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Privacy — Boundry.AI</title>
+  <style>
+    body { font-family:Arial,sans-serif; max-width:720px; margin:32px auto; padding:0 20px; line-height:1.5; }
+    pre { white-space:pre-wrap; font-family:inherit; }
+    .nav a { margin-right:16px; }
+  </style>
+</head>
+<body>
+  <p class="nav">
+    {% if role == 'client' or role == 'demo' %}
+    <a href="{{ url_for('client_status') }}">Status</a>
+    <a href="{{ url_for('reports') }}">Reports</a>
+    {% endif %}
+    <a href="{{ url_for('privacy_page') }}">Privacy</a>
+  </p>
+  <pre>{{ body }}</pre>
+</body>
+</html>

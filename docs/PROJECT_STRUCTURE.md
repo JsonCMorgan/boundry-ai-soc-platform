@@ -65,6 +65,9 @@ MSSP/
 | Privacy | `/privacy` | M7 one-pager in-app |
 | M365 ingest | `POST /api/m365/ingest` | Phase-1 audit JSON |
 | Monthly summary | `POST /cron/monthly-summary` | Per-client report rows |
+| Health | `GET /health` | DB + Ollama probe (service watchdog) |
+| Ops scripts | `tools/install_boundry_service.ps1`, `backup_app_db.ps1 -Verify` | Uptime + backup verify |
+| Audit + keys | `boundry_audit.py`, `analyst_audit` table, rotate on integration page | GAP-024/025 |
 
 ## Rules of placement
 

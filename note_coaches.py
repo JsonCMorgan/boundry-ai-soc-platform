@@ -141,19 +141,29 @@ COACHES: dict[str, CoachDef] = {
         "placeholder_example": "Paste headers here…",
     },
     "portfolio_what": {
-        "title": "What happened",
-        "items": ["Alert or scenario", "Key evidence (1–3 bullets)", "Severity / client context"],
-        "placeholder_example": "e.g. Password spray against Contoso VPN…",
+        "title": "What happened (facts)",
+        "items": [
+            "Name the alert or finding in plain words",
+            "List 1–3 log or console facts (user, IP, count, time)",
+            "Fictional client name and severity if you have one",
+        ],
+        "placeholder_example": "e.g. 4625 failures from 203.0.113.44 against Contoso VPN in 15 minutes…",
     },
     "portfolio_why": {
         "title": "Why it matters",
-        "items": ["Business or security risk", "Why not obvious FP"],
-        "placeholder_example": "e.g. Successful logon would expose CRM data…",
+        "items": [
+            "Worst case if you ignored it (data, account, or service)",
+            "One line on why this is not a routine false positive",
+        ],
+        "placeholder_example": "e.g. Success would open VPN to internal file share…",
     },
     "portfolio_next": {
-        "title": "Next actions",
-        "items": ["Containment or monitoring", "Handoff or ticket follow-up"],
-        "placeholder_example": "e.g. Reset creds, watch for exfil…",
+        "title": "Next steps",
+        "items": [
+            "Block, reset, escalate, or monitor (pick one path)",
+            "Who gets the handoff (Tier-2, client IT, or closed by you)",
+        ],
+        "placeholder_example": "e.g. Escalate to Tier-2 with IP block request; watch auth logs 24h…",
     },
     "interview_answer": {
         "title": "Interview answer (STAR-lite)",

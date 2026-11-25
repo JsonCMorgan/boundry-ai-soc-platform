@@ -68,6 +68,15 @@ tools/_*_result.txt
 tools/_check_smb_out.txt
 tools/_incomplete_hits.txt
 
+# Internal GTM / sales drafts (local until reviewed for public repo)
+docs/BOUNDRY_UPS_SHOPPING.md
+docs/CODING_AGENT_BACKLOG.md
+docs/DEMO_SCRIPT_PRO_SERVICES_5MIN.md
+docs/HARDWARE_SHOPPING_CHECKLIST.md
+docs/LEAVE_BEHIND_PRO_SERVICES_ONE_PAGER.md
+docs/PITCH_DECK_BOUNDRY_SMB.md
+docs/SALES_CONTINUITY_UPS.md
+
 # Personal notes and helper scripts (not portfolio material)
 docs/cafe-happy-hour-cursor-prompt.md
 docs/conference-cursor-briefing.md

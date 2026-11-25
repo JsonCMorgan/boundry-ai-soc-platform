@@ -143,6 +143,20 @@
         <button class="btn-copy" onclick="copyKey()">Copy</button>
     </div>
     <p class="key-warning">&#x26A0; Keep this private. Anyone with this key can send events to your account. Store it in an environment variable — never commit it to source control.</p>
+    {% if analyst_mode %}
+    {% if api_key_grace_until %}
+    <p style="font-size:0.82em;color:#5a8ae0;margin-top:10px;">
+        Previous key still accepted until <strong>{{ api_key_grace_until }}</strong> (UTC).
+    </p>
+    {% endif %}
+    <form method="post" action="{{ url_for('analyst_rotate_api_key', client_id=client_id) }}" style="margin-top:14px;"
+          onsubmit="return confirm('Issue a new API key? The current key keeps working for 24 hours.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" style="background:#8b4513;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-weight:bold;cursor:pointer;">
+            Rotate API key (24h grace)
+        </button>
+    </form>
+    {% endif %}
 </div>
 
 <!-- ── Step 2: What to monitor ── -->
@@ -210,6 +224,10 @@
             <tr><td><code>DIRECTORY_TRAVERSAL</code></td><td>A request path contained <code>../</code> or encoded traversal sequences — include the path in <code>extra</code></td><td class="mitre-tag">T1083 File Discovery</td></tr>
             <tr><td><code>PRIV_ESC_ATTEMPT</code></td><td>A user attempted to access an admin route or resource they are not authorised for — include the route in <code>extra</code></td><td class="mitre-tag">T1548 Abuse Elevation</td></tr>
             <tr><td><code>ACCOUNT_ENUM</code></td><td>A login attempt for a username that does not exist — helps detect username enumeration</td><td class="mitre-tag">T1589.001 Account Discovery</td></tr>
+            <tr><td><code>M365_SIGNIN_FAILED</code></td><td>Microsoft 365 / Entra sign-in failure</td><td class="mitre-tag">T1078 Valid Accounts</td></tr>
+            <tr><td><code>M365_IMPOSSIBLE_TRAVEL</code></td><td>Sign-in from unlikely geography</td><td class="mitre-tag">T1078</td></tr>
+            <tr><td><code>FILE_DOWNLOAD_ANOMALY</code></td><td>Unusual bulk or sensitive file download</td><td class="mitre-tag">T1530</td></tr>
+            <tr><td><code>VENDOR_APP_CONSENT</code></td><td>New OAuth / vendor application consent</td><td class="mitre-tag">Third-party risk</td></tr>
             <tr><td><code>REGISTER_SUCCESS</code></td><td>A new account was created</td><td class="mitre-tag">—</td></tr>
         </tbody>
     </table>

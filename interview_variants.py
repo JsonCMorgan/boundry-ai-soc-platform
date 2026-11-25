@@ -128,10 +128,76 @@ CURATED_PACKS: dict[str, list[dict[str, Any]]] = {
                 "Alert: unusual RDP from an intern workstation to two file servers after hours, "
                 "using a service account. Walk me through your investigation."
             ),
-            "replacements": {
-                "contractor workstation": "intern workstation",
-                "three internal servers": "two file servers",
-                "contractor": "intern",
+            "why_hm": "Tests after-hours lateral movement and service-account abuse judgment.",
+            "guided": {
+                "validate": {
+                    "teach": "Confirm RDP successes, service account used, both file server targets, timestamps.",
+                    "choices": [
+                        "Close as expected remote support because interns often use RDP",
+                        "Confirm which RDP sessions succeeded and with which account",
+                        "Start with the intern's HR status instead of session success logs",
+                    ],
+                    "answer_idx": 1,
+                    "example": "I'd confirm successful RDP to each file server, source host, and whether the service account was expected.",
+                },
+                "context": {
+                    "teach": "After hours + service account on file shares is unusual for an intern.",
+                    "choices": [
+                        "Check if any jump-host or after-hours support ticket covers this path",
+                        "Treat after-hours as normal IT maintenance and skip ticket lookup",
+                        "Ask the intern in chat before reviewing VPN or auth logs",
+                    ],
+                    "answer_idx": 0,
+                    "example": "I'd check for an approved jump host or after-hours ticket before assuming legitimate support.",
+                },
+                "analyze": {
+                    "teach": "Blast radius: two file servers after hours via a service account is serious.",
+                    "choices": [
+                        "Treat after-hours RDP to file shares as low priority if the source is internal",
+                        "Prioritize the SIEM rule severity label over which servers were reached",
+                        "Treat as potential lateral movement with priority on file share access",
+                    ],
+                    "answer_idx": 2,
+                    "example": "RDP to two file servers after hours with a service account looks like lateral movement toward data, not noise.",
+                },
+                "correlate": {
+                    "teach": "File access, share permissions, further hops, privileged logons.",
+                    "choices": [
+                        "Scope file/share access on both servers and any follow-on auth",
+                        "Limit scope to the first RDP event to finish faster",
+                        "Recommend wiping both file servers before collecting share logs",
+                    ],
+                    "answer_idx": 0,
+                    "example": "I'd scope share access on both targets and hunt for further hops or privileged logons.",
+                },
+                "decide": {
+                    "teach": "Escalate to IR/Tier-2; suspend service account; isolate hosts per policy.",
+                    "choices": [
+                        "Monitor quietly for more hops before involving Tier-2",
+                        "Escalate now with timeline; suspend service account + isolate per policy",
+                        "Close as intern shadowing IT since the account exists",
+                    ],
+                    "answer_idx": 1,
+                    "example": "I'd escalate with UTC timeline, suspend the service account, and isolate the file servers per policy.",
+                },
+                "change_mind": {
+                    "teach": "Documented intern shadowing ticket with approved jump host.",
+                    "choices": [
+                        "Accept the intern's verbal assurance the access was class work",
+                        "Default to wipe-and-rebuild even if authorization evidence appears",
+                        "Valid change ticket proving approved after-hours jump-host path",
+                    ],
+                    "answer_idx": 2,
+                    "example": "A valid shadowing ticket and approved jump host would make me reconsider malicious intent.",
+                },
+            },
+            "model": {
+                "validate": "Confirm RDP to both file servers and service account.",
+                "context": "After hours + intern + service account.",
+                "analyze": "Two file shares after hours = high concern.",
+                "correlate": "Share access + further movement.",
+                "decide": "Escalate + suspend account; isolate hosts.",
+                "change_mind": "Approved shadowing / jump-host ticket.",
             },
         },
         {
@@ -141,10 +207,76 @@ CURATED_PACKS: dict[str, list[dict[str, Any]]] = {
                 "SIEM shows RDP from a VPN-connected laptop to a domain controller. "
                 "The user is in marketing and has no admin role on record. What do you do?"
             ),
-            "replacements": {
-                "contractor workstation": "VPN laptop",
-                "three internal servers": "a domain controller",
-                "contractor": "marketing user",
+            "why_hm": "Tests scoping critical assets when a non-admin user reaches a domain controller.",
+            "guided": {
+                "validate": {
+                    "teach": "Confirm RDP success, marketing user account, domain controller target, VPN source.",
+                    "choices": [
+                        "Close because marketing staff sometimes RDP for demos",
+                        "Confirm successful RDP session details: user, source VPN host, DC target",
+                        "Start with HR records before checking authentication logs",
+                    ],
+                    "answer_idx": 1,
+                    "example": "I'd confirm the successful RDP session, marketing user, VPN laptop, and which DC was reached.",
+                },
+                "context": {
+                    "teach": "Marketing users should not RDP to a DC without a documented admin path.",
+                    "choices": [
+                        "Check role, VPN profile, and whether any admin delegation exists",
+                        "Assume VPN users are trusted because MFA passed",
+                        "Message the user on Teams before pulling identity or RDP logs",
+                    ],
+                    "answer_idx": 0,
+                    "example": "I'd verify the user has no admin role on record and whether VPN policy allows server access at all.",
+                },
+                "analyze": {
+                    "teach": "Blast radius: any RDP session to a domain controller from a standard user laptop is critical.",
+                    "choices": [
+                        "Treat VPN RDP as normal remote work if MFA succeeded",
+                        "Treat internal RDP as low priority unless the source is external",
+                        "Treat as critical: non-admin VPN user reached a domain controller",
+                    ],
+                    "answer_idx": 2,
+                    "example": "A marketing user on VPN reaching a DC is not normal remote work; treat as high-impact lateral movement.",
+                },
+                "correlate": {
+                    "teach": "DC auth, privileged operations, other logons from same VPN session.",
+                    "choices": [
+                        "Scope DC logons, privileged ops, and other movement from the VPN laptop",
+                        "Limit scope to the single RDP alert to save time",
+                        "Recommend rebuilding the DC before collecting security logs",
+                    ],
+                    "answer_idx": 0,
+                    "example": "I'd pull DC security logons, look for privilege use, and hunt for other hops from the same VPN source.",
+                },
+                "decide": {
+                    "teach": "Escalate immediately; disable user session; isolate VPN laptop per policy.",
+                    "choices": [
+                        "Monitor for another hour because only one DC session fired",
+                        "Escalate now with timeline; disable account and isolate VPN laptop",
+                        "Close as VPN remote support because the user passed MFA",
+                    ],
+                    "answer_idx": 1,
+                    "example": "I'd escalate immediately with timeline evidence and recommend account disable plus laptop isolation per policy.",
+                },
+                "change_mind": {
+                    "teach": "Documented break-glass or approved DC maintenance with named approver.",
+                    "choices": [
+                        "Accept verbal approval from the user that IT asked them to connect",
+                        "Default to domain-wide password reset even if break-glass is documented",
+                        "Valid break-glass ticket with approver matching the maintenance window",
+                    ],
+                    "answer_idx": 2,
+                    "example": "A valid break-glass ticket and approver in the maintenance window would change my malicious-intent assumption.",
+                },
+            },
+            "model": {
+                "validate": "Confirm RDP to DC from VPN laptop.",
+                "context": "Marketing user, no admin on record.",
+                "analyze": "Non-admin VPN user on DC = critical.",
+                "correlate": "DC logons + further movement.",
+                "decide": "Immediate escalate + contain user/laptop.",
+                "change_mind": "Documented break-glass maintenance.",
             },
         },
     ],
@@ -286,6 +418,13 @@ def materialize_curated(parent_id: str, pack: dict[str, Any]) -> dict[str, Any] 
     scenario["variant_label"] = str(pack.get("label") or "Curated angle")
     scenario["variant_source"] = "curated"
     scenario["prompt"] = str(pack.get("prompt") or scenario.get("prompt") or "")
+    if pack.get("why_hm"):
+        scenario["why_hm"] = str(pack["why_hm"])
+    # Full guided/model blocks override string-replacement remix (required for unique MCQs).
+    if isinstance(pack.get("guided"), dict) and pack["guided"]:
+        scenario["guided"] = copy.deepcopy(pack["guided"])
+    if isinstance(pack.get("model"), dict) and pack["model"]:
+        scenario["model"] = copy.deepcopy(pack["model"])
     scenario["title"] = f"{base.get('title')} · {scenario['variant_label']}"
     return scenario
 

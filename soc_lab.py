@@ -63,20 +63,64 @@ def _sla_due(minutes: int) -> str:
     return (datetime.utcnow() + timedelta(minutes=max(5, minutes))).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _tier_sla_minutes(
+    db_fetchone: Callable,
+    ph: str,
+    client_tag: str,
+    severity: str,
+) -> int:
+    """Map mssp_tenants.tier + severity to SLA minutes (GAP-016)."""
+    tier = "Silver"
+    if client_tag:
+        row = db_fetchone(
+            f"SELECT tier FROM mssp_tenants WHERE client_id = {ph} OR display_name = {ph} LIMIT 1",
+            (client_tag, client_tag),
+        )
+        if row and row.get("tier"):
+            tier = row["tier"]
+    sev_u = (severity or "MEDIUM").upper()
+    by_tier = {
+        "Gold": {"CRITICAL": 60, "HIGH": 240, "MEDIUM": 480},
+        "Silver": {"CRITICAL": 240, "HIGH": 480, "MEDIUM": 1440},
+        "Bronze": {"CRITICAL": 480, "HIGH": 1440, "MEDIUM": 2880},
+    }
+    return by_tier.get(tier, by_tier["Silver"]).get(sev_u, 480)
+
+
+def client_update_line(case: dict[str, Any]) -> str:
+    """One-line stakeholder update for a SOC case (GAP-016)."""
+    sev = case.get("severity") or "MEDIUM"
+    status = case.get("status") or "new"
+    title = (case.get("title") or "Security review")[:120]
+    nxt = (case.get("next_action") or "We are investigating.").strip()
+    return (
+        f"Boundry update: {title}. Severity {sev}. Status {status}. "
+        f"Next: {nxt[:200]}"
+    )
+
+
 def build_queue(
     db_fetchall: Callable,
     lane: str = "all",
     ph: str = "?",
+    tenant: str = "",
 ) -> list[dict[str, Any]]:
     """Build unified queue items from real + practice sources."""
     lane = (lane or "all").strip().lower()
+    tenant_slug = (tenant or "").strip()
     items: list[dict[str, Any]] = []
 
     if lane in ("all", "real"):
-        findings = db_fetchall(
-            "SELECT id, finding_id, title, severity, category, description, scan_type, created_at "
-            "FROM system_findings WHERE resolved = 0 ORDER BY id DESC LIMIT 80"
-        ) or []
+        f_params: list[Any] = []
+        finding_sql = (
+            "SELECT id, finding_id, title, severity, category, description, scan_type, "
+            "created_at, client_id FROM system_findings WHERE resolved = 0"
+        )
+        if tenant_slug:
+            finding_sql += f" AND client_id = {ph}"
+            f_params.append(tenant_slug)
+        finding_sql += " ORDER BY id DESC LIMIT 80"
+        findings = db_fetchall(finding_sql, tuple(f_params)) or []
         for f in findings:
             sev = (f.get("severity") or "MEDIUM").upper()
             items.append({
@@ -86,7 +130,7 @@ def build_queue(
                 "is_practice": False,
                 "title": f.get("title") or f.get("finding_id") or "Finding",
                 "severity": sev,
-                "client_tag": "Boundry-Host",
+                "client_tag": f.get("client_id") or "Boundry-Host",
                 "detail": (f.get("description") or "")[:400],
                 "category": f.get("category") or f.get("scan_type") or "",
                 "created_at": f.get("created_at") or "",
@@ -95,12 +139,17 @@ def build_queue(
                 "href_findings": "/scan/findings",
             })
 
-        events = db_fetchall(
+        e_params: list[Any] = []
+        event_sql = (
             "SELECT id, source, event_id, event_type, severity, host, user_account, "
-            "src_ip, description, created_at FROM siem_events "
-            "WHERE dismissed = 0 AND UPPER(severity) IN ('HIGH','CRITICAL') "
-            "ORDER BY id DESC LIMIT 80"
-        ) or []
+            "src_ip, description, created_at, client_id FROM siem_events "
+            "WHERE dismissed = 0 AND UPPER(severity) IN ('HIGH','CRITICAL')"
+        )
+        if tenant_slug:
+            event_sql += f" AND client_id = {ph}"
+            e_params.append(tenant_slug)
+        event_sql += " ORDER BY id DESC LIMIT 80"
+        events = db_fetchall(event_sql, tuple(e_params)) or []
         for e in events:
             sev = (e.get("severity") or "HIGH").upper()
             title = e.get("event_type") or e.get("event_id") or "SIEM event"
@@ -111,7 +160,7 @@ def build_queue(
                 "is_practice": False,
                 "title": str(title).replace("_", " "),
                 "severity": sev,
-                "client_tag": "Boundry-Host",
+                "client_tag": e.get("client_id") or "Boundry-Host",
                 "detail": (e.get("description") or "")[:400],
                 "category": e.get("source") or "",
                 "host": e.get("host") or "",
@@ -123,11 +172,17 @@ def build_queue(
             })
 
     if lane in ("all", "practice"):
-        practice = db_fetchall(
+        p_params: list[Any] = []
+        practice_sql = (
             "SELECT id, client_tag, title, severity, detail, source_label, "
             "sla_due_at, created_at, status FROM soc_practice_events "
-            "WHERE status = 'open' ORDER BY id DESC LIMIT 80"
-        ) or []
+            "WHERE status = 'open'"
+        )
+        if tenant_slug:
+            practice_sql += f" AND client_tag LIKE {ph}"
+            p_params.append(f"%{tenant_slug}%")
+        practice_sql += " ORDER BY id DESC LIMIT 80"
+        practice = db_fetchall(practice_sql, tuple(p_params)) or []
         for p in practice:
             sev = (p.get("severity") or "MEDIUM").upper()
             items.append({
@@ -398,7 +453,12 @@ def open_case(
     shift_id = (shift or {}).get("id")
     sev = meta["severity"]
     priority = priority_from_severity(sev)
-    sla = meta.get("sla_due_at") or _sla_due(_SLA_MINUTES.get(priority, 60))
+    tag = meta.get("client_tag") or ""
+    if tag and not tag.lower().startswith("practice"):
+        sla_m = _tier_sla_minutes(db_fetchone, ph, tag, sev)
+        sla = meta.get("sla_due_at") or _sla_due(sla_m)
+    else:
+        sla = meta.get("sla_due_at") or _sla_due(_SLA_MINUTES.get(priority, 60))
     ticket_no = mint_ticket_no(db_fetchone, ph=ph)
 
     db_run(

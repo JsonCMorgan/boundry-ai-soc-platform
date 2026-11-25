@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Onboard client — Boundry.AI</title>
+  <style>
+    body { background:#0a0e14; color:#cdd6e0; font-family:Consolas,monospace; margin:0; padding:24px; }
+    .card { max-width:640px; background:#131d28; border:1px solid #1e3045; padding:24px; border-radius:8px; }
+    label { display:block; margin:12px 0 4px; color:#7a9ab0; font-size:0.85em; }
+    input, select { width:100%; padding:8px; background:#0f1923; border:1px solid #1e3045; color:#cdd6e0; }
+    button { margin-top:16px; background:#00ff88; color:#000; border:0; padding:10px 20px; font-weight:bold; cursor:pointer; }
+    a { color:#00d4ff; }
+    .ok { border:1px solid #00ff88; padding:16px; margin-top:20px; }
+    code { background:#0f1923; padding:2px 6px; }
+  </style>
+</head>
+<body>
+  <p><a href="{{ url_for('control_room') }}">← Control Room</a></p>
+  <div class="card">
+    <h1 style="color:#00ff88;">Onboard client</h1>
+    {% if completion %}
+    <div class="ok">
+      <p><strong>{{ completion.username }}</strong> is ready. Scope: {{ completion.scope }}.</p>
+      <p>Setup link: <code>{{ completion.setup_url }}</code></p>
+      <p>Ingest: <code>{{ completion.ingest_url }}</code></p>
+      <p>API key (show client once): <code>{{ completion.api_key }}</code></p>
+      <p><a href="{{ url_for('analyst_integration', client_id=completion.client_id) }}">Integration page</a> ·
+         <a href="{{ url_for('risk_assessment', client_id=completion.client_id) }}">Risk assessment</a></p>
+    </div>
+    {% else %}
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Username</label><input name="username" required>
+      <label>Email</label><input name="email" type="email" required>
+      <label>Business name</label><input name="business_name">
+      <label>Industry</label>
+      <select name="industry">{% for k,v in risk_industries.items() %}<option value="{{ k }}">{{ v.label }}</option>{% endfor %}</select>
+      <label>Tier</label><select name="tier"><option>Silver</option><option>Gold</option><option>Bronze</option></select>
+      <label>Scope</label><select name="scope"><option value="siem">SIEM monitoring</option><option value="audit">Audit only</option><option value="both">Both</option></select>
+      <label><input type="checkbox" name="run_risk" checked> Run risk assessment</label>
+      <label>Employees</label><input name="employees" type="number" value="15">
+      <button type="submit">Create client</button>
+    </form>
+    {% endif %}
+  </div>
+</body>
+</html>

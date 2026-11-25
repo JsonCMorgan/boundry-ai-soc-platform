@@ -1108,6 +1108,17 @@
 {% set secops_active = 'home' %}
 {% include '_secops_layout.html' %}
 
+    {% if dev_secret_warning %}
+    <div style="background:#3d3200;border-bottom:1px solid #ffcc00;color:#ffeeaa;padding:10px 24px;font-size:0.85em;">
+        <strong>Dev session secret:</strong> SECRET_KEY is not set. Cookies are signed with <code>.flask_secret_key</code> only. Set <code>SECRET_KEY</code> before any paying client (M1).
+    </div>
+    {% endif %}
+    {% if boundry_live_mode %}
+    <div style="background:#0a1a14;border-bottom:1px solid #00b43266;color:#80d0a0;padding:8px 24px;font-size:0.82em;">
+        <strong>Live mode:</strong> training routes and public demo are disabled (<code>BOUNDRY_MODE=live</code>).
+    </div>
+    {% endif %}
+
     <div class="topbar">
         <span class="topbar-brand"><a href="/control-room">Control Room · HQ</a></span>
         <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
@@ -1251,6 +1262,32 @@
             {% endfor %}
         {% endwith %}
 
+        {% if analyst_audit_log and user_role == 'analyst' and not is_demo %}
+        <div class="panel" style="margin-bottom:16px;">
+            <div class="panel-header">Analyst audit <span class="badge-count">{{ analyst_audit_log|length }}</span></div>
+            <div style="max-height:160px;overflow-y:auto;font-size:0.78em;padding:8px 12px;">
+                <table style="width:100%;border-collapse:collapse;color:#7a9ab0;">
+                    <thead><tr style="color:#556;text-align:left;">
+                        <th style="padding:4px 6px;">When</th>
+                        <th style="padding:4px 6px;">Who</th>
+                        <th style="padding:4px 6px;">Action</th>
+                        <th style="padding:4px 6px;">Detail</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for row in analyst_audit_log %}
+                    <tr style="border-top:1px solid #1e2235;">
+                        <td style="padding:4px 6px;white-space:nowrap;">{{ row.created_at }}</td>
+                        <td style="padding:4px 6px;">{{ row.analyst_name or '—' }}</td>
+                        <td style="padding:4px 6px;color:#00d4ff;">{{ row.action }}</td>
+                        <td style="padding:4px 6px;">{{ row.detail or row.ref_id }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Client list -->
         <div>
             <div class="panel">
@@ -1261,6 +1298,8 @@
                         border:1px solid #1a5a2a;padding:4px 11px;border-radius:4px;cursor:pointer;">
                         + Add Client
                     </button>
+                    <a href="{{ url_for('analyst_onboard') }}"
+                        style="font-size:0.72em;color:#00d4ff;text-decoration:none;margin-left:10px;">Onboard wizard →</a>
                 </div>
 
                 <!-- Add Client form (hidden until toggled) -->

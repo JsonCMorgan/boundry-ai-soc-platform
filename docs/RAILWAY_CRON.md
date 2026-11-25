@@ -41,6 +41,17 @@ curl -s -X POST $APP_URL/cron/weekly-digest \
 
 ---
 
+## Cron Job 1b — Monthly client summary (1st of month)
+
+```bash
+curl -s -X POST $APP_URL/cron/monthly-summary \
+     -H "X-Cron-Secret: $CRON_SECRET"
+```
+
+Schedule example: `0 8 1 * *` (08:00 UTC on day 1).
+
+---
+
 ## Cron Job 2 — Daily EOD Report (Every day 8 PM)
 
 **What it does:** Sends Peta a daily end-of-day summary covering everything that happened on the platform that day — SIEM events, new findings, ransomware indicators, training activity, breach intel, and platform stats.

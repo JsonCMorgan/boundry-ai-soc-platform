@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Monitoring status — Boundry.AI</title>
+  <style>
+    body { font-family:Arial,sans-serif; background:#f7f8fa; margin:0; }
+    .topbar { background:#fff; border-bottom:1px solid #e8e8e8; padding:14px 40px; display:flex; gap:20px; }
+    .topbar a { color:#666; text-decoration:none; }
+    .topbar a.on { color:#c0392b; font-weight:bold; }
+    .wrap { max-width:720px; margin:32px auto; padding:0 20px; }
+    .banner { padding:20px; border-radius:8px; background:#fff; border:1px solid #e8e8e8; }
+    .banner.warn { border-color:#f39c12; background:#fffbeb; }
+  </style>
+</head>
+<body>
+  <p class="topbar">
+    <a href="{{ url_for('client_status') }}" class="on">Status</a>
+    <a href="{{ url_for('reports') }}">Reports</a>
+    <a href="{{ url_for('privacy_page') }}">Privacy</a>
+    <a href="{{ url_for('logout') }}">Log out</a>
+  </p>
+  <div class="wrap">
+    <h1>Monitoring status</h1>
+    <div class="banner {% if banner != 'All clear' %}warn{% endif %}">
+      <h2>{{ banner }}</h2>
+      <p>{{ detail }}</p>
+      <p>Open findings: {{ open_count }}</p>
+      {% if last_event %}<p>Last event: {{ last_event.created_at }}</p>{% endif %}
+      {% if last_report %}<p>Last report: #{{ last_report.id }} ({{ last_report.created_at }})</p>{% endif %}
+      <p>Health score: {{ health.score if health else '—' }}</p>
+    </div>
+  </div>
+</body>
+</html>

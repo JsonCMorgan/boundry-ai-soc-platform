@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Syslog sources — Boundry.AI</title>
+  <style>
+    body { background:#0a0e14; color:#cdd6e0; font-family:Consolas,monospace; padding:24px; }
+    table { border-collapse:collapse; width:100%; max-width:800px; }
+    td, th { border:1px solid #1e3045; padding:8px; }
+    input, select { background:#0f1923; color:#cdd6e0; border:1px solid #1e3045; padding:6px; }
+    button { background:#00ff88; color:#000; border:0; padding:8px 16px; }
+  </style>
+</head>
+<body>
+  <p><a href="{{ url_for('control_room') }}" style="color:#00d4ff;">Control Room</a></p>
+  <h1 style="color:#00d4ff;">Syslog sources</h1>
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Source IP <input name="src_ip" required></label>
+    <label>Tenant
+      <select name="client_id">{% for t in tenants %}<option value="{{ t.client_id }}">{{ t.display_name }} ({{ t.client_id }})</option>{% endfor %}</select>
+    </label>
+    <label>Label <input name="label"></label>
+    <button type="submit">Save</button>
+  </form>
+  <table style="margin-top:24px;">
+    <tr><th>IP</th><th>Tenant</th><th>Label</th></tr>
+    {% for r in rows %}
+    <tr><td>{{ r.src_ip }}</td><td>{{ r.client_id }}</td><td>{{ r.label }}</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

@@ -21,6 +21,7 @@ Usage (from app.py)
 
 import ipaddress
 import json
+import os
 import re
 
 import siem_ingest_tunes
@@ -38,6 +39,7 @@ _db_fetchall = None
 _PH          = "?"
 _ai_fn       = None   # optional: _generate_report_with_ai from app.py
 _soar_fn     = None   # optional: soar_engine.open_incident_for_finding
+_syslog_client_fn = None  # optional: (src_ip) -> client_id slug or None
 
 
 # ── MITRE ATT&CK event-type mapping ───────────────────────────────────────────
@@ -117,6 +119,12 @@ def _safe_field(value, max_len: int = 200) -> str:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+def set_syslog_resolver(fn):
+    """Register callback: src_ip -> client_id slug (None = use default/drop in live)."""
+    global _syslog_client_fn
+    _syslog_client_fn = fn
+
+
 def start(db_run_fn, db_fetchall_fn, ph="?", ai_fn=None, soar_fn=None):
     """Start all collector daemon threads.  Call once at app startup."""
     global _db_run, _db_fetchall, _PH, _ai_fn, _soar_fn
@@ -127,6 +135,7 @@ def start(db_run_fn, db_fetchall_fn, ph="?", ai_fn=None, soar_fn=None):
     _soar_fn     = soar_fn  # soar_engine.open_incident_for_finding
 
     _seed_default_rules()
+    _ensure_pro_services_siem_rules()
 
     for target, name in [
         (_windows_event_loop,   "siem-winevent"),
@@ -141,7 +150,8 @@ def start(db_run_fn, db_fetchall_fn, ph="?", ai_fn=None, soar_fn=None):
 
 def ingest_event(source, event_id, event_type, severity,
                  host="", user="", src_ip="", dst_ip="",
-                 description="", raw=None, simulated=0, correlate=True):
+                 description="", raw=None, simulated=0, correlate=True,
+                 client_id: str = "boundry_self"):
     """
     Normalise and write one event to siem_events, then run the correlation engine.
     Thread-safe.  Called by both background threads and the Flask middleware.
@@ -189,14 +199,15 @@ def ingest_event(source, event_id, event_type, severity,
 
     raw_str = json.dumps(raw or {}, default=str)
     try:
+        cid = (client_id or "boundry_self")[:80]
         _db_run(
             f"INSERT INTO siem_events "
             f"(source, event_id, event_type, severity, host, user_account, "
-            f"src_ip, dst_ip, description, raw_data, simulated) "
-            f"VALUES ({_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH})",
+            f"src_ip, dst_ip, description, raw_data, simulated, client_id) "
+            f"VALUES ({_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH})",
             (source, str(event_id), event_type, severity,
              host[:120], user[:120], src_ip[:60], dst_ip[:60],
-             description[:500], raw_str, 1 if simulated else 0),
+             description[:500], raw_str, 1 if simulated else 0, cid),
         )
     except Exception as exc:
         print(f"[siem] ingest_event DB error: {exc}")
@@ -437,6 +448,17 @@ class _SyslogHandler(socketserver.BaseRequestHandler):
             if not _is_private_ip(src_ip):
                 return
 
+            client_id = "boundry_self"
+            if _syslog_client_fn:
+                try:
+                    resolved = _syslog_client_fn(src_ip)
+                    if resolved:
+                        client_id = resolved
+                    elif (os.environ.get("BOUNDRY_MODE") or "").strip().lower() == "live":
+                        return
+                except Exception:
+                    pass
+
             data   = self.request[0].decode("utf-8", errors="replace").strip()
             m      = re.match(r'^<(\d+)>(.*)', data)
             pri    = int(m.group(1)) if m else 13
@@ -453,6 +475,7 @@ class _SyslogHandler(socketserver.BaseRequestHandler):
                 description=rest,
                 raw={"pri": pri, "facility": pri >> 3, "severity": pri & 0x7,
                      "message": rest},
+                client_id=client_id,
             )
         except Exception:
             pass
@@ -596,6 +619,39 @@ _DEFAULT_RULES = [
 ]
 
 
+_PRO_SERVICES_RULES = (
+    ("M365 Failed Sign-Ins",
+     "5+ M365 failed sign-in events in 15 minutes — possible credential spray.",
+     "m365_signin_failed",      "user_account", 5,  900,  "HIGH",     "finding"),
+    ("Vendor App Consent",
+     "OAuth / vendor application consent recorded — verify authorised.",
+     "vendor_app_consent",      "user_account", 1,  3600, "HIGH",     "finding"),
+)
+
+
+def _ensure_pro_services_siem_rules():
+    """Insert pro-services rules if missing (existing DBs)."""
+    if not _db_fetchall or not _db_run:
+        return
+    try:
+        for row in _PRO_SERVICES_RULES:
+            exists = _db_fetchall(
+                f"SELECT id FROM siem_rules WHERE name = {_PH} LIMIT 1",
+                (row[0],),
+            )
+            if exists:
+                continue
+            _db_run(
+                f"INSERT INTO siem_rules "
+                f"(name, description, event_type, group_field, threshold, "
+                f"window_seconds, severity, action) "
+                f"VALUES ({_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH},{_PH})",
+                row,
+            )
+    except Exception as exc:
+        print(f"[siem] _ensure_pro_services_siem_rules: {exc}")
+
+
 def _seed_default_rules():
     """Seed default correlation rules if siem_rules table is empty."""
     if not _db_fetchall or not _db_run:
@@ -659,13 +715,13 @@ def _run_correlation():
             # Exclude tuned vendor-noise tags so old NEP 7045 rows cannot re-fire
             # the New Service Installed rule before cleanup retags them.
             hits = _db_fetchall(
-                f"SELECT {gfield} AS grp_val, COUNT(*) AS cnt "
+                f"SELECT client_id, {gfield} AS grp_val, COUNT(*) AS cnt "
                 f"FROM siem_events "
                 f"WHERE event_type = {_PH} AND created_at >= {_PH} "
                 f"  AND dismissed = 0 "
                 f"  AND description NOT LIKE {_PH} "
                 f"  AND description NOT LIKE {_PH} "
-                f"GROUP BY {gfield} "
+                f"GROUP BY client_id, {gfield} "
                 f"HAVING COUNT(*) >= {_PH}",
                 (etype, cutoff, "%tuned vendor noise%", "%Service Name:%NEP%", thresh),
             )
@@ -673,10 +729,12 @@ def _run_correlation():
             for hit in hits:
                 grp_val = (hit.get("grp_val") or "unknown")[:100]
                 count   = hit["cnt"]
+                tid     = (hit.get("client_id") or "boundry_self")[:80]
 
                 # Stable finding ID — prevents duplicate open findings
                 safe_grp = re.sub(r'[^A-Za-z0-9_\-]', '_', grp_val)
-                fid = f"siem_{rule['id']}_{safe_grp}"
+                safe_tid = re.sub(r'[^A-Za-z0-9_\-]', '_', tid)
+                fid = f"siem_{rule['id']}_{safe_tid}_{safe_grp}"
 
                 already_open = _db_fetchall(
                     f"SELECT id FROM system_findings "
@@ -704,9 +762,9 @@ def _run_correlation():
                 _db_run(
                     f"INSERT INTO system_findings "
                     f"(finding_id, title, severity, cissp_domain, category, "
-                    f"description, recommendation, scan_type) "
-                    f"VALUES ({_PH},{_PH},{_PH},7,'SIEM Correlation',{_PH},{_PH},'siem')",
-                    (fid, title, sev, full_desc, rec),
+                    f"description, recommendation, scan_type, client_id) "
+                    f"VALUES ({_PH},{_PH},{_PH},7,'SIEM Correlation',{_PH},{_PH},'siem',{_PH})",
+                    (fid, title, sev, full_desc, rec, tid),
                 )
                 print(f"[siem] *** Correlation FIRED: {title} (count={count}) ***")
 

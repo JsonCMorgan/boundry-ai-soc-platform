@@ -91,12 +91,12 @@ def test_login_wrong_credentials(client):
 
 def test_login_valid_credentials_redirects(client):
     """
-    POST /login with correct credentials must return 302 and redirect to the
-    reports dashboard. Verifies session is created on successful authentication (A07).
+    POST /login with correct credentials must return 302 to the role home page.
+    SEED_DB admin has no role → client portal (A07).
     """
     resp = client.post("/login", data={"username": "admin", "password": "admin123"})
     assert resp.status_code == 302
-    assert "/reports" in resp.headers["Location"]
+    assert "/client/status" in resp.headers["Location"]
 
 
 # --- Registration tests (A03: Injection, A07: Auth Failures) ---

@@ -36,7 +36,7 @@ def test_api_link_check_paradox_intact(analyst_client):
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["ok"] is True
-    assert data["verdict"] == "do_not_click"
+    assert data["verdict"] == "verify_official_site"
     assert "brand_mismatch" in data["signals"]
 
 

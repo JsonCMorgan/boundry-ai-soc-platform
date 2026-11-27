@@ -32,6 +32,7 @@ MSSP/
 │   ├── GITHUB_INDUSTRY_AUDIT.md      # GitHub vs industry standards (rubric + roadmap)
 │   ├── PORTFOLIO_VERIFICATION_GUIDE.md
 │   ├── GITHUB_AUDIT_QUARTERLY_CHECKLIST.md
+│   ├── CYBERSECURITY_CULTURE_BLUEPRINT.md  # Hybrid culture manual (client + Boundry + study)
 │   └── …
 ├── .cursor/rules/         # tutor-professor-voice, boundry-skills, boundry-context-work
 ├── agent_skills/          # Boundry ops skills (weekly report, onboarding, triage)
